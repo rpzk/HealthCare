@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: healthcare-db
+    environment:
+      POSTGRES_USER: healthcare
+      POSTGRES_PASSWORD: healthcare123
+      POSTGRES_DB: healthcare_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - healthcare-network
+
+  # Healthcare Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthcare-app
+    environment:
+      DATABASE_URL: "postgresql://healthcare:healthcare123@postgres:5432/healthcare_db"
+      NEXTAUTH_SECRET: "your-secret-key-here-change-in-production"
+      NEXTAUTH_URL: "http://localhost:3000"
+      GOOGLE_AI_API_KEY: "sua-chave-google-ai-studio-aqui"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - healthcare-network
+    volumes:
+      - ./uploads:/app/uploads
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: healthcare-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - healthcare-network
+
+volumes:
+  postgres_data:
+
+networks:
+  healthcare-network:
+    driver: bridge
