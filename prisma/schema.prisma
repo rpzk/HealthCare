@@ -1,0 +1,335 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  role        Role     @default(DOCTOR)
+  speciality  String?
+  crmNumber   String?  @unique
+  phone       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  patients           Patient[]
+  consultations      Consultation[]
+  prescriptions      Prescription[]
+  examRequests       ExamRequest[]
+  medicalRecords     MedicalRecord[]
+  aiInteractions     AIInteraction[]
+
+  @@map("users")
+}
+
+model Patient {
+  id            String    @id @default(cuid())
+  name          String
+  email         String?   @unique
+  cpf           String    @unique
+  rg            String?
+  birthDate     DateTime
+  gender        Gender
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  emergencyContact String?
+  bloodType     BloodType?
+  allergies     String[]
+  chronicDiseases String[]
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relacionamentos
+  doctor          User              @relation(fields: [doctorId], references: [id])
+  doctorId        String
+  consultations   Consultation[]
+  prescriptions   Prescription[]
+  examRequests    ExamRequest[]
+  medicalRecords  MedicalRecord[]
+  vitalSigns      VitalSigns[]
+
+  @@map("patients")
+}
+
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  diagnosis   String?
+  treatment   String?
+  notes       String?
+  recordType  RecordType
+  severity    Severity @default(LOW)
+  isPrivate   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  patient     Patient       @relation(fields: [patientId], references: [id])
+  patientId   String
+  doctor      User          @relation(fields: [doctorId], references: [id])
+  doctorId    String
+  attachments Attachment[]
+  aiAnalysis  AIAnalysis[]
+
+  @@map("medical_records")
+}
+
+model Consultation {
+  id            String           @id @default(cuid())
+  scheduledDate DateTime
+  actualDate    DateTime?
+  duration      Int? // em minutos
+  type          ConsultationType
+  status        ConsultationStatus @default(SCHEDULED)
+  chiefComplaint String?
+  history       String?
+  physicalExam  String?
+  assessment    String?
+  plan          String?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relacionamentos
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  patientId     String
+  doctor        User          @relation(fields: [doctorId], references: [id])
+  doctorId      String
+  prescriptions Prescription[]
+  examRequests  ExamRequest[]
+  vitalSigns    VitalSigns[]
+
+  @@map("consultations")
+}
+
+model Prescription {
+  id          String            @id @default(cuid())
+  medication  String
+  dosage      String
+  frequency   String
+  duration    String
+  instructions String?
+  status      PrescriptionStatus @default(ACTIVE)
+  startDate   DateTime          @default(now())
+  endDate     DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relacionamentos
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  patientId     String
+  doctor        User          @relation(fields: [doctorId], references: [id])
+  doctorId      String
+  consultation  Consultation? @relation(fields: [consultationId], references: [id])
+  consultationId String?
+
+  @@map("prescriptions")
+}
+
+model ExamRequest {
+  id          String      @id @default(cuid())
+  examType    String
+  description String?
+  urgency     Urgency     @default(ROUTINE)
+  status      ExamStatus  @default(REQUESTED)
+  requestDate DateTime    @default(now())
+  scheduledDate DateTime?
+  completedDate DateTime?
+  results     String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relacionamentos
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  patientId     String
+  doctor        User          @relation(fields: [doctorId], references: [id])
+  doctorId      String
+  consultation  Consultation? @relation(fields: [consultationId], references: [id])
+  consultationId String?
+  attachments   Attachment[]
+
+  @@map("exam_requests")
+}
+
+model VitalSigns {
+  id                String   @id @default(cuid())
+  systolicBP        Int?     // Pressão arterial sistólica
+  diastolicBP       Int?     // Pressão arterial diastólica
+  heartRate         Int?     // Frequência cardíaca
+  respiratoryRate   Int?     // Frequência respiratória
+  temperature       Float?   // Temperatura corporal
+  weight            Float?   // Peso em kg
+  height            Float?   // Altura em cm
+  bmi               Float?   // IMC calculado
+  oxygenSaturation  Int?     // Saturação de oxigênio
+  bloodGlucose      Int?     // Glicemia
+  notes             String?
+  recordedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  // Relacionamentos
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  patientId     String
+  consultation  Consultation? @relation(fields: [consultationId], references: [id])
+  consultationId String?
+
+  @@map("vital_signs")
+}
+
+model Attachment {
+  id            String   @id @default(cuid())
+  fileName      String
+  originalName  String
+  fileSize      Int
+  mimeType      String
+  filePath      String
+  description   String?
+  createdAt     DateTime @default(now())
+
+  // Relacionamentos
+  medicalRecord   MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
+  medicalRecordId String?
+  examRequest     ExamRequest?   @relation(fields: [examRequestId], references: [id])
+  examRequestId   String?
+
+  @@map("attachments")
+}
+
+model AIInteraction {
+  id          String        @id @default(cuid())
+  type        AIRequestType
+  prompt      String
+  response    String
+  confidence  Float?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+
+  // Relacionamentos
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  @@map("ai_interactions")
+}
+
+model AIAnalysis {
+  id            String   @id @default(cuid())
+  analysisType  String
+  input         String
+  result        String
+  confidence    Float
+  suggestions   String[]
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  // Relacionamentos
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  medicalRecordId String
+
+  @@map("ai_analysis")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+  RECEPTIONIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodType {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum RecordType {
+  CONSULTATION
+  EXAM
+  PRESCRIPTION
+  DIAGNOSIS
+  TREATMENT
+  SURGERY
+  EMERGENCY
+  FOLLOW_UP
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ConsultationType {
+  INITIAL
+  FOLLOW_UP
+  EMERGENCY
+  ROUTINE
+  SPECIALIST
+}
+
+enum ConsultationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum ExamStatus {
+  REQUESTED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Urgency {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+enum AIRequestType {
+  DIAGNOSIS_SUGGESTION
+  TREATMENT_RECOMMENDATION
+  DRUG_INTERACTION_CHECK
+  SYMPTOM_ANALYSIS
+  MEDICAL_SUMMARY
+  RISK_ASSESSMENT
+}
