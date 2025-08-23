@@ -175,6 +175,13 @@ export function PatientsList() {
                   <Button variant="outline" size="sm">
                     Nova Consulta
                   </Button>
+                  <Button 
+                    variant="medical" 
+                    size="sm"
+                    onClick={() => window.open(`/patients/${patient.id}/agent`, '_blank')}
+                  >
+                    🤖 Agente IA
+                  </Button>
                   <Button variant="ghost" size="icon">
                     <MoreVertical className="h-4 w-4" />
                   </Button>

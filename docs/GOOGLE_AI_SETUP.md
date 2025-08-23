@@ -23,7 +23,9 @@ Vá para: [https://makersuite.google.com/app/apikey](https://makersuite.google.c
 
 ### 4. Copie sua API Key
 - Copie a chave gerada (exemplo: `AIzaSyAbc123def456ghi789jkl012mno345pqr678`)
-- **⚠️ IMPORTANTE**: Guarde essa chave em local seguro - ela não será mostrada novamente
+- **⚠️ CRÍTICO**: Guarde essa chave em local seguro - ela não será mostrada novamente
+- **🔐 NUNCA** commit a chave real no Git/GitHub
+- **🚨 IMPORTANTE**: Se a chave for exposta, revogue-a imediatamente no Google Console
 
 ### 5. Configure no Sistema
 
