@@ -11,10 +11,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/patients/[id]/agent/page": [
+    "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/patients/[id]/agent/page.js"
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

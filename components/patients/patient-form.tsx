@@ -90,8 +90,8 @@ export function PatientForm({ patient, onSubmit, onCancel, loading = false }: Pa
       const submitData = {
         ...formData,
         birthDate: new Date(formData.birthDate),
-        allergies: formData.allergies.split(',').map(a => a.trim()).filter(a => a),
-        chronicDiseases: formData.chronicDiseases.split(',').map(d => d.trim()).filter(d => d),
+        allergies: formData.allergies.split(',').map((a: string) => a.trim()).filter((a: string) => a),
+        chronicDiseases: formData.chronicDiseases.split(',').map((d: string) => d.trim()).filter((d: string) => d),
         bloodType: formData.bloodType || null,
         doctorId: 'cmeokjwn60000re2t8uldf5d5' // TODO: Pegar do contexto do usuário logado
       }
