@@ -252,9 +252,14 @@ export function DashboardOverview() {
               <FileText className="h-6 w-6" />
               <span>Criar Prontuário</span>
             </Button>
-            <Button className="h-20 flex flex-col space-y-2" variant="medical">
+            <Button 
+              className="h-20 flex flex-col space-y-2 relative" 
+              variant="medical"
+              onClick={() => window.open('/patients/1/agent', '_blank')}
+            >
               <Activity className="h-6 w-6" />
-              <span>Assistente IA</span>
+              <span>🤖 Agente Médico</span>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse" />
             </Button>
           </div>
         </CardContent>

@@ -14,6 +14,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Verificar se a API key está presente
+    const apiKey = process.env.GOOGLE_AI_API_KEY
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Chave da API do Google AI não configurada' },
+        { status: 500 }
+      )
+    }
+
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
     // Contexto médico personalizado baseado no tipo
