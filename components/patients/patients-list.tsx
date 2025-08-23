@@ -1,96 +1,220 @@
 'use client'
 
-import { useState } from 'react'
-import { Search, Plus, Filter, MoreVertical, Phone, Mail } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { Search, Plus, Filter, MoreVertical, Phone, Mail, Edit, Trash2, UserX, UserCheck } from 'lucide-react'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { PatientForm } from './patient-form'
 
 interface Patient {
   id: string
   name: string
   age: number
   gender: string
-  phone: string
-  email: string
-  lastVisit: string
-  status: 'active' | 'inactive' | 'emergency'
-  bloodType: string
+  phone?: string
+  email?: string
+  lastConsultation?: {
+    scheduledDate: string
+    status: string
+  }
+  bloodType?: string
   allergies: string[]
+  chronicDiseases: string[]
+  isActive: boolean
+  totalConsultations: number
+  totalPrescriptions: number
+  totalRecords: number
 }
 
-const mockPatients: Patient[] = [
-  {
-    id: '1',
-    name: 'Maria Santos',
-    age: 45,
-    gender: 'Feminino',
-    phone: '(11) 98765-4321',
-    email: 'maria.santos@email.com',
-    lastVisit: '2024-08-20',
-    status: 'active',
-    bloodType: 'A+',
-    allergies: ['Penicilina']
-  },
-  {
-    id: '2',
-    name: 'João Silva',
-    age: 62,
-    gender: 'Masculino',
-    phone: '(11) 91234-5678',
-    email: 'joao.silva@email.com',
-    lastVisit: '2024-08-18',
-    status: 'emergency',
-    bloodType: 'O-',
-    allergies: []
-  },
-  {
-    id: '3',
-    name: 'Ana Costa',
-    age: 34,
-    gender: 'Feminino',
-    phone: '(11) 95555-1234',
-    email: 'ana.costa@email.com',
-    lastVisit: '2024-08-15',
-    status: 'active',
-    bloodType: 'B+',
-    allergies: ['Látex', 'Aspirina']
+interface PatientsData {
+  patients: Patient[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
   }
-]
+}
 
 export function PatientsList() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [patients] = useState<Patient[]>(mockPatients)
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0
+  })
 
-  const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Carregar pacientes
+  const fetchPatients = async (page = 1, search = '') => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        isActive: 'true'
+      })
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'status-active'
-      case 'emergency':
-        return 'status-emergency'
-      case 'inactive':
-        return 'status-pending'
-      default:
-        return 'status-pending'
+      if (search) {
+        params.append('search', search)
+      }
+
+      const response = await fetch(`/api/patients?${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Falha ao carregar pacientes')
+      }
+
+      const data: PatientsData = await response.json()
+      setPatients(data.patients)
+      setPagination(data.pagination)
+    } catch (err) {
+      console.error('Erro ao carregar pacientes:', err)
+      setError('Erro ao carregar pacientes. Mostrando dados de exemplo.')
+      
+      // Fallback para dados estáticos
+      setPatients([
+        {
+          id: '1',
+          name: 'Maria Santos',
+          age: 45,
+          gender: 'Feminino',
+          phone: '(11) 98765-4321',
+          email: 'maria.santos@email.com',
+          bloodType: 'A+',
+          allergies: ['Penicilina'],
+          chronicDiseases: ['Hipertensão'],
+          isActive: true,
+          totalConsultations: 5,
+          totalPrescriptions: 3,
+          totalRecords: 8
+        },
+        {
+          id: '2',
+          name: 'João Silva',
+          age: 62,
+          gender: 'Masculino',
+          phone: '(11) 91234-5678',
+          email: 'joao.silva@email.com',
+          bloodType: 'O-',
+          allergies: [],
+          chronicDiseases: ['Diabetes Tipo 2'],
+          isActive: true,
+          totalConsultations: 12,
+          totalPrescriptions: 8,
+          totalRecords: 15
+        }
+      ])
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'Ativo'
-      case 'emergency':
-        return 'Emergência'
-      case 'inactive':
-        return 'Inativo'
-      default:
-        return 'Inativo'
+  useEffect(() => {
+    fetchPatients(currentPage, searchTerm)
+  }, [currentPage])
+
+  // Buscar pacientes com debounce
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchPatients(1, searchTerm)
+      } else {
+        setCurrentPage(1)
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
+  }, [searchTerm])
+
+  // Submeter formulário de paciente
+  const handleSubmitPatient = async (data: any) => {
+    try {
+      setSubmitting(true)
+      
+      const url = editingPatient 
+        ? `/api/patients/${editingPatient.id}`
+        : '/api/patients'
+      
+      const method = editingPatient ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao salvar paciente')
+      }
+
+      // Recarregar lista
+      await fetchPatients(currentPage, searchTerm)
+      
+      // Fechar formulário
+      setShowForm(false)
+      setEditingPatient(null)
+    } catch (error: any) {
+      console.error('Erro ao salvar paciente:', error)
+      alert(error.message || 'Erro ao salvar paciente')
+    } finally {
+      setSubmitting(false)
     }
+  }
+
+  // Desativar paciente
+  const handleDeactivatePatient = async (patient: Patient) => {
+    if (!confirm(`Deseja realmente desativar o paciente ${patient.name}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/patients/${patient.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'deactivate' })
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao desativar paciente')
+      }
+
+      // Recarregar lista
+      await fetchPatients(currentPage, searchTerm)
+    } catch (error) {
+      console.error('Erro ao desativar paciente:', error)
+      alert('Erro ao desativar paciente')
+    }
+  }
+
+  const getStatusColor = (patient: Patient) => {
+    if (!patient.isActive) return 'status-inactive'
+    if (patient.chronicDiseases.length > 0) return 'status-emergency'
+    return 'status-active'
+  }
+
+  const getStatusText = (patient: Patient) => {
+    if (!patient.isActive) return 'Inativo'
+    if (patient.lastConsultation) {
+      const days = Math.floor((Date.now() - new Date(patient.lastConsultation.scheduledDate).getTime()) / (1000 * 60 * 60 * 24))
+      if (days > 90) return 'Paciente antigo'
+      if (days > 30) return 'Acompanhamento'
+      return 'Ativo'
+    }
+    return 'Novo paciente'
   }
 
   return (
@@ -112,15 +236,37 @@ export function PatientsList() {
             Filtros
           </Button>
         </div>
-        <Button variant="medical">
+        <Button 
+          variant="medical"
+          onClick={() => setShowForm(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Paciente
         </Button>
       </div>
 
+      {/* Banner de erro se houver */}
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-medical-primary"></div>
+        </div>
+      )}
+
       {/* Lista de pacientes */}
-      <div className="grid gap-6">
-        {filteredPatients.map((patient) => (
+      {!loading && (
+        <div className="grid gap-6">
+          {patients.map((patient) => (
           <Card key={patient.id} className="card-hover">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -136,26 +282,42 @@ export function PatientsList() {
                       <h3 className="text-lg font-semibold text-gray-900">
                         {patient.name}
                       </h3>
-                      <span className={`${getStatusColor(patient.status)}`}>
-                        {getStatusText(patient.status)}
+                      <span className={`${getStatusColor(patient)}`}>
+                        {getStatusText(patient)}
                       </span>
                     </div>
                     
                     <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
                       <span>{patient.age} anos • {patient.gender}</span>
-                      <span>Tipo sanguíneo: {patient.bloodType}</span>
-                      <span>Última consulta: {patient.lastVisit}</span>
+                      <span>Tipo sanguíneo: {patient.bloodType || 'N/A'}</span>
+                      <span>
+                        Última consulta: {
+                          patient.lastConsultation 
+                            ? new Date(patient.lastConsultation.scheduledDate).toLocaleDateString('pt-BR')
+                            : 'Nunca'
+                        }
+                      </span>
                     </div>
                     
                     <div className="flex items-center space-x-4 mt-2">
-                      <div className="flex items-center space-x-1">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{patient.phone}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{patient.email}</span>
-                      </div>
+                      {patient.phone && (
+                        <div className="flex items-center space-x-1">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">{patient.phone}</span>
+                        </div>
+                      )}
+                      {patient.email && (
+                        <div className="flex items-center space-x-1">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">{patient.email}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center space-x-4 mt-2">
+                      <span className="text-xs text-gray-500">
+                        {patient.totalConsultations} consultas • {patient.totalPrescriptions} prescrições • {patient.totalRecords} registros
+                      </span>
                     </div>
                     
                     {patient.allergies.length > 0 && (
@@ -169,11 +331,22 @@ export function PatientsList() {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
-                    Ver Prontuário
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setEditingPatient(patient)
+                      setShowForm(true)
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
                   </Button>
-                  <Button variant="outline" size="sm">
-                    Nova Consulta
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                  >
+                    Ver Prontuário
                   </Button>
                   <Button 
                     variant="medical" 
@@ -182,17 +355,23 @@ export function PatientsList() {
                   >
                     🤖 Agente IA
                   </Button>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleDeactivatePatient(patient)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <UserX className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      )}
 
-      {filteredPatients.length === 0 && (
+      {!loading && patients.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <div className="text-gray-400 mb-4">
@@ -202,14 +381,61 @@ export function PatientsList() {
               Nenhum paciente encontrado
             </h3>
             <p className="text-gray-600">
-              Tente ajustar os filtros ou adicionar um novo paciente.
+              {searchTerm 
+                ? 'Tente ajustar a busca ou adicionar um novo paciente.'
+                : 'Ainda não há pacientes cadastrados. Adicione o primeiro paciente.'
+              }
             </p>
-            <Button variant="medical" className="mt-4">
+            <Button 
+              variant="medical" 
+              className="mt-4"
+              onClick={() => setShowForm(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Adicionar Paciente
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Paginação */}
+      {!loading && pagination.pages > 1 && (
+        <div className="flex justify-center items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(currentPage - 1)}
+          >
+            Anterior
+          </Button>
+          
+          <span className="text-sm text-gray-600">
+            Página {pagination.page} de {pagination.pages} ({pagination.total} pacientes)
+          </span>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === pagination.pages}
+            onClick={() => setCurrentPage(currentPage + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      )}
+
+      {/* Formulário de paciente */}
+      {showForm && (
+        <PatientForm
+          patient={editingPatient}
+          onSubmit={handleSubmitPatient}
+          onCancel={() => {
+            setShowForm(false)
+            setEditingPatient(null)
+          }}
+          loading={submitting}
+        />
       )}
     </div>
   )
