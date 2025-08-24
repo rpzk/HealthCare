@@ -1,43 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DashboardService } from '../../../lib/dashboard-service'
+import { withAuth } from '@/lib/with-auth'
+import { DashboardService } from '@/lib/dashboard-service'
+import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url)
-    const section = searchParams.get('section')
+// GET - Dados do dashboard (usuários autenticados)
+export const GET = withAuth(async (request, { user }) => {
+  const { searchParams } = new URL(request.url)
+  const section = searchParams.get('section')
 
-    switch (section) {
-      case 'stats':
-        const stats = await DashboardService.getStats()
-        return NextResponse.json(stats)
+  let data: any
+  let actionDescription = ''
 
-      case 'appointments':
-        const appointments = await DashboardService.getUpcomingAppointments()
-        return NextResponse.json(appointments)
+  switch (section) {
+    case 'stats':
+      actionDescription = 'Estatísticas gerais do dashboard'
+      data = await DashboardService.getStats()
+      break
 
-      case 'patients':
-        const patients = await DashboardService.getRecentPatients()
-        return NextResponse.json(patients)
+    case 'appointments':
+      actionDescription = 'Consultas próximas'
+      data = await DashboardService.getUpcomingAppointments()
+      break
 
-      case 'all':
-      default:
-        const [allStats, allAppointments, allPatients] = await Promise.all([
-          DashboardService.getStats(),
-          DashboardService.getUpcomingAppointments(),
-          DashboardService.getRecentPatients()
-        ])
+    case 'patients':
+      actionDescription = 'Pacientes recentes'
+      data = await DashboardService.getRecentPatients()
+      break
 
-        return NextResponse.json({
-          stats: allStats,
-          appointments: allAppointments,
-          patients: allPatients
-        })
-    }
-  } catch (error) {
-    console.error('Erro na API do dashboard:', error)
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
+    case 'all':
+    default:
+      actionDescription = 'Dashboard completo'
+      const [allStats, allAppointments, allPatients] = await Promise.all([
+        DashboardService.getStats(),
+        DashboardService.getUpcomingAppointments(),
+        DashboardService.getRecentPatients()
+      ])
+
+      data = {
+        stats: allStats,
+        appointments: allAppointments,
+        patients: allPatients
+      }
+      break
   }
-}
+
+  // Log de auditoria
+  auditLogger.logSuccess(
+    user.id,
+    user.email,
+    user.role,
+    AuditAction.DATA_EXPORT,
+    'dashboard',
+    {
+      section: section || 'all',
+      actionDescription,
+      dataSize: JSON.stringify(data).length
+    }
+  )
+
+  return NextResponse.json({
+    success: true,
+    data,
+    metadata: {
+      section: section || 'all',
+      retrievedAt: new Date().toISOString(),
+      retrievedBy: user.email,
+      userRole: user.role
+    }
+  })
+})

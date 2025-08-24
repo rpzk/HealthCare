@@ -37,8 +37,17 @@ echo ""
 
 protected_apis=(
     "app/api/patients/route.ts"
+    "app/api/patients/[id]/route.ts"
     "app/api/consultations/route.ts"
+    "app/api/consultations/[id]/route.ts" 
+    "app/api/consultations/stats/route.ts"
+    "app/api/consultations/today/route.ts"
+    "app/api/consultations/upcoming/route.ts"
+    "app/api/consultations/available-slots/route.ts"
     "app/api/notifications/route.ts"
+    "app/api/notifications/[id]/route.ts"
+    "app/api/notifications/stats/route.ts"
+    "app/api/dashboard/route.ts"
     "app/api/ai/analyze-symptoms/route.ts"
     "app/api/ai/drug-interactions/route.ts"
     "app/api/ai/medical-summary/route.ts"
@@ -76,10 +85,21 @@ fi
 
 echo ""
 
+# Contar APIs protegidas
+total_apis=22
+protected_count=0
+for api in "${protected_apis[@]}"; do
+    if [ -f "$api" ] && grep -q "withAuth\|withDoctorAuth\|withAdminAuth" "$api"; then
+        ((protected_count++))
+    fi
+done
+
+percentage=$((protected_count * 100 / total_apis))
+
 # Estatísticas
 echo "📊 Estatísticas:"
 echo ""
-echo "• 13/16 APIs protegidas (81%)"
+echo "• ${protected_count}/${total_apis} APIs protegidas (${percentage}%)"
 echo "• 100% das APIs CRUD básicas protegidas"
 echo "• 100% das APIs de IA protegidas 🎉"
 echo "• Sistema de auditoria: ATIVO"
