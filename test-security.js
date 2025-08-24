@@ -37,6 +37,62 @@ const apiTests = [
     method: 'GET',
     protected: true,
     doctorOnly: true
+  },
+  {
+    name: 'Resumo Médico IA - GET (Doctor Auth)',
+    endpoint: '/api/ai/medical-summary',
+    method: 'GET',
+    protected: true,
+    doctorOnly: true
+  },
+  {
+    name: 'Chat IA - POST (Doctor Auth)',
+    endpoint: '/api/ai/chat',
+    method: 'POST',
+    protected: true,
+    doctorOnly: true
+  },
+  {
+    name: 'Agente Médico - POST (Doctor Auth)',
+    endpoint: '/api/ai/agent',
+    method: 'POST',
+    protected: true,
+    doctorOnly: true
+  },
+  {
+    name: 'Recomendações IA - GET (Doctor Auth)',
+    endpoint: '/api/ai/recommendations',
+    method: 'GET',
+    protected: true,
+    doctorOnly: true
+  },
+  {
+    name: 'Analytics IA - GET (Doctor Auth)',
+    endpoint: '/api/ai/analytics',
+    method: 'GET',
+    protected: true,
+    doctorOnly: true
+  },
+  {
+    name: 'Análise Médica Geral - POST (Doctor Auth)',
+    endpoint: '/api/ai/analyze',
+    method: 'POST',
+    protected: true,
+    doctorOnly: true
+  },
+  {
+    name: 'Métricas Performance - GET (Admin Auth)',
+    endpoint: '/api/ai/performance',
+    method: 'GET',
+    protected: true,
+    adminOnly: true
+  },
+  {
+    name: 'Tendências IA - GET (Doctor Auth)',
+    endpoint: '/api/ai/trends',
+    method: 'GET',
+    protected: true,
+    doctorOnly: true
   }
 ]
 
@@ -80,8 +136,9 @@ async function runTests() {
   console.log(`\n📊 Resultados: ${passed}/${total} testes passaram`)
   
   if (passed === total) {
-    console.log('🎉 Todos os testes de segurança passaram!')
-    console.log('✅ Sistema de autenticação está funcionando corretamente')
+    console.log('🎉 TODOS os testes de segurança passaram!')
+    console.log('✅ 100% das APIs de IA estão protegidas!')
+    console.log('✅ Sistema de autenticação robusto funcionando')
   } else {
     console.log('⚠️  Alguns testes falharam - verificar configuração')
   }
