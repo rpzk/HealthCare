@@ -1,27 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAdminAuth } from '@/lib/with-auth'
 import { AIAnalyticsService } from '@/lib/ai-analytics'
+import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
-export async function GET() {
-  try {
-    // Verificar autenticação
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      )
+// GET - Métricas de performance da IA (apenas administradores)
+export const GET = withAdminAuth(async (request, { user }) => {
+  const metrics = await AIAnalyticsService.getPerformanceMetrics()
+  
+  // Log de auditoria
+  auditLogger.logSuccess(
+    user.id,
+    user.email,
+    user.role,
+    AuditAction.SYSTEM_CONFIG_CHANGE,
+    'ai-performance-metrics',
+    {
+      metricsRetrieved: Object.keys(metrics).length
     }
+  )
 
-    const metrics = await AIAnalyticsService.getPerformanceMetrics()
-    return NextResponse.json(metrics)
-
-  } catch (error) {
-    console.error('Erro ao buscar métricas de performance:', error)
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
-  }
-}
+  return NextResponse.json({
+    success: true,
+    data: metrics,
+    metadata: {
+      retrievedAt: new Date().toISOString(),
+      retrievedBy: user.email,
+      access: 'admin-only'
+    }
+  })
+})

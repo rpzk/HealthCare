@@ -1,53 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
 import { MedicalAIService } from '@/lib/ai-service'
+import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { z } from 'zod'
 
-export async function POST(req: NextRequest) {
-  try {
-    const { symptoms, patientHistory, context, analysisType } = await req.json()
+// Schema de validação para análise médica geral
+const medicalAnalysisSchema = z.object({
+  symptoms: z.array(z.string().min(1, 'Descrição do sintoma é obrigatória')).min(1, 'Pelo menos um sintoma/medicamento é obrigatório'),
+  patientHistory: z.string().optional(),
+  context: z.string().optional(),
+  analysisType: z.enum(['symptoms', 'drug_interactions'], {
+    errorMap: () => ({ message: 'Tipo deve ser symptoms ou drug_interactions' })
+  }).default('symptoms'),
+  patientId: z.string().optional()
+})
 
-    if (!symptoms || !Array.isArray(symptoms) || symptoms.length === 0) {
-      return NextResponse.json(
-        { error: 'Lista de sintomas é obrigatória' },
-        { status: 400 }
-      )
-    }
-
-    let result
-
-    switch (analysisType) {
-      case 'symptoms':
-        result = await MedicalAIService.analyzeSymptoms(symptoms, patientHistory, context)
-        break
-      
-      case 'drug_interactions':
-        if (!symptoms.every(item => typeof item === 'string')) {
-          return NextResponse.json(
-            { error: 'Lista de medicamentos deve conter apenas strings' },
-            { status: 400 }
-          )
-        }
-        result = await MedicalAIService.checkDrugInteractions(symptoms)
-        break
-      
-      default:
-        result = await MedicalAIService.analyzeSymptoms(symptoms, patientHistory, context)
-    }
-
-    return NextResponse.json({
-      analysis: result,
-      timestamp: new Date().toISOString(),
-      type: analysisType || 'symptoms'
-    })
-
-  } catch (error) {
-    console.error('Erro na análise médica:', error)
-    
-    return NextResponse.json(
-      { 
-        error: 'Erro ao processar análise médica',
-        details: 'Verifique os dados enviados e tente novamente' 
-      },
-      { status: 500 }
-    )
+function validateMedicalAnalysis(data: any) {
+  const result = medicalAnalysisSchema.safeParse(data)
+  return {
+    success: result.success,
+    data: result.success ? result.data : undefined,
+    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
   }
 }
+
+// POST - Análise médica geral (apenas médicos)
+export const POST = withDoctorAuth(async (request, { user }) => {
+  const validation = await validateRequestBody(request, validateMedicalAnalysis)
+  if (!validation.success) {
+    return validation.response!
+  }
+
+  const { symptoms, patientHistory, context, analysisType, patientId } = validation.data!
+
+  let result
+  let actionDescription = ''
+
+  switch (analysisType) {
+    case 'symptoms':
+      actionDescription = 'Análise de sintomas médicos'
+      result = await MedicalAIService.analyzeSymptoms(symptoms, patientHistory, context)
+      break
+    
+    case 'drug_interactions':
+      actionDescription = 'Verificação de interações medicamentosas'
+      result = await MedicalAIService.checkDrugInteractions(symptoms)
+      break
+  }
+
+  // Log de auditoria
+  auditLogger.logSuccess(
+    user.id,
+    user.email,
+    user.role,
+    AuditAction.AI_ANALYSIS,
+    'general-analysis',
+    {
+      analysisType,
+      patientId,
+      symptomsCount: symptoms.length,
+      hasHistory: !!patientHistory,
+      hasContext: !!context
+    }
+  )
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      analysis: result,
+      type: analysisType
+    },
+    metadata: {
+      analyzedAt: new Date().toISOString(),
+      analyzedBy: user.email,
+      analysisType,
+      symptomsCount: symptoms.length,
+      patientId
+    }
+  })
+})

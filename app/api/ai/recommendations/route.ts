@@ -1,27 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withDoctorAuth } from '@/lib/with-auth'
 import { AIAnalyticsService } from '@/lib/ai-analytics'
+import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
-export async function GET() {
-  try {
-    // Verificar autenticação
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      )
+// GET - Buscar recomendações do sistema IA (apenas médicos)
+export const GET = withDoctorAuth(async (request, { user }) => {
+  const recommendations = await AIAnalyticsService.getSystemRecommendations()
+  
+  // Log de auditoria
+  auditLogger.logSuccess(
+    user.id,
+    user.email,
+    user.role,
+    AuditAction.AI_ANALYSIS,
+    'recommendations',
+    {
+      recommendationsCount: recommendations.length || 0
     }
+  )
 
-    const recommendations = await AIAnalyticsService.getSystemRecommendations()
-    return NextResponse.json(recommendations)
-
-  } catch (error) {
-    console.error('Erro ao buscar recomendações:', error)
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
-  }
-}
+  return NextResponse.json({
+    success: true,
+    data: recommendations,
+    metadata: {
+      retrievedAt: new Date().toISOString(),
+      retrievedBy: user.email,
+      count: recommendations.length || 0
+    }
+  })
+})
