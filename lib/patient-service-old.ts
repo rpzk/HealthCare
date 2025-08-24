@@ -100,38 +100,24 @@ export class PatientService {
         prisma.patient.count({ where })
       ])
 
+      // Processar dados para retorno
+      const processedPatients = patients.map(patient => ({
+        ...patient,
+        age: this.calculateAge(patient.birthDate),
+        lastConsultation: patient.consultations[0] || null,
+        totalConsultations: patient._count.consultations,
+        totalPrescriptions: patient._count.prescriptions,
+        totalRecords: patient._count.medicalRecords
+      }))
+
       return {
-        patients: patients.map(patient => ({
-          id: patient.id,
-          name: patient.name,
-          email: patient.email,
-          phone: patient.phone,
-          cpf: patient.cpf,
-          age: this.calculateAge(patient.birthDate),
-          gender: patient.gender,
-          riskLevel: patient.riskLevel,
-          emergencyContact: patient.emergencyContact,
-          address: patient.address,
-          medicalHistory: patient.medicalHistory,
-          allergies: patient.allergies,
-          currentMedications: patient.currentMedications,
-          insuranceNumber: patient.insuranceNumber,
-          doctor: patient.User ? {
-            name: patient.User.name,
-            speciality: patient.User.speciality
-          } : null,
-          lastConsultation: patient.consultations[0] || null,
-          stats: {
-            totalConsultations: patient._count.consultations,
-            totalPrescriptions: patient._count.prescriptions,
-            totalRecords: patient._count.medicalRecords
-          },
-          createdAt: patient.createdAt,
-          updatedAt: patient.updatedAt
-        })),
-        total,
-        totalPages: Math.ceil(total / limit),
-        currentPage: page
+        patients: processedPatients,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar pacientes:', error)
@@ -139,7 +125,7 @@ export class PatientService {
     }
   }
 
-  // Buscar um paciente específico por ID
+  // Buscar paciente por ID
   static async getPatientById(id: string) {
     try {
       const patient = await prisma.patient.findUnique({
@@ -164,7 +150,8 @@ export class PatientService {
             },
             orderBy: {
               scheduledDate: 'desc'
-            }
+            },
+            take: 10
           },
           prescriptions: {
             include: {
@@ -175,8 +162,9 @@ export class PatientService {
               }
             },
             orderBy: {
-              startDate: 'desc'
-            }
+              createdAt: 'desc'
+            },
+            take: 5
           },
           medicalRecords: {
             include: {
@@ -188,14 +176,14 @@ export class PatientService {
             },
             orderBy: {
               createdAt: 'desc'
-            }
+            },
+            take: 10
           },
-          _count: {
-            select: {
-              consultations: true,
-              prescriptions: true,
-              medicalRecords: true
-            }
+          vitalSigns: {
+            orderBy: {
+              recordedAt: 'desc'
+            },
+            take: 5
           }
         }
       })
@@ -206,13 +194,7 @@ export class PatientService {
 
       return {
         ...patient,
-        age: this.calculateAge(patient.birthDate),
-        doctor: patient.User ? {
-          id: patient.User.id,
-          name: patient.User.name,
-          speciality: patient.User.speciality,
-          crmNumber: patient.User.crmNumber
-        } : null
+        age: this.calculateAge(patient.birthDate)
       }
     } catch (error) {
       console.error('Erro ao buscar paciente:', error)
@@ -223,25 +205,33 @@ export class PatientService {
   // Criar novo paciente
   static async createPatient(data: PatientCreateData) {
     try {
+      // Verificar se CPF já existe
+      const existingPatient = await prisma.patient.findUnique({
+        where: { cpf: data.cpf }
+      })
+
+      if (existingPatient) {
+        throw new Error('Já existe um paciente com este CPF')
+      }
+
+      // Verificar se email já existe (se fornecido)
+      if (data.email) {
+        const existingEmail = await prisma.patient.findUnique({
+          where: { email: data.email }
+        })
+
+        if (existingEmail) {
+          throw new Error('Já existe um paciente com este email')
+        }
+      }
+
       const patient = await prisma.patient.create({
         data: {
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          cpf: data.cpf,
-          birthDate: data.birthDate,
-          gender: data.gender,
-          emergencyContact: data.emergencyContact,
-          address: data.address,
-          medicalHistory: data.medicalHistory,
-          allergies: data.allergies,
-          currentMedications: data.currentMedications,
-          riskLevel: data.riskLevel || 'BAIXO',
-          insuranceNumber: data.insuranceNumber,
-          userId: data.userId
+          ...data,
+          birthDate: new Date(data.birthDate)
         },
         include: {
-          User: {
+          doctor: {
             select: {
               name: true,
               speciality: true
@@ -250,7 +240,10 @@ export class PatientService {
         }
       })
 
-      return patient
+      return {
+        ...patient,
+        age: this.calculateAge(patient.birthDate)
+      }
     } catch (error) {
       console.error('Erro ao criar paciente:', error)
       throw error
@@ -260,11 +253,47 @@ export class PatientService {
   // Atualizar paciente
   static async updatePatient(id: string, data: PatientUpdateData) {
     try {
+      // Verificar se paciente existe
+      const existingPatient = await prisma.patient.findUnique({
+        where: { id }
+      })
+
+      if (!existingPatient) {
+        throw new Error('Paciente não encontrado')
+      }
+
+      // Verificar CPF único (se alterado)
+      if (data.cpf && data.cpf !== existingPatient.cpf) {
+        const cpfExists = await prisma.patient.findUnique({
+          where: { cpf: data.cpf }
+        })
+
+        if (cpfExists) {
+          throw new Error('Já existe um paciente com este CPF')
+        }
+      }
+
+      // Verificar email único (se alterado)
+      if (data.email && data.email !== existingPatient.email) {
+        const emailExists = await prisma.patient.findUnique({
+          where: { email: data.email }
+        })
+
+        if (emailExists) {
+          throw new Error('Já existe um paciente com este email')
+        }
+      }
+
+      const updateData: any = { ...data }
+      if (data.birthDate) {
+        updateData.birthDate = new Date(data.birthDate)
+      }
+
       const patient = await prisma.patient.update({
         where: { id },
-        data,
+        data: updateData,
         include: {
-          User: {
+          doctor: {
             select: {
               name: true,
               speciality: true
@@ -273,65 +302,93 @@ export class PatientService {
         }
       })
 
-      return patient
+      return {
+        ...patient,
+        age: this.calculateAge(patient.birthDate)
+      }
     } catch (error) {
       console.error('Erro ao atualizar paciente:', error)
       throw error
     }
   }
 
-  // Excluir paciente
+  // Deletar paciente (hard delete - use com cuidado)
   static async deletePatient(id: string) {
     try {
-      await prisma.patient.delete({
+      return await prisma.patient.delete({
         where: { id }
       })
-
-      return { success: true }
     } catch (error) {
-      console.error('Erro ao excluir paciente:', error)
+      console.error('Erro ao deletar paciente:', error)
       throw error
     }
   }
 
-  // Buscar estatísticas gerais
+  // Nota: Desativação/reativação não está disponível no schema atual
+  // Se necessário, adicione o campo isActive ao modelo Patient no schema
+
+  // Buscar estatísticas de pacientes
   static async getPatientStats() {
     try {
-      const [totalPatients, genderStats, riskLevelStats] = await Promise.all([
+      const [
+        totalPatients,
+        byGender,
+        byBloodType,
+        allPatients
+      ] = await Promise.all([
         prisma.patient.count(),
         prisma.patient.groupBy({
           by: ['gender'],
           _count: true
         }),
         prisma.patient.groupBy({
-          by: ['riskLevel'],
-          _count: true
+          by: ['bloodType'],
+          _count: true,
+          where: { bloodType: { not: null } }
+        }),
+        // Estatísticas de idade precisam ser calculadas em código
+        prisma.patient.findMany({
+          select: { birthDate: true }
         })
       ])
 
-      const genderDistribution = genderStats.reduce((acc, item) => {
-        acc[item.gender] = item._count
-        return acc
-      }, {} as Record<string, number>)
+      // Calcular grupos de idade
+      const currentYear = new Date().getFullYear()
+      const ageGroups = {
+        '0-18': 0,
+        '19-35': 0,
+        '36-60': 0,
+        '60+': 0
+      }
 
-      const riskDistribution = riskLevelStats.reduce((acc, item) => {
-        acc[item.riskLevel] = item._count
-        return acc
-      }, {} as Record<string, number>)
+      allPatients.forEach(patient => {
+        const age = currentYear - patient.birthDate.getFullYear()
+        if (age <= 18) ageGroups['0-18']++
+        else if (age <= 35) ageGroups['19-35']++
+        else if (age <= 60) ageGroups['36-60']++
+        else ageGroups['60+']++
+      })
 
       return {
-        totalPatients,
-        genderDistribution,
-        riskDistribution
+        total: totalPatients,
+        byGender: byGender.reduce((acc, item) => {
+          acc[item.gender] = item._count
+          return acc
+        }, {} as Record<string, number>),
+        byBloodType: byBloodType.reduce((acc, item) => {
+          acc[item.bloodType!] = item._count
+          return acc
+        }, {} as Record<string, number>),
+        byAgeGroup: ageGroups
       }
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error)
+      console.error('Erro ao buscar estatísticas de pacientes:', error)
       throw error
     }
   }
 
-  // Métodos auxiliares
-  static calculateAge(birthDate: Date): number {
+  // Método auxiliar para calcular idade
+  private static calculateAge(birthDate: Date): number {
     const today = new Date()
     const birth = new Date(birthDate)
     let age = today.getFullYear() - birth.getFullYear()
@@ -342,34 +399,5 @@ export class PatientService {
     }
     
     return age
-  }
-
-  static getGenderLabel(gender: Gender): string {
-    const labels = {
-      'MALE': 'Masculino',
-      'FEMALE': 'Feminino',
-      'OTHER': 'Outro'
-    }
-    return labels[gender] || gender
-  }
-
-  static getRiskLevelLabel(riskLevel: RiskLevel): string {
-    const labels = {
-      'BAIXO': 'Baixo',
-      'MEDIO': 'Médio',
-      'ALTO': 'Alto',
-      'CRITICO': 'Crítico'
-    }
-    return labels[riskLevel] || riskLevel
-  }
-
-  static getRiskLevelColor(riskLevel: RiskLevel): string {
-    const colors = {
-      'BAIXO': 'green',
-      'MEDIO': 'yellow',
-      'ALTO': 'orange',
-      'CRITICO': 'red'
-    }
-    return colors[riskLevel] || 'gray'
   }
 }
