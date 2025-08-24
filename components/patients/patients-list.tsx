@@ -342,18 +342,19 @@ export function PatientsList() {
                     <Edit className="h-4 w-4 mr-1" />
                     Editar
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                  >
+                  <Button variant="outline" size="sm">
                     Ver Prontuário
                   </Button>
                   <Button 
                     variant="medical" 
                     size="sm"
-                    onClick={() => window.open(`/patients/${patient.id}/agent`, '_blank')}
+                    onClick={() => {
+                      // Abrir formulário de consulta para este paciente
+                      // TODO: Implementar integração
+                      alert(`Agendar consulta para ${patient.name}`)
+                    }}
                   >
-                    🤖 Agente IA
+                    Nova Consulta
                   </Button>
                   <Button 
                     variant="ghost" 
