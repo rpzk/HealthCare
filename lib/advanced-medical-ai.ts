@@ -1,0 +1,263 @@
+import { GoogleGenerativeAI } from '@google/generative-ai'
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!)
+
+// Tipos específicos para análise médica
+export interface SymptomAnalysisRequest {
+  symptoms: string[]
+  patientAge: number
+  patientGender: 'M' | 'F'
+  medicalHistory?: string[]
+  currentMedications?: string[]
+  vitalSigns?: {
+    temperature?: number
+    bloodPressure?: string
+    heartRate?: number
+    respiratoryRate?: number
+  }
+}
+
+export interface DiagnosisResult {
+  possibleDiagnoses: {
+    name: string
+    probability: number
+    description: string
+    urgencyLevel: 'low' | 'medium' | 'high' | 'critical'
+  }[]
+  recommendedTests: string[]
+  redFlags: string[]
+  treatmentSuggestions?: string[]
+}
+
+export interface DrugInteractionCheck {
+  medications: string[]
+  interactions: {
+    drugs: string[]
+    severity: 'mild' | 'moderate' | 'severe'
+    description: string
+    recommendation: string
+  }[]
+  contraindications: string[]
+}
+
+export interface MedicalSummary {
+  patientId: string
+  summary: string
+  keyFindings: string[]
+  recommendations: string[]
+  followUpNeeded: boolean
+}
+
+export class AdvancedMedicalAI {
+  private model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+
+  // Análise avançada de sintomas com IA
+  async analyzeSymptoms(request: SymptomAnalysisRequest): Promise<DiagnosisResult> {
+    const prompt = `
+Você é um assistente médico especializado em análise de sintomas. Analise os seguintes dados:
+
+DADOS DO PACIENTE:
+- Idade: ${request.patientAge} anos
+- Gênero: ${request.patientGender === 'M' ? 'Masculino' : 'Feminino'}
+- Sintomas: ${request.symptoms.join(', ')}
+${request.medicalHistory ? `- Histórico médico: ${request.medicalHistory.join(', ')}` : ''}
+${request.currentMedications ? `- Medicações atuais: ${request.currentMedications.join(', ')}` : ''}
+${request.vitalSigns ? `- Sinais vitais: ${JSON.stringify(request.vitalSigns)}` : ''}
+
+INSTRUÇÕES:
+1. Liste 3-5 possíveis diagnósticos ordenados por probabilidade (0-100%)
+2. Inclua o nível de urgência para cada diagnóstico
+3. Sugira exames complementares específicos
+4. Identifique sinais de alerta (red flags) se houver
+5. Sugira tratamentos iniciais quando apropriado
+
+IMPORTANTE: Este é um sistema de apoio médico. Sempre recomende avaliação médica presencial.
+
+Responda em formato JSON estruturado:
+{
+  "possibleDiagnoses": [
+    {
+      "name": "Nome do diagnóstico",
+      "probability": 85,
+      "description": "Descrição detalhada",
+      "urgencyLevel": "medium"
+    }
+  ],
+  "recommendedTests": ["lista de exames"],
+  "redFlags": ["sinais de alerta"],
+  "treatmentSuggestions": ["sugestões de tratamento"]
+}
+`
+
+    try {
+      const result = await this.model.generateContent(prompt)
+      const response = result.response.text()
+      
+      // Extrair JSON da resposta
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+      
+      throw new Error('Formato de resposta inválido')
+    } catch (error) {
+      console.error('Erro na análise de sintomas:', error)
+      throw new Error('Erro ao analisar sintomas')
+    }
+  }
+
+  // Verificação de interações medicamentosas
+  async checkDrugInteractions(medications: string[]): Promise<DrugInteractionCheck> {
+    const prompt = `
+Você é um especialista em farmacologia clínica. Analise as seguintes medicações para interações:
+
+MEDICAÇÕES: ${medications.join(', ')}
+
+INSTRUÇÕES:
+1. Identifique todas as interações medicamentosas possíveis
+2. Classifique a severidade (mild, moderate, severe)
+3. Explique o mecanismo da interação
+4. Forneça recomendações específicas
+5. Liste contraindicações absolutas
+
+Responda em formato JSON:
+{
+  "medications": ${JSON.stringify(medications)},
+  "interactions": [
+    {
+      "drugs": ["medicamento1", "medicamento2"],
+      "severity": "moderate",
+      "description": "Descrição da interação",
+      "recommendation": "Recomendação específica"
+    }
+  ],
+  "contraindications": ["lista de contraindicações"]
+}
+`
+
+    try {
+      const result = await this.model.generateContent(prompt)
+      const response = result.response.text()
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+      
+      throw new Error('Formato de resposta inválido')
+    } catch (error) {
+      console.error('Erro na verificação de interações:', error)
+      throw new Error('Erro ao verificar interações medicamentosas')
+    }
+  }
+
+  // Geração de resumo médico inteligente
+  async generateMedicalSummary(patientData: any): Promise<MedicalSummary> {
+    const prompt = `
+Você é um médico experiente. Crie um resumo médico inteligente baseado nos dados:
+
+DADOS DO PACIENTE:
+${JSON.stringify(patientData, null, 2)}
+
+INSTRUÇÕES:
+1. Crie um resumo conciso do estado atual do paciente
+2. Identifique achados clínicos relevantes
+3. Sugira recomendações específicas
+4. Determine se precisa de seguimento
+
+Responda em formato JSON:
+{
+  "patientId": "${patientData.id}",
+  "summary": "Resumo médico detalhado",
+  "keyFindings": ["achado1", "achado2"],
+  "recommendations": ["recomendação1", "recomendação2"],
+  "followUpNeeded": true/false
+}
+`
+
+    try {
+      const result = await this.model.generateContent(prompt)
+      const response = result.response.text()
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+      
+      throw new Error('Formato de resposta inválido')
+    } catch (error) {
+      console.error('Erro na geração de resumo:', error)
+      throw new Error('Erro ao gerar resumo médico')
+    }
+  }
+
+  // Análise de sinais vitais com IA
+  async analyzeVitalSigns(vitalSigns: any, patientAge: number): Promise<any> {
+    const prompt = `
+Analise os seguintes sinais vitais para um paciente de ${patientAge} anos:
+
+SINAIS VITAIS:
+${JSON.stringify(vitalSigns, null, 2)}
+
+INSTRUÇÕES:
+1. Avalie se os valores estão dentro da normalidade
+2. Identifique padrões preocupantes
+3. Sugira investigações se necessário
+4. Calcule scores de risco quando aplicável
+
+Responda em formato JSON estruturado com sua análise.
+`
+
+    try {
+      const result = await this.model.generateContent(prompt)
+      const response = result.response.text()
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+      
+      throw new Error('Formato de resposta inválido')
+    } catch (error) {
+      console.error('Erro na análise de sinais vitais:', error)
+      throw new Error('Erro ao analisar sinais vitais')
+    }
+  }
+
+  // Sugestão de plano de tratamento
+  async suggestTreatmentPlan(diagnosis: string, patientData: any): Promise<any> {
+    const prompt = `
+Você é um médico especialista. Sugira um plano de tratamento para:
+
+DIAGNÓSTICO: ${diagnosis}
+DADOS DO PACIENTE:
+${JSON.stringify(patientData, null, 2)}
+
+INSTRUÇÕES:
+1. Sugira tratamento farmacológico apropriado
+2. Recomende tratamentos não-farmacológicos
+3. Defina cronograma de seguimento
+4. Inclua orientações para o paciente
+5. Identifique sinais de alarme
+
+Responda em formato JSON estruturado com o plano completo.
+`
+
+    try {
+      const result = await this.model.generateContent(prompt)
+      const response = result.response.text()
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+      
+      throw new Error('Formato de resposta inválido')
+    } catch (error) {
+      console.error('Erro na sugestão de tratamento:', error)
+      throw new Error('Erro ao sugerir plano de tratamento')
+    }
+  }
+}
+
+export const medicalAI = new AdvancedMedicalAI()

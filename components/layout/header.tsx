@@ -1,9 +1,10 @@
 'use client'
 
-import { Bell, Search, Settings, User } from 'lucide-react'
+import { Search, Settings, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AIAssistantButton } from '@/components/ai/assistant-button'
+import { NotificationCenter } from '@/components/ui/notification-center'
 
 export function Header() {
   return (
@@ -12,11 +13,11 @@ export function Header() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-medical-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">H</span>
               </div>
               <span className="text-xl font-bold text-gray-900">
-                Sistema Médico
+                HealthCare
               </span>
             </div>
           </div>
@@ -34,23 +35,15 @@ export function Header() {
           <div className="flex items-center space-x-3">
             <AIAssistantButton />
             
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
+            <NotificationCenter />
             
             <Button variant="ghost" size="icon">
               <Settings className="h-5 w-5" />
             </Button>
             
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-              </Button>
-              <div className="hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">Dr. João Silva</p>
-                <p className="text-xs text-gray-500">Cardiologista</p>
-              </div>
-            </div>
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>

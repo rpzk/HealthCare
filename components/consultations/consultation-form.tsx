@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,9 +40,10 @@ export function ConsultationForm({
   onCancel, 
   loading = false 
 }: ConsultationFormProps) {
+  const { data: session } = useSession()
   const [formData, setFormData] = useState({
     patientId: patient?.id || '',
-    doctorId: 'cmeokjwn60000re2t8uldf5d5', // TODO: Pegar do contexto do usuário logado
+    doctorId: session?.user?.id || '', // Usar ID do usuário logado
     scheduledDate: '',
     scheduledTime: '',
     type: 'ROUTINE' as const,
@@ -63,10 +65,15 @@ export function ConsultationForm({
     }
   }, [patient])
 
-  // Carregar médicos
+  // Atualizar doctorId quando a sessão estiver disponível
   useEffect(() => {
-    fetchDoctors()
-  }, [])
+    if (session?.user?.id && !formData.doctorId) {
+      setFormData(prev => ({
+        ...prev,
+        doctorId: session.user.id
+      }))
+    }
+  }, [session, formData.doctorId])
 
   // Carregar horários disponíveis quando data e médico mudarem
   useEffect(() => {
@@ -87,22 +94,7 @@ export function ConsultationForm({
     }
   }
 
-  const fetchDoctors = async () => {
-    try {
-      // TODO: Implementar API para médicos
-      // Por enquanto, usar dados mockados
-      setDoctors([
-        {
-          id: 'cmeokjwn60000re2t8uldf5d5',
-          name: 'Dr. João Silva',
-          specialty: 'Clínico Geral',
-          crmNumber: '12345-SP'
-        }
-      ])
-    } catch (error) {
-      console.error('Erro ao carregar médicos:', error)
-    }
-  }
+  // Função fetchDoctors removida - usando apenas o médico logado
 
   const fetchAvailableSlots = async () => {
     try {

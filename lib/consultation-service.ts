@@ -106,7 +106,7 @@ export class ConsultationService {
               name: true,
               email: true,
               phone: true,
-              age: true,
+              birthDate: true,
               gender: true
             }
           },
@@ -115,7 +115,7 @@ export class ConsultationService {
               id: true,
               name: true,
               email: true,
-              specialty: true,
+              speciality: true,
               crmNumber: true
             }
           }
@@ -163,15 +163,9 @@ export class ConsultationService {
             id: true,
             name: true,
             email: true,
-            specialty: true,
+            speciality: true,
             crmNumber: true
           }
-        },
-        medicalRecords: {
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 5
         },
         prescriptions: {
           orderBy: {
@@ -181,7 +175,7 @@ export class ConsultationService {
         },
         vitalSigns: {
           orderBy: {
-            measuredAt: 'desc'
+            recordedAt: 'desc'
           },
           take: 1
         }
@@ -252,7 +246,7 @@ export class ConsultationService {
             id: true,
             name: true,
             email: true,
-            specialty: true
+            speciality: true
           }
         }
       }
@@ -309,7 +303,7 @@ export class ConsultationService {
             id: true,
             name: true,
             email: true,
-            specialty: true
+            speciality: true
           }
         }
       }
@@ -336,7 +330,7 @@ export class ConsultationService {
       where: { id },
       data: {
         status: 'IN_PROGRESS',
-        actualStartTime: new Date()
+        actualDate: new Date()
       },
       include: {
         patient: true,
@@ -344,7 +338,7 @@ export class ConsultationService {
           select: {
             id: true,
             name: true,
-            specialty: true
+            speciality: true
           }
         }
       }
@@ -369,7 +363,7 @@ export class ConsultationService {
       where: { id },
       data: {
         status: 'COMPLETED',
-        actualEndTime: new Date(),
+        actualDate: new Date(),
         notes: notes || consultation.notes
       }
     })
@@ -497,13 +491,13 @@ export class ConsultationService {
             id: true,
             name: true,
             phone: true,
-            age: true
+            birthDate: true
           }
         },
         doctor: {
           select: {
             name: true,
-            specialty: true
+            speciality: true
           }
         }
       },
@@ -536,13 +530,13 @@ export class ConsultationService {
             id: true,
             name: true,
             phone: true,
-            age: true
+            birthDate: true
           }
         },
         doctor: {
           select: {
             name: true,
-            specialty: true
+            speciality: true
           }
         }
       },
