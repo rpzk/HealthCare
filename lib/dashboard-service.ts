@@ -7,9 +7,7 @@ export class DashboardService {
   static async getStats() {
     try {
       // Total de pacientes
-      const totalPatients = await prisma.patient.count({
-        where: { isActive: true }
-      })
+      const totalPatients = await prisma.patient.count()
 
       // Consultas hoje
       const today = new Date()
@@ -116,7 +114,6 @@ export class DashboardService {
   static async getRecentPatients(limit = 3) {
     try {
       const patients = await prisma.patient.findMany({
-        where: { isActive: true },
         include: {
           consultations: {
             select: {

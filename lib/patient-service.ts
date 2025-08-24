@@ -22,25 +22,20 @@ export interface PatientCreateData {
 }
 
 export interface PatientUpdateData extends Partial<PatientCreateData> {
-  isActive?: boolean
 }
 
 export interface PatientFilters {
   search?: string
-  bloodType?: BloodType
-  gender?: Gender
-  isActive?: boolean
-  ageRange?: {
-    min: number
-    max: number
-  }
+  bloodType?: string
+  gender?: string
+  ageRange?: { min: number, max: number }
 }
 
 export class PatientService {
   // Buscar todos os pacientes com filtros e paginação
   static async getPatients(filters: PatientFilters = {}, page = 1, limit = 10) {
     try {
-      const { search, bloodType, gender, isActive, ageRange } = filters
+      const { search, bloodType, gender, ageRange } = filters
       
       // Construir filtros do Prisma
       const where: any = {}
@@ -55,7 +50,6 @@ export class PatientService {
       
       if (bloodType) where.bloodType = bloodType
       if (gender) where.gender = gender
-      if (isActive !== undefined) where.isActive = isActive
 
       // Filtro de idade (mais complexo, precisa calcular)
       if (ageRange) {
@@ -320,57 +314,42 @@ export class PatientService {
     }
   }
 
-  // Desativar paciente (soft delete)
-  static async deactivatePatient(id: string) {
+  // Deletar paciente (hard delete - use com cuidado)
+  static async deletePatient(id: string) {
     try {
-      return await prisma.patient.update({
-        where: { id },
-        data: { isActive: false }
+      return await prisma.patient.delete({
+        where: { id }
       })
     } catch (error) {
-      console.error('Erro ao desativar paciente:', error)
+      console.error('Erro ao deletar paciente:', error)
       throw error
     }
   }
 
-  // Reativar paciente
-  static async reactivatePatient(id: string) {
-    try {
-      return await prisma.patient.update({
-        where: { id },
-        data: { isActive: true }
-      })
-    } catch (error) {
-      console.error('Erro ao reativar paciente:', error)
-      throw error
-    }
-  }
+  // Nota: Desativação/reativação não está disponível no schema atual
+  // Se necessário, adicione o campo isActive ao modelo Patient no schema
 
   // Buscar estatísticas de pacientes
   static async getPatientStats() {
     try {
       const [
-        totalActive,
-        totalInactive,
+        totalPatients,
         byGender,
         byBloodType,
-        byAgeGroup
+        allPatients
       ] = await Promise.all([
-        prisma.patient.count({ where: { isActive: true } }),
-        prisma.patient.count({ where: { isActive: false } }),
+        prisma.patient.count(),
         prisma.patient.groupBy({
           by: ['gender'],
-          _count: true,
-          where: { isActive: true }
+          _count: true
         }),
         prisma.patient.groupBy({
           by: ['bloodType'],
           _count: true,
-          where: { isActive: true, bloodType: { not: null } }
+          where: { bloodType: { not: null } }
         }),
         // Estatísticas de idade precisam ser calculadas em código
         prisma.patient.findMany({
-          where: { isActive: true },
           select: { birthDate: true }
         })
       ])
@@ -384,7 +363,7 @@ export class PatientService {
         '60+': 0
       }
 
-      byAgeGroup.forEach(patient => {
+      allPatients.forEach(patient => {
         const age = currentYear - patient.birthDate.getFullYear()
         if (age <= 18) ageGroups['0-18']++
         else if (age <= 35) ageGroups['19-35']++
@@ -393,9 +372,7 @@ export class PatientService {
       })
 
       return {
-        total: totalActive + totalInactive,
-        active: totalActive,
-        inactive: totalInactive,
+        total: totalPatients,
         byGender: byGender.reduce((acc, item) => {
           acc[item.gender] = item._count
           return acc

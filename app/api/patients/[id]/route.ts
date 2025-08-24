@@ -30,15 +30,7 @@ const updatePatientSchema = z.object({
   emergencyContact: z.string().optional(),
   bloodType: z.nativeEnum(BloodType).optional(),
   allergies: z.array(z.string()).optional(),
-  chronicDiseases: z.array(z.string()).optional(),
-  isActive: z.boolean().optional()
-})
-
-// Schema de validação para ações PATCH
-const patchPatientSchema = z.object({
-  action: z.enum(['deactivate', 'reactivate'], {
-    errorMap: () => ({ message: 'Ação deve ser "deactivate" ou "reactivate"' })
-  })
+  chronicDiseases: z.array(z.string()).optional()
 })
 
 // GET /api/patients/[id] - Buscar paciente por ID
@@ -235,10 +227,10 @@ export const PATCH = withDoctorAuth(async (req: NextRequest, { params, user }) =
   }
 }) as AuthenticatedApiHandler
 
-// DELETE /api/patients/[id] - Excluir paciente (soft delete)
+// DELETE /api/patients/[id] - Excluir paciente (hard delete - use com cuidado)
 export const DELETE = withDoctorAuth(async (req: NextRequest, { params, user }) => {
   try {
-    const patient = await PatientService.deactivatePatient(params.id) // Usando deactivate como "soft delete"
+    await PatientService.deletePatient(params.id)
     
     auditLogger.logSuccess(
       user.id,
@@ -246,12 +238,11 @@ export const DELETE = withDoctorAuth(async (req: NextRequest, { params, user }) 
       user.role,
       AuditAction.PATIENT_DELETE,
       'Patient',
-      { patientId: params.id, patientName: patient.name }
+      { patientId: params.id }
     )
     
     return NextResponse.json({ 
-      message: 'Paciente excluído com sucesso',
-      patient 
+      message: 'Paciente excluído com sucesso'
     })
   } catch (error: any) {
     auditLogger.logError(

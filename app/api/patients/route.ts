@@ -17,8 +17,6 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     const search = searchParams.get('search') || undefined
     const bloodType = searchParams.get('bloodType') as BloodType || undefined
     const gender = searchParams.get('gender') as Gender || undefined
-    const isActive = searchParams.get('isActive') === 'true' ? true : 
-                    searchParams.get('isActive') === 'false' ? false : undefined
     
     // Filtro de idade
     let ageRange: { min: number; max: number } | undefined = undefined
@@ -32,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     }
 
     const result = await PatientService.getPatients(
-      { search, bloodType, gender, isActive, ageRange },
+      { search, bloodType, gender, ageRange },
       page,
       limit
     )
