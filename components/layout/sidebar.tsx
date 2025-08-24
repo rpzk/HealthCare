@@ -14,7 +14,8 @@ import {
   Pill,
   Activity,
   BarChart3,
-  Settings
+  Settings,
+  Brain
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -74,6 +75,17 @@ const menuItems = [
     title: 'Sinais Vitais',
     icon: Activity,
     href: '/vitals',
+  },
+  {
+    title: 'IA Médica',
+    icon: Brain,
+    href: '/ai-medical',
+    submenu: [
+      { title: 'Análise de Sintomas', href: '/ai-medical?tab=symptoms' },
+      { title: 'Interações Medicamentosas', href: '/ai-medical?tab=interactions' },
+      { title: 'Resumos Médicos', href: '/ai-medical?tab=summary' },
+      { title: 'Dashboard Analytics', href: '/ai-analytics' },
+    ]
   },
   {
     title: 'Relatórios',

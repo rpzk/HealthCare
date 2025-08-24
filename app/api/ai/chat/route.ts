@@ -1,37 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { z } from 'zod'
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
 
-export async function POST(req: NextRequest) {
-  try {
-    const { message, type } = await req.json()
+// Schema de validação para chat IA
+const aiChatSchema = z.object({
+  message: z.string().min(1, 'Mensagem é obrigatória').max(5000, 'Mensagem muito longa'),
+  type: z.enum(['medical_consultation', 'symptom_analysis', 'drug_interaction', 'general'], {
+    errorMap: () => ({ message: 'Tipo deve ser medical_consultation, symptom_analysis, drug_interaction ou general' })
+  }).default('general'),
+  patientId: z.string().optional()
+})
 
-    if (!message) {
-      return NextResponse.json(
-        { error: 'Mensagem é obrigatória' },
-        { status: 400 }
-      )
-    }
+function validateAiChat(data: any) {
+  const result = aiChatSchema.safeParse(data)
+  return {
+    success: result.success,
+    data: result.success ? result.data : undefined,
+    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+  }
+}
 
-    // Verificar se a API key está presente
-    const apiKey = process.env.GOOGLE_AI_API_KEY
+// POST - Chat com IA médica (apenas médicos)
+export const POST = withDoctorAuth(async (request, { user }) => {
+  const validation = await validateRequestBody(request, validateAiChat)
+  if (!validation.success) {
+    return validation.response!
+  }
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Chave da API do Google AI não configurada' },
-        { status: 500 }
-      )
-    }
+  const { message, type, patientId } = validation.data!
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  // Verificar se a API key está presente
+  const apiKey = process.env.GOOGLE_AI_API_KEY
 
-    // Contexto médico personalizado baseado no tipo
-    let systemPrompt = ''
-    
-    switch (type) {
-      case 'medical_consultation':
-        systemPrompt = `Você é um assistente médico especializado com conhecimento em:
+  if (!apiKey) {
+    auditLogger.logError(
+      user.id,
+      user.email,
+      user.role,
+      AuditAction.AI_INTERACTION,
+      'chat',
+      'Google AI API key não configurada'
+    )
+
+    return NextResponse.json(
+      { error: 'Chave da API do Google AI não configurada' },
+      { status: 500 }
+    )
+  }
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+  // Contexto médico personalizado baseado no tipo
+  let systemPrompt = ''
+  
+  switch (type) {
+    case 'medical_consultation':
+      systemPrompt = `Você é um assistente médico especializado com conhecimento em:
 - Diagnóstico diferencial baseado em sintomas
 - Análise de exames laboratoriais e de imagem
 - Prescrição e interações medicamentosas
@@ -46,10 +74,12 @@ IMPORTANTE:
 - Use terminologia médica adequada mas acessível
 
 Responda de forma estruturada, clara e profissional.`
-        break
+      break
       
-      case 'symptom_analysis':
-        systemPrompt = `Você é um especialista em análise de sintomas. Ao analisar sintomas:
+      break
+    
+    case 'symptom_analysis':
+      systemPrompt = `Você é um especialista em análise de sintomas. Ao analisar sintomas:
 - Liste possíveis diagnósticos por ordem de probabilidade
 - Inclua diagnósticos diferenciais importantes
 - Sugira exames complementares necessários
@@ -57,45 +87,57 @@ Responda de forma estruturada, clara e profissional.`
 - Forneça orientações para acompanhamento
 
 Sempre inclua o disclaimer sobre avaliação médica presencial.`
-        break
-      
-      case 'drug_interaction':
-        systemPrompt = `Você é um farmacologista clínico especialista em interações medicamentosas:
+      break
+    
+    case 'drug_interaction':
+      systemPrompt = `Você é um farmacologista clínico especialista em interações medicamentosas:
 - Analise interações graves, moderadas e leves
 - Explique mecanismos de interação quando relevante
 - Sugira alternativas terapêuticas se necessário
 - Indique necessidade de monitoramento específico
 - Forneça recomendações de ajuste de dose quando aplicável`
-        break
-      
-      default:
-        systemPrompt = `Você é um assistente médico geral. Forneça informações médicas precisas, sempre com os devidos disclaimers sobre a necessidade de avaliação médica profissional.`
-    }
+      break
+    
+    default:
+      systemPrompt = `Você é um assistente médico geral. Forneça informações médicas precisas, sempre com os devidos disclaimers sobre a necessidade de avaliação médica profissional.`
+  }
 
-    const fullPrompt = `${systemPrompt}
+  const fullPrompt = `${systemPrompt}
 
 Pergunta do usuário: ${message}
 
 Por favor, responda de forma profissional e detalhada:`
 
-    const result = await model.generateContent(fullPrompt)
-    const response = result.response.text()
+  const result = await model.generateContent(fullPrompt)
+  const response = result.response.text()
 
-    return NextResponse.json({
+  // Log de auditoria
+  auditLogger.logSuccess(
+    user.id,
+    user.email,
+    user.role,
+    AuditAction.AI_INTERACTION,
+    'chat',
+    {
+      type,
+      patientId,
+      messageLength: message.length,
+      responseLength: response.length
+    }
+  )
+
+  return NextResponse.json({
+    success: true,
+    data: {
       response: response,
       type: type,
       timestamp: new Date().toISOString()
-    })
-
-  } catch (error) {
-    console.error('Erro na API do Google AI:', error)
-    
-    return NextResponse.json(
-      { 
-        error: 'Erro interno do servidor de IA',
-        details: 'Verifique a configuração da API do Google AI Studio' 
-      },
-      { status: 500 }
-    )
-  }
-}
+    },
+    metadata: {
+      responseBy: user.email,
+      messageLength: message.length,
+      responseLength: response.length,
+      patientId
+    }
+  })
+})

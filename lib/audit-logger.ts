@@ -1,0 +1,217 @@
+/**
+ * Sistema de Logs de Auditoria para HealthCare
+ * Registra ações críticas no sistema para compliance e segurança
+ */
+
+export interface AuditLog {
+  userId: string
+  userEmail: string
+  userRole: string
+  action: string
+  resource: string
+  resourceId?: string
+  details?: Record<string, any>
+  ipAddress?: string
+  userAgent?: string
+  timestamp: Date
+  success: boolean
+  errorMessage?: string
+}
+
+/**
+ * Tipos de ações auditáveis
+ */
+export enum AuditAction {
+  // Autenticação
+  LOGIN = 'LOGIN',
+  LOGOUT = 'LOGOUT',
+  LOGIN_FAILED = 'LOGIN_FAILED',
+
+  // Pacientes
+  PATIENT_CREATE = 'PATIENT_CREATE',
+  PATIENT_READ = 'PATIENT_READ',
+  PATIENT_UPDATE = 'PATIENT_UPDATE',
+  PATIENT_DELETE = 'PATIENT_DELETE',
+
+  // Consultas
+  CONSULTATION_CREATE = 'CONSULTATION_CREATE',
+  CONSULTATION_READ = 'CONSULTATION_READ',
+  CONSULTATION_UPDATE = 'CONSULTATION_UPDATE',
+  CONSULTATION_DELETE = 'CONSULTATION_DELETE',
+
+  // Notificações
+  NOTIFICATION_CREATE = 'NOTIFICATION_CREATE',
+  NOTIFICATION_READ = 'NOTIFICATION_READ',
+  NOTIFICATION_UPDATE = 'NOTIFICATION_UPDATE',
+  NOTIFICATION_DELETE = 'NOTIFICATION_DELETE',
+
+  // Prescrições
+  PRESCRIPTION_CREATE = 'PRESCRIPTION_CREATE',
+  PRESCRIPTION_READ = 'PRESCRIPTION_READ',
+  PRESCRIPTION_UPDATE = 'PRESCRIPTION_UPDATE',
+
+  // Registros Médicos
+  MEDICAL_RECORD_CREATE = 'MEDICAL_RECORD_CREATE',
+  MEDICAL_RECORD_READ = 'MEDICAL_RECORD_READ',
+  MEDICAL_RECORD_UPDATE = 'MEDICAL_RECORD_UPDATE',
+
+  // IA
+  AI_INTERACTION = 'AI_INTERACTION',
+  AI_ANALYSIS = 'AI_ANALYSIS',
+
+  // Sistema
+  SYSTEM_CONFIG_CHANGE = 'SYSTEM_CONFIG_CHANGE',
+  DATA_EXPORT = 'DATA_EXPORT',
+  DATA_IMPORT = 'DATA_IMPORT'
+}
+
+class AuditLogger {
+  private static instance: AuditLogger
+  private logs: AuditLog[] = []
+
+  private constructor() {}
+
+  public static getInstance(): AuditLogger {
+    if (!AuditLogger.instance) {
+      AuditLogger.instance = new AuditLogger()
+    }
+    return AuditLogger.instance
+  }
+
+  /**
+   * Registra uma ação de auditoria
+   */
+  public log(
+    userId: string,
+    userEmail: string,
+    userRole: string,
+    action: AuditAction,
+    resource: string,
+    options: {
+      resourceId?: string
+      details?: Record<string, any>
+      ipAddress?: string
+      userAgent?: string
+      success?: boolean
+      errorMessage?: string
+    } = {}
+  ) {
+    const auditLog: AuditLog = {
+      userId,
+      userEmail,
+      userRole,
+      action,
+      resource,
+      resourceId: options.resourceId,
+      details: options.details,
+      ipAddress: options.ipAddress,
+      userAgent: options.userAgent,
+      timestamp: new Date(),
+      success: options.success ?? true,
+      errorMessage: options.errorMessage
+    }
+
+    // Em desenvolvimento, apenas log no console
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 AUDIT LOG:', {
+        user: `${userEmail} (${userRole})`,
+        action: action,
+        resource: resource,
+        success: auditLog.success,
+        timestamp: auditLog.timestamp.toISOString()
+      })
+    }
+
+    // TODO: Em produção, salvar no banco de dados
+    // TODO: Implementar rotação de logs
+    // TODO: Enviar logs críticos para sistema de monitoramento
+
+    this.logs.push(auditLog)
+
+    // Manter apenas os últimos 1000 logs em memória
+    if (this.logs.length > 1000) {
+      this.logs = this.logs.slice(-1000)
+    }
+  }
+
+  /**
+   * Log de sucesso
+   */
+  public logSuccess(
+    userId: string,
+    userEmail: string,
+    userRole: string,
+    action: AuditAction,
+    resource: string,
+    details?: Record<string, any>
+  ) {
+    this.log(userId, userEmail, userRole, action, resource, {
+      details,
+      success: true
+    })
+  }
+
+  /**
+   * Log de erro/falha
+   */
+  public logError(
+    userId: string,
+    userEmail: string,
+    userRole: string,
+    action: AuditAction,
+    resource: string,
+    errorMessage: string,
+    details?: Record<string, any>
+  ) {
+    this.log(userId, userEmail, userRole, action, resource, {
+      details,
+      success: false,
+      errorMessage
+    })
+  }
+
+  /**
+   * Obter logs recentes (para debug)
+   */
+  public getRecentLogs(limit: number = 50): AuditLog[] {
+    return this.logs
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit)
+  }
+
+  /**
+   * Filtrar logs por usuário
+   */
+  public getLogsByUser(userId: string, limit: number = 50): AuditLog[] {
+    return this.logs
+      .filter(log => log.userId === userId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit)
+  }
+
+  /**
+   * Filtrar logs por ação
+   */
+  public getLogsByAction(action: AuditAction, limit: number = 50): AuditLog[] {
+    return this.logs
+      .filter(log => log.action === action)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit)
+  }
+}
+
+// Export singleton instance
+export const auditLogger = AuditLogger.getInstance()
+
+/**
+ * Helper para extrair informações da requisição
+ */
+export function getRequestInfo(request: Request) {
+  const forwarded = request.headers.get('x-forwarded-for')
+  const realIP = request.headers.get('x-real-ip')
+  
+  return {
+    ipAddress: forwarded?.split(',')[0] || realIP || 'unknown',
+    userAgent: request.headers.get('user-agent') || 'unknown'
+  }
+}

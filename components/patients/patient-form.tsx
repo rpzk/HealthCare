@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
@@ -13,7 +14,8 @@ interface PatientFormProps {
   loading?: boolean
 }
 
-export function PatientForm({ patient, onSubmit, onCancel, loading = false }: PatientFormProps) {
+export default function PatientForm({ patient, onSubmit, onCancel }: PatientFormProps) {
+  const { data: session } = useSession()
   const [formData, setFormData] = useState({
     name: patient?.name || '',
     email: patient?.email || '',
@@ -33,6 +35,7 @@ export function PatientForm({ patient, onSubmit, onCancel, loading = false }: Pa
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -86,6 +89,12 @@ export function PatientForm({ patient, onSubmit, onCancel, loading = false }: Pa
       return
     }
 
+    if (!session?.user?.id) {
+      console.error('Usuário não está autenticado')
+      return
+    }
+
+    setLoading(true)
     try {
       const submitData = {
         ...formData,
@@ -93,12 +102,14 @@ export function PatientForm({ patient, onSubmit, onCancel, loading = false }: Pa
         allergies: formData.allergies.split(',').map((a: string) => a.trim()).filter((a: string) => a),
         chronicDiseases: formData.chronicDiseases.split(',').map((d: string) => d.trim()).filter((d: string) => d),
         bloodType: formData.bloodType || null,
-        doctorId: 'cmeokjwn60000re2t8uldf5d5' // TODO: Pegar do contexto do usuário logado
+        doctorId: session.user.id // Usar ID do usuário logado
       }
 
       await onSubmit(submitData)
     } catch (error) {
       console.error('Erro ao submeter formulário:', error)
+    } finally {
+      setLoading(false)
     }
   }
 

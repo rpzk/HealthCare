@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PatientService } from '../../../lib/patient-service'
+import { withAuth, validateRequestBody } from '../../../lib/with-auth'
+import { validatePatient } from '../../../lib/validation-schemas'
 import { Gender, BloodType } from '@prisma/client'
 
-// GET /api/patients - Listar pacientes
-export async function GET(req: NextRequest) {
+// GET /api/patients - Listar pacientes (protegido por autenticação)
+export const GET = withAuth(async (req: NextRequest, { user }) => {
   try {
     const { searchParams } = new URL(req.url)
     
@@ -43,38 +45,36 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+})
 
-// POST /api/patients - Criar paciente
-export async function POST(req: NextRequest) {
+// POST /api/patients - Criar paciente (protegido por autenticação)
+export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
-    const data = await req.json()
-
-    // Validações básicas
-    if (!data.name || !data.cpf || !data.birthDate || !data.gender || !data.doctorId) {
-      return NextResponse.json(
-        { error: 'Campos obrigatórios: name, cpf, birthDate, gender, doctorId' },
-        { status: 400 }
-      )
+    // Validar dados de entrada
+    const validation = await validateRequestBody(req, validatePatient)
+    if (!validation.success) {
+      return validation.response!
     }
 
-    // Validar CPF format
-    if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(data.cpf)) {
-      return NextResponse.json(
-        { error: 'CPF deve estar no formato XXX.XXX.XXX-XX' },
-        { status: 400 }
-      )
+    const data = validation.data!
+
+    // Garantir que o médico logado seja associado ao paciente
+    data.doctorId = user.id
+
+    // Garantir que a data de nascimento seja um objeto Date
+    if (typeof data.birthDate === 'string') {
+      data.birthDate = new Date(data.birthDate)
     }
 
-    // Validar email format (se fornecido)
-    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      return NextResponse.json(
-        { error: 'Email inválido' },
-        { status: 400 }
-      )
+    // Criar dados formatados para o serviço
+    const patientData = {
+      ...data,
+      birthDate: data.birthDate as Date,
+      allergies: data.allergies || [],
+      chronicDiseases: data.chronicDiseases || []
     }
 
-    const patient = await PatientService.createPatient(data)
+    const patient = await PatientService.createPatient(patientData)
     
     return NextResponse.json(patient, { status: 201 })
   } catch (error: any) {
@@ -92,4 +92,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

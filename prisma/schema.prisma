@@ -13,6 +13,7 @@ datasource db {
 model User {
   id          String   @id @default(cuid())
   email       String   @unique
+  password    String?  // Campo de senha com hash bcrypt (opcional para compatibilidade)
   name        String
   role        Role     @default(DOCTOR)
   speciality  String?

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
+import { withAuth, validateRequestBody } from '@/lib/with-auth'
+import { validateConsultation } from '@/lib/validation-schemas'
 import { ConsultationType } from '@prisma/client'
 
-// GET - Listar consultas
-export async function GET(request: NextRequest) {
+// GET - Listar consultas (protegido por autenticação)
+export const GET = withAuth(async (request: NextRequest, { user }) => {
   try {
     const { searchParams } = new URL(request.url)
     
@@ -37,10 +39,10 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})
 
-// POST - Criar nova consulta
-export async function POST(request: NextRequest) {
+// POST - Criar nova consulta (protegido por autenticação)
+export const POST = withAuth(async (request: NextRequest, { user }) => {
   try {
     const body = await request.json()
 
@@ -106,4 +108,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

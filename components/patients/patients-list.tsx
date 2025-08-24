@@ -5,7 +5,7 @@ import { Search, Plus, Filter, MoreVertical, Phone, Mail, Edit, Trash2, UserX, U
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { PatientForm } from './patient-form'
+import PatientForm from './patient-form'
 
 interface Patient {
   id: string
@@ -349,9 +349,8 @@ export function PatientsList() {
                     variant="medical" 
                     size="sm"
                     onClick={() => {
-                      // Abrir formulário de consulta para este paciente
-                      // TODO: Implementar integração
-                      alert(`Agendar consulta para ${patient.name}`)
+                      // Redirecionar para a página de consultas com o paciente selecionado
+                      window.location.href = `/consultations?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}`
                     }}
                   >
                     Nova Consulta
