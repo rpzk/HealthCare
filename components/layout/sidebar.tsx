@@ -19,7 +19,15 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  icon: any;
+  href: string;
+  submenu?: Array<{ title: string; href: string }>;
+  badge?: string;
+}
+
+const menuItems: MenuItem[] = [
   {
     title: 'Dashboard',
     icon: Home,
@@ -102,6 +110,12 @@ const menuItems = [
     icon: Settings,
     href: '/settings',
   },
+  {
+    title: 'Monitoramento de Segurança',
+    icon: Activity,
+    href: '/security-monitoring',
+    badge: 'ADMIN',
+  },
 ]
 
 export function Sidebar() {
@@ -150,14 +164,21 @@ export function Sidebar() {
               <Link
                 href={item.href}
                 className={cn(
-                  "w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   isActive(item.href)
                     ? "bg-medical-primary text-white" 
                     : "text-gray-700 hover:bg-gray-100"
                 )}
               >
-                <item.icon className="h-5 w-5 mr-3" />
-                <span>{item.title}</span>
+                <div className="flex items-center">
+                  <item.icon className="h-5 w-5 mr-3" />
+                  <span>{item.title}</span>
+                </div>
+                {item.badge && (
+                  <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 rounded">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             )}
             
