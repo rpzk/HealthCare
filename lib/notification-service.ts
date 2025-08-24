@@ -242,8 +242,15 @@ export class NotificationService {
   }
 
   static formatTimeAgo(date: Date): string {
+    // Garantir que date é um objeto Date válido
+    const dateObj = date instanceof Date ? date : new Date(date)
+    
+    if (isNaN(dateObj.getTime())) {
+      return 'Data inválida'
+    }
+    
     const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
+    const diffMs = now.getTime() - dateObj.getTime()
     const diffMins = Math.floor(diffMs / (1000 * 60))
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))

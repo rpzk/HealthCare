@@ -11,79 +11,80 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String?  // Campo de senha com hash bcrypt (opcional para compatibilidade)
-  name        String
-  role        Role     @default(DOCTOR)
-  speciality  String?
-  crmNumber   String?  @unique
-  phone       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  email      String   @unique
+  password   String? // Campo de senha com hash bcrypt (opcional para compatibilidade)
+  name       String
+  role       Role     @default(DOCTOR)
+  speciality String?
+  crmNumber  String?  @unique
+  phone      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relacionamentos
-  patients           Patient[]
-  consultations      Consultation[]
-  prescriptions      Prescription[]
-  examRequests       ExamRequest[]
-  medicalRecords     MedicalRecord[]
-  aiInteractions     AIInteraction[]
+  patients       Patient[]
+  consultations  Consultation[]
+  prescriptions  Prescription[]
+  examRequests   ExamRequest[]
+  medicalRecords MedicalRecord[]
+  aiInteractions AIInteraction[]
 
   @@map("users")
 }
 
 model Patient {
-  id            String    @id @default(cuid())
-  name          String
-  email         String?   @unique
-  cpf           String    @unique
-  rg            String?
-  birthDate     DateTime
-  gender        Gender
-  phone         String?
-  address       String?
-  city          String?
-  state         String?
-  zipCode       String?
-  emergencyContact String?
-  bloodType     BloodType?
-  allergies     String[]
-  chronicDiseases String[]
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String
+  email              String    @unique
+  phone              String?
+  cpf                String?   @unique
+  birthDate          DateTime
+  gender             Gender
+  emergencyContact   String?
+  address            String?
+  medicalHistory     String?   @db.Text
+  allergies          String?   @db.Text
+  currentMedications String?   @db.Text
+  riskLevel          RiskLevel @default(BAIXO)
+  insuranceNumber    String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   // Relacionamentos
-  doctor          User              @relation(fields: [doctorId], references: [id])
-  doctorId        String
-  consultations   Consultation[]
-  prescriptions   Prescription[]
-  examRequests    ExamRequest[]
-  medicalRecords  MedicalRecord[]
-  vitalSigns      VitalSigns[]
+  consultations  Consultation[]
+  prescriptions  Prescription[]
+  vitalSigns     VitalSigns[]
+  attachments    Attachment[]
+  documents      MedicalDocument[]
+  examResults    ExamResult[]
+  medicalRecords MedicalRecord[]
+  User           User?             @relation(fields: [userId], references: [id])
+  userId         String?
+  ExamRequest    ExamRequest[]
 
   @@map("patients")
 }
 
 model MedicalRecord {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  diagnosis   String?
-  treatment   String?
-  notes       String?
-  recordType  RecordType
-  severity    Severity @default(LOW)
-  isPrivate   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String     @id @default(cuid())
+  title          String
+  description    String
+  diagnosis      String?
+  treatment      String?
+  notes          String?
+  recordType     RecordType
+  severity       Severity   @default(LOW)
+  isPrivate      Boolean    @default(false)
+  sourceDocument String? // Para vincular a documentos importados
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   // Relacionamentos
-  patient     Patient       @relation(fields: [patientId], references: [id])
+  patient     Patient      @relation(fields: [patientId], references: [id])
   patientId   String
-  doctor      User          @relation(fields: [doctorId], references: [id])
+  doctor      User         @relation(fields: [doctorId], references: [id])
   doctorId    String
   attachments Attachment[]
   aiAnalysis  AIAnalysis[]
@@ -92,25 +93,25 @@ model MedicalRecord {
 }
 
 model Consultation {
-  id            String           @id @default(cuid())
-  scheduledDate DateTime
-  actualDate    DateTime?
-  duration      Int? // em minutos
-  type          ConsultationType
-  status        ConsultationStatus @default(SCHEDULED)
+  id             String             @id @default(cuid())
+  scheduledDate  DateTime
+  actualDate     DateTime?
+  duration       Int? // em minutos
+  type           ConsultationType
+  status         ConsultationStatus @default(SCHEDULED)
   chiefComplaint String?
-  history       String?
-  physicalExam  String?
-  assessment    String?
-  plan          String?
-  notes         String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  history        String?
+  physicalExam   String?
+  assessment     String?
+  plan           String?
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   // Relacionamentos
-  patient       Patient       @relation(fields: [patientId], references: [id])
+  patient       Patient        @relation(fields: [patientId], references: [id])
   patientId     String
-  doctor        User          @relation(fields: [doctorId], references: [id])
+  doctor        User           @relation(fields: [doctorId], references: [id])
   doctorId      String
   prescriptions Prescription[]
   examRequests  ExamRequest[]
@@ -120,107 +121,193 @@ model Consultation {
 }
 
 model Prescription {
-  id          String            @id @default(cuid())
-  medication  String
-  dosage      String
-  frequency   String
-  duration    String
+  id           String             @id @default(cuid())
+  medication   String
+  dosage       String
+  frequency    String
+  duration     String
   instructions String?
-  status      PrescriptionStatus @default(ACTIVE)
-  startDate   DateTime          @default(now())
-  endDate     DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  status       PrescriptionStatus @default(ACTIVE)
+  startDate    DateTime           @default(now())
+  endDate      DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   // Relacionamentos
-  patient       Patient       @relation(fields: [patientId], references: [id])
-  patientId     String
-  doctor        User          @relation(fields: [doctorId], references: [id])
-  doctorId      String
-  consultation  Consultation? @relation(fields: [consultationId], references: [id])
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  patientId      String
+  doctor         User          @relation(fields: [doctorId], references: [id])
+  doctorId       String
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
   consultationId String?
 
   @@map("prescriptions")
 }
 
 model ExamRequest {
-  id          String      @id @default(cuid())
-  examType    String
-  description String?
-  urgency     Urgency     @default(ROUTINE)
-  status      ExamStatus  @default(REQUESTED)
-  requestDate DateTime    @default(now())
+  id            String     @id @default(cuid())
+  examType      String
+  description   String?
+  urgency       Urgency    @default(ROUTINE)
+  status        ExamStatus @default(REQUESTED)
+  requestDate   DateTime   @default(now())
   scheduledDate DateTime?
   completedDate DateTime?
-  results     String?
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  results       String?
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   // Relacionamentos
-  patient       Patient       @relation(fields: [patientId], references: [id])
-  patientId     String
-  doctor        User          @relation(fields: [doctorId], references: [id])
-  doctorId      String
-  consultation  Consultation? @relation(fields: [consultationId], references: [id])
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  patientId      String
+  doctor         User          @relation(fields: [doctorId], references: [id])
+  doctorId       String
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
   consultationId String?
-  attachments   Attachment[]
+  attachments    Attachment[]
 
   @@map("exam_requests")
 }
 
 model VitalSigns {
-  id                String   @id @default(cuid())
-  systolicBP        Int?     // Pressão arterial sistólica
-  diastolicBP       Int?     // Pressão arterial diastólica
-  heartRate         Int?     // Frequência cardíaca
-  respiratoryRate   Int?     // Frequência respiratória
-  temperature       Float?   // Temperatura corporal
-  weight            Float?   // Peso em kg
-  height            Float?   // Altura em cm
-  bmi               Float?   // IMC calculado
-  oxygenSaturation  Int?     // Saturação de oxigênio
-  bloodGlucose      Int?     // Glicemia
-  notes             String?
-  recordedAt        DateTime @default(now())
-  createdAt         DateTime @default(now())
+  id               String   @id @default(cuid())
+  systolicBP       Int? // Pressão arterial sistólica
+  diastolicBP      Int? // Pressão arterial diastólica
+  heartRate        Int? // Frequência cardíaca
+  respiratoryRate  Int? // Frequência respiratória
+  temperature      Float? // Temperatura corporal
+  weight           Float? // Peso em kg
+  height           Float? // Altura em cm
+  bmi              Float? // IMC calculado
+  oxygenSaturation Int? // Saturação de oxigênio
+  bloodGlucose     Int? // Glicemia
+  notes            String?
+  recordedAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
 
   // Relacionamentos
-  patient       Patient       @relation(fields: [patientId], references: [id])
-  patientId     String
-  consultation  Consultation? @relation(fields: [consultationId], references: [id])
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  patientId      String
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
   consultationId String?
 
   @@map("vital_signs")
 }
 
 model Attachment {
-  id            String   @id @default(cuid())
-  fileName      String
-  originalName  String
-  fileSize      Int
-  mimeType      String
-  filePath      String
-  description   String?
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  fileName     String
+  originalName String
+  fileSize     Int
+  mimeType     String
+  filePath     String
+  description  String?
+  createdAt    DateTime @default(now())
 
   // Relacionamentos
   medicalRecord   MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
   medicalRecordId String?
   examRequest     ExamRequest?   @relation(fields: [examRequestId], references: [id])
   examRequestId   String?
+  Patient         Patient?       @relation(fields: [patientId], references: [id])
+  patientId       String?
 
   @@map("attachments")
 }
 
+// 📄 Modelos para Importação Inteligente de Documentos Médicos
+
+model MedicalDocument {
+  id            String                @id @default(cuid())
+  fileName      String
+  content       String                @db.Text
+  fileType      DocumentFileType
+  status        DocumentProcessStatus @default(PENDING)
+  uploadDate    DateTime              @default(now())
+  errorMessage  String?
+  importResults String?               @db.Text
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  // Relacionamentos
+  patient   Patient?          @relation(fields: [patientId], references: [id])
+  patientId String?
+  analysis  DocumentAnalysis?
+
+  @@map("medical_documents")
+}
+
+model DocumentAnalysis {
+  id               String       @id @default(cuid())
+  confidence       Float
+  documentType     DocumentType
+  patientInfo      String       @db.Text // JSON
+  extractedData    String       @db.Text // JSON
+  suggestedActions String       @db.Text // JSON
+  analysisDate     DateTime     @default(now())
+  reviewed         Boolean      @default(false)
+  reviewedBy       String?
+  reviewedAt       DateTime?
+
+  // Relacionamentos
+  document   MedicalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String          @unique
+
+  @@map("document_analysis")
+}
+
+model ExamResult {
+  id             String   @id @default(cuid())
+  examType       String
+  results        String   @db.Text // JSON para múltiplos resultados
+  examDate       DateTime
+  sourceDocument String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relacionamentos
+  patient   Patient @relation(fields: [patientId], references: [id])
+  patientId String
+
+  @@map("exam_results")
+}
+
+enum DocumentFileType {
+  DOCX
+  DOC
+  PDF
+  TXT
+  RTF
+}
+
+enum DocumentProcessStatus {
+  PENDING
+  ANALYZING
+  CLASSIFIED
+  IMPORTED
+  ERROR
+}
+
+enum DocumentType {
+  EVOLUCAO
+  EXAME
+  PRESCRICAO
+  ANAMNESE
+  ATESTADO
+  RECEITA
+  LAUDO
+  OUTROS
+}
+
 model AIInteraction {
-  id          String        @id @default(cuid())
-  type        AIRequestType
-  prompt      String
-  response    String
-  confidence  Float?
-  metadata    Json?
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(cuid())
+  type       AIRequestType
+  prompt     String
+  response   String
+  confidence Float?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
 
   // Relacionamentos
   user   User   @relation(fields: [userId], references: [id])
@@ -230,14 +317,14 @@ model AIInteraction {
 }
 
 model AIAnalysis {
-  id            String   @id @default(cuid())
-  analysisType  String
-  input         String
-  result        String
-  confidence    Float
-  suggestions   String[]
-  metadata      Json?
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  analysisType String
+  input        String
+  result       String
+  confidence   Float
+  suggestions  String[]
+  metadata     Json?
+  createdAt    DateTime @default(now())
 
   // Relacionamentos
   medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
@@ -258,6 +345,13 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+enum RiskLevel {
+  BAIXO
+  MEDIO
+  ALTO
+  CRITICO
 }
 
 enum BloodType {

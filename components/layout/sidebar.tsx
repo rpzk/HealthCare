@@ -116,6 +116,12 @@ const menuItems: MenuItem[] = [
     href: '/security-monitoring',
     badge: 'ADMIN',
   },
+  {
+    title: 'AI Enterprise Analytics',
+    icon: Brain,
+    href: '/ai-enterprise-analytics',
+    badge: 'AI',
+  },
 ]
 
 export function Sidebar() {
