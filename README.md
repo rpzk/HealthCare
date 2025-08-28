@@ -57,6 +57,16 @@ Um sistema completo de prontuário eletrônico com inteligência artificial emba
 
 ## 🚀 Como Executar
 
+### ⚡ Início rápido (local, com script)
+```bash
+# 1) Copiar .env de exemplo (o script faz isso se faltar)
+# 2) Subir serviços, aplicar schema e seed automaticamente
+chmod +x scripts/first-start.sh
+./scripts/first-start.sh
+```
+
+Após concluir, acesse: `http://localhost:3000` (ou o IP da sua máquina). Login inicial: `admin@healthcare.com` / `admin123` (altere após o primeiro acesso).
+
 ### Pré-requisitos
 - Node.js 18+ 
 - Docker e Docker Compose
@@ -206,6 +216,12 @@ docker-compose exec postgres pg_dump -U healthcare healthcare_db > backup.sql
 # Restaurar backup
 docker-compose exec -T postgres psql -U healthcare healthcare_db < backup.sql
 ```
+
+## 🧩 Rodar em Umbrel (posteriormente)
+- Utilize o mesmo `docker-compose.yml` local com as variáveis definidas em `.env`.
+- Ajuste `NEXTAUTH_URL` para `http://SEU_IP_UMBREL:3000`.
+- Portas 3000 (app) e 5432/6379 (internas) já estão mapeadas; evite expor Postgres/Redis externamente em produção.
+- Para start simplificado no Umbrel: execute o mesmo `scripts/first-start.sh` via shell do mini PC.
 
 ## 🚀 Deploy em Produção
 

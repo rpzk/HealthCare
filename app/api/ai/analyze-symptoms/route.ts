@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
+import { validateRequestBody } from '@/lib/with-auth'
+import { withMedicalAIAuth } from '@/lib/advanced-auth-v2'
 import { validateSymptomAnalysis } from '@/lib/validation-schemas'
 import { medicalAI } from '@/lib/advanced-medical-ai'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
 // POST - Análise de sintomas (apenas médicos e enfermeiros)
-export const POST = withDoctorAuth(async (request, { user }) => {
+export const POST = withMedicalAIAuth(async (request, { user }) => {
   const validation = await validateRequestBody(request, validateSymptomAnalysis)
   if (!validation.success) {
     return validation.response!
@@ -46,7 +47,7 @@ export const POST = withDoctorAuth(async (request, { user }) => {
 })
 
 // GET - Informações sobre a API
-export const GET = withDoctorAuth(async (request, { user }) => {
+export const GET = withMedicalAIAuth(async (request, { user }) => {
   return NextResponse.json({
     message: 'API de análise de sintomas ativa',
     endpoint: '/api/ai/analyze-symptoms',

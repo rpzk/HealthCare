@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PatientService } from '../../../lib/patient-service'
-import { withAuth, validateRequestBody } from '../../../lib/with-auth'
+import { validateRequestBody } from '../../../lib/with-auth'
+import { withPatientAuth } from '@/lib/advanced-auth-v2'
 import { validatePatient } from '../../../lib/validation-schemas'
-import { Gender, BloodType } from '@prisma/client'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
-export const GET = withAuth(async (req: NextRequest, { user }) => {
+export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
   try {
     const { searchParams } = new URL(req.url)
     
@@ -14,9 +14,9 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     const limit = parseInt(searchParams.get('limit') || '10')
     
     // Filtros
-    const search = searchParams.get('search') || undefined
-    const bloodType = searchParams.get('bloodType') as BloodType || undefined
-    const gender = searchParams.get('gender') as Gender || undefined
+  const search = searchParams.get('search') || undefined
+  const gender = searchParams.get('gender') || undefined
+  const riskLevel = searchParams.get('riskLevel') || undefined
     
     // Filtro de idade
     let ageRange: { min: number; max: number } | undefined = undefined
@@ -30,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     }
 
     const result = await PatientService.getPatients(
-      { search, bloodType, gender, ageRange },
+      { search, gender, riskLevel, ageRange },
       page,
       limit
     )
@@ -46,7 +46,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 })
 
 // POST /api/patients - Criar paciente (protegido por autenticação)
-export const POST = withAuth(async (req: NextRequest, { user }) => {
+export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
   try {
     // Validar dados de entrada
     const validation = await validateRequestBody(req, validatePatient)
@@ -56,23 +56,31 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     const data = validation.data!
 
-    // Garantir que o médico logado seja associado ao paciente
-    data.doctorId = user.id
-
-    // Garantir que a data de nascimento seja um objeto Date
-    if (typeof data.birthDate === 'string') {
-      data.birthDate = new Date(data.birthDate)
+    if (!data.email) {
+      return NextResponse.json({ error: 'Email é obrigatório' }, { status: 400 })
     }
 
-    // Criar dados formatados para o serviço
-    const patientData = {
-      ...data,
-      birthDate: data.birthDate as Date,
-      allergies: data.allergies || [],
-      chronicDiseases: data.chronicDiseases || []
+    const birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : (data.birthDate as Date)
+    if (!(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
+      return NextResponse.json({ error: 'Data de nascimento inválida' }, { status: 400 })
     }
 
-    const patient = await PatientService.createPatient(patientData)
+    const patient = await PatientService.createPatient({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      cpf: data.cpf,
+      birthDate,
+      gender: data.gender as any,
+      emergencyContact: data.emergencyContact,
+      address: data.address,
+      medicalHistory: undefined,
+      allergies: Array.isArray(data.allergies) ? data.allergies.join(', ') : undefined,
+      currentMedications: Array.isArray((data as any).currentMedications) ? (data as any).currentMedications.join(', ') : undefined,
+      riskLevel: (data as any).riskLevel,
+      insuranceNumber: (data as any).insuranceNumber,
+      userId: user.id
+    })
     
     return NextResponse.json(patient, { status: 201 })
   } catch (error: any) {

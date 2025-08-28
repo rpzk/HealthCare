@@ -7,10 +7,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { medicalDocumentAI, type MedicalDocument, type DocumentAnalysis } from '@/lib/medical-document-ai'
 import { PrismaClient } from '@prisma/client'
-const pdfParse = require('pdf-parse')
-import * as mammoth from 'mammoth'
 
 const prisma = new PrismaClient()
+
+// Evita execução em build/SSG: rota puramente dinâmica
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const runtime = 'nodejs'
 
 // GET - Listar documentos processados
 const getHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
@@ -20,7 +23,9 @@ const getHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
   const offset = parseInt(searchParams.get('offset') || '0')
 
   try {
-    const where = status ? { status } : {}
+    const where = status
+  ? { status: status.toUpperCase() as any }
+      : {}
     
     const [documents, total] = await Promise.all([
       prisma.medicalDocument.findMany({
@@ -106,7 +111,7 @@ const postHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
         fileName: file.name,
         content,
         fileType: getFileExtension(file.name) as any,
-        status: 'analyzing',
+  status: 'ANALYZING' as any,
         uploadDate: new Date()
       }
     })
@@ -166,7 +171,7 @@ const putHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
     await prisma.medicalDocument.update({
       where: { id: documentId },
       data: { 
-        status: 'imported',
+  status: 'IMPORTED' as any,
         importResults: JSON.stringify(importResults)
       }
     })
@@ -198,17 +203,27 @@ async function extractTextFromFile(file: File): Promise<string> {
         return new TextDecoder().decode(buffer)
       
       case 'application/pdf':
-        const pdfData = await pdfParse(Buffer.from(buffer))
-        return pdfData.text
+        {
+          const mod = await import('pdf-parse')
+          const pdfParse = (mod as any).default || (mod as any)
+          const pdfData = await pdfParse(Buffer.from(buffer))
+          return pdfData.text
+        }
       
       case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        const docxResult = await mammoth.extractRawText({ buffer: Buffer.from(buffer) })
-        return docxResult.value
+        {
+          const mammoth = await import('mammoth')
+          const docxResult = await (mammoth as any).extractRawText({ buffer: Buffer.from(buffer) })
+          return docxResult.value
+        }
         
       case 'application/msword':
         // Para .doc, mammoth tem suporte limitado, mas vamos tentar
-        const docResult = await mammoth.extractRawText({ buffer: Buffer.from(buffer) })
-        return docResult.value
+        {
+          const mammoth = await import('mammoth')
+          const docResult = await (mammoth as any).extractRawText({ buffer: Buffer.from(buffer) })
+          return docResult.value
+        }
       
       case 'application/rtf':
         // RTF como texto simples (implementação básica)
@@ -243,7 +258,7 @@ async function processDocumentWithAI(documentId: string, content: string, forceR
       uploadDate: document.uploadDate,
       fileType: document.fileType as any,
       status: 'analyzing',
-      patientId: document.patientId
+      patientId: document.patientId || undefined
     }
 
     // Analisar com IA
@@ -275,8 +290,8 @@ async function processDocumentWithAI(documentId: string, content: string, forceR
     await prisma.medicalDocument.update({
       where: { id: documentId },
       data: { 
-        status: 'classified',
-        patientId
+  status: 'CLASSIFIED' as any,
+  patientId: patientId ?? undefined
       }
     })
 
@@ -290,7 +305,7 @@ async function processDocumentWithAI(documentId: string, content: string, forceR
     await prisma.medicalDocument.update({
       where: { id: documentId },
       data: { 
-        status: 'error',
+  status: 'ERROR' as any,
         errorMessage: error instanceof Error ? error.message : 'Erro na análise AI'
       }
     })
@@ -363,10 +378,13 @@ async function createPrescriptionFromAnalysis(data: any, document: any) {
   const prescription = await prisma.prescription.create({
     data: {
       patientId: document.patientId,
-      medications: JSON.stringify(data.medications),
-      prescriptionDate: data.date || new Date(),
-      doctor: data.doctor || 'Importado via IA',
-      sourceDocument: document.fileName
+      doctorId: data.doctorId || (await getAnyDoctorId()),
+      medication: data.medications?.[0]?.name || data.medication || 'Medicamento',
+      dosage: data.medications?.[0]?.dosage || data.dosage || 'Conforme orientação',
+      frequency: data.medications?.[0]?.frequency || data.frequency || '12/12h',
+      duration: data.medications?.[0]?.duration || data.duration || '7 dias',
+      instructions: data.instructions || 'Importado via IA',
+      startDate: data.date || new Date()
     }
   })
   
@@ -397,12 +415,11 @@ async function createConsultationFromAnalysis(data: any, document: any) {
   const consultation = await prisma.consultation.create({
     data: {
       patientId: document.patientId,
+      doctorId: data.doctorId || (await getAnyDoctorId()),
       type: 'FOLLOW_UP',
-      date: data.date || new Date(),
-      symptoms: data.symptoms?.join(', ') || '',
-      diagnosis: data.diagnosis?.join(', ') || '',
-      observations: data.observations || '',
-      sourceDocument: document.fileName
+      scheduledDate: data.date || new Date(),
+      status: 'COMPLETED',
+      notes: data.observations || 'Importado via IA'
     }
   })
   
@@ -416,10 +433,11 @@ async function createMedicalRecordFromAnalysis(data: any, document: any) {
   const medicalRecord = await prisma.medicalRecord.create({
     data: {
       patientId: document.patientId,
-      type: data.type || 'GENERAL',
-      content: data.content || '',
-      recordDate: data.date || new Date(),
-      sourceDocument: document.fileName
+      doctorId: data.doctorId || (await getAnyDoctorId()),
+      title: data.title || 'Registro clínico importado',
+      description: data.content || '',
+      recordType: 'CONSULTATION',
+      notes: `Fonte: ${document.fileName}`
     }
   })
   
@@ -465,17 +483,35 @@ async function updatePatientFromAnalysis(data: DocumentAnalysis['patientInfo']) 
     return { patientId: updated.id, action: 'updated' }
   } else {
     // Criar novo paciente
-    const created = await prisma.patient.create({
+  const created = await prisma.patient.create({
       data: {
         name: data.name || 'Nome não identificado',
         cpf: data.cpf,
-        birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        // BirthDate é obrigatório no schema; usar uma data padrão caso ausente
+        birthDate: data.birthDate ? new Date(data.birthDate) : new Date('1970-01-01'),
+  gender: 'OTHER' as any,
         email: '',
         phone: ''
       }
     })
     return { patientId: created.id, action: 'created' }
   }
+}
+
+// Utilitário: obter um médico qualquer para relações obrigatórias
+async function getAnyDoctorId(): Promise<string> {
+  const anyDoctor = await prisma.user.findFirst({ where: { role: 'DOCTOR' as any } })
+  if (anyDoctor) return anyDoctor.id
+  // Se não houver, criar um placeholder
+  const created = await prisma.user.create({
+    data: {
+      email: `doctor+${Date.now()}@example.com`,
+      name: 'Médico Importação',
+      role: 'DOCTOR' as any,
+      isActive: true
+    }
+  })
+  return created.id
 }
 
 /**
