@@ -1,4 +1,4 @@
-import { PrismaClient, Gender, BloodType, ConsultationType, ConsultationStatus, RecordType, Severity, Role } from '@prisma/client'
+import { PrismaClient, Gender, ConsultationType, ConsultationStatus, RecordType, Severity, Role } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -7,18 +7,17 @@ async function main() {
   console.log('Iniciando seed do banco de dados...')
 
   // Criar usuário administrador
-  const hashedPassword = await bcrypt.hash('admin123', 12)
-  
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@healthcare.com' },
     update: {},
     create: {
       email: 'admin@healthcare.com',
-      name: 'Dr. João Silva',
-      role: Role.DOCTOR,
-      speciality: 'Cardiologia',
-      crmNumber: 'CRM-SP 123456',
-      phone: '(11) 99999-9999',
+  name: 'Dr. Admin Sistema',
+  role: Role.ADMIN,
+  speciality: 'Administração',
+  crmNumber: 'CRM-ADM-001',
+  phone: '(11) 99999-9999',
+  password: await bcrypt.hash('admin123', 12)
     },
   })
 
@@ -31,14 +30,7 @@ async function main() {
       birthDate: new Date('1979-03-15'),
       gender: Gender.FEMALE,
       phone: '(11) 98765-4321',
-      address: 'Rua das Flores, 123',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '01234-567',
-      bloodType: BloodType.A_POSITIVE,
-      allergies: ['Penicilina'],
-      chronicDiseases: ['Hipertensão'],
-      doctorId: adminUser.id,
+  address: 'Rua das Flores, 123',
     },
     {
       name: 'João Silva',
@@ -47,14 +39,7 @@ async function main() {
       birthDate: new Date('1962-07-22'),
       gender: Gender.MALE,
       phone: '(11) 91234-5678',
-      address: 'Av. Paulista, 456',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '04567-890',
-      bloodType: BloodType.O_NEGATIVE,
-      allergies: [],
-      chronicDiseases: ['Diabetes Tipo 2'],
-      doctorId: adminUser.id,
+  address: 'Av. Paulista, 456',
     },
     {
       name: 'Ana Costa',
@@ -63,14 +48,7 @@ async function main() {
       birthDate: new Date('1990-12-10'),
       gender: Gender.FEMALE,
       phone: '(11) 95555-1234',
-      address: 'Rua da Liberdade, 789',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '07890-123',
-      bloodType: BloodType.B_POSITIVE,
-      allergies: ['Látex', 'Aspirina'],
-      chronicDiseases: [],
-      doctorId: adminUser.id,
+  address: 'Rua da Liberdade, 789',
     },
   ]
 
@@ -91,8 +69,8 @@ async function main() {
       type: ConsultationType.ROUTINE,
       status: ConsultationStatus.SCHEDULED,
       chiefComplaint: 'Dor no peito',
-      patientId: createdPatients[0].id,
-      doctorId: adminUser.id,
+  patientId: createdPatients[0].id,
+  doctorId: adminUser.id,
     },
     {
       scheduledDate: new Date('2024-08-24T10:30:00'),
@@ -104,8 +82,8 @@ async function main() {
       physicalExam: 'Paciente em bom estado geral',
       assessment: 'Diabetes controlada',
       plan: 'Manter medicação atual',
-      patientId: createdPatients[1].id,
-      doctorId: adminUser.id,
+  patientId: createdPatients[1].id,
+  doctorId: adminUser.id,
     },
   ]
 

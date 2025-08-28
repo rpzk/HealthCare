@@ -249,7 +249,7 @@ export default function VitalSignsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Saturação < 95%</p>
+                <p className="text-sm font-medium text-gray-600">Saturação &lt; 95%</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {filteredSigns.filter(sign => sign.oxygen_saturation < 95).length}
                 </p>

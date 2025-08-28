@@ -22,7 +22,26 @@ export default withAuth(
       return NextResponse.json({ error: 'Bots não permitidos' }, { status: 403 })
     }
 
-    return NextResponse.next()
+    const res = NextResponse.next()
+
+    // Segurança: cabeçalhos padrão
+    res.headers.set('X-Frame-Options', 'DENY')
+    res.headers.set('X-Content-Type-Options', 'nosniff')
+    res.headers.set('Referrer-Policy', 'no-referrer')
+    res.headers.set('X-XSS-Protection', '0')
+    res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+    res.headers.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
+    // CSP mínima segura (ajuste conforme assets/domínios usados)
+    res.headers.set('Content-Security-Policy', [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'"
+    ].join('; '))
+
+    return res
   },
   {
     callbacks: {

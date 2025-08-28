@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
-import * as bcrypt from "bcrypt"
+import bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -42,18 +42,10 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // Para desenvolvimento, mantemos compatibilidade com senha simples
-          // Em produção, use apenas bcrypt
-          let isPasswordValid = false
-          
-          if (user.password) {
-            // Senha com hash bcrypt
-            isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-          } else if (credentials.password === 'admin123' && user.email === 'admin@healthcare.com') {
-            // Fallback para desenvolvimento (apenas para admin)
-            isPasswordValid = true
-            console.warn('Usando senha de desenvolvimento. Considere migrar para bcrypt em produção.')
-          }
+          // Validar estritamente com hash (sem fallback inseguro)
+          const isPasswordValid = !!user.password
+            ? await bcrypt.compare(credentials.password, user.password)
+            : false
 
           if (!isPasswordValid) {
             console.warn(`Senha incorreta para usuário: ${credentials.email}`)

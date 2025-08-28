@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
+import { validateRequestBody } from '@/lib/with-auth'
+import { withMedicalAIAuth } from '@/lib/advanced-auth-v2'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
@@ -25,7 +26,7 @@ function validateAiChat(data: any) {
 }
 
 // POST - Chat com IA médica (apenas médicos)
-export const POST = withDoctorAuth(async (request, { user }) => {
+export const POST = withMedicalAIAuth(async (request, { user }) => {
   const validation = await validateRequestBody(request, validateAiChat)
   if (!validation.success) {
     return validation.response!
