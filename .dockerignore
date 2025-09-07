@@ -1,0 +1,33 @@
+# Node / Next.js
+node_modules
+.next
+out
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# VCS
+.git
+.gitignore
+
+# Env / secrets
+.env
+*.env.*
+
+# OS / editor
+.DS_Store
+.vscode
+.idea
+
+# Build artifacts
+coverage
+.tmp
+.cache
+
+# Local data
+uploads
+postgres.log
+
+# Prisma generated artifacts (kept via prisma generate in build)
+prisma/*.db
