@@ -20,6 +20,7 @@
   "db:seed:historic": "tsx scripts/seed-historic-patients.ts",
   "type-check": "tsc --noEmit",
   "test:documents": "node test-document-import.js",
+  "test:health": "node test-health.js",
   "test:patients-auth": "node test-patients-auth.js",
   "test:system": "node test-system.js",
   "test:all": "npm run test:system && node test-system-complete.js && node test-consultations.js && node test-document-import.js",
