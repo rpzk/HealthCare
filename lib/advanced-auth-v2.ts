@@ -9,6 +9,7 @@ import { auditLogger, AuditAction } from './audit-logger'
 import { getRateLimiterForPath } from './rate-limiter'
 import { redisRateLimiter } from './redis-integration'
 import { aiAnomalyDetector } from './ai-anomaly-detector'
+import { recordRequest } from './metrics'
 
 export interface AdvancedAuthenticatedApiHandler {
   (request: NextRequest, context: { 
@@ -70,7 +71,7 @@ export function withRateLimitedAuth(
     let userId = 'anonymous'
     let statusCode = 200
 
-    try {
+  try {
       // 1. Autenticação
       const authResult = await authMiddleware(request)
       
@@ -173,6 +174,7 @@ export function withRateLimitedAuth(
             response.headers.set('Retry-After', rateLimitResult.retryAfter.toString())
           }
 
+          recordRequest(request.nextUrl.pathname, request.method, response.status, Date.now() - startTime)
           return response
         }
 
@@ -212,7 +214,8 @@ export function withRateLimitedAuth(
           }
         }
 
-        return response
+  recordRequest(request.nextUrl.pathname, request.method, response.status, Date.now() - startTime)
+  return response
       }
 
       // 3. Execução sem rate limiting
@@ -231,7 +234,8 @@ export function withRateLimitedAuth(
         })
       }
 
-      return response
+  if (response) recordRequest(request.nextUrl.pathname, request.method, response.status, Date.now() - startTime)
+  return response
       
     } catch (error) {
       statusCode = 500
@@ -258,10 +262,12 @@ export function withRateLimitedAuth(
         })
       ])
 
-      return NextResponse.json(
+  const resp = NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }
       )
+  recordRequest(request.nextUrl.pathname, request.method, 500, Date.now() - startTime)
+  return resp
     }
   }
 }
