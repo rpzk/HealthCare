@@ -76,6 +76,7 @@ jobs:
         run: |
           node test-patients-auth.js
           node test-rbac-patients.js
+          node test-export-zip-automated.js
       - name: Stop app
         if: always()
         run: |
