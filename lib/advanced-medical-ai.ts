@@ -54,6 +54,31 @@ export interface MedicalSummary {
 
 export class AdvancedMedicalAI {
   private model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+  private failures = 0
+  private OPEN = false
+  private nextRetry = 0
+  private FAILURE_THRESHOLD = 3
+  private COOLDOWN_MS = 60_000
+
+  private ensureCircuit() {
+    const now = Date.now()
+    if (this.OPEN && now >= this.nextRetry) {
+      this.OPEN = false
+      this.failures = 0
+    }
+    if (this.OPEN) {
+      throw new Error('IA temporariamente indisponível (circuit breaker)')
+    }
+  }
+
+  private recordSuccess() { this.failures = 0 }
+  private recordFailure() {
+    this.failures++
+    if (this.failures >= this.FAILURE_THRESHOLD) {
+      this.OPEN = true
+      this.nextRetry = Date.now() + this.COOLDOWN_MS
+    }
+  }
 
   // Análise avançada de sintomas com IA
   async analyzeSymptoms(request: SymptomAnalysisRequest): Promise<DiagnosisResult> {
@@ -100,7 +125,7 @@ Responda em formato JSON estruturado:
 }
 `
 
-    const started = Date.now()
+  const started = Date.now(); this.ensureCircuit()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -116,12 +141,14 @@ Responda em formato JSON estruturado:
       incCounter('ai_request_total', { type: 'symptom_analysis', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'symptom_analysis' })
       console.error('Erro na análise de sintomas:', error)
+      this.recordFailure()
       throw new Error('Erro ao analisar sintomas')
     }
     finally {
       const duration = Date.now() - started
       observeHistogram('ai_request_latency_ms', duration, { type: 'symptom_analysis' })
       incCounter('ai_request_total', { type: 'symptom_analysis', status: 'success' })
+      this.recordSuccess()
     }
   }
 
@@ -158,7 +185,7 @@ Responda em formato JSON:
 }
 `
 
-    const started = Date.now()
+  const started = Date.now(); this.ensureCircuit()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -173,12 +200,14 @@ Responda em formato JSON:
       incCounter('ai_request_total', { type: 'drug_interaction', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'drug_interaction' })
       console.error('Erro na verificação de interações:', error)
+      this.recordFailure()
       throw new Error('Erro ao verificar interações medicamentosas')
     }
     finally {
       const duration = Date.now() - started
       observeHistogram('ai_request_latency_ms', duration, { type: 'drug_interaction' })
       incCounter('ai_request_total', { type: 'drug_interaction', status: 'success' })
+      this.recordSuccess()
     }
   }
 
@@ -212,7 +241,7 @@ Responda em formato JSON:
 }
 `
 
-    const started = Date.now()
+  const started = Date.now(); this.ensureCircuit()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -227,12 +256,14 @@ Responda em formato JSON:
       incCounter('ai_request_total', { type: 'medical_summary', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'medical_summary' })
       console.error('Erro na geração de resumo:', error)
+      this.recordFailure()
       throw new Error('Erro ao gerar resumo médico')
     }
     finally {
       const duration = Date.now() - started
       observeHistogram('ai_request_latency_ms', duration, { type: 'medical_summary' })
       incCounter('ai_request_total', { type: 'medical_summary', status: 'success' })
+      this.recordSuccess()
     }
   }
 
@@ -256,7 +287,7 @@ INSTRUÇÕES:
 Responda em formato JSON estruturado com sua análise.
 `
 
-    const started = Date.now()
+  const started = Date.now(); this.ensureCircuit()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -271,12 +302,14 @@ Responda em formato JSON estruturado com sua análise.
       incCounter('ai_request_total', { type: 'vital_signs', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'vital_signs' })
       console.error('Erro na análise de sinais vitais:', error)
+      this.recordFailure()
       throw new Error('Erro ao analisar sinais vitais')
     }
     finally {
       const duration = Date.now() - started
       observeHistogram('ai_request_latency_ms', duration, { type: 'vital_signs' })
       incCounter('ai_request_total', { type: 'vital_signs', status: 'success' })
+      this.recordSuccess()
     }
   }
 
@@ -305,7 +338,7 @@ INSTRUÇÕES:
 Responda em formato JSON estruturado com o plano completo.
 `
 
-    const started = Date.now()
+  const started = Date.now(); this.ensureCircuit()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -320,12 +353,14 @@ Responda em formato JSON estruturado com o plano completo.
       incCounter('ai_request_total', { type: 'treatment_plan', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'treatment_plan' })
       console.error('Erro na sugestão de tratamento:', error)
+      this.recordFailure()
       throw new Error('Erro ao sugerir plano de tratamento')
     }
     finally {
       const duration = Date.now() - started
       observeHistogram('ai_request_latency_ms', duration, { type: 'treatment_plan' })
       incCounter('ai_request_total', { type: 'treatment_plan', status: 'success' })
+      this.recordSuccess()
     }
   }
 }
