@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { incCounter, observeHistogram, setGauge } from './metrics'
+import { checkAndConsumeAIQuota } from './ai-quota'
 
 if (!process.env.GOOGLE_AI_API_KEY) {
   console.warn('Google AI API key ausente. Recursos de IA ficarão limitados.')
@@ -82,10 +83,11 @@ export class AdvancedMedicalAI {
   }
 
   // Análise avançada de sintomas com IA
-  async analyzeSymptoms(request: SymptomAnalysisRequest): Promise<DiagnosisResult> {
+  async analyzeSymptoms(request: SymptomAnalysisRequest & { userId?: string }): Promise<DiagnosisResult> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
+    if (request.userId) await checkAndConsumeAIQuota(request.userId, 'symptom_analysis')
     // Anonimização básica: não enviar identificadores diretos
     const safeHistory = request.medicalHistory?.slice(0, 20)
     const safeMeds = request.currentMedications?.slice(0, 20)
@@ -154,10 +156,11 @@ Responda em formato JSON estruturado:
   }
 
   // Verificação de interações medicamentosas
-  async checkDrugInteractions(medications: string[]): Promise<DrugInteractionCheck> {
+  async checkDrugInteractions(medications: string[], userId?: string): Promise<DrugInteractionCheck> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
+    if (userId) await checkAndConsumeAIQuota(userId, 'drug_interaction')
     const meds = medications.slice(0, 50)
     const prompt = `
 Você é um especialista em farmacologia clínica. Analise as seguintes medicações para interações:
@@ -213,10 +216,11 @@ Responda em formato JSON:
   }
 
   // Geração de resumo médico inteligente
-  async generateMedicalSummary(patientData: any): Promise<MedicalSummary> {
+  async generateMedicalSummary(patientData: any, userId?: string): Promise<MedicalSummary> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
+    if (userId) await checkAndConsumeAIQuota(userId, 'medical_summary')
     const redacted = { ...patientData }
     if (redacted.cpf) redacted.cpf = '[REDACTED]'
     if (redacted.email) redacted.email = '[REDACTED]'
@@ -269,10 +273,11 @@ Responda em formato JSON:
   }
 
   // Análise de sinais vitais com IA
-  async analyzeVitalSigns(vitalSigns: any, patientAge: number): Promise<any> {
+  async analyzeVitalSigns(vitalSigns: any, patientAge: number, userId?: string): Promise<any> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
+    if (userId) await checkAndConsumeAIQuota(userId, 'vital_signs')
     const prompt = `
 Analise os seguintes sinais vitais para um paciente de ${patientAge} anos:
 
@@ -315,10 +320,11 @@ Responda em formato JSON estruturado com sua análise.
   }
 
   // Sugestão de plano de tratamento
-  async suggestTreatmentPlan(diagnosis: string, patientData: any): Promise<any> {
+  async suggestTreatmentPlan(diagnosis: string, patientData: any, userId?: string): Promise<any> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
+    if (userId) await checkAndConsumeAIQuota(userId, 'treatment_plan')
     const redacted = { ...patientData }
     if (redacted.cpf) redacted.cpf = '[REDACTED]'
     if (redacted.email) redacted.email = '[REDACTED]'
