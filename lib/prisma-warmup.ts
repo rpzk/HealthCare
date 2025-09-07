@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import { prisma, ensurePrismaConnected } from './prisma'
 import { incCounter, setGauge } from './metrics'
 
 let started = false
@@ -8,7 +8,8 @@ export async function warmupPrisma(retries: number = 5) {
   const start = Date.now()
   for (let i=0;i<retries;i++) {
     try {
-      await prisma.$queryRaw`SELECT 1`
+  await ensurePrismaConnected()
+  await prisma.$queryRaw`SELECT 1`
       incCounter('prisma_warmup_success_total')
       setGauge('prisma_warmup_last_ms', Date.now()-start)
       return
