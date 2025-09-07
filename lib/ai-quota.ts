@@ -14,10 +14,27 @@ export async function checkAndConsumeAIQuota(userId: string, type: string) {
   const today = new Date(); today.setHours(0,0,0,0)
   const key = `${userId}:${type}:${today.toISOString().slice(0,10)}`
   // Usar tabela AIInteraction para contar
-  const count = await prisma.aIInteraction.count({ where:{ userId, type: type.toUpperCase().replace(/-/g,'_') as any, createdAt: { gte: today } } })
+  const date = today
   const limit = DEFAULT_LIMITS[type] || 20
-  if (count >= limit) {
-    incCounter('ai_quota_exceeded_total', { type })
-    throw new Error('Limite diário de uso de IA atingido')
+  // Tenta usar tabela agregada
+  try {
+    // Upsert manual (funciona após migration)
+    const row: any = await prisma.$queryRawUnsafe(`
+      INSERT INTO ai_quota_usage (id, "userId", type, date, count, "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), $1, $2, $3, 1, now(), now())
+      ON CONFLICT ("userId", type, date) DO UPDATE SET count = ai_quota_usage.count + 1, "updatedAt" = now()
+      RETURNING count;`, userId, type, date)
+    const current = Array.isArray(row) ? row[0]?.count : row?.count
+    if (current && current > limit) {
+      incCounter('ai_quota_exceeded_total', { type })
+      throw new Error('Limite diário de uso de IA atingido')
+    }
+  } catch (e) {
+    // Fallback para count direto se tabela ainda não migrada
+    const count = await prisma.aIInteraction.count({ where:{ userId, type: type.toUpperCase().replace(/-/g,'_') as any, createdAt: { gte: today } } })
+    if (count >= limit) {
+      incCounter('ai_quota_exceeded_total', { type })
+      throw new Error('Limite diário de uso de IA atingido')
+    }
   }
 }
