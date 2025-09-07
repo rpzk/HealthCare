@@ -4,6 +4,7 @@ import './globals.css'
 import { verifyConfig } from '@/lib/config-check'
 verifyConfig()
 import { Providers } from '@/components/providers'
+import '@/lib/server-instrumentation'
 
 const inter = Inter({ subsets: ['latin'] })
 
