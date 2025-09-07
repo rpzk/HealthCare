@@ -5,6 +5,7 @@
 
 import { medicalDocumentAI } from './medical-document-ai'
 import { prisma } from './prisma'
+import { encrypt } from '@/lib/crypto'
 
 export interface PatientRegistrationData {
   // Dados Básicos (Obrigatórios)
@@ -241,9 +242,8 @@ class PatientRegistrationAI {
 
     // Buscar paciente existente (prioridade: CPF > nome)
     if (registrationData.cpf) {
-      patient = await prisma.patient.findUnique({
-        where: { cpf: registrationData.cpf.replace(/\D/g, '') }
-      })
+      const clean = registrationData.cpf.replace(/\D/g,'')
+      patient = await prisma.patient.findFirst({ where: { cpf: { contains: clean.slice(-4) } } })
     }
 
     if (!patient && registrationData.nome) {
@@ -260,7 +260,7 @@ class PatientRegistrationAI {
     // Preparar dados para o banco (usar campos corretos do schema)
     const patientData = {
       name: registrationData.nome,
-      cpf: registrationData.cpf?.replace(/\D/g, ''),
+  cpf: registrationData.cpf?.replace(/\D/g, ''),
       email: registrationData.email || `patient_${Date.now()}@temp.com`,
       phone: registrationData.telefone || registrationData.celular,
       birthDate: registrationData.dataNascimento || new Date('1900-01-01'),
@@ -278,7 +278,7 @@ class PatientRegistrationAI {
         where: { id: patient.id },
         data: {
           name: patientData.name || patient.name,
-          cpf: patientData.cpf || patient.cpf,
+          cpf: patientData.cpf ? encrypt(patientData.cpf) : patient.cpf,
           email: patientData.email || patient.email,
           phone: patientData.phone || patient.phone,
           birthDate: patientData.birthDate || patient.birthDate,
@@ -296,7 +296,7 @@ class PatientRegistrationAI {
       patient = await prisma.patient.create({
         data: {
           ...patientData,
-          cpf: patientData.cpf || '', // Campo obrigatório
+          cpf: patientData.cpf ? encrypt(patientData.cpf) : null,
           email: patientData.email || `patient_${Date.now()}@temp.com` // Campo obrigatório
         }
       })

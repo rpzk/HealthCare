@@ -465,7 +465,7 @@ async function updatePatientFromAnalysis(data: DocumentAnalysis['patientInfo']) 
   let patient = null
   
   if (data.cpf) {
-    patient = await prisma.patient.findUnique({ where: { cpf: data.cpf } })
+  patient = await prisma.patient.findFirst({ where: { cpf: { contains: data.cpf.slice(-4) } } })
   }
   
   if (!patient && data.name) {

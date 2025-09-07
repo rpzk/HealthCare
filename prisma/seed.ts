@@ -1,4 +1,5 @@
 import { PrismaClient, Gender, ConsultationType, ConsultationStatus, RecordType, Severity, Role } from '@prisma/client'
+import { encrypt } from '@/lib/crypto'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -54,10 +55,11 @@ async function main() {
 
   const createdPatients = []
   for (const patientData of patients) {
+    const cleanCpf = patientData.cpf.replace(/\D/g,'')
     const patient = await prisma.patient.upsert({
-      where: { cpf: patientData.cpf },
+      where: { email: patientData.email },
       update: {},
-      create: patientData,
+      create: { ...patientData, cpf: encrypt(cleanCpf) }
     })
     createdPatients.push(patient)
   }

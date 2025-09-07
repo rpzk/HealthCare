@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma'
 
 export default async function AuditPage() {
   const session = await getServerSession(authOptions as any)
-  if (!session || session.user.role !== 'ADMIN') {
+  const s: any = session
+  if (!s || s?.user?.role !== 'ADMIN') {
     return <div className="p-6"><h1 className="text-xl font-semibold">Acesso negado</h1><p className="text-sm text-gray-500">Esta área é restrita a administradores.</p></div>
   }
 
