@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 import { incCounter } from '@/lib/metrics'
 import { redisRateLimiter } from '@/lib/redis-integration'
 import { version } from '../../../package.json'
@@ -19,7 +19,19 @@ export async function GET() {
     if (!prisma?.$queryRaw) {
       throw new Error('Prisma client not initialised')
     }
-    await prisma.$queryRaw`SELECT 1`
+    // garante conexão primeiro
+    await ensurePrismaConnected()
+    try {
+      await prisma.$queryRaw`SELECT 1`
+    } catch (inner:any) {
+      if (inner?.message?.includes('not initialised')) {
+        console.warn('[health] Retry após not initialised')
+        await ensurePrismaConnected()
+        await prisma.$queryRaw`SELECT 1`
+      } else {
+        throw inner
+      }
+    }
     diagnostics.checks.db = { status: 'up' }
   } catch (e: any) {
     console.error('[health][db] erro:', e?.message, e?.stack)
