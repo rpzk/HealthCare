@@ -50,8 +50,12 @@ export class RedisRateLimiter {
       lazyConnect: true
     });
 
-    this.setupRedisEventHandlers();
-    this.initializeConnection();
+    if (process.env.DISABLE_REDIS === '1') {
+      console.log('🔕 Redis desativado via DISABLE_REDIS=1 (usando apenas fallback em memória)')
+    } else {
+      this.setupRedisEventHandlers();
+      this.initializeConnection();
+    }
   }
 
   /**
@@ -403,8 +407,12 @@ export class RedisCache {
       lazyConnect: true
     });
 
-    this.setupEventHandlers();
-    this.initializeConnection();
+    if (process.env.DISABLE_REDIS === '1') {
+      console.log('🔕 Redis Cache desativado via DISABLE_REDIS=1 (fallback memória)')
+    } else {
+      this.setupEventHandlers();
+      this.initializeConnection();
+    }
   }
 
   private setupEventHandlers(): void {
