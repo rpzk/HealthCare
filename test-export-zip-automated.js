@@ -1,6 +1,7 @@
-// Cria paciente, faz full export ZIP e valida integridade SHA256
+// Cria paciente, faz full export ZIP e valida integridade SHA256 (conteúdo + arquivo integrity)
 const BASE = 'http://localhost:3000'
 const crypto = require('crypto')
+const JSZip = require('jszip')
 
 async function login(){
   const cookieJar=[]
@@ -31,9 +32,21 @@ async function run(){
   const hashHeader = res.headers.get('x-integrity-sha256')
   if(!hashHeader) throw new Error('Header de hash ausente')
   const buf = Buffer.from(await res.arrayBuffer())
-  // Extrair patient.json do zip rapidamente (heurística simples sem lib extra: localizar pela assinatura) -> fallback: só valida tamanho > 0
   if(buf.length < 50) throw new Error('ZIP muito pequeno')
-  console.log('[export-zip] size=', buf.length, 'hash=', hashHeader)
+  const zip = await JSZip.loadAsync(buf)
+  const patientEntry = zip.file('patient.json')
+  const integrityEntry = zip.file('integrity.sha256')
+  if(!patientEntry) throw new Error('patient.json ausente no ZIP')
+  if(!integrityEntry) throw new Error('integrity.sha256 ausente no ZIP')
+  const patientJsonStr = await patientEntry.async('string')
+  const integrityStr = (await integrityEntry.async('string')).trim()
+  const calcHash = crypto.createHash('sha256').update(patientJsonStr).digest('hex')
+  if(calcHash !== hashHeader) throw new Error(`Hash header divergente: header=${hashHeader} calc=${calcHash}`)
+  if(!integrityStr.startsWith(calcHash)) throw new Error('Arquivo integrity.sha256 não corresponde ao hash calculado')
+  let parsed
+  try { parsed = JSON.parse(patientJsonStr) } catch { throw new Error('patient.json inválido (JSON parse)') }
+  if(!parsed.patient || !parsed.exportedAt) throw new Error('Campos esperados ausentes em patient.json')
+  console.log('[export-zip] ok size=', buf.length, 'hash=', hashHeader, 'patientId=', parsed.patient.id)
 }
 
 run().catch(e=>{ console.error('[export-zip] FAILED', e); process.exit(1) })

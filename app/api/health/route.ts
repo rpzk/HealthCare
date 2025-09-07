@@ -19,11 +19,11 @@ export async function GET() {
     diagnostics.ok = false
   }
 
-  // Redis check (não crítico se ausente)
+  // Redis check (não crítico se ausente ou desativado via DISABLE_REDIS)
   try {
     const stats = await redisRateLimiter.getStats()
-    diagnostics.checks.redis = { status: stats.redisConnected ? 'up' : 'down', activeUsers: stats.activeUsers }
-    if (!stats.redisConnected) diagnostics.ok = false
+    diagnostics.checks.redis = { status: stats.redisConnected ? 'up' : 'degraded', activeUsers: stats.activeUsers, mode: process.env.DISABLE_REDIS === '1' ? 'disabled' : 'auto' }
+    // Não altera diagnostics.ok se apenas Redis estiver indisponível
   } catch (e: any) {
     diagnostics.checks.redis = { status: 'down', error: e.message }
     // Redis não crítico: não altera diagnostics.ok
