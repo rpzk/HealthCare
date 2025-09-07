@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "worker:ai": "tsx scripts/worker-ai-queue.ts",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
