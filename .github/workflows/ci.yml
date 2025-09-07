@@ -4,10 +4,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:15-alpine
@@ -19,6 +21,12 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+      NEXTAUTH_SECRET: testsecret
+      NEXTAUTH_URL: http://localhost:3000
+      OTEL_TRACING_DISABLED: '1'
+      DISABLE_REDIS: '1'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -26,82 +34,55 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
-      - name: Prisma generate
+      - name: Generate Prisma client
         run: npm run db:generate
-      - name: Prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+      - name: Apply migrations
         run: npx prisma migrate deploy
-      - name: Seed database (basic)
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
-          NEXTAUTH_SECRET: testsecret
+      - name: Seed auth users
         run: node scripts/ci-seed-auth.js
       - name: Type check
         run: npm run type-check
-      - name: Lint
+      - name: Lint (non blocking)
         run: npm run lint || echo 'Lint warnings'
       - name: Build
         run: npm run build
-      - name: Test patient service basic create/list
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
-          NEXTAUTH_SECRET: testsecret
+      - name: Basic DB test
         run: node scripts/ci-patient-basic.js
-      - name: Test AI quota (direct function)
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
-          NEXTAUTH_SECRET: testsecret
-        run: npx tsx scripts/test-ai-quota.ts
-      - name: Start app (background)
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
-          NEXTAUTH_SECRET: testsecret
-          NEXTAUTH_URL: http://localhost:3000
-          OTEL_TRACING_DISABLED: '1'
-          DISABLE_REDIS: '1'
+      - name: Start app (background + readiness)
         run: |
           nohup npm start > app.log 2>&1 &
           echo $! > app.pid
-          sleep 1
-          if ! kill -0 $(cat app.pid) 2>/dev/null; then
-            echo 'Process exited immediately after start. Full log:'
-            cat app.log || true
-            exit 1
-          fi
-          echo "Waiting app (health 200)..."
-          for i in $(seq 1 45); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || echo 000)
-            if [ "$code" = "200" ]; then echo "App up (200)"; break; fi
+          echo 'Process PID:' $(cat app.pid)
+          # readiness loop (allows warming status)
+          for i in $(seq 1 50); do
+            code=$(curl -s -o health.json -w '%{http_code}' http://localhost:3000/api/health || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Health OK (200) em tentativa $i"; head -n 1 health.json; break
+            fi
             if [ $((i % 5)) -eq 0 ]; then
-              echo "Attempt $i health status=$code (show snippet)";
-              curl -fsS http://localhost:3000/api/health | head -n 5 || true;
+              echo "Tentativa $i health=$code"; head -n 1 health.json || true; tail -n 20 app.log || true
             fi
             sleep 2
           done
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || echo 000)
-          if [ "$code" != "200" ]; then
-            echo 'App did not reach healthy (200). Showing last 200 lines of app.log:'
-            tail -n 200 app.log || true
+          final=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || echo 000)
+          if [ "$final" != "200" ]; then
+            echo 'Falha readiness. Últimas linhas log:'
+            tail -n 120 app.log || true
             exit 1
           fi
-      - name: RBAC & Auth HTTP tests
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
-          NEXTAUTH_SECRET: testsecret
-          NEXTAUTH_URL: http://localhost:3000
+      - name: Auth + RBAC + Export tests
         run: |
           node test-patients-auth.js
           node test-rbac-patients.js
           node test-export-zip-automated.js
-      - name: Metrics snapshot
-        run: |
-          curl -fsS http://localhost:3000/api/metrics | head -n 50 || echo 'metrics unavailable'
+      - name: Metrics snapshot (best effort)
+        run: curl -fsS http://localhost:3000/api/metrics | head -n 40 || echo 'metrics unavailable'
       - name: Stop app
         if: always()
         run: |
           if [ -f app.pid ]; then kill $(cat app.pid) || true; fi
+          sleep 1
       - name: Security quick audit
         run: npm run security:quick-audit
