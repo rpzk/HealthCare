@@ -39,7 +39,8 @@ model Patient {
   name               String
   email              String    @unique
   phone              String?
-  cpf                String?   @unique
+  cpf                String?   // armazenada criptografada
+  cpfHash            String?   @unique // hash para busca/indexação sem expor valor
   birthDate          DateTime
   gender             Gender
   emergencyContact   String?

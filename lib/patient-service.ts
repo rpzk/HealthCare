@@ -1,5 +1,6 @@
 import { Gender, RiskLevel } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
 
 export interface PatientCreateData {
   name: string
@@ -105,15 +106,15 @@ export class PatientService {
           name: patient.name,
           email: patient.email,
           phone: patient.phone,
-          cpf: patient.cpf,
+          cpf: decrypt(patient.cpf as any),
           age: this.calculateAge(patient.birthDate),
           gender: patient.gender,
           riskLevel: patient.riskLevel,
           emergencyContact: patient.emergencyContact,
           address: patient.address,
-          medicalHistory: patient.medicalHistory,
-          allergies: patient.allergies,
-          currentMedications: patient.currentMedications,
+          medicalHistory: decrypt(patient.medicalHistory as any),
+          allergies: decrypt(patient.allergies as any),
+          currentMedications: decrypt(patient.currentMedications as any),
           insuranceNumber: patient.insuranceNumber,
           doctor: patient.User ? {
             name: patient.User.name,
@@ -227,14 +228,15 @@ export class PatientService {
           name: data.name,
           email: data.email,
           phone: data.phone,
-          cpf: data.cpf,
+          cpf: data.cpf ? encrypt(data.cpf) : undefined,
+          cpfHash: hashCPF(data.cpf),
           birthDate: data.birthDate,
           gender: data.gender,
           emergencyContact: data.emergencyContact,
           address: data.address,
-          medicalHistory: data.medicalHistory,
-          allergies: data.allergies,
-          currentMedications: data.currentMedications,
+          medicalHistory: data.medicalHistory ? encrypt(data.medicalHistory) : undefined,
+          allergies: data.allergies ? encrypt(data.allergies) : undefined,
+          currentMedications: data.currentMedications ? encrypt(data.currentMedications) : undefined,
           riskLevel: data.riskLevel || 'BAIXO',
           insuranceNumber: data.insuranceNumber,
           userId: data.userId
@@ -249,7 +251,13 @@ export class PatientService {
         }
       })
 
-      return patient
+      return {
+        ...patient,
+        cpf: decrypt(patient.cpf as any),
+        medicalHistory: decrypt(patient.medicalHistory as any),
+        allergies: decrypt(patient.allergies as any),
+        currentMedications: decrypt(patient.currentMedications as any)
+      }
     } catch (error) {
       console.error('Erro ao criar paciente:', error)
       throw error
@@ -259,9 +267,19 @@ export class PatientService {
   // Atualizar paciente
   static async updatePatient(id: string, data: PatientUpdateData) {
     try {
+      // Preparar campos criptografados
+      const updateData: any = { ...data }
+      if (data.cpf) {
+        updateData.cpf = encrypt(data.cpf)
+        updateData.cpfHash = hashCPF(data.cpf)
+      }
+      if (data.medicalHistory) updateData.medicalHistory = encrypt(data.medicalHistory)
+      if (data.allergies) updateData.allergies = encrypt(data.allergies)
+      if (data.currentMedications) updateData.currentMedications = encrypt(data.currentMedications)
+
       const patient = await prisma.patient.update({
         where: { id },
-        data,
+        data: updateData,
         include: {
           User: {
             select: {
@@ -272,7 +290,13 @@ export class PatientService {
         }
       })
 
-      return patient
+      return {
+        ...patient,
+        cpf: decrypt(patient.cpf as any),
+        medicalHistory: decrypt(patient.medicalHistory as any),
+        allergies: decrypt(patient.allergies as any),
+        currentMedications: decrypt(patient.currentMedications as any)
+      }
     } catch (error) {
       console.error('Erro ao atualizar paciente:', error)
       throw error
