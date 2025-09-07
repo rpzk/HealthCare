@@ -71,6 +71,23 @@ export function withAuth(
 }
 
 /**
+ * Variante que aplica RBAC baseado em uma "action" declarativa usando RBAC_MATRIX
+ * Evita replicar listas de roles em cada rota e centraliza política.
+ */
+import { isAllowed } from './rbac'
+export function withRbac(
+  action: string,
+  handler: AuthenticatedApiHandler
+) {
+  return withAuth(async (request, ctx) => {
+    if (!isAllowed(action, ctx.user.role)) {
+      return NextResponse.json({ error: 'Acesso negado - RBAC' }, { status: 403 })
+    }
+    return handler(request, ctx)
+  })
+}
+
+/**
  * Variação do withAuth apenas para médicos
  */
 export function withDoctorAuth(handler: AuthenticatedApiHandler) {

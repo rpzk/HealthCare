@@ -38,9 +38,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
           NEXTAUTH_SECRET: testsecret
-        run: |
-          echo "Seeding minimal data"
-          node -e "(async()=>{const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();await p.user.create({data:{email:'doctor@example.com',name:'CI Doctor',role:'DOCTOR'}});console.log('Seed ok');await p.$disconnect()})()"
+        run: node scripts/ci-seed.js
       - name: Type check
         run: npm run type-check
       - name: Lint
@@ -51,7 +49,6 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
           NEXTAUTH_SECRET: testsecret
-        run: |
-          node -e "(async()=>{const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();const c=await p.patient.count();console.log('Patients before',c); if(!c){await p.patient.create({data:{name:'Paciente CI',email:'paciente.ci@example.com',birthDate:new Date('1990-01-01'),gender:'MALE'}});}const all=await p.patient.findMany();console.log('Total patients after',all.length);await p.$disconnect()})()"
+        run: node scripts/ci-patient-basic.js
       - name: Security quick audit
         run: npm run security:quick-audit
