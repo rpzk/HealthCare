@@ -5,6 +5,7 @@ import { verifyConfig } from '@/lib/config-check'
 verifyConfig()
 import { Providers } from '@/components/providers'
 import '@/lib/server-instrumentation'
+import '@/lib/prisma-warmup'
 
 const inter = Inter({ subsets: ['latin'] })
 
