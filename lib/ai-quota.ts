@@ -30,9 +30,18 @@ export async function checkAndConsumeAIQuota(userId: string, type: string) {
       throw new Error('Limite diário de uso de IA atingido')
     }
   } catch (e) {
-    // Fallback para count direto se tabela ainda não migrada
-    const count = await prisma.aIInteraction.count({ where:{ userId, type: type.toUpperCase().replace(/-/g,'_') as any, createdAt: { gte: today } } })
-    if (count >= limit) {
+    // Fallback: incrementar criando um registro sintético em AIInteraction e então contar
+    const enumType = type.toUpperCase().replace(/-/g,'_') as any
+    await prisma.aIInteraction.create({
+      data: {
+        userId,
+        type: enumType,
+        prompt: '[quota_increment]',
+        response: '[placeholder]'
+      }
+    })
+    const count = await prisma.aIInteraction.count({ where:{ userId, type: enumType, createdAt: { gte: today } } })
+    if (count > limit) {
       incCounter('ai_quota_exceeded_total', { type })
       throw new Error('Limite diário de uso de IA atingido')
     }

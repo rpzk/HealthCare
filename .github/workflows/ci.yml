@@ -50,6 +50,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
           NEXTAUTH_SECRET: testsecret
         run: node scripts/ci-patient-basic.js
+      - name: Test AI quota (direct function)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+          NEXTAUTH_SECRET: testsecret
+        run: npx tsx scripts/test-ai-quota.ts
       - name: Start app (background)
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
