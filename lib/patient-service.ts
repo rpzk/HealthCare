@@ -1,6 +1,5 @@
-import { PrismaClient, Gender, RiskLevel } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { Gender, RiskLevel } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export interface PatientCreateData {
   name: string

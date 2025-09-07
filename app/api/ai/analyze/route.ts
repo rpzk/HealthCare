@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
+import { rateLimiters } from '@/lib/rate-limiter'
 import { MedicalAIService } from '@/lib/ai-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
@@ -26,6 +27,10 @@ function validateMedicalAnalysis(data: any) {
 
 // POST - Análise médica geral (apenas médicos)
 export const POST = withDoctorAuth(async (request, { user }) => {
+  const limit = rateLimiters.aiMedical(request, user.id)
+  if (limit && 'allowed' in limit === false) {
+    return limit as any
+  }
   const validation = await validateRequestBody(request, validateMedicalAnalysis)
   if (!validation.success) {
     return validation.response!
@@ -64,7 +69,7 @@ export const POST = withDoctorAuth(async (request, { user }) => {
     }
   )
 
-  return NextResponse.json({
+  const resp = NextResponse.json({
     success: true,
     data: {
       analysis: result,
@@ -78,4 +83,8 @@ export const POST = withDoctorAuth(async (request, { user }) => {
       patientId
     }
   })
+  if (limit && 'headers' in limit) {
+    Object.entries(limit.headers).forEach(([k,v]) => resp.headers.set(k, v))
+  }
+  return resp
 })

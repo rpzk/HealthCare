@@ -1,6 +1,5 @@
-import { PrismaClient, Consultation, ConsultationStatus, ConsultationType } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { Consultation, ConsultationStatus, ConsultationType } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export interface ConsultationFilters {
   patientId?: string

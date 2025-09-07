@@ -75,6 +75,7 @@ export enum AuditAction {
 class AuditLogger {
   private static instance: AuditLogger
   private logs: AuditLog[] = []
+  private persistEnabled = true
 
   private constructor() {}
 
@@ -103,7 +104,7 @@ class AuditLogger {
       errorMessage?: string
     } = {}
   ) {
-    const auditLog: AuditLog = {
+  const auditLog: AuditLog = {
       userId,
       userEmail,
       userRole,
@@ -129,9 +130,38 @@ class AuditLogger {
       })
     }
 
-    // TODO: Em produção, salvar no banco de dados
-    // TODO: Implementar rotação de logs
-    // TODO: Enviar logs críticos para sistema de monitoramento
+    // Persistir no banco quando possível
+    if (this.persistEnabled) {
+      import('@/lib/prisma').then(async ({ prisma }) => {
+        try {
+          const client = prisma as any
+          if (!client.auditLog?.create) {
+            throw new Error('Prisma Client sem modelo AuditLog gerado')
+          }
+          await client.auditLog.create({
+            data: {
+              userId: auditLog.userId,
+              userEmail: auditLog.userEmail,
+              userRole: auditLog.userRole,
+              action: auditLog.action,
+              resource: auditLog.resource,
+              resourceId: auditLog.resourceId || null,
+              details: auditLog.details ? JSON.stringify(auditLog.details).slice(0, 15000) : null,
+              ipAddress: auditLog.ipAddress || null,
+              userAgent: auditLog.userAgent || null,
+              success: auditLog.success,
+              errorMessage: auditLog.errorMessage || null
+            }
+          })
+        } catch (e) {
+          // Desabilitar persistência se der erro (ex.: migrações não aplicadas)
+          this.persistEnabled = false
+          if (process.env.NODE_ENV !== 'test') {
+            console.error('Falha ao persistir AuditLog, usando memória:', (e as Error).message)
+          }
+        }
+      })
+    }
 
     this.logs.push(auditLog)
 

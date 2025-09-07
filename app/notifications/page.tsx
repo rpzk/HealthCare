@@ -11,7 +11,6 @@ import {
   Settings,
   Search,
   Filter,
-  MarkAsRead,
   Calendar,
   AlertCircle,
   CheckCircle,
@@ -263,6 +262,11 @@ export default function NotificationsPage() {
     { value: 'patient', label: 'Pacientes', count: notifications.filter(n => n.type === 'patient').length }
   ]
 
+  const handleNavigate = (url?: string) => {
+    if (!url) return
+    window.location.href = url
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -404,15 +408,8 @@ export default function NotificationsPage() {
 
                   <div className="flex items-center space-x-2 ml-4">
                     {notification.actionUrl && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          // Navegar para a URL da ação
-                          window.location.href = notification.actionUrl
-                        }}
-                      >
-                        Visualizar
+                      <Button variant="outline" onClick={() => handleNavigate(notification.actionUrl)} className="h-7 px-2 text-xs">
+                        Abrir
                       </Button>
                     )}
 

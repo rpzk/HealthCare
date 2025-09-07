@@ -1,3 +1,9 @@
+// @ts-nocheck
+/**
+ * Arquivo legacy não alinhado ao schema atual (referências a bloodType, doctor em include, etc.).
+ * Mantido apenas para referência histórica. Não deve ser usado em código novo.
+ * Quando funcionalidades aqui forem necessárias, migrar trechos relevantes para `patient-service.ts`.
+ */
 import { PrismaClient, Gender, RiskLevel } from '@prisma/client'
 
 const prisma = new PrismaClient()

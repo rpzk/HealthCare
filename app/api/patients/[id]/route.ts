@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PatientService } from '@/lib/patient-service'
 import { withAuth, withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
-import { BloodType } from '@prisma/client'
 import { z } from 'zod'
 
 interface RouteParams {
@@ -28,9 +27,12 @@ const updatePatientSchema = z.object({
   state: z.string().optional(),
   zipCode: z.string().optional(),
   emergencyContact: z.string().optional(),
-  bloodType: z.nativeEnum(BloodType).optional(),
-  allergies: z.array(z.string()).optional(),
-  chronicDiseases: z.array(z.string()).optional()
+  // Campos removidos do schema real (não existem em prisma): bloodType, allergies (array), chronicDiseases
+})
+
+// Schema para PATCH (ações administrativas simples)
+const patchPatientSchema = z.object({
+  action: z.enum(['deactivate','reactivate'])
 })
 
 // GET /api/patients/[id] - Buscar paciente por ID
@@ -167,39 +169,8 @@ export const PATCH = withDoctorAuth(async (req: NextRequest, { params, user }) =
 
     const { action } = validationResult.data
 
-    if (action === 'deactivate') {
-      const patient = await PatientService.deactivatePatient(params.id)
-      
-      auditLogger.logSuccess(
-        user.id,
-        user.email,
-        user.role,
-        AuditAction.PATIENT_UPDATE,
-        'Patient',
-        { patientId: params.id, patientName: patient.name, action: 'deactivate' }
-      )
-      
-      return NextResponse.json({ 
-        message: 'Paciente desativado com sucesso',
-        patient 
-      })
-    } else if (action === 'reactivate') {
-      const patient = await PatientService.reactivatePatient(params.id)
-      
-      auditLogger.logSuccess(
-        user.id,
-        user.email,
-        user.role,
-        AuditAction.PATIENT_UPDATE,
-        'Patient',
-        { patientId: params.id, patientName: patient.name, action: 'reactivate' }
-      )
-      
-      return NextResponse.json({ 
-        message: 'Paciente reativado com sucesso',
-        patient 
-      })
-    }
+  // Funcionalidade ainda não implementada no serviço: responder 501
+  return NextResponse.json({ error: `Ação '${action}' não implementada` }, { status: 501 })
   } catch (error: any) {
     auditLogger.logError(
       user.id,

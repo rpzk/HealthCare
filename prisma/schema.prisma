@@ -333,6 +333,27 @@ model AIAnalysis {
   @@map("ai_analysis")
 }
 
+// Logs de auditoria persistentes
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  userEmail   String
+  userRole    String
+  action      String
+  resource    String
+  resourceId  String?
+  details     String?   @db.Text
+  ipAddress   String?
+  userAgent   String?
+  success     Boolean   @default(true)
+  errorMessage String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
 // Enums
 enum Role {
   ADMIN

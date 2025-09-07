@@ -9,3 +9,27 @@ node_modules
 # API Keys and secrets
 env.local
 *.env
+# Next.js build output
+.next
+out
+dist
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / tooling
+.DS_Store
+
+# Coverage
+coverage
+
+# Local data/uploads (keep directory with .gitkeep if needed)
+uploads/*
+!uploads/.gitkeep
+
+# Vercel / deploy
+.vercel

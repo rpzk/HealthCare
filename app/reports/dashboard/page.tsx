@@ -7,10 +7,34 @@ import { Button } from '@/components/ui/button'
 import { BarChart3, ArrowLeft, Users, Stethoscope, TestTube, FileText, TrendingUp, Calendar, AlertCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+interface SpecialtyStat { name: string; count: number }
+interface AgeGroup { range: string; count: number }
+interface GenderGroup { gender: string; count: number }
+interface KPI { title: string; value: number | string; change: string; changeType: 'positive' | 'neutral'; icon: any; color: string; bgColor: string }
+interface PerformanceMetric { title: string; value: string | number; unit: string; icon: any; color: string }
+interface DashboardData {
+  totalPatients: number
+  newPatientsThisMonth: number
+  totalConsultations: number
+  consultationsThisMonth: number
+  totalExams: number
+  examsThisMonth: number
+  totalRecords: number
+  recordsThisMonth: number
+  pendingExams: number
+  cancelledConsultations: number
+  averageConsultationsPerDay: number
+  patientGrowthRate: number
+  monthlyRevenue: number
+  popularSpecialties: SpecialtyStat[]
+  ageDistribution: AgeGroup[]
+  genderDistribution: GenderGroup[]
+}
+
 export default function DashboardReportsPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [dashboardData, setDashboardData] = useState({
+  const [loading, setLoading] = useState<boolean>(true)
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalPatients: 0,
     newPatientsThisMonth: 0,
     totalConsultations: 0,
@@ -30,9 +54,8 @@ export default function DashboardReportsPage() {
   })
 
   useEffect(() => {
-    // Simular carregamento de dados
-    setTimeout(() => {
-      setDashboardData({
+    const timer = setTimeout(() => {
+      const data: DashboardData = {
         totalPatients: 156,
         newPatientsThisMonth: 12,
         totalConsultations: 423,
@@ -51,7 +74,7 @@ export default function DashboardReportsPage() {
           { name: 'Cardiologia', count: 45 },
           { name: 'Dermatologia', count: 32 },
           { name: 'Ortopedia', count: 28 },
-          { name: 'Pediatria', count: 24 }
+            { name: 'Pediatria', count: 24 }
         ],
         ageDistribution: [
           { range: '0-18', count: 23 },
@@ -64,9 +87,11 @@ export default function DashboardReportsPage() {
           { gender: 'Feminino', count: 89 },
           { gender: 'Masculino', count: 67 }
         ]
-      })
+      }
+      setDashboardData(data)
       setLoading(false)
     }, 1000)
+    return () => clearTimeout(timer)
   }, [])
 
   const kpiCards = [
