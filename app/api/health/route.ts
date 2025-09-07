@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { incCounter } from '@/lib/metrics'
 import { redisRateLimiter } from '@/lib/redis-integration'
 import { version } from '../../../package.json'
 
@@ -12,9 +13,17 @@ export async function GET() {
   }
   // DB check
   try {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL not set')
+    }
+    if (!prisma?.$queryRaw) {
+      throw new Error('Prisma client not initialised')
+    }
     await prisma.$queryRaw`SELECT 1`
     diagnostics.checks.db = { status: 'up' }
   } catch (e: any) {
+    console.error('[health][db] erro:', e?.message, e?.stack)
+    incCounter('health_db_fail_total')
     diagnostics.checks.db = { status: 'down', error: e.message }
     diagnostics.ok = false
   }

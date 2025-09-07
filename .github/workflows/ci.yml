@@ -65,11 +65,19 @@ jobs:
         run: |
           nohup npm start > app.log 2>&1 &
           echo $! > app.pid
-          echo "Waiting app..."
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then echo "App up"; break; fi; sleep 2; done
-          if ! curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
-            echo 'App did not start. Showing last 200 lines of app.log:'
+          echo "Waiting app (health 200)..."
+          for i in $(seq 1 45); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || echo 000)
+            if [ "$code" = "200" ]; then echo "App up (200)"; break; fi
+            if [ $((i % 5)) -eq 0 ]; then
+              echo "Attempt $i health status=$code (show snippet)";
+              curl -fsS http://localhost:3000/api/health | head -n 5 || true;
+            fi
+            sleep 2
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || echo 000)
+          if [ "$code" != "200" ]; then
+            echo 'App did not reach healthy (200). Showing last 200 lines of app.log:'
             tail -n 200 app.log || true
             exit 1
           fi
