@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withDoctorAuth } from '@/lib/with-auth'
+import { withRbac } from '@/lib/with-auth'
 import { PatientService } from '@/lib/patient-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { incCounter, observeHistogram } from '@/lib/metrics'
+import { startSpan } from '@/lib/tracing'
 import crypto from 'crypto'
 
 let JSZip: any
 
-export const GET = withDoctorAuth(async (req: NextRequest, { params, user }) => {
+export const GET = withRbac('patient.export', async (req: NextRequest, { params, user }) => {
   try {
     const start = Date.now()
-    const patient = await PatientService.getPatientById(params.id)
+  const patient = await startSpan('patient.full_export.fetch', () => PatientService.getPatientById(params.id))
     auditLogger.logSuccess(user.id, user.email, user.role, AuditAction.DATA_EXPORT, 'Patient', { patientId: params.id, mode: 'full' })
     const accept = req.headers.get('accept') || ''
     const payload = { patient, exportedAt: new Date().toISOString(), version: 1 }
@@ -21,7 +22,7 @@ export const GET = withDoctorAuth(async (req: NextRequest, { params, user }) => 
       if (!JSZip) {
         JSZip = (await import('jszip')).default
       }
-      const zip = new JSZip()
+  const zip = new JSZip()
       zip.file('patient.json', json)
       zip.file('integrity.sha256', hash + '  patient.json\n')
       const content = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 9 } })
