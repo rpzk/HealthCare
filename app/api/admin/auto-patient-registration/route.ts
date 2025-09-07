@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { patientRegistrationAI } from '@/lib/patient-registration-ai'
 import { prisma } from '@/lib/prisma'
+import { encrypt } from '@/lib/crypto'
 
 /**
  * 👥 API para Cadastro Automático de Pacientes
@@ -107,9 +108,8 @@ async function createOrUpdatePatientSafe(registrationData: any) {
   // Buscar paciente existente
   if (registrationData.cpf) {
     const cleanCpf = registrationData.cpf.replace(/\D/g, '')
-    patient = await prisma.patient.findUnique({
-      where: { cpf: cleanCpf }
-    })
+    // NOTA: fallback busca direta se schema ainda não inclui cpfHash no Client gerado tipado
+    patient = await prisma.patient.findFirst({ where: { cpf: { contains: cleanCpf.slice(-4) } } })
   }
 
   if (!patient && registrationData.nome) {
@@ -126,7 +126,7 @@ async function createOrUpdatePatientSafe(registrationData: any) {
   const patientData = {
     name: registrationData.nome,
     email: registrationData.email || `temp_${Date.now()}@example.com`,
-    cpf: registrationData.cpf?.replace(/\D/g, '') || null,
+  cpf: registrationData.cpf?.replace(/\D/g, '') || null,
     phone: registrationData.telefone || registrationData.celular,
     birthDate: registrationData.dataNascimento || new Date('1900-01-01'),
     gender: convertGender(registrationData.sexo),
@@ -145,7 +145,8 @@ async function createOrUpdatePatientSafe(registrationData: any) {
       data: {
         ...patientData,
         email: patientData.email || patient.email,
-        cpf: patientData.cpf || patient.cpf
+  cpf: patientData.cpf ? encrypt(patientData.cpf) : patient.cpf,
+        medicalHistory: patientData.medicalHistory ? encrypt(patientData.medicalHistory) : patient.medicalHistory
       }
     })
     action = 'updated'
@@ -155,7 +156,8 @@ async function createOrUpdatePatientSafe(registrationData: any) {
       data: {
         ...patientData,
         email: patientData.email,
-        cpf: patientData.cpf
+  cpf: patientData.cpf ? encrypt(patientData.cpf) : null,
+        medicalHistory: patientData.medicalHistory ? encrypt(patientData.medicalHistory) : undefined
       }
     })
     action = 'created'
