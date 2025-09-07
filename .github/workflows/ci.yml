@@ -50,5 +50,30 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
           NEXTAUTH_SECRET: testsecret
         run: node scripts/ci-patient-basic.js
+      - name: Start app (background)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+          NEXTAUTH_SECRET: testsecret
+          NEXTAUTH_URL: http://localhost:3000
+          OTEL_TRACING_DISABLED: '1'
+        run: |
+          nohup npm start >/dev/null 2>&1 &
+          echo $! > app.pid
+          echo "Waiting app..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then echo "App up"; break; fi; sleep 2; done
+          curl -fsS http://localhost:3000/api/health || (echo 'App did not start' && exit 1)
+      - name: RBAC & Auth HTTP tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+          NEXTAUTH_SECRET: testsecret
+          NEXTAUTH_URL: http://localhost:3000
+        run: |
+          node test-patients-auth.js
+          node test-rbac-patients.js
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -f app.pid ]; then kill $(cat app.pid) || true; fi
       - name: Security quick audit
         run: npm run security:quick-audit
