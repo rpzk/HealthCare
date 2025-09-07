@@ -26,6 +26,7 @@ export async function GET() {
     if (!stats.redisConnected) diagnostics.ok = false
   } catch (e: any) {
     diagnostics.checks.redis = { status: 'down', error: e.message }
+    // Redis não crítico: não altera diagnostics.ok
   }
 
   diagnostics.uptimeSeconds = Math.floor(process.uptime())
