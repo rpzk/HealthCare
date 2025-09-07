@@ -1,21 +1,19 @@
 import React from 'react'
-
-async function fetchLogs() {
-  try {
-    const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/audit/logs?limit=50` : 'http://localhost:3000/api/audit/logs?limit=50', {
-      // SSR lado do servidor sem credencial: endpoint exige admin; placeholder
-      cache: 'no-store'
-    })
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.logs || []
-  } catch {
-    return []
-  }
-}
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export default async function AuditPage() {
-  const logs = await fetchLogs()
+  const session = await getServerSession(authOptions as any)
+  if (!session || session.user.role !== 'ADMIN') {
+    return <div className="p-6"><h1 className="text-xl font-semibold">Acesso negado</h1><p className="text-sm text-gray-500">Esta área é restrita a administradores.</p></div>
+  }
+
+  const logs = await prisma.auditLog.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 100
+  })
+
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Audit Logs (últimos {logs.length})</h1>
@@ -43,12 +41,12 @@ export default async function AuditPage() {
               </tr>
             ))}
             {logs.length === 0 && (
-              <tr><td colSpan={6} className="p-4 text-center text-gray-500">Sem logs ou acesso negado.</td></tr>
+              <tr><td colSpan={6} className="p-4 text-center text-gray-500">Sem logs.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-500">Atualização apenas no load. Adicionar SWR/refresh em iteração futura.</p>
+      <p className="text-xs text-gray-500">SSR secure. Iteração futura: filtros, auto-refresh.</p>
     </div>
   )
 }

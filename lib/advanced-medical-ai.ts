@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { incCounter, observeHistogram } from './metrics'
 
 if (!process.env.GOOGLE_AI_API_KEY) {
   console.warn('Google AI API key ausente. Recursos de IA ficarão limitados.')
@@ -99,6 +100,7 @@ Responda em formato JSON estruturado:
 }
 `
 
+    const started = Date.now()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -111,8 +113,15 @@ Responda em formato JSON estruturado:
       
       throw new Error('Formato de resposta inválido')
     } catch (error) {
+      incCounter('ai_request_total', { type: 'symptom_analysis', status: 'error' })
+      observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'symptom_analysis' })
       console.error('Erro na análise de sintomas:', error)
       throw new Error('Erro ao analisar sintomas')
+    }
+    finally {
+      const duration = Date.now() - started
+      observeHistogram('ai_request_latency_ms', duration, { type: 'symptom_analysis' })
+      incCounter('ai_request_total', { type: 'symptom_analysis', status: 'success' })
     }
   }
 
@@ -149,6 +158,7 @@ Responda em formato JSON:
 }
 `
 
+    const started = Date.now()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -160,8 +170,15 @@ Responda em formato JSON:
       
       throw new Error('Formato de resposta inválido')
     } catch (error) {
+      incCounter('ai_request_total', { type: 'drug_interaction', status: 'error' })
+      observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'drug_interaction' })
       console.error('Erro na verificação de interações:', error)
       throw new Error('Erro ao verificar interações medicamentosas')
+    }
+    finally {
+      const duration = Date.now() - started
+      observeHistogram('ai_request_latency_ms', duration, { type: 'drug_interaction' })
+      incCounter('ai_request_total', { type: 'drug_interaction', status: 'success' })
     }
   }
 
@@ -195,6 +212,7 @@ Responda em formato JSON:
 }
 `
 
+    const started = Date.now()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -206,8 +224,15 @@ Responda em formato JSON:
       
       throw new Error('Formato de resposta inválido')
     } catch (error) {
+      incCounter('ai_request_total', { type: 'medical_summary', status: 'error' })
+      observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'medical_summary' })
       console.error('Erro na geração de resumo:', error)
       throw new Error('Erro ao gerar resumo médico')
+    }
+    finally {
+      const duration = Date.now() - started
+      observeHistogram('ai_request_latency_ms', duration, { type: 'medical_summary' })
+      incCounter('ai_request_total', { type: 'medical_summary', status: 'success' })
     }
   }
 
@@ -231,6 +256,7 @@ INSTRUÇÕES:
 Responda em formato JSON estruturado com sua análise.
 `
 
+    const started = Date.now()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -242,8 +268,15 @@ Responda em formato JSON estruturado com sua análise.
       
       throw new Error('Formato de resposta inválido')
     } catch (error) {
+      incCounter('ai_request_total', { type: 'vital_signs', status: 'error' })
+      observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'vital_signs' })
       console.error('Erro na análise de sinais vitais:', error)
       throw new Error('Erro ao analisar sinais vitais')
+    }
+    finally {
+      const duration = Date.now() - started
+      observeHistogram('ai_request_latency_ms', duration, { type: 'vital_signs' })
+      incCounter('ai_request_total', { type: 'vital_signs', status: 'success' })
     }
   }
 
@@ -272,6 +305,7 @@ INSTRUÇÕES:
 Responda em formato JSON estruturado com o plano completo.
 `
 
+    const started = Date.now()
     try {
       const result = await this.model.generateContent(prompt)
       const response = result.response.text()
@@ -283,8 +317,15 @@ Responda em formato JSON estruturado com o plano completo.
       
       throw new Error('Formato de resposta inválido')
     } catch (error) {
+      incCounter('ai_request_total', { type: 'treatment_plan', status: 'error' })
+      observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'treatment_plan' })
       console.error('Erro na sugestão de tratamento:', error)
       throw new Error('Erro ao sugerir plano de tratamento')
+    }
+    finally {
+      const duration = Date.now() - started
+      observeHistogram('ai_request_latency_ms', duration, { type: 'treatment_plan' })
+      incCounter('ai_request_total', { type: 'treatment_plan', status: 'success' })
     }
   }
 }
