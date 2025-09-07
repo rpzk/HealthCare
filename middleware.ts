@@ -1,15 +1,14 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from 'next/server'
+import { createRequestId, logger } from '@/lib/logger'
 
 export default withAuth(
   function middleware(req) {
     const { pathname } = req.nextUrl
     const token = req.nextauth?.token
 
-    // Log de auditoria para rotas API
-    if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
-      console.log(`🔐 API Access: ${token?.email || 'unknown'} -> ${req.method} ${pathname}`)
-    }
+  const requestId = createRequestId()
+  const start = Date.now()
 
     // Verificar role para rotas administrativas
     if (pathname.startsWith('/admin') && token?.role !== 'ADMIN') {
@@ -22,7 +21,8 @@ export default withAuth(
       return NextResponse.json({ error: 'Bots não permitidos' }, { status: 403 })
     }
 
-    const res = NextResponse.next()
+  const res = NextResponse.next()
+  res.headers.set('X-Request-ID', requestId)
 
     // Segurança: cabeçalhos padrão
     res.headers.set('X-Frame-Options', 'DENY')
@@ -57,6 +57,17 @@ export default withAuth(
     res.headers.set('Cross-Origin-Resource-Policy', 'same-site')
     res.headers.set('X-DNS-Prefetch-Control', 'off')
 
+    // Log estruturado ao final
+    const duration = Date.now() - start
+    logger.info({
+      msg: 'request',
+      id: requestId,
+      path: pathname,
+      method: req.method,
+      email: token?.email || 'anon',
+      role: token?.role || 'unknown',
+      durationMs: duration
+    })
     return res
   },
   {
