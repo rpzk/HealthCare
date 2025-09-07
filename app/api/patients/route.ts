@@ -3,6 +3,7 @@ import { PatientService } from '../../../lib/patient-service'
 import { validateRequestBody } from '../../../lib/with-auth'
 import { withPatientAuth } from '@/lib/advanced-auth-v2'
 import { validatePatient } from '../../../lib/validation-schemas'
+import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
 export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
@@ -29,13 +30,14 @@ export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
       }
     }
 
-    const result = await PatientService.getPatients(
+  const result = await PatientService.getPatients(
       { search, gender, riskLevel, ageRange },
       page,
       limit
     )
-
-    return NextResponse.json(result)
+  // Aplicar masking na coleção
+  const masked = { ...result, patients: applyPatientsCollectionMasking(result.patients) }
+  return NextResponse.json(masked)
   } catch (error) {
     console.error('Erro na API de pacientes:', error)
     return NextResponse.json(
@@ -65,7 +67,7 @@ export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
       return NextResponse.json({ error: 'Data de nascimento inválida' }, { status: 400 })
     }
 
-    const patient = await PatientService.createPatient({
+  const patient = await PatientService.createPatient({
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -81,8 +83,8 @@ export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
       insuranceNumber: (data as any).insuranceNumber,
       userId: user.id
     })
-    
-    return NextResponse.json(patient, { status: 201 })
+  // Mask de retorno (apenas confirmação sem dados sensíveis)
+  return NextResponse.json(applyPatientMasking(patient), { status: 201 })
   } catch (error: any) {
     console.error('Erro ao criar paciente:', error)
     

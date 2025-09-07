@@ -8,6 +8,17 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: healthcare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -19,16 +30,28 @@ jobs:
         run: npm ci
       - name: Prisma generate
         run: npm run db:generate
+      - name: Prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+        run: npx prisma migrate deploy
+      - name: Seed database (basic)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+          NEXTAUTH_SECRET: testsecret
+        run: |
+          echo "Seeding minimal data"
+          node -e "(async()=>{const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();await p.user.create({data:{email:'doctor@example.com',name:'CI Doctor',role:'DOCTOR'}});console.log('Seed ok');await p.$disconnect()})()"
       - name: Type check
         run: npm run type-check
       - name: Lint
         run: npm run lint || echo 'Lint warnings'
       - name: Build
         run: npm run build
-      - name: Test patient service
+      - name: Test patient service basic create/list
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
           NEXTAUTH_SECRET: testsecret
         run: |
-          echo 'Skipping real DB for now; implement dockerized pg later.'
-          node -e "console.log('Placeholder tests passed')"
+          node -e "(async()=>{const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();const c=await p.patient.count();console.log('Patients before',c); if(!c){await p.patient.create({data:{name:'Paciente CI',email:'paciente.ci@example.com',birthDate:new Date('1990-01-01'),gender:'MALE'}});}const all=await p.patient.findMany();console.log('Total patients after',all.length);await p.$disconnect()})()"
+      - name: Security quick audit
+        run: npm run security:quick-audit
