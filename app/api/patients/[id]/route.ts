@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PatientService } from '@/lib/patient-service'
-import { withAuth, withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
+import { withAuth, withDoctorAuth, AuthenticatedApiHandler, withRbac } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
 import { applyPatientMasking } from '@/lib/masking'
+import { startSpan } from '@/lib/tracing'
 
 interface RouteParams {
   params: {
@@ -37,9 +38,9 @@ const patchPatientSchema = z.object({
 })
 
 // GET /api/patients/[id] - Buscar paciente por ID
-export const GET = withAuth(async (req: NextRequest, { params, user }) => {
+export const GET = withRbac('patient.read', async (req: NextRequest, { params, user }) => {
   try {
-    const patient = await PatientService.getPatientById(params.id)
+  const patient = await startSpan('patient.get', () => PatientService.getPatientById(params.id))
     
     auditLogger.logSuccess(
       user.id,
@@ -79,7 +80,7 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
 }) as AuthenticatedApiHandler
 
 // PUT /api/patients/[id] - Atualizar paciente
-export const PUT = withDoctorAuth(async (req: NextRequest, { params, user }) => {
+export const PUT = withRbac('patient.write', async (req: NextRequest, { params, user }) => {
   try {
     const data = await req.json()
     
@@ -103,7 +104,7 @@ export const PUT = withDoctorAuth(async (req: NextRequest, { params, user }) => 
       )
     }
 
-    const patient = await PatientService.updatePatient(params.id, validatedData)
+  const patient = await startSpan('patient.update', () => PatientService.updatePatient(params.id, validatedData))
     
     auditLogger.logSuccess(
       user.id,
@@ -154,7 +155,7 @@ export const PUT = withDoctorAuth(async (req: NextRequest, { params, user }) => 
 }) as AuthenticatedApiHandler
 
 // PATCH /api/patients/[id] - Desativar/Reativar paciente
-export const PATCH = withDoctorAuth(async (req: NextRequest, { params, user }) => {
+export const PATCH = withRbac('patient.write', async (req: NextRequest, { params, user }) => {
   try {
     const data = await req.json()
     
@@ -200,9 +201,9 @@ export const PATCH = withDoctorAuth(async (req: NextRequest, { params, user }) =
 }) as AuthenticatedApiHandler
 
 // DELETE /api/patients/[id] - Excluir paciente (hard delete - use com cuidado)
-export const DELETE = withDoctorAuth(async (req: NextRequest, { params, user }) => {
+export const DELETE = withRbac('patient.write', async (req: NextRequest, { params, user }) => {
   try {
-    await PatientService.deletePatient(params.id)
+  await startSpan('patient.delete', () => PatientService.deletePatient(params.id))
     
     auditLogger.logSuccess(
       user.id,

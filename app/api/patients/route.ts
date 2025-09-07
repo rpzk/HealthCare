@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PatientService } from '../../../lib/patient-service'
 import { validateRequestBody } from '../../../lib/with-auth'
 import { withPatientAuth } from '@/lib/advanced-auth-v2'
+import { startSpan } from '@/lib/tracing'
 import { validatePatient } from '../../../lib/validation-schemas'
 import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'
 
@@ -30,11 +31,11 @@ export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
       }
     }
 
-  const result = await PatientService.getPatients(
+  const result = await startSpan('patients.list', () => PatientService.getPatients(
       { search, gender, riskLevel, ageRange },
       page,
       limit
-    )
+    ))
   // Aplicar masking na coleção
   const masked = { ...result, patients: applyPatientsCollectionMasking(result.patients) }
   return NextResponse.json(masked)
@@ -67,9 +68,9 @@ export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
       return NextResponse.json({ error: 'Data de nascimento inválida' }, { status: 400 })
     }
 
-  const patient = await PatientService.createPatient({
+  const patient = await startSpan('patients.create', () => PatientService.createPatient({
       name: data.name,
-      email: data.email,
+  email: data.email!,
       phone: data.phone,
       cpf: data.cpf,
       birthDate,
@@ -82,7 +83,7 @@ export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
       riskLevel: (data as any).riskLevel,
       insuranceNumber: (data as any).insuranceNumber,
       userId: user.id
-    })
+    }))
   // Mask de retorno (apenas confirmação sem dados sensíveis)
   return NextResponse.json(applyPatientMasking(patient), { status: 201 })
   } catch (error: any) {
