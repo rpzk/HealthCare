@@ -1,5 +1,8 @@
 // Módulo simples de métricas estilo Prometheus (in-memory)
 // NÃO usar em produção sem persistência/cluster awareness
+// Métricas adicionais esperadas (emitidas em outros módulos):
+// - patient_full_export_total{format="json|zip"}
+// - patient_full_export_duration_ms (histogram)
 
 type CounterKey = string
 type HistogramKey = string

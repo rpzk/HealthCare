@@ -3,6 +3,7 @@ import { PatientService } from '@/lib/patient-service'
 import { withAuth, withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
+import { applyPatientMasking } from '@/lib/masking'
 
 interface RouteParams {
   params: {
@@ -49,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
       { patientId: params.id, patientName: patient.name }
     )
     
-    return NextResponse.json(patient)
+  return NextResponse.json(applyPatientMasking(patient))
   } catch (error: any) {
     auditLogger.logError(
       user.id,
@@ -117,7 +118,7 @@ export const PUT = withDoctorAuth(async (req: NextRequest, { params, user }) => 
       }
     )
     
-    return NextResponse.json(patient)
+  return NextResponse.json(applyPatientMasking(patient))
   } catch (error: any) {
     auditLogger.logError(
       user.id,
