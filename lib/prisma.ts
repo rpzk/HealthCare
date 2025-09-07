@@ -21,7 +21,14 @@ async function internalConnect() {
 
 export async function ensurePrismaConnected() {
   if (!globalForPrisma.prismaConnectPromise) {
+    console.log('[prisma] iniciando conexão (nova promise)')
     globalForPrisma.prismaConnectPromise = internalConnect()
+  } else {
+    // log leve apenas uma vez para não poluir
+    if (!(globalThis as any).__prismaReusingLogged) {
+      console.log('[prisma] reutilizando promise de conexão existente')
+      ;(globalThis as any).__prismaReusingLogged = true
+    }
   }
   try {
     await globalForPrisma.prismaConnectPromise
