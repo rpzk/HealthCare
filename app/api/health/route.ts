@@ -16,16 +16,13 @@ export async function GET() {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL not set')
     }
-    if (!prisma?.$queryRaw) {
-      throw new Error('Prisma client not initialised')
-    }
-    // garante conexão primeiro
-    await ensurePrismaConnected()
+    // garante conexão primeiro (retry simples se falhar por condição transitória)
     try {
+      await ensurePrismaConnected()
       await prisma.$queryRaw`SELECT 1`
     } catch (inner:any) {
       if (inner?.message?.includes('not initialised')) {
-        console.warn('[health] Retry após not initialised')
+        console.warn('[health] retry ensurePrismaConnected após not initialised')
         await ensurePrismaConnected()
         await prisma.$queryRaw`SELECT 1`
       } else {
