@@ -20,8 +20,8 @@ export async function checkAndConsumeAIQuota(userId: string, type: string) {
   try {
     // Upsert manual (funciona após migration)
     const row: any = await prisma.$queryRawUnsafe(`
-      INSERT INTO ai_quota_usage (id, "userId", type, date, count, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), $1, $2, $3, 1, now(), now())
+      INSERT INTO ai_quota_usage ("userId", type, date, count, "createdAt", "updatedAt")
+      VALUES ($1, $2, $3, 1, now(), now())
       ON CONFLICT ("userId", type, date) DO UPDATE SET count = ai_quota_usage.count + 1, "updatedAt" = now()
       RETURNING count;`, userId, type, date)
     const current = Array.isArray(row) ? row[0]?.count : row?.count

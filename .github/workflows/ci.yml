@@ -61,6 +61,7 @@ jobs:
           NEXTAUTH_SECRET: testsecret
           NEXTAUTH_URL: http://localhost:3000
           OTEL_TRACING_DISABLED: '1'
+          DISABLE_REDIS: '1'
         run: |
           nohup npm start > app.log 2>&1 &
           echo $! > app.pid
