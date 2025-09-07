@@ -1,6 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!)
+if (!process.env.GOOGLE_AI_API_KEY) {
+  console.warn('Google AI API key ausente. Recursos de IA ficarão limitados.')
+}
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
 
 // Tipos específicos para análise médica
 export interface SymptomAnalysisRequest {
@@ -53,6 +56,13 @@ export class AdvancedMedicalAI {
 
   // Análise avançada de sintomas com IA
   async analyzeSymptoms(request: SymptomAnalysisRequest): Promise<DiagnosisResult> {
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('Serviço de IA não configurado')
+    }
+    // Anonimização básica: não enviar identificadores diretos
+    const safeHistory = request.medicalHistory?.slice(0, 20)
+    const safeMeds = request.currentMedications?.slice(0, 20)
+    const safeVitals = request.vitalSigns
     const prompt = `
 Você é um assistente médico especializado em análise de sintomas. Analise os seguintes dados:
 
@@ -60,9 +70,9 @@ DADOS DO PACIENTE:
 - Idade: ${request.patientAge} anos
 - Gênero: ${request.patientGender === 'M' ? 'Masculino' : 'Feminino'}
 - Sintomas: ${request.symptoms.join(', ')}
-${request.medicalHistory ? `- Histórico médico: ${request.medicalHistory.join(', ')}` : ''}
-${request.currentMedications ? `- Medicações atuais: ${request.currentMedications.join(', ')}` : ''}
-${request.vitalSigns ? `- Sinais vitais: ${JSON.stringify(request.vitalSigns)}` : ''}
+${safeHistory ? `- Histórico médico: ${safeHistory.join(', ')}` : ''}
+${safeMeds ? `- Medicações atuais: ${safeMeds.join(', ')}` : ''}
+${safeVitals ? `- Sinais vitais: ${JSON.stringify(safeVitals)}` : ''}
 
 INSTRUÇÕES:
 1. Liste 3-5 possíveis diagnósticos ordenados por probabilidade (0-100%)
@@ -108,10 +118,14 @@ Responda em formato JSON estruturado:
 
   // Verificação de interações medicamentosas
   async checkDrugInteractions(medications: string[]): Promise<DrugInteractionCheck> {
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('Serviço de IA não configurado')
+    }
+    const meds = medications.slice(0, 50)
     const prompt = `
 Você é um especialista em farmacologia clínica. Analise as seguintes medicações para interações:
 
-MEDICAÇÕES: ${medications.join(', ')}
+MEDICAÇÕES: ${meds.join(', ')}
 
 INSTRUÇÕES:
 1. Identifique todas as interações medicamentosas possíveis
@@ -153,11 +167,17 @@ Responda em formato JSON:
 
   // Geração de resumo médico inteligente
   async generateMedicalSummary(patientData: any): Promise<MedicalSummary> {
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('Serviço de IA não configurado')
+    }
+    const redacted = { ...patientData }
+    if (redacted.cpf) redacted.cpf = '[REDACTED]'
+    if (redacted.email) redacted.email = '[REDACTED]'
     const prompt = `
 Você é um médico experiente. Crie um resumo médico inteligente baseado nos dados:
 
-DADOS DO PACIENTE:
-${JSON.stringify(patientData, null, 2)}
+DADOS DO PACIENTE (anonimizados):
+${JSON.stringify(redacted, null, 2)}
 
 INSTRUÇÕES:
 1. Crie um resumo conciso do estado atual do paciente
@@ -193,6 +213,9 @@ Responda em formato JSON:
 
   // Análise de sinais vitais com IA
   async analyzeVitalSigns(vitalSigns: any, patientAge: number): Promise<any> {
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('Serviço de IA não configurado')
+    }
     const prompt = `
 Analise os seguintes sinais vitais para um paciente de ${patientAge} anos:
 
@@ -226,12 +249,18 @@ Responda em formato JSON estruturado com sua análise.
 
   // Sugestão de plano de tratamento
   async suggestTreatmentPlan(diagnosis: string, patientData: any): Promise<any> {
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      throw new Error('Serviço de IA não configurado')
+    }
+    const redacted = { ...patientData }
+    if (redacted.cpf) redacted.cpf = '[REDACTED]'
+    if (redacted.email) redacted.email = '[REDACTED]'
     const prompt = `
 Você é um médico especialista. Sugira um plano de tratamento para:
 
 DIAGNÓSTICO: ${diagnosis}
-DADOS DO PACIENTE:
-${JSON.stringify(patientData, null, 2)}
+DADOS DO PACIENTE (anonimizados):
+${JSON.stringify(redacted, null, 2)}
 
 INSTRUÇÕES:
 1. Sugira tratamento farmacológico apropriado

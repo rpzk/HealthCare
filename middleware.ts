@@ -30,16 +30,32 @@ export default withAuth(
     res.headers.set('Referrer-Policy', 'no-referrer')
     res.headers.set('X-XSS-Protection', '0')
     res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
-    res.headers.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
-    // CSP mínima segura (ajuste conforme assets/domínios usados)
+
+    // HSTS apenas em produção e fora de localhost
+    const isProd = process.env.NODE_ENV === 'production'
+    const host = req.headers.get('host') || ''
+    if (isProd && !host.includes('localhost')) {
+      res.headers.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains; preload')
+    }
+
+    // CSP mais rígida (ajuste se necessário para assets externos)
     res.headers.set('Content-Security-Policy', [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "script-src 'self' 'unsafe-inline'", // evite 'unsafe-inline' quando possível usando nonce
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
-      "connect-src 'self'",
+      "connect-src 'self' https://generativelanguage.googleapis.com",
+      "font-src 'self' data:",
+      "object-src 'none'",
       "frame-ancestors 'none'"
     ].join('; '))
+
+    // Proteções adicionais de navegação
+    res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
+    res.headers.set('Cross-Origin-Resource-Policy', 'same-site')
+    res.headers.set('X-DNS-Prefetch-Control', 'off')
 
     return res
   },
@@ -81,6 +97,6 @@ export const config = {
      * - auth/ (authentication pages)
      * - public files
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|auth/).*)',
+  '/((?!api/health|api/auth|_next/static|_next/image|favicon.ico|auth/).*)',
   ],
 }

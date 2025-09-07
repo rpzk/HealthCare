@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
+import { rateLimiters } from '@/lib/rate-limiter'
 import { validateRequestBody } from '@/lib/with-auth'
 import { withConsultationAuth } from '@/lib/advanced-auth-v2'
 import { validateConsultation } from '@/lib/validation-schemas'
@@ -7,6 +8,8 @@ import { ConsultationType } from '@prisma/client'
 
 // GET - Listar consultas (protegido por autenticação)
 export const GET = withConsultationAuth(async (request: NextRequest, { user }) => {
+  const limit = rateLimiters.consultations(request, user.id)
+  if ((limit as any)?.status === 429) return limit as any
   try {
     const { searchParams } = new URL(request.url)
     
@@ -32,7 +35,11 @@ export const GET = withConsultationAuth(async (request: NextRequest, { user }) =
 
     const result = await ConsultationService.getConsultations(filters, page, limit)
 
-    return NextResponse.json(result)
+    const resp = NextResponse.json(result)
+    if ((limit as any)?.headers) {
+      Object.entries((limit as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
+    }
+    return resp
   } catch (error) {
     console.error('Erro ao buscar consultas:', error)
     return NextResponse.json(
@@ -44,6 +51,8 @@ export const GET = withConsultationAuth(async (request: NextRequest, { user }) =
 
 // POST - Criar nova consulta (protegido por autenticação)
 export const POST = withConsultationAuth(async (request: NextRequest, { user }) => {
+  const limit = rateLimiters.consultations(request, user.id)
+  if ((limit as any)?.status === 429) return limit as any
   try {
     const body = await request.json()
 
@@ -88,10 +97,14 @@ export const POST = withConsultationAuth(async (request: NextRequest, { user }) 
 
     const consultation = await ConsultationService.createConsultation(consultationData)
 
-    return NextResponse.json({
+    const resp = NextResponse.json({
       message: 'Consulta agendada com sucesso',
       consultation
     }, { status: 201 })
+    if ((limit as any)?.headers) {
+      Object.entries((limit as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
+    }
+    return resp
 
   } catch (error: any) {
     console.error('Erro ao criar consulta:', error)
@@ -104,9 +117,13 @@ export const POST = withConsultationAuth(async (request: NextRequest, { user }) 
       )
     }
 
-    return NextResponse.json(
+    const respErr = NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
     )
+    if ((limit as any)?.headers) {
+      Object.entries((limit as any).headers as Record<string,string>).forEach(([k,v]) => respErr.headers.set(k, v))
+    }
+    return respErr
   }
 })

@@ -3,8 +3,30 @@
  * Validação completa do fluxo de upload, análise e importação
  */
 
-// Importar usando ES modules convertido para CommonJS
-const medicalDocumentAI = require('./lib/medical-document-ai.ts').default || require('./lib/medical-document-ai.ts');
+// Registro ts-node para permitir importação de arquivo TypeScript diretamente quando rodado via `node`
+// (fallback silencioso se já estiver compilado ou em ambiente que não tenha ts-node)
+try {
+  require('ts-node/register/transpile-only');
+} catch (e) {
+  // ignore if ts-node not available; user may run via next/ts-node elsewhere
+}
+
+// Importar módulo TS de forma compatível
+let medicalDocumentAI;
+try {
+  // Tentar via require direto (ts-node ativo)
+  const mod = require('./lib/medical-document-ai.ts');
+  medicalDocumentAI = mod.medicalDocumentAI || mod.default || mod;
+} catch (err) {
+  try {
+    // Tentar versão compilada (caso build tenha emitido .js futuramente)
+    const mod = require('./lib/medical-document-ai.js');
+    medicalDocumentAI = mod.medicalDocumentAI || mod.default || mod;
+  } catch (err2) {
+    console.error('❌ Falha ao carregar módulo medical-document-ai:', err2.message);
+    process.exit(1);
+  }
+}
 
 // 📄 Documentos de teste simulados
 const testDocuments = {
@@ -182,7 +204,8 @@ async function testMedicalDocumentImport() {
       // Mostrar ações sugeridas
       console.log(`⚡ Ações sugeridas: ${analysis.suggestedActions.length}`);
       analysis.suggestedActions.slice(0, 2).forEach((action, i) => {
-        console.log(`   ${i + 1}. ${action.description} (${(action.confidence * 100).toFixed(0)}%)`);
+        const label = action.action || 'ACTION';
+        console.log(`   ${i + 1}. ${label} (${(action.confidence * 100).toFixed(0)}%)`);
       });
 
       // Gerar relatório

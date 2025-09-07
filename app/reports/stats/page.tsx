@@ -7,11 +7,55 @@ import { Button } from '@/components/ui/button'
 import { BarChart3, ArrowLeft, TrendingUp, TrendingDown, Users, Calendar, Activity, Target } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+interface AgeGroupDetailed { range: string; count: number; percentage: number }
+interface SpecialtyBreakdown { specialty: string; count: number; percentage: number }
+interface ExamTypeStat { type: string; count: number }
+interface TimeSeriesPoint { month: string; count: number }
+interface StatsData {
+  patientStats: {
+    total: number
+    newThisPeriod: number
+    growthRate: number
+    averageAge: number
+    genderDistribution: { male: number; female: number; other: number }
+    topAgeGroups: AgeGroupDetailed[]
+  }
+  consultationStats: {
+    total: number
+    completed: number
+    cancelled: number
+    noShow: number
+    averagePerDay: number
+    completionRate: number
+    specialtyBreakdown: SpecialtyBreakdown[]
+  }
+  examStats: {
+    total: number
+    completed: number
+    pending: number
+    urgent: number
+    averageCompletionTime: number
+    topExamTypes: ExamTypeStat[]
+  }
+  performanceMetrics: {
+    patientSatisfaction: number
+    averageWaitTime: number
+    systemUptime: number
+    dataAccuracy: number
+    responseTime: number
+  }
+  trends: {
+    patientsOverTime: TimeSeriesPoint[]
+    consultationsOverTime: TimeSeriesPoint[]
+    examsOverTime: TimeSeriesPoint[]
+  }
+}
+
 export default function StatsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState('30days')
-  const [statsData, setStatsData] = useState({
+  const [timeRange, setTimeRange] = useState<'7days' | '30days' | '90days' | '1year'>('30days')
+  const [statsData, setStatsData] = useState<StatsData>({
     patientStats: {
       total: 0,
       newThisPeriod: 0,
@@ -172,7 +216,7 @@ export default function StatsPage() {
         <div className="flex items-center space-x-3">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
+            onChange={(e) => setTimeRange(e.target.value as '7days' | '30days' | '90days' | '1year')}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {timeRangeOptions.map(option => (

@@ -3,7 +3,7 @@
  * Processa documentos externos e distribui automaticamente no sistema
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export interface MedicalDocument {
   id: string;
@@ -62,7 +62,6 @@ export interface DocumentAnalysis {
 }
 
 export class MedicalDocumentAI {
-  private prisma: PrismaClient;
   
   // 📚 Dicionários médicos para classificação
   private medicalTerms = {
@@ -97,9 +96,7 @@ export class MedicalDocumentAI {
     height: /(?:altura|height)[\s:]*(\d{1,2}[,\.]\d{2})\s*m/gi
   };
 
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor() {}
 
   /**
    * 🎯 Análise principal do documento usando IA

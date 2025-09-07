@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 
 interface SecurityEvent {
   userId: string;
@@ -29,15 +28,13 @@ interface UserBehaviorProfile {
 }
 
 export class AIAnomalyDetector {
-  private prisma: PrismaClient;
   private userProfiles: Map<string, UserBehaviorProfile> = new Map();
   private suspiciousIPs: Set<string> = new Set();
   private recentEvents: SecurityEvent[] = [];
   private maxEventsHistory = 10000;
 
   constructor() {
-    this.prisma = new PrismaClient();
-    this.loadUserProfiles();
+  this.loadUserProfiles();
   }
 
   /**

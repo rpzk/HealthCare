@@ -324,7 +324,7 @@ export default function VitalSignsPage() {
                     </div>
                     <p className="text-xl font-bold">{sign.heart_rate}</p>
                     <p className="text-xs text-gray-600">bpm</p>
-                    <Badge size="sm" className={hrStatus.color}>
+                    <Badge className={hrStatus.color}>
                       {hrStatus.label}
                     </Badge>
                   </div>
@@ -336,7 +336,7 @@ export default function VitalSignsPage() {
                       <span className="text-sm font-medium">Temperatura</span>
                     </div>
                     <p className="text-xl font-bold">{sign.temperature}°C</p>
-                    <Badge size="sm" className={tempStatus.color}>
+                    <Badge className={tempStatus.color}>
                       {tempStatus.label}
                     </Badge>
                   </div>
@@ -363,7 +363,7 @@ export default function VitalSignsPage() {
                         <>
                           <p className="text-sm text-gray-600">{sign.height} cm</p>
                           {bmi && (
-                            <Badge size="sm" className={getBMIStatus(parseFloat(bmi)).color}>
+                            <Badge className={getBMIStatus(parseFloat(bmi)).color}>
                               IMC: {bmi}
                             </Badge>
                           )}

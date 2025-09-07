@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { prisma } from './prisma'
+import type { Consultation, VitalSigns as VitalSignsModel, Prescription as PrescriptionModel, ExamRequest as ExamRequestModel, MedicalRecord as MedicalRecordModel } from '@prisma/client'
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
@@ -50,7 +51,8 @@ export class MedicalAgentService {
             orderBy: { createdAt: 'desc' },
             take: 15,
           },
-          examRequests: {
+          // Relação no modelo Patient chama-se "ExamRequest"
+          ExamRequest: {
             orderBy: { requestDate: 'desc' },
             take: 10,
             where: {
@@ -80,19 +82,18 @@ export class MedicalAgentService {
         throw new Error('Paciente não encontrado')
       }
 
-      const analysisPrompt = `
+  const analysisPrompt = `
 Como um agente de IA médica especializado, analise completamente o histórico deste paciente:
 
 **DADOS DEMOGRÁFICOS:**
 - Nome: ${patientData.name}
 - Idade: ${this.calculateAge(patientData.birthDate)} anos
 - Sexo: ${patientData.gender}
-- Tipo Sanguíneo: ${patientData.bloodType || 'Não informado'}
-- Alergias: ${patientData.allergies.join(', ') || 'Nenhuma conhecida'}
-- Doenças Crônicas: ${patientData.chronicDiseases.join(', ') || 'Nenhuma conhecida'}
+- Alergias (texto livre): ${patientData.allergies || 'Não informado'}
+- Histórico Médico: ${patientData.medicalHistory || 'Não informado'}
 
 **HISTÓRICO DE CONSULTAS:**
-${patientData.consultations.map((consultation, index) => `
+${patientData.consultations.map((consultation: Consultation, index: number) => `
 Consulta ${index + 1} (${new Date(consultation.scheduledDate).toLocaleDateString()}):
 - Tipo: ${consultation.type}
 - Queixa Principal: ${consultation.chiefComplaint || 'Não registrada'}
@@ -103,7 +104,7 @@ Consulta ${index + 1} (${new Date(consultation.scheduledDate).toLocaleDateString
 `).join('\n')}
 
 **SINAIS VITAIS (Últimas medições):**
-${patientData.vitalSigns.slice(0, 5).map((vital, index) => `
+${patientData.vitalSigns.slice(0, 5).map((vital: VitalSignsModel, index: number) => `
 ${index + 1}. ${new Date(vital.recordedAt).toLocaleDateString()}:
 - PA: ${vital.systolicBP || '?'}/${vital.diastolicBP || '?'} mmHg
 - FC: ${vital.heartRate || '?'} bpm
@@ -113,20 +114,20 @@ ${index + 1}. ${new Date(vital.recordedAt).toLocaleDateString()}:
 `).join('\n')}
 
 **PRESCRIÇÕES RECENTES:**
-${patientData.prescriptions.slice(0, 8).map((prescription, index) => `
+${patientData.prescriptions.slice(0, 8).map((prescription: PrescriptionModel, index: number) => `
 ${index + 1}. ${prescription.medication} ${prescription.dosage} - ${prescription.frequency}
    Duração: ${prescription.duration} | Status: ${prescription.status}
 `).join('\n')}
 
 **EXAMES SOLICITADOS/REALIZADOS:**
-${patientData.examRequests.map((exam, index) => `
+${patientData.ExamRequest.map((exam: ExamRequestModel, index: number) => `
 ${index + 1}. ${exam.examType} (${new Date(exam.requestDate).toLocaleDateString()})
    Status: ${exam.status} | Urgência: ${exam.urgency}
    Resultados: ${exam.results || 'Pendente'}
 `).join('\n')}
 
 **PRONTUÁRIOS MÉDICOS:**
-${patientData.medicalRecords.slice(0, 5).map((record, index) => `
+${patientData.medicalRecords.slice(0, 5).map((record: MedicalRecordModel, index: number) => `
 ${index + 1}. ${record.title} (${new Date(record.createdAt).toLocaleDateString()})
    Diagnóstico: ${record.diagnosis || 'Não especificado'}
    Tratamento: ${record.treatment || 'Não especificado'}
@@ -226,7 +227,7 @@ Considere SEMPRE o histórico completo para contextualizar as decisões.
       const trendsPrompt = `
 Analise as tendências dos sinais vitais deste paciente ao longo do tempo:
 
-${patientData.vitalSigns.map((vital, index) => `
+${patientData.vitalSigns.map((vital: VitalSignsModel, index: number) => `
 ${new Date(vital.recordedAt).toLocaleDateString()} - Medição ${index + 1}:
 PA: ${vital.systolicBP || 'N/A'}/${vital.diastolicBP || 'N/A'} mmHg
 FC: ${vital.heartRate || 'N/A'} bpm  
@@ -271,9 +272,9 @@ Identifique:
     // Parsing básico da resposta da IA
     return {
       clinicalSummary: analysisText.substring(0, 500) + '...',
-      chronicConditions: patientData.chronicDiseases || [],
+  chronicConditions: patientData.medicalHistory ? [patientData.medicalHistory] : [],
       medicationHistory: patientData.prescriptions?.map((p: any) => p.medication) || [],
-      allergyWarnings: patientData.allergies || [],
+  allergyWarnings: patientData.allergies ? [patientData.allergies] : [],
       vitalTrends: 'Tendências analisadas pela IA',
       diagnosticPattern: 'Padrão identificado pela IA',
       treatmentResponse: 'Resposta aos tratamentos analisada',

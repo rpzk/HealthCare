@@ -145,7 +145,7 @@ export default function ExamResultsPage() {
   }
 
   // Obter tipos únicos de exames
-  const examTypes = [...new Set(examRequests.map(exam => exam.exam_type))].sort()
+  const examTypes = Array.from(new Set(examRequests.map(exam => exam.exam_type))).sort()
 
   if (loading) {
     return (

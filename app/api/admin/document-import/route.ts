@@ -6,9 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { medicalDocumentAI, type MedicalDocument, type DocumentAnalysis } from '@/lib/medical-document-ai'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // Evita execução em build/SSG: rota puramente dinâmica
 export const dynamic = 'force-dynamic'
@@ -68,8 +66,8 @@ const getHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
 // POST - Upload e análise de documento
 const postHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
+  const formData = await request.formData()
+  const file = formData.get('file') as File
     const forceReprocess = formData.get('forceReprocess') === 'true'
 
     if (!file) {
@@ -79,7 +77,7 @@ const postHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
       )
     }
 
-    // Validar tipo de arquivo
+  // Validar tipo de arquivo
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
       'application/msword', // .doc  
@@ -95,8 +93,21 @@ const postHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
       )
     }
 
+    // Limitar tamanho (ex.: 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024
+    const buf = Buffer.from(await file.arrayBuffer())
+    if (buf.length > MAX_SIZE) {
+      return NextResponse.json(
+        { error: 'Arquivo muito grande (máx 5MB)' },
+        { status: 413 }
+      )
+    }
+
+    // Sanitizar nome do arquivo
+    const safeName = file.name.replace(/[^\w\-.]+/g, '_').slice(0, 120)
+
     // Ler conteúdo do arquivo
-    const content = await extractTextFromFile(file)
+    const content = await extractTextFromSanitizedBuffer(buf, file.type)
     
     if (!content || content.length < 50) {
       return NextResponse.json(
@@ -106,9 +117,9 @@ const postHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
     }
 
     // Criar registro do documento
-    const document = await prisma.medicalDocument.create({
+  const document = await prisma.medicalDocument.create({
       data: {
-        fileName: file.name,
+    fileName: safeName,
         content,
         fileType: getFileExtension(file.name) as any,
   status: 'ANALYZING' as any,
@@ -194,11 +205,9 @@ const putHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
 /**
  * 📄 Extrai texto de diferentes tipos de arquivo
  */
-async function extractTextFromFile(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer()
-  
+async function extractTextFromSanitizedBuffer(buffer: Buffer, mimeType: string): Promise<string> {
   try {
-    switch (file.type) {
+    switch (mimeType) {
       case 'text/plain':
         return new TextDecoder().decode(buffer)
       
@@ -234,7 +243,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     }
   } catch (error) {
     console.error('Erro ao extrair texto do arquivo:', error)
-    throw new Error(`Não foi possível extrair texto do arquivo ${file.name}`)
+    throw new Error('Não foi possível extrair texto do arquivo enviado')
   }
 }
 
