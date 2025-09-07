@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { incCounter, observeHistogram } from './metrics'
+import { incCounter, observeHistogram, setGauge } from './metrics'
 
 if (!process.env.GOOGLE_AI_API_KEY) {
   console.warn('Google AI API key ausente. Recursos de IA ficarão limitados.')
@@ -78,6 +78,7 @@ export class AdvancedMedicalAI {
       this.OPEN = true
       this.nextRetry = Date.now() + this.COOLDOWN_MS
     }
+  setGauge('ai_circuit_open', this.OPEN ? 1 : 0, { model: 'gemini-1.5-flash' })
   }
 
   // Análise avançada de sintomas com IA

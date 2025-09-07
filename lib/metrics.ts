@@ -6,9 +6,11 @@ type HistogramKey = string
 
 interface Counter { value: number }
 interface Histogram { buckets: number[]; counts: number[]; sum: number; count: number }
+interface Gauge { value: number }
 
 const counters: Record<CounterKey, Counter> = {}
 const histograms: Record<HistogramKey, Histogram> = {}
+const gauges: Record<string, Gauge> = {}
 
 function sanitize(v: string) {
   return v.replace(/[^a-zA-Z0-9_:/-]/g, '_')
@@ -18,6 +20,12 @@ export function incCounter(name: string, labels: Record<string,string> = {}, val
   const key = buildKey(name, labels)
   if (!counters[key]) counters[key] = { value: 0 }
   counters[key].value += value
+}
+
+export function setGauge(name: string, value: number, labels: Record<string,string> = {}) {
+  const key = buildKey(name, labels)
+  if (!gauges[key]) gauges[key] = { value }
+  gauges[key].value = value
 }
 
 export function observeHistogram(name: string, ms: number, labels: Record<string,string> = {}, buckets: number[] = [5,10,25,50,100,250,500,1000,2000,5000]) {
@@ -77,6 +85,14 @@ export async function renderPrometheus(prisma?: any) {
       out.push('# TYPE audit_logs_total gauge')
       out.push(`audit_logs_total ${total}`)
     } catch {}
+  }
+
+  if (Object.keys(gauges).length) {
+    out.push('\n# HELP runtime_gauge Valores de gauges dinâmicos')
+    out.push('# TYPE runtime_gauge gauge')
+    for (const k of Object.keys(gauges)) {
+      out.push(`${k} ${gauges[k].value}`)
+    }
   }
 
   return out.join('\n') + '\n'

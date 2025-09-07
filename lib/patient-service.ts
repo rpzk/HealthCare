@@ -44,6 +44,11 @@ export class PatientService {
           { email: { contains: search, mode: 'insensitive' } },
           { cpf: { contains: search.replace(/[^\d]/g, '') } }
         ]
+        // Se busca parece CPF completo (11 dígitos), usar hash
+        const numeric = search.replace(/\D/g,'')
+        if (numeric.length === 11) {
+          where.OR.push({ cpfHash: hashCPF(numeric) })
+        }
       }
       
       if (riskLevel) where.riskLevel = riskLevel
@@ -229,7 +234,7 @@ export class PatientService {
           email: data.email,
           phone: data.phone,
           cpf: data.cpf ? encrypt(data.cpf) : undefined,
-          cpfHash: hashCPF(data.cpf),
+          cpfHash: hashCPF(data.cpf) as any,
           birthDate: data.birthDate,
           gender: data.gender,
           emergencyContact: data.emergencyContact,
@@ -271,7 +276,7 @@ export class PatientService {
       const updateData: any = { ...data }
       if (data.cpf) {
         updateData.cpf = encrypt(data.cpf)
-        updateData.cpfHash = hashCPF(data.cpf)
+  updateData.cpfHash = hashCPF(data.cpf) as any
       }
       if (data.medicalHistory) updateData.medicalHistory = encrypt(data.medicalHistory)
       if (data.allergies) updateData.allergies = encrypt(data.allergies)
