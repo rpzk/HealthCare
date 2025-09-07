@@ -234,7 +234,7 @@ export class PatientService {
           email: data.email,
           phone: data.phone,
           cpf: data.cpf ? encrypt(data.cpf) : undefined,
-          cpfHash: hashCPF(data.cpf) as any,
+          cpfHash: hashCPF(data.cpf),
           birthDate: data.birthDate,
           gender: data.gender,
           emergencyContact: data.emergencyContact,
@@ -276,7 +276,7 @@ export class PatientService {
       const updateData: any = { ...data }
       if (data.cpf) {
         updateData.cpf = encrypt(data.cpf)
-  updateData.cpfHash = hashCPF(data.cpf) as any
+  updateData.cpfHash = hashCPF(data.cpf)
       }
       if (data.medicalHistory) updateData.medicalHistory = encrypt(data.medicalHistory)
       if (data.allergies) updateData.allergies = encrypt(data.allergies)

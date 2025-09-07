@@ -23,6 +23,7 @@
   "test:health": "node test-health.js",
   "test:patient-service": "node --experimental-strip-types test-patient-service.ts || tsx test-patient-service.ts",
   "audit:purge": "tsx scripts/purge-old-audit-logs.ts",
+  "test:lgpd": "node test-lgpd.js",
   "test:patients-auth": "node test-patients-auth.js",
   "test:system": "node test-system.js",
   "test:all": "npm run test:system && node test-system-complete.js && node test-consultations.js && node test-document-import.js",
