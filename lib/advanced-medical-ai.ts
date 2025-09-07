@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { incCounter, observeHistogram, setGauge } from './metrics'
+import { startSpan } from './tracing'
 import { checkAndConsumeAIQuota } from './ai-quota'
 
 if (!process.env.GOOGLE_AI_API_KEY) {
@@ -130,7 +131,7 @@ Responda em formato JSON estruturado:
 
   const started = Date.now(); this.ensureCircuit()
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await startSpan('ai.symptom_analysis.request', () => this.model.generateContent(prompt))
       const response = result.response.text()
       
       // Extrair JSON da resposta
@@ -191,7 +192,7 @@ Responda em formato JSON:
 
   const started = Date.now(); this.ensureCircuit()
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await startSpan('ai.drug_interaction.request', () => this.model.generateContent(prompt))
       const response = result.response.text()
       
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -248,7 +249,7 @@ Responda em formato JSON:
 
   const started = Date.now(); this.ensureCircuit()
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await startSpan('ai.medical_summary.request', () => this.model.generateContent(prompt))
       const response = result.response.text()
       
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -295,7 +296,7 @@ Responda em formato JSON estruturado com sua análise.
 
   const started = Date.now(); this.ensureCircuit()
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await startSpan('ai.vital_signs.request', () => this.model.generateContent(prompt))
       const response = result.response.text()
       
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -347,7 +348,7 @@ Responda em formato JSON estruturado com o plano completo.
 
   const started = Date.now(); this.ensureCircuit()
     try {
-      const result = await this.model.generateContent(prompt)
+      const result = await startSpan('ai.treatment_plan.request', () => this.model.generateContent(prompt))
       const response = result.response.text()
       
       const jsonMatch = response.match(/\{[\s\S]*\}/)

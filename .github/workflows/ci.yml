@@ -62,12 +62,16 @@ jobs:
           NEXTAUTH_URL: http://localhost:3000
           OTEL_TRACING_DISABLED: '1'
         run: |
-          nohup npm start >/dev/null 2>&1 &
+          nohup npm start > app.log 2>&1 &
           echo $! > app.pid
           echo "Waiting app..."
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then echo "App up"; break; fi; sleep 2; done
-          curl -fsS http://localhost:3000/api/health || (echo 'App did not start' && exit 1)
+          if ! curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
+            echo 'App did not start. Showing last 200 lines of app.log:'
+            tail -n 200 app.log || true
+            exit 1
+          fi
       - name: RBAC & Auth HTTP tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
@@ -77,6 +81,9 @@ jobs:
           node test-patients-auth.js
           node test-rbac-patients.js
           node test-export-zip-automated.js
+      - name: Metrics snapshot
+        run: |
+          curl -fsS http://localhost:3000/api/metrics | head -n 50 || echo 'metrics unavailable'
       - name: Stop app
         if: always()
         run: |
