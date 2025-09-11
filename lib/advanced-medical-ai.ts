@@ -1,12 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import ollamaClient from './ollama-client'
 import { incCounter, observeHistogram, setGauge } from './metrics'
 import { startSpan } from './tracing'
 import { checkAndConsumeAIQuota } from './ai-quota'
 
-if (!process.env.GOOGLE_AI_API_KEY) {
-  console.warn('Google AI API key ausente. Recursos de IA ficarão limitados.')
+if (!process.env.OLLAMA_URL) {
+  console.warn('URL do Ollama ausente. Verifique se o serviço Ollama está em execução.')
 }
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
 
 // Tipos específicos para análise médica
 export interface SymptomAnalysisRequest {
@@ -55,7 +54,7 @@ export interface MedicalSummary {
 }
 
 export class AdvancedMedicalAI {
-  private model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+  private model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || "llama3" })
   private failures = 0
   private OPEN = false
   private nextRetry = 0

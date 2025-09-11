@@ -1,9 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import ollamaClient from './ollama-client'
 import { prisma } from './prisma'
 import type { Consultation, VitalSigns as VitalSignsModel, Prescription as PrescriptionModel, ExamRequest as ExamRequestModel, MedicalRecord as MedicalRecordModel } from '@prisma/client'
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'llama3' })
 
 export interface PatientHistoryAnalysis {
   clinicalSummary: string

@@ -18,6 +18,21 @@ services:
     container_name: healthcare-redis
     networks:
       - healthcare-network
+      
+  ollama:
+    image: ollama/ollama:latest
+    container_name: healthcare-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - healthcare-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   app:
     build:
@@ -28,17 +43,20 @@ services:
       DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD}@postgres:5432/healthcare_db
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
-      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
       REDIS_HOST: redis
       NODE_ENV: production
     depends_on:
       - postgres
       - redis
+      - ollama
     networks:
       - healthcare-network
 
 volumes:
   postgres_data:
+  ollama_data:
 
 networks:
   healthcare-network:
