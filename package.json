@@ -8,6 +8,8 @@
     "worker:ai": "tsx scripts/worker-ai-queue.ts",
     "build": "next build",
     "start": "next start",
+    "start:ollama": "./scripts/start-with-ollama.sh",
+    "start:ollama:seed": "./scripts/start-with-ollama.sh --seed",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

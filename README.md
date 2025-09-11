@@ -10,6 +10,7 @@ Um sistema completo de prontuário eletrônico com inteligência artificial emba
 - **Verificação de Interações Medicamentosas**: Detecta automaticamente interações entre medicamentos
 - **Resumos Médicos Automatizados**: Gera resumos inteligentes do histórico do paciente
 - **Sugestões de Exames**: Recomendações baseadas em sintomas e histórico
+- **100% Local com Ollama**: Toda a IA roda localmente sem custos ou envio de dados para a nuvem
 
 ### 👩‍⚕️ Funcionalidades Médicas
 - **Gestão Completa de Pacientes**: Cadastro, histórico e acompanhamento
@@ -47,8 +48,9 @@ Um sistema completo de prontuário eletrônico com inteligência artificial emba
 - **Redis** - Cache e sessões (opcional)
 
 ### Inteligência Artificial
-- **Google AI Studio (Gemini)** - Modelos de linguagem avançados do Google
+- **Ollama** - Modelos de linguagem avançados executados localmente
 - **Análise de Texto Médico** - Processamento de linguagem natural especializada
+- **Privacidade Total** - Dados sensíveis nunca saem do seu ambiente
 
 ### DevOps e Deploy
 - **Docker** - Containerização da aplicação
@@ -61,8 +63,11 @@ Um sistema completo de prontuário eletrônico com inteligência artificial emba
 ```bash
 # 1) Copiar .env de exemplo (o script faz isso se faltar)
 # 2) Subir serviços, aplicar schema e seed automaticamente
-chmod +x scripts/first-start.sh
-./scripts/first-start.sh
+chmod +x scripts/start-with-ollama.sh
+./scripts/start-with-ollama.sh
+
+# Para iniciar com dados de exemplo
+./scripts/start-with-ollama.sh --seed
 ```
 
 Após concluir, acesse: `http://localhost:3000` (ou o IP da sua máquina). Login inicial: `admin@healthcare.com` / `admin123` (altere após o primeiro acesso).
@@ -80,10 +85,10 @@ cd healthcare
 
 ### 2. Configure as Variáveis de Ambiente
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Edite o arquivo `.env.local` com suas configurações:
+Edite o arquivo `.env` com suas configurações:
 ```env
 # Database
 DATABASE_URL="postgresql://healthcare:healthcare123@localhost:5432/healthcare_db"
@@ -92,11 +97,12 @@ DATABASE_URL="postgresql://healthcare:healthcare123@localhost:5432/healthcare_db
 NEXTAUTH_SECRET="seu-secret-aqui"
 NEXTAUTH_URL="http://localhost:3000"
 
-# Google AI API
-GOOGLE_AI_API_KEY="sua-chave-google-ai-studio-aqui"
+# Ollama (IA Local)
+OLLAMA_URL="http://ollama:11434"
+OLLAMA_MODEL="llama3"
 ```
 
-**📋 Para obter sua chave do Google AI Studio, siga o guia completo:** [GOOGLE_AI_SETUP.md](docs/GOOGLE_AI_SETUP.md)
+**📋 Para configurar e utilizar outros modelos do Ollama:** [Documentação do Ollama](https://ollama.com/library)
 
 ### 3. Executar com Docker (Recomendado)
 ```bash
