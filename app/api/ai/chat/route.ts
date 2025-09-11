@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateRequestBody } from '@/lib/with-auth'
 import { withMedicalAIAuth } from '@/lib/advanced-auth-v2'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import ollamaClient from '@/lib/ollama-client'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
 
 // Schema de validação para chat IA
 const aiChatSchema = z.object({
@@ -33,27 +31,8 @@ export const POST = withMedicalAIAuth(async (request, { user }) => {
   }
 
   const { message, type, patientId } = validation.data!
-
-  // Verificar se a API key está presente
-  const apiKey = process.env.GOOGLE_AI_API_KEY
-
-  if (!apiKey) {
-    auditLogger.logError(
-      user.id,
-      user.email,
-      user.role,
-      AuditAction.AI_INTERACTION,
-      'chat',
-      'Google AI API key não configurada'
-    )
-
-    return NextResponse.json(
-      { error: 'Chave da API do Google AI não configurada' },
-      { status: 500 }
-    )
-  }
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  // Seleciona o modelo configurado no ambiente (padrão definido no cliente)
+  const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL })
 
   // Contexto médico personalizado baseado no tipo
   let systemPrompt = ''

@@ -79,7 +79,7 @@ export class AdvancedMedicalAI {
       this.OPEN = true
       this.nextRetry = Date.now() + this.COOLDOWN_MS
     }
-  setGauge('ai_circuit_open', this.OPEN ? 1 : 0, { model: 'gemini-1.5-flash' })
+  setGauge('ai_circuit_open', this.OPEN ? 1 : 0, { model: process.env.OLLAMA_MODEL || 'llama3' })
   }
 
   // Análise avançada de sintomas com IA
