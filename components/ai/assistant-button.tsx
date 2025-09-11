@@ -18,7 +18,7 @@ export function AIAssistantButton() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Olá! Sou seu assistente médico alimentado pelo Google AI Studio (Gemini). Posso ajudar com diagnósticos, análise de sintomas, verificação de interações medicamentosas, sugestões de tratamento e muito mais. Como posso ajudá-lo hoje? 🩺',
+  content: 'Olá! Sou seu assistente médico com IA local (Ollama). Posso ajudar com diagnósticos, análise de sintomas, verificação de interações medicamentosas, sugestões de tratamento e muito mais. Como posso ajudá-lo hoje? 🩺',
       role: 'assistant',
       timestamp: new Date(),
     }
@@ -76,7 +76,7 @@ export function AIAssistantButton() {
         id: (Date.now() + 1).toString(),
         content: `Analisando sua pergunta: "${currentInput}" 
 
-Como assistente médico alimentado pelo Google AI Studio (Gemini), posso ajudar com:
+Como assistente médico com IA local (Ollama), posso ajudar com:
 
 🔍 **Análise de Sintomas**: Baseada em literatura médica atualizada
 🧬 **Sugestões Diagnósticas**: Ordenadas por probabilidade clínica  
@@ -179,7 +179,7 @@ Como assistente médico alimentado pelo Google AI Studio (Gemini), posso ajudar 
               </div>
               
               <div className="mt-2 text-xs text-gray-500">
-                🤖 Alimentado pelo Google AI Studio (Gemini) • Pergunte sobre sintomas, diagnósticos, tratamentos ou interações medicamentosas
+                🤖 IA local (Ollama) • Pergunte sobre sintomas, diagnósticos, tratamentos ou interações medicamentosas
               </div>
             </CardContent>
           </Card>

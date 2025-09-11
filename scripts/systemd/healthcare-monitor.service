@@ -1,0 +1,13 @@
+[Unit]
+Description=HealthCare System Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/healthcare-monitor.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
