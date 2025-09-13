@@ -32,13 +32,16 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	ca-certificates openssl && rm -rf /var/lib/apt/lists/*
+	ca-certificates openssl bash curl && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+
+RUN chmod +x ./scripts/docker-entrypoint.sh
 
 USER nextjs
 
@@ -47,4 +50,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
+ENTRYPOINT ["/bin/bash", "./scripts/docker-entrypoint.sh"]
