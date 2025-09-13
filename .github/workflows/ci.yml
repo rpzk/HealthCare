@@ -27,6 +27,7 @@ jobs:
       NEXTAUTH_URL: http://localhost:3000
       OTEL_TRACING_DISABLED: '1'
       DISABLE_REDIS: '1'
+      CI: 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -37,16 +38,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Generate Prisma client
-        run: npm run db:generate
+        run: npm run db:generate || npx prisma generate
       - name: Apply migrations
         run: npx prisma migrate deploy
       - name: Seed auth users
         run: node scripts/ci-seed-auth.js
       - name: Type check
         run: npm run type-check
-      - name: Lint (non blocking)
-        run: npm run lint || echo 'Lint warnings'
-      - name: Build
+      - name: Lint (strict in CI)
+        run: npm run lint
+      - name: Build (strict in CI)
         run: npm run build
       - name: Basic DB test
         run: node scripts/ci-patient-basic.js
