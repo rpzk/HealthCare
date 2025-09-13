@@ -1,5 +1,15 @@
 import { Gender, RiskLevel } from '@prisma/client'
-import { prisma } from '@/lib/prisma'
+// Lazy Prisma to avoid bundling/runtime issues
+let __prisma: any | undefined
+async function getPrisma() {
+  if (!__prisma) {
+    console.log('[patient-service] initializing PrismaClient')
+    const { PrismaClient } = await import('@prisma/client')
+    __prisma = new PrismaClient()
+  }
+  // console.log('[patient-service] prisma ready')
+  return __prisma as any
+}
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
 
 export interface PatientCreateData {
@@ -33,6 +43,8 @@ export class PatientService {
   // Buscar todos os pacientes com filtros e paginação
   static async getPatients(filters: PatientFilters = {}, page = 1, limit = 10) {
     try {
+      const prisma = await getPrisma()
+      // console.log('[patient-service] getPatients called')
       const { search, riskLevel, gender, ageRange } = filters
       
       // Construir filtros do Prisma
@@ -106,7 +118,7 @@ export class PatientService {
       ])
 
       return {
-        patients: patients.map(patient => ({
+        patients: patients.map((patient: any) => ({
           id: patient.id,
           name: patient.name,
           email: patient.email,
@@ -147,6 +159,8 @@ export class PatientService {
   // Buscar um paciente específico por ID
   static async getPatientById(id: string) {
     try {
+      const prisma = await getPrisma()
+      // console.log('[patient-service] getPatientById called')
       const patient = await prisma.patient.findUnique({
         where: { id },
         include: {
@@ -228,6 +242,8 @@ export class PatientService {
   // Criar novo paciente
   static async createPatient(data: PatientCreateData) {
     try {
+      const prisma = await getPrisma()
+      // console.log('[patient-service] createPatient called')
       const patient = await prisma.patient.create({
         data: {
           name: data.name,
@@ -272,6 +288,8 @@ export class PatientService {
   // Atualizar paciente
   static async updatePatient(id: string, data: PatientUpdateData) {
     try {
+      const prisma = await getPrisma()
+      // console.log('[patient-service] updatePatient called')
       // Preparar campos criptografados
       const updateData: any = { ...data }
       if (data.cpf) {
@@ -311,6 +329,8 @@ export class PatientService {
   // Excluir paciente
   static async deletePatient(id: string) {
     try {
+      const prisma = await getPrisma()
+      // console.log('[patient-service] deletePatient called')
       await prisma.patient.delete({
         where: { id }
       })
@@ -325,6 +345,8 @@ export class PatientService {
   // Buscar estatísticas gerais
   static async getPatientStats() {
     try {
+      const prisma = await getPrisma()
+      // console.log('[patient-service] getPatientStats called')
       const [totalPatients, genderStats, riskLevelStats] = await Promise.all([
         prisma.patient.count(),
         prisma.patient.groupBy({
@@ -337,12 +359,12 @@ export class PatientService {
         })
       ])
 
-      const genderDistribution = genderStats.reduce((acc, item) => {
+      const genderDistribution = (genderStats as any[]).reduce((acc: Record<string, number>, item: any) => {
         acc[item.gender] = item._count
         return acc
       }, {} as Record<string, number>)
 
-      const riskDistribution = riskLevelStats.reduce((acc, item) => {
+      const riskDistribution = (riskLevelStats as any[]).reduce((acc: Record<string, number>, item: any) => {
         acc[item.riskLevel] = item._count
         return acc
       }, {} as Record<string, number>)
