@@ -4,15 +4,29 @@
 
 const BASE = 'http://localhost:3000'
 
+function extractSetCookies(res) {
+  // Node.js fetch (undici) supports headers.getSetCookie() in newer versions.
+  // Fallback to splitting the combined header if not available.
+  if (typeof res.headers.getSetCookie === 'function') {
+    try {
+      const arr = res.headers.getSetCookie()
+      if (Array.isArray(arr) && arr.length) return arr
+    } catch (_) {}
+  }
+  const raw = res.headers.get('set-cookie') || ''
+  if (!raw) return []
+  return raw.split(/,(?=[^ ;]+=)/).map(c => c.trim())
+}
+
 async function login(email, password) {
   const cookieJar = []
   // Obter csrfToken via endpoint oficial
   const csrfRes = await fetch(BASE + '/api/auth/csrf')
   if (!csrfRes.ok) throw new Error('Falha ao obter csrf')
   const csrfJson = await csrfRes.json()
-  const setCookieA = csrfRes.headers.get('set-cookie') || ''
-  if (setCookieA) {
-    setCookieA.split(/,(?=[^ ;]+=)/).forEach(c => {
+  const setCookieAList = extractSetCookies(csrfRes)
+  if (setCookieAList.length) {
+    setCookieAList.forEach(c => {
       const base = c.split(';')[0].trim()
       if (!cookieJar.some(existing => existing.startsWith(base.split('=')[0]+'='))) {
         cookieJar.push(base)
@@ -37,9 +51,9 @@ async function login(email, password) {
     body: form.toString(),
     redirect: 'manual'
   })
-  const setCookieB = loginRes.headers.get('set-cookie') || ''
-  if (setCookieB) {
-    setCookieB.split(/,(?=[^ ;]+=)/).forEach(c => {
+  const setCookieBList = extractSetCookies(loginRes)
+  if (setCookieBList.length) {
+    setCookieBList.forEach(c => {
       const base = c.split(';')[0].trim()
       const name = base.split('=')[0]
       const idx = cookieJar.findIndex(existing => existing.startsWith(name + '='))
