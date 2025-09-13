@@ -1,5 +1,19 @@
-import { prisma, ensurePrismaConnected } from './prisma'
 import { incCounter, setGauge } from './metrics'
+
+// Evita executar warmup em contextos indevidos (build/edge/test)
+const isNode = typeof process !== 'undefined' && process.versions?.node
+const isTest = process.env.NODE_ENV === 'test'
+const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.env.BUILD_TIME === '1'
+const isEdge = (globalThis as any).EdgeRuntime === 'edge'
+
+let prismaRef: any | undefined
+async function getPrisma() {
+  if (!prismaRef) {
+    const { PrismaClient } = await import('@prisma/client')
+    prismaRef = new PrismaClient()
+  }
+  return prismaRef as { $connect: () => Promise<void>; $queryRaw: any }
+}
 
 let started = false
 export async function warmupPrisma(retries: number = 5) {
@@ -8,8 +22,9 @@ export async function warmupPrisma(retries: number = 5) {
   const start = Date.now()
   for (let i=0;i<retries;i++) {
     try {
-  await ensurePrismaConnected()
-  await prisma.$queryRaw`SELECT 1`
+      const prisma = await getPrisma()
+      await prisma.$connect()
+      await prisma.$queryRaw`SELECT 1`
       incCounter('prisma_warmup_success_total')
       setGauge('prisma_warmup_last_ms', Date.now()-start)
       return
@@ -25,5 +40,7 @@ export async function warmupPrisma(retries: number = 5) {
   }
 }
 
-// Dispara em background; não bloqueia render inicial.
-warmupPrisma().catch(()=>{})
+// Dispara em background; não bloqueia render inicial – somente em Node runtime real
+if (isNode && !isTest && !isBuild && !isEdge) {
+  warmupPrisma().catch(()=>{})
+}

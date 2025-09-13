@@ -1,8 +1,22 @@
 import { NextResponse } from 'next/server'
-import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 import { incCounter } from '@/lib/metrics'
 import { redisRateLimiter } from '@/lib/redis-integration'
-import { version } from '../../../package.json'
+import pkg from '../../../package.json'
+
+// Evita problemas de empacotamento/árvore ao importar prisma direto neste módulo de rota
+// Criamos um singleton local usando PrismaClient diretamente
+let prismaSingleton: any | undefined
+async function getPrisma() {
+  if (!prismaSingleton) {
+    const { PrismaClient } = await import('@prisma/client')
+    prismaSingleton = new PrismaClient()
+  }
+  return prismaSingleton as { $connect: () => Promise<void>; $queryRaw: any }
+}
+
+// Garantir runtime Node.js para acesso ao Prisma/Redis, e execução dinâmica
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // Rota pública de healthcheck (não requer auth)
 export async function GET() {
@@ -16,19 +30,21 @@ export async function GET() {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL not set')
     }
-    // garante conexão primeiro (retry simples se falhar por condição transitória)
-    try {
-      await ensurePrismaConnected()
-      await prisma.$queryRaw`SELECT 1`
-    } catch (inner:any) {
-      if (inner?.message?.includes('not initialised')) {
-        console.warn('[health] retry ensurePrismaConnected após not initialised')
-        await ensurePrismaConnected()
+    // Garante conexão primeiro (retry simples se falhar por condição transitória)
+    let ok = false
+    for (let i=0;i<3;i++) {
+      try {
+        const prisma = await getPrisma()
+        await prisma.$connect()
         await prisma.$queryRaw`SELECT 1`
-      } else {
-        throw inner
+        ok = true
+        break
+      } catch (inner:any) {
+        if (i === 2) throw inner
+        await new Promise(r=>setTimeout(r, 200 * (i+1)))
       }
     }
+    if (!ok) throw new Error('db not ready')
     diagnostics.checks.db = { status: 'up' }
   } catch (e: any) {
     console.error('[health][db] erro:', e?.message, e?.stack)
@@ -50,7 +66,8 @@ export async function GET() {
   diagnostics.uptimeSeconds = Math.floor(process.uptime())
   diagnostics.timestamp = new Date().toISOString()
   diagnostics.latencyMs = Date.now() - started
-  diagnostics.version = process.env.APP_VERSION || version || 'dev'
+  const appVersion = (pkg as any)?.version || 'dev'
+  diagnostics.version = process.env.APP_VERSION || appVersion
   return NextResponse.json(diagnostics, { status: diagnostics.ok ? 200 : 503 })
 }
 

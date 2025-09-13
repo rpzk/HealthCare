@@ -1,6 +1,14 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { prisma } from "@/lib/prisma"
+// Lazy Prisma para evitar problemas de empacotamento/edge
+let prismaRef: any | undefined
+async function getPrisma() {
+  if (!prismaRef) {
+    const { PrismaClient } = await import('@prisma/client')
+    prismaRef = new PrismaClient()
+  }
+  return prismaRef as { user: { findUnique: Function } }
+}
 import bcrypt from "bcryptjs"
 
 // Mitigação simples de brute-force (dev). Em produção, usar Redis/ip-based limiter
@@ -36,6 +44,7 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+          const prisma = await getPrisma()
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email

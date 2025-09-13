@@ -1,6 +1,7 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from 'next/server'
-import { createRequestId, logger } from '@/lib/logger'
+// Use edge-safe logger to avoid Node.js 'crypto' in Edge runtime
+import { createRequestId, logger } from '@/lib/edge-logger'
 
 export default withAuth(
   function middleware(req) {
