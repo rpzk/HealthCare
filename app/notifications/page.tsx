@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,7 +22,8 @@ import {
   FileText,
   Activity,
   Trash2,
-  Archive
+  Archive,
+  RefreshCw
 } from 'lucide-react'
 
 interface Notification {
@@ -269,30 +273,45 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex pt-16">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-6 pt-24">
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Bell className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
-            <p className="text-sm text-gray-500">
-              {unreadCount > 0 ? `${unreadCount} não lida(s)` : 'Todas as notificações lidas'}
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 pt-24">
+          <PageHeader
+            title="Notificações"
+            description={unreadCount > 0 ? `${unreadCount} não lida(s)` : 'Todas as notificações lidas'}
+            breadcrumbs={[
+              { label: 'Dashboard', href: '/' },
+              { label: 'Notificações', href: '/notifications' }
+            ]}
+            actions={(
+              <Button variant="outline" onClick={() => window.location.reload()} className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Atualizar
+              </Button>
+            )}
+          />
 
-        <div className="flex items-center space-x-2">
-          {unreadCount > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {unreadCount > 0 && (
             <Button
               variant="outline"
               onClick={markAllAsRead}
@@ -438,6 +457,9 @@ export default function NotificationsPage() {
             </Card>
           ))
         )}
+          </div>
+        </div>
+        </main>
       </div>
     </div>
   )

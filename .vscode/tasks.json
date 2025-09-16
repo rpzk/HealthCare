@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build and start (prod)",
+			"type": "shell",
+			"command": "docker compose -f docker-compose.prod.yml up -d --build",
+			"args": [],
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

@@ -64,7 +64,8 @@ export function DashboardOverview() {
       }
 
       const dashboardData = await response.json()
-      setData(dashboardData)
+      // A API retorna { success: true, data: {...} }
+      setData(dashboardData.data || dashboardData)
     } catch (err) {
       console.error('Erro ao carregar dashboard:', err)
       setError('Erro ao carregar dados. Mostrando dados de exemplo.')
@@ -104,7 +105,7 @@ export function DashboardOverview() {
   const stats = [
     {
       title: 'Total de Pacientes',
-      value: (data.stats?.totalPatients || 0).toLocaleString(),
+      value: (data?.stats?.totalPatients || 0).toLocaleString(),
       change: '+12%',
       changeType: 'positive' as const,
       icon: Users,
@@ -112,7 +113,7 @@ export function DashboardOverview() {
     },
     {
       title: 'Consultas Hoje',
-      value: (data.stats?.consultationsToday || 0).toString(),
+      value: (data?.stats?.consultationsToday || 0).toString(),
       change: '+5',
       changeType: 'positive' as const,
       icon: Calendar,
@@ -120,7 +121,7 @@ export function DashboardOverview() {
     },
     {
       title: 'Prontuários Atualizados',
-      value: (data.stats?.updatedRecords || 0).toString(),
+      value: (data?.stats?.updatedRecords || 0).toString(),
       change: '+18%',
       changeType: 'positive' as const,
       icon: FileText,
@@ -128,7 +129,7 @@ export function DashboardOverview() {
     },
     {
       title: 'Taxa de Conclusão',
-      value: `${data.stats?.completionRate || 0}%`,
+      value: `${data?.stats?.completionRate || 0}%`,
       change: '+2%',
       changeType: 'positive' as const,
       icon: TrendingUp,
@@ -196,8 +197,8 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {(data.appointments || []).length > 0 ? (
-                (data.appointments || []).map((appointment) => (
+              {data.appointments && data.appointments.length > 0 ? (
+                data.appointments.map((appointment) => (
                   <div 
                     key={appointment.id}
                     className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
@@ -242,8 +243,8 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {(data.patients || []).length > 0 ? (
-                (data.patients || []).map((patient) => (
+              {data.patients && data.patients.length > 0 ? (
+                data.patients.map((patient) => (
                   <div 
                     key={patient.id}
                     className="flex items-center justify-between p-3 rounded-lg bg-gray-50"

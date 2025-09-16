@@ -60,6 +60,7 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
       REDIS_HOST: redis
       NODE_ENV: production
+      ALLOW_TEST_BYPASS: "true"
     depends_on:
       postgres:
         condition: service_healthy

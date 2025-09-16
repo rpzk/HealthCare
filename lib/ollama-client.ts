@@ -8,7 +8,7 @@ import axios from 'axios'
 // URL do serviço Ollama, configurável via variável de ambiente
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
 // Modelo padrão a ser usado, configurável via variável de ambiente
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'llama3'
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'phi3'
 
 /**
  * Cliente para interagir com a API do Ollama
@@ -18,7 +18,8 @@ export class OllamaClient {
   private defaultModel: string
 
   constructor(baseUrl = OLLAMA_URL, defaultModel = DEFAULT_MODEL) {
-    this.baseUrl = baseUrl
+    // Forçar localhost se estiver usando 'ollama'
+    this.baseUrl = baseUrl.includes('ollama') ? 'http://localhost:11434' : baseUrl
     this.defaultModel = defaultModel
   }
 
@@ -87,7 +88,9 @@ class OllamaGenerativeModel {
       }
     } catch (error) {
       console.error('Erro ao chamar Ollama:', error)
-      throw new Error(`Falha na chamada ao Ollama: ${error instanceof Error ? error.message : String(error)}`)
+      
+      // Retornar erro claro em vez de fallback
+      throw new Error('Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.')
     }
   }
 
@@ -162,7 +165,9 @@ class OllamaChat {
       }
     } catch (error) {
       console.error('Erro ao chamar chat do Ollama:', error)
-      throw new Error(`Falha no chat do Ollama: ${error instanceof Error ? error.message : String(error)}`)
+      
+      // Retornar erro claro em vez de fallback
+      throw new Error('Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.')
     }
   }
 

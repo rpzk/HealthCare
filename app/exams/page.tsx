@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +21,9 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  FileText
+  FileText,
+  Eye,
+  Edit
 } from 'lucide-react'
 
 interface ExamRequest {
@@ -41,6 +47,7 @@ interface ExamRequest {
 
 export default function ExamsPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [exams, setExams] = useState<ExamRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -129,23 +136,27 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <TestTube className="h-8 w-8 text-purple-600" />
-            Exames Médicos
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie solicitações e resultados de exames
-          </p>
-        </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Solicitar Exame
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 pt-24">
+          <PageHeader
+            title="Exames Médicos"
+            description="Gerencie solicitações e resultados de exames"
+            breadcrumbs={[
+              { label: 'Dashboard', href: '/' },
+              { label: 'Exames', href: '/exams' }
+            ]}
+            actions={(
+              <Button onClick={() => router.push('/exams/new')} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Solicitar Exame
+              </Button>
+            )}
+          />
+
+          <div className="space-y-6">
 
       {/* Filtros e Busca */}
       <Card>
@@ -216,7 +227,7 @@ export default function ExamsPage() {
               <p className="text-gray-600 mb-4">
                 Não há exames correspondentes aos filtros aplicados.
               </p>
-              <Button>
+              <Button onClick={() => router.push('/exams/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Solicitar Primeiro Exame
               </Button>
@@ -312,10 +323,20 @@ export default function ExamsPage() {
                         Ver Resultados
                       </Button>
                     )}
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/exams/${exam.id}`)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
                       Visualizar
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/exams/${exam.id}/edit`)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </Button>
                   </div>
@@ -350,6 +371,9 @@ export default function ExamsPage() {
           </Button>
         </div>
       )}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

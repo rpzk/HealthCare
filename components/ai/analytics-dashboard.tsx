@@ -187,29 +187,29 @@ export function AIAnalyticsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             title="Total de Análises"
-            value={analytics.totalAnalyses.toLocaleString()}
+            value={(analytics?.totalAnalyses || 0).toLocaleString()}
             description="Últimos 30 dias"
             trend="+12%"
             icon={<Activity className="h-4 w-4" />}
           />
           <MetricCard
             title="Precisão da IA"
-            value={`${analytics.accuracyRate}%`}
+            value={`${analytics?.accuracyRate || 0}%`}
             description="Taxa de acurácia"
             trend="+2.3%"
             icon={<Brain className="h-4 w-4" />}
-            variant={analytics.accuracyRate > 90 ? 'success' : 'warning'}
+            variant={(analytics?.accuracyRate || 0) > 90 ? 'success' : 'warning'}
           />
           <MetricCard
             title="Alertas Críticos"
-            value={analytics.criticalAlerts}
+            value={analytics?.criticalAlerts || 0}
             description="Casos urgentes detectados"
             icon={<AlertTriangle className="h-4 w-4" />}
-            variant={analytics.criticalAlerts > 20 ? 'destructive' : 'default'}
+            variant={(analytics?.criticalAlerts || 0) > 20 ? 'destructive' : 'default'}
           />
           <MetricCard
             title="Tempo Médio"
-            value={`${analytics.responseTime.average}s`}
+            value={`${analytics?.responseTime?.average || 0}s`}
             description="Resposta da IA"
             trend="-0.5s"
             icon={<Clock className="h-4 w-4" />}
@@ -229,8 +229,8 @@ export function AIAnalyticsDashboard() {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <ProgressRing
-                    value={analytics.symptomAnalyses}
-                    max={analytics.totalAnalyses}
+                    value={analytics?.symptomAnalyses || 0}
+                    max={analytics?.totalAnalyses || 1}
                     label="Sintomas"
                     color="blue"
                     size="sm"
@@ -238,8 +238,8 @@ export function AIAnalyticsDashboard() {
                 </div>
                 <div>
                   <ProgressRing
-                    value={analytics.drugInteractions}
-                    max={analytics.totalAnalyses}
+                    value={analytics?.drugInteractions || 0}
+                    max={analytics?.totalAnalyses || 1}
                     label="Interações"
                     color="yellow"
                     size="sm"
@@ -247,8 +247,8 @@ export function AIAnalyticsDashboard() {
                 </div>
                 <div>
                   <ProgressRing
-                    value={analytics.medicalSummaries}
-                    max={analytics.totalAnalyses}
+                    value={analytics?.medicalSummaries || 0}
+                    max={analytics?.totalAnalyses || 1}
                     label="Resumos"
                     color="green"
                     size="sm"
@@ -259,15 +259,15 @@ export function AIAnalyticsDashboard() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Análise de Sintomas</span>
-                  <span className="font-medium">{analytics.symptomAnalyses}</span>
+                  <span className="font-medium">{analytics?.symptomAnalyses || 0}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Interações Medicamentosas</span>
-                  <span className="font-medium">{analytics.drugInteractions}</span>
+                  <span className="font-medium">{analytics?.drugInteractions || 0}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Resumos Médicos</span>
-                  <span className="font-medium">{analytics.medicalSummaries}</span>
+                  <span className="font-medium">{analytics?.medicalSummaries || 0}</span>
                 </div>
               </div>
             </CardContent>
@@ -283,7 +283,7 @@ export function AIAnalyticsDashboard() {
             </CardHeader>
             <CardContent>
               <SimpleBarChart
-                data={analytics.topSymptoms.map(item => ({
+                data={(analytics?.topSymptoms || []).map(item => ({
                   label: item.symptom,
                   value: item.count,
                   color: 'bg-blue-500'
@@ -302,7 +302,7 @@ export function AIAnalyticsDashboard() {
             </CardHeader>
             <CardContent>
               <SimpleBarChart
-                data={analytics.topDiagnoses.map(item => ({
+                data={(analytics?.topDiagnoses || []).map(item => ({
                   label: item.diagnosis,
                   value: item.count,
                   color: 'bg-green-500'
@@ -324,19 +324,19 @@ export function AIAnalyticsDashboard() {
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <span className="text-sm font-medium text-green-800">Leve</span>
                   <Badge variant="outline" className="bg-green-100 text-green-800">
-                    {analytics.interactionsBySeverity.mild}
+                    {analytics?.interactionsBySeverity?.mild || 0}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                   <span className="text-sm font-medium text-yellow-800">Moderada</span>
                   <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-                    {analytics.interactionsBySeverity.moderate}
+                    {analytics?.interactionsBySeverity?.moderate || 0}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                   <span className="text-sm font-medium text-red-800">Severa</span>
                   <Badge variant="outline" className="bg-red-100 text-red-800">
-                    {analytics.interactionsBySeverity.severe}
+                    {analytics?.interactionsBySeverity?.severe || 0}
                   </Badge>
                 </div>
               </div>

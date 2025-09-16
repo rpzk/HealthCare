@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/with-auth'
-import { prisma } from '@/lib/prisma'
+import { withAuth, validateRequestBody } from '@/lib/with-auth'
+import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
+import { validatePrescription } from '@/lib/validation-schemas'
 
 // GET - Buscar prescrições médicas
 export const GET = withAuth(async (request, { user }) => {
@@ -9,63 +10,16 @@ export const GET = withAuth(async (request, { user }) => {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || 'ALL'
+    const status = searchParams.get('status') || ''
 
-    // Construir filtros
-    const where: any = {}
-
-    if (search) {
-      where.OR = [
-        { medication: { contains: search, mode: 'insensitive' } },
-        { patient: { name: { contains: search, mode: 'insensitive' } } },
-        { doctor: { name: { contains: search, mode: 'insensitive' } } }
-      ]
+    const filters = {
+      search: search || undefined,
+      status: status || undefined
     }
 
-    if (status !== 'ALL') {
-      where.status = status
-    }
+  const result = await PrescriptionsServiceDb.list(filters, page, limit)
 
-    // Se não for ADMIN, filtrar apenas prescrições do médico
-    if (user.role !== 'ADMIN') {
-      where.doctorId = user.id
-    }
-
-    // Buscar prescrições com paginação
-    const [prescriptions, total] = await Promise.all([
-      prisma.prescription.findMany({
-        where,
-        include: {
-          patient: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          },
-          doctor: {
-            select: {
-              id: true,
-              name: true,
-              speciality: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        skip: (page - 1) * limit,
-        take: limit
-      }),
-      prisma.prescription.count({ where })
-    ])
-
-    return NextResponse.json({
-      prescriptions,
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page
-    })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Erro ao buscar prescrições:', error)
     return NextResponse.json(
@@ -75,74 +29,22 @@ export const GET = withAuth(async (request, { user }) => {
   }
 })
 
-// POST - Criar nova prescrição
+// POST - Criar nova prescrição médica
 export const POST = withAuth(async (request, { user }) => {
   try {
-    const body = await request.json()
-    const {
-      medication,
-      dosage,
-      frequency,
-      duration,
-      instructions,
-      patientId,
-      startDate,
-      endDate
-    } = body
+    const validation = await validateRequestBody(request, validatePrescription)
+    if (!validation.success) return validation.response!
 
-    // Validações básicas
-    if (!medication || !dosage || !frequency || !duration || !patientId) {
-      return NextResponse.json(
-        { error: 'Medicamento, dosagem, frequência, duração e paciente são obrigatórios' },
-        { status: 400 }
-      )
-    }
-
-    // Verificar se o paciente existe
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId }
+    const data = validation.data!
+    const created = await PrescriptionsServiceDb.create({
+      patientId: data.patientId,
+      doctorId: user.id,
+      medications: data.medications as any,
+      notes: (data as any).observations,
+      status: 'ACTIVE',
     })
 
-    if (!patient) {
-      return NextResponse.json(
-        { error: 'Paciente não encontrado' },
-        { status: 404 }
-      )
-    }
-
-    // Criar prescrição
-    const prescription = await prisma.prescription.create({
-      data: {
-        medication,
-        dosage,
-        frequency,
-        duration,
-        instructions,
-        startDate: startDate ? new Date(startDate) : new Date(),
-        endDate: endDate ? new Date(endDate) : null,
-        status: 'ACTIVE',
-        patientId,
-        doctorId: user.id
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            speciality: true
-          }
-        }
-      }
-    })
-
-    return NextResponse.json(prescription, { status: 201 })
+    return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error('Erro ao criar prescrição:', error)
     return NextResponse.json(

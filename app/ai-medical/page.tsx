@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 import { SymptomAnalyzer } from '@/components/ai/symptom-analyzer'
 import { DrugInteractionChecker } from '@/components/ai/drug-interaction-checker'
 import { Button } from '@/components/ui/button'
@@ -76,43 +77,44 @@ export default function AImedicalPage() {
       <Header />
       <div className="flex pt-16">
         <Sidebar />
-        <main className="flex-1 ml-64 p-8">
-          {/* Cabeçalho da Página */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Brain className="w-8 h-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">IA Médica Avançada</h1>
-                <p className="text-gray-600">Sistema inteligente de apoio ao diagnóstico e análise médica</p>
-              </div>
-            </div>
+        <main className="flex-1 ml-64 p-6 pt-24">
+          <PageHeader
+            title="IA Médica Avançada"
+            description="Sistema inteligente de apoio ao diagnóstico e análise médica"
+            breadcrumbs={[
+              { label: 'Dashboard', href: '/' },
+              { label: 'IA Médica', href: '/ai-medical' }
+            ]}
+            actions={(
+              <button onClick={() => window.location.reload()} className="inline-flex items-center gap-2 border px-3 py-2 rounded-md text-sm">
+                Atualizar
+              </button>
+            )}
+          />
 
-            {/* Navegação por Tabs */}
-            <div className="flex gap-4 border-b border-gray-200 pb-4">
-              <TabButton
-                id="overview"
-                label="Visão Geral"
-                icon={<Activity className="w-4 h-4" />}
-                isActive={activeTab === 'overview'}
-                onClick={() => setActiveTab('overview')}
-              />
-              <TabButton
-                id="symptoms"
-                label="Análise de Sintomas"
-                icon={<Stethoscope className="w-4 h-4" />}
-                isActive={activeTab === 'symptoms'}
-                onClick={() => setActiveTab('symptoms')}
-              />
-              <TabButton
-                id="interactions"
-                label="Interações Medicamentosas"
-                icon={<Pill className="w-4 h-4" />}
-                isActive={activeTab === 'interactions'}
-                onClick={() => setActiveTab('interactions')}
-              />
-            </div>
+          {/* Navegação por Tabs */}
+          <div className="flex gap-4 border-b border-gray-200 pb-4 mb-6">
+            <TabButton
+              id="overview"
+              label="Visão Geral"
+              icon={<Activity className="w-4 h-4" />}
+              isActive={activeTab === 'overview'}
+              onClick={() => setActiveTab('overview')}
+            />
+            <TabButton
+              id="symptoms"
+              label="Análise de Sintomas"
+              icon={<Stethoscope className="w-4 h-4" />}
+              isActive={activeTab === 'symptoms'}
+              onClick={() => setActiveTab('symptoms')}
+            />
+            <TabButton
+              id="interactions"
+              label="Interações Medicamentosas"
+              icon={<Pill className="w-4 h-4" />}
+              isActive={activeTab === 'interactions'}
+              onClick={() => setActiveTab('interactions')}
+            />
           </div>
 
           {/* Conteúdo das Tabs */}

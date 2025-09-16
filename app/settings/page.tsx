@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Settings, User, Shield, Bell, Database, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -54,25 +55,15 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="outline" 
-          onClick={() => router.back()}
-          className="flex items-center space-x-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar</span>
-        </Button>
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gray-100 rounded-lg">
-            <Settings className="h-6 w-6 text-gray-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-            <p className="text-sm text-gray-500">Gerencie suas preferências e configurações do sistema</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Configurações"
+        description="Gerencie suas preferências e configurações do sistema"
+        breadcrumbs={[
+          { label: 'Configurações' }
+        ]}
+        showBackButton={true}
+        showHomeButton={true}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Menu lateral */}
