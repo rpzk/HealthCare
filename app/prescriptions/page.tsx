@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +20,9 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Eye,
+  Edit
 } from 'lucide-react'
 
 interface Prescription {
@@ -41,6 +47,7 @@ interface Prescription {
 
 export default function PrescriptionsPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -65,9 +72,10 @@ export default function PrescriptionsPage() {
       const response = await fetch(`/api/prescriptions?${params}`)
       if (!response.ok) throw new Error('Falha ao carregar prescrições')
 
-      const data = await response.json()
-      setPrescriptions(data.prescriptions || [])
-      setTotalPages(Math.ceil((data.total || 0) / 10))
+  const data = await response.json()
+  setPrescriptions(data.prescriptions || [])
+  const total = (data.pagination?.total ?? data.total ?? 0) as number
+  setTotalPages(Math.ceil(total / 10))
     } catch (error) {
       console.error('Erro ao buscar prescrições:', error)
     } finally {
@@ -106,23 +114,27 @@ export default function PrescriptionsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Pill className="h-8 w-8 text-green-600" />
-            Prescrições Médicas
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie prescrições e medicamentos
-          </p>
-        </div>
-        <Button className="bg-green-600 hover:bg-green-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Prescrição
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 pt-24">
+          <PageHeader
+            title="Prescrições Médicas"
+            description="Gerencie prescrições e medicamentos"
+            breadcrumbs={[
+              { label: 'Dashboard', href: '/' },
+              { label: 'Prescrições', href: '/prescriptions' }
+            ]}
+            actions={(
+              <Button onClick={() => router.push('/prescriptions/new')} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Nova Prescrição
+              </Button>
+            )}
+          />
+
+          <div className="space-y-6">
 
       {/* Filtros e Busca */}
       <Card>
@@ -180,14 +192,22 @@ export default function PrescriptionsPage() {
               <p className="text-gray-600 mb-4">
                 Não há prescrições correspondentes aos filtros aplicados.
               </p>
-              <Button>
+              <Button onClick={() => router.push('/prescriptions/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeira Prescrição
               </Button>
             </CardContent>
           </Card>
         ) : (
-          prescriptions.map((prescription) => (
+          prescriptions.map((prescription) => {
+            const meds = (prescription as any).medications as Array<any> | undefined
+            const main = meds && meds.length > 0 ? meds[0] : undefined
+            const medName = main?.name || 'Medicamentos'
+            const medDosage = main?.dosage || '-'
+            const medFrequency = main?.frequency || '-'
+            const medDuration = main?.duration || '-'
+            const instructions = main?.instructions
+            return (
             <Card key={prescription.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -196,12 +216,12 @@ export default function PrescriptionsPage() {
                       <div className="space-y-1">
                         <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
                           <Pill className="h-5 w-5 text-green-600" />
-                          {prescription.medication}
+                          {medName}
                         </h3>
                         <div className="space-y-1 text-sm text-gray-600">
-                          <p><strong>Dosagem:</strong> {prescription.dosage}</p>
-                          <p><strong>Frequência:</strong> {prescription.frequency}</p>
-                          <p><strong>Duração:</strong> {prescription.duration}</p>
+                          <p><strong>Dosagem:</strong> {medDosage}</p>
+                          <p><strong>Frequência:</strong> {medFrequency}</p>
+                          <p><strong>Duração:</strong> {medDuration}</p>
                         </div>
                       </div>
                       <Badge 
@@ -213,10 +233,10 @@ export default function PrescriptionsPage() {
                       </Badge>
                     </div>
 
-                    {prescription.instructions && (
+                    {instructions && (
                       <div className="bg-blue-50 p-3 rounded-md">
                         <p className="text-sm text-blue-900">
-                          <strong>Instruções:</strong> {prescription.instructions}
+                          <strong>Instruções:</strong> {instructions}
                         </p>
                       </div>
                     )}
@@ -253,17 +273,27 @@ export default function PrescriptionsPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/prescriptions/${prescription.id}`)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
                       Visualizar
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/prescriptions/${prescription.id}/edit`)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))
+          )})
         )}
       </div>
 
@@ -291,6 +321,9 @@ export default function PrescriptionsPage() {
           </Button>
         </div>
       )}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

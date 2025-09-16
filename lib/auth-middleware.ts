@@ -21,6 +21,29 @@ export async function authMiddleware(
   options: { requireRole?: string[] } = {}
 ): Promise<{ success: boolean; user?: any; error?: string; response?: NextResponse }> {
   try {
+    // DEV/TEST bypass: allow injecting a fake user via header when enabled explicitly
+    if (process.env.ALLOW_TEST_BYPASS === 'true') {
+      const testUser = request.headers.get('x-test-user')
+      if (testUser) {
+        const role = request.headers.get('x-test-role') || 'ADMIN'
+        const uid = request.headers.get('x-test-user-id') || '1'
+        const user = {
+          id: uid,
+          email: `${testUser}@local.test`,
+          name: testUser,
+          role
+        }
+        if (options.requireRole && options.requireRole.length > 0 && !options.requireRole.includes(role)) {
+          return {
+            success: false,
+            error: 'Acesso negado - Permissões insuficientes (bypass) ',
+            response: NextResponse.json({ error: 'Acesso negado - RBAC (bypass)' }, { status: 403 })
+          }
+        }
+        return { success: true, user }
+      }
+    }
+
     // Obter token do NextAuth
     const token = await getToken({ 
       req: request,

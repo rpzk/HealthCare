@@ -76,6 +76,18 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
 
+        // Dev/Test bypass for API routes: allow requests with x-test-user header when enabled
+        try {
+          // Edge runtime safe: process.env is available in middleware
+          const bypassEnabled = (process.env.ALLOW_TEST_BYPASS || '').toString() === 'true'
+          const hasBypassHeader = !!req.headers.get('x-test-user')
+          if (bypassEnabled && hasBypassHeader && pathname.startsWith('/api/')) {
+            return true
+          }
+        } catch (_) {
+          // noop - fallback to default behavior
+        }
+
         // Permitir acesso às rotas públicas
         if (pathname.startsWith('/auth/')) {
           return true

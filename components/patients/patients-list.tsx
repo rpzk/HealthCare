@@ -202,7 +202,7 @@ export function PatientsList() {
 
   const getStatusColor = (patient: Patient) => {
     if (!patient.isActive) return 'status-inactive'
-    if (patient.chronicDiseases.length > 0) return 'status-emergency'
+    if (patient.chronicDiseases && patient.chronicDiseases.length > 0) return 'status-emergency'
     return 'status-active'
   }
 
@@ -264,7 +264,7 @@ export function PatientsList() {
       )}
 
       {/* Lista de pacientes */}
-      {!loading && (
+      {!loading && patients && patients.length > 0 && (
         <div className="grid gap-6">
           {patients.map((patient) => (
           <Card key={patient.id} className="card-hover">
@@ -273,7 +273,7 @@ export function PatientsList() {
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-medical-primary rounded-full flex items-center justify-center">
                     <span className="text-white font-bold">
-                      {patient.name.split(' ').map(n => n[0]).join('')}
+                      {patient.name ? patient.name.split(' ').map(n => n[0]).join('') : '??'}
                     </span>
                   </div>
                   
@@ -320,7 +320,7 @@ export function PatientsList() {
                       </span>
                     </div>
                     
-                    {patient.allergies.length > 0 && (
+                    {patient.allergies && patient.allergies.length > 0 && (
                       <div className="mt-2">
                         <span className="text-sm text-red-600 font-medium">
                           Alergias: {patient.allergies.join(', ')}
@@ -371,7 +371,7 @@ export function PatientsList() {
         </div>
       )}
 
-      {!loading && patients.length === 0 && (
+      {!loading && (!patients || patients.length === 0) && (
         <Card>
           <CardContent className="p-12 text-center">
             <div className="text-gray-400 mb-4">

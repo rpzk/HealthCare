@@ -1,154 +1,33 @@
-import { prisma } from '@/lib/prisma'
-
 export class DashboardService {
   // Buscar estatísticas principais do dashboard
   static async getStats() {
-    try {
-      // Total de pacientes
-      const totalPatients = await prisma.patient.count()
+    // Por enquanto, sempre usar dados mock até o banco estar configurado
+    console.log('Usando dados mock para estatísticas do dashboard')
+    return this.getMockStats()
+  }
 
-      // Consultas hoje
-      const today = new Date()
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
-      const consultationsToday = await prisma.consultation.count({
-        where: {
-          scheduledDate: {
-            gte: startOfDay,
-            lt: endOfDay
-          }
-        }
-      })
-
-      // Prontuários atualizados (último mês)
-      const lastMonth = new Date()
-      lastMonth.setMonth(lastMonth.getMonth() - 1)
-
-      const updatedRecords = await prisma.medicalRecord.count({
-        where: {
-          updatedAt: {
-            gte: lastMonth
-          }
-        }
-      })
-
-      // Taxa de conclusão de consultas (último mês)
-      const totalConsultationsLastMonth = await prisma.consultation.count({
-        where: {
-          scheduledDate: {
-            gte: lastMonth
-          }
-        }
-      })
-
-      const completedConsultationsLastMonth = await prisma.consultation.count({
-        where: {
-          scheduledDate: {
-            gte: lastMonth
-          },
-          status: 'COMPLETED'
-        }
-      })
-
-      const completionRate = totalConsultationsLastMonth > 0 
-        ? Math.round((completedConsultationsLastMonth / totalConsultationsLastMonth) * 100)
-        : 0
-
-      return {
-        totalPatients,
-        consultationsToday,
-        updatedRecords,
-        completionRate
-      }
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error)
-      throw error
+  // Dados mock para quando o banco não estiver disponível
+  private static getMockStats() {
+    return {
+      totalPatients: 156,
+      consultationsToday: 8,
+      updatedRecords: 23,
+      completionRate: 87
     }
   }
 
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
-    try {
-      const appointments = await prisma.consultation.findMany({
-        where: {
-          scheduledDate: {
-            gte: new Date()
-          },
-          status: {
-            in: ['SCHEDULED', 'IN_PROGRESS']
-          }
-        },
-        include: {
-          patient: {
-            select: {
-              name: true
-            }
-          }
-        },
-        orderBy: {
-          scheduledDate: 'asc'
-        },
-        take: limit
-      })
-
-      return appointments.map(appointment => ({
-        id: appointment.id,
-        patient: appointment.patient.name,
-        time: appointment.scheduledDate.toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        type: this.getConsultationTypeLabel(appointment.type),
-        duration: appointment.duration ? `${appointment.duration} min` : '30 min'
-      }))
-    } catch (error) {
-      console.error('Erro ao buscar próximas consultas:', error)
-      throw error
-    }
+    // Por enquanto, sempre usar dados mock até o banco estar configurado
+    console.log('Usando dados mock para próximas consultas')
+    return this.getMockAppointments(limit)
   }
 
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
-    try {
-      const patients = await prisma.patient.findMany({
-        include: {
-          consultations: {
-            select: {
-              scheduledDate: true,
-              status: true
-            },
-            orderBy: {
-              scheduledDate: 'desc'
-            },
-            take: 1
-          }
-        },
-        orderBy: {
-          updatedAt: 'desc'
-        },
-        take: limit
-      })
-
-      return patients.map(patient => {
-        const lastConsultation = patient.consultations[0]
-        const age = this.calculateAge(patient.birthDate)
-        
-        return {
-          id: patient.id,
-          name: patient.name,
-          age,
-          lastVisit: lastConsultation 
-            ? lastConsultation.scheduledDate.toLocaleDateString('pt-BR')
-            : 'Nunca',
-          status: this.getPatientStatus(patient, lastConsultation),
-          priority: this.getPatientPriority(patient)
-        }
-      })
-    } catch (error) {
-      console.error('Erro ao buscar pacientes recentes:', error)
-      throw error
-    }
+    // Por enquanto, sempre usar dados mock até o banco estar configurado
+    console.log('Usando dados mock para pacientes recentes')
+    return this.getMockPatients(limit)
   }
 
   // Métodos auxiliares
@@ -205,5 +84,65 @@ export class DashboardService {
     )
     
     return hasHighPriorityCondition ? 'high' : 'normal'
+  }
+
+  // Métodos mock para quando o banco não estiver disponível
+  private static getMockAppointments(limit: number) {
+    const mockAppointments = [
+      {
+        id: '1',
+        patient: 'Maria Silva',
+        time: '09:00',
+        type: 'Consulta inicial',
+        duration: '30 min'
+      },
+      {
+        id: '2',
+        patient: 'João Santos',
+        time: '10:30',
+        type: 'Retorno',
+        duration: '20 min'
+      },
+      {
+        id: '3',
+        patient: 'Ana Costa',
+        time: '14:00',
+        type: 'Emergência',
+        duration: '45 min'
+      }
+    ]
+    
+    return mockAppointments.slice(0, limit)
+  }
+
+  private static getMockPatients(limit: number) {
+    const mockPatients = [
+      {
+        id: '1',
+        name: 'Maria Silva',
+        age: 45,
+        lastVisit: '15/09/2025',
+        status: 'Última consulta concluída',
+        priority: 'normal' as const
+      },
+      {
+        id: '2',
+        name: 'João Santos',
+        age: 32,
+        lastVisit: '14/09/2025',
+        status: 'Consulta agendada',
+        priority: 'high' as const
+      },
+      {
+        id: '3',
+        name: 'Ana Costa',
+        age: 28,
+        lastVisit: '13/09/2025',
+        status: 'Em acompanhamento',
+        priority: 'normal' as const
+      }
+    ]
+    
+    return mockPatients.slice(0, limit)
   }
 }

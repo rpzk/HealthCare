@@ -18,7 +18,7 @@ export function AIAssistantButton() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-  content: 'Olá! Sou seu assistente médico com IA local (Ollama). Posso ajudar com diagnósticos, análise de sintomas, verificação de interações medicamentosas, sugestões de tratamento e muito mais. Como posso ajudá-lo hoje? 🩺',
+      content: 'Olá! Sou seu assistente médico com IA. Posso ajudar com diagnósticos, análise de sintomas, verificação de interações medicamentosas, sugestões de tratamento e muito mais. Como posso ajudá-lo hoje? 🩺',
       role: 'assistant',
       timestamp: new Date(),
     }
@@ -60,42 +60,35 @@ export function AIAssistantButton() {
 
       const data = await response.json()
 
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.response || 'Desculpe, não consegui processar sua pergunta no momento.',
-        role: 'assistant',
-        timestamp: new Date(),
+      if (data.success) {
+        const aiResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          content: data.data.response || 'Desculpe, não consegui processar sua pergunta no momento.',
+          role: 'assistant',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, aiResponse])
+      } else {
+        // Mostrar erro da API
+        const errorResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          content: `❌ **${data.error.message}**\n\n${data.error.details}\n\nPor favor, tente novamente em alguns minutos.`,
+          role: 'assistant',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, errorResponse])
       }
-
-      setMessages(prev => [...prev, aiResponse])
     } catch (error) {
       console.error('Erro ao comunicar com IA:', error)
       
-      // Fallback para resposta simulada em caso de erro
-      const aiResponse: Message = {
+      // Mostrar erro de conexão
+      const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Analisando sua pergunta: "${currentInput}" 
-
-Como assistente médico com IA local (Ollama), posso ajudar com:
-
-🔍 **Análise de Sintomas**: Baseada em literatura médica atualizada
-🧬 **Sugestões Diagnósticas**: Ordenadas por probabilidade clínica  
-💊 **Verificação de Interações**: Análise farmacológica detalhada
-📋 **Resumos Médicos**: Compilação inteligente de informações
-
-**Como posso ajudá-lo especificamente?**
-- Descreva sintomas de um paciente
-- Liste medicações para análise de interações
-- Solicite análise de um caso clínico
-- Peça sugestões de exames complementares
-
-⚠️ *Lembre-se: Esta análise é apenas para apoio médico e não substitui a avaliação clínica profissional.*
-
-*Nota: Conectando com o serviço de IA...*`,
+        content: `❌ **Serviço de IA Indisponível**\n\nO assistente médico está temporariamente fora do ar.\n\nTente novamente em alguns minutos ou entre em contato com o suporte técnico.`,
         role: 'assistant',
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, aiResponse])
+      setMessages(prev => [...prev, errorResponse])
     }
 
     setIsLoading(false)

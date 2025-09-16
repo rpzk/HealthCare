@@ -88,36 +88,70 @@ Pergunta do usuário: ${message}
 
 Por favor, responda de forma profissional e detalhada:`
 
-  const result = await model.generateContent(fullPrompt)
-  const response = result.response.text()
+  try {
+    const result = await model.generateContent(fullPrompt)
+    const response = result.response.text()
 
-  // Log de auditoria
-  auditLogger.logSuccess(
-    user.id,
-    user.email,
-    user.role,
-    AuditAction.AI_INTERACTION,
-    'chat',
-    {
-      type,
-      patientId,
-      messageLength: message.length,
-      responseLength: response.length
-    }
-  )
+    // Log de auditoria
+    auditLogger.logSuccess(
+      user.id,
+      user.email,
+      user.role,
+      AuditAction.AI_INTERACTION,
+      'chat',
+      {
+        type,
+        patientId,
+        messageLength: message.length,
+        responseLength: response.length
+      }
+    )
 
-  return NextResponse.json({
-    success: true,
-    data: {
-      response: response,
-      type: type,
-      timestamp: new Date().toISOString()
-    },
-    metadata: {
-      responseBy: user.email,
-      messageLength: message.length,
-      responseLength: response.length,
-      patientId
-    }
-  })
+    return NextResponse.json({
+      success: true,
+      data: {
+        response: response,
+        type: type,
+        timestamp: new Date().toISOString()
+      },
+      metadata: {
+        responseBy: user.email,
+        messageLength: message.length,
+        responseLength: response.length,
+        patientId
+      }
+    })
+  } catch (error) {
+    console.error('Erro na API de chat:', error)
+    
+    // Log de auditoria para erro
+    auditLogger.logError(
+      user.id,
+      user.email,
+      user.role,
+      AuditAction.AI_INTERACTION,
+      'chat',
+      error instanceof Error ? error.message : 'Erro desconhecido',
+      {
+        type,
+        patientId,
+        messageLength: message.length
+      }
+    )
+
+    return NextResponse.json({
+      success: false,
+      error: {
+        message: 'Serviço de IA temporariamente indisponível',
+        details: 'O assistente médico está fora do ar no momento. Tente novamente em alguns minutos.',
+        code: 'AI_SERVICE_UNAVAILABLE'
+      },
+      metadata: {
+        responseBy: user.email,
+        messageLength: message.length,
+        patientId,
+        timestamp: new Date().toISOString()
+      }
+    }, { status: 503 })
+  }
 })

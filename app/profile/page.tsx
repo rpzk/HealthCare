@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar } from '@/components/ui/avatar'
+import { PageHeader } from '@/components/navigation/page-header'
 import { 
   User, 
   Mail,
@@ -139,20 +140,16 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <User className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
-            <p className="text-sm text-gray-500">Gerencie suas informações pessoais</p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {!editMode ? (
+      <PageHeader
+        title="Meu Perfil"
+        description="Gerencie suas informações pessoais"
+        breadcrumbs={[
+          { label: 'Perfil' }
+        ]}
+        showBackButton={true}
+        showHomeButton={true}
+        actions={
+          !editMode ? (
             <Button onClick={handleEdit} className="flex items-center space-x-2">
               <Edit3 className="h-4 w-4" />
               <span>Editar Perfil</span>
@@ -180,9 +177,9 @@ export default function ProfilePage() {
                 <span>Salvar</span>
               </Button>
             </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Informações Principais */}

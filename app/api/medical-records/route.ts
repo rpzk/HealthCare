@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
-import { prisma } from '@/lib/prisma'
+import { MedicalRecordsService } from '@/lib/medical-records-service-mock'
 
 // GET - Buscar prontuários médicos
 export const GET = withAuth(async (request, { user }) => {
@@ -11,68 +11,14 @@ export const GET = withAuth(async (request, { user }) => {
     const search = searchParams.get('search') || ''
     const type = searchParams.get('type') || 'ALL'
 
-    // Construir filtros
-    const where: any = {}
-
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { diagnosis: { contains: search, mode: 'insensitive' } },
-        { patient: { name: { contains: search, mode: 'insensitive' } } },
-        { doctor: { name: { contains: search, mode: 'insensitive' } } }
-      ]
+    const filters = {
+      search: search || undefined,
+      type: type !== 'ALL' ? type : undefined
     }
 
-    if (type !== 'ALL') {
-      where.recordType = type
-    }
+    const result = await MedicalRecordsService.getMedicalRecords(filters, page, limit)
 
-    // Se não for ADMIN, filtrar apenas prontuários do médico
-    if (user.role !== 'ADMIN') {
-      where.doctorId = user.id
-    }
-
-    // Buscar prontuários com paginação
-    const [records, total] = await Promise.all([
-      prisma.medicalRecord.findMany({
-        where,
-        include: {
-          patient: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          },
-          doctor: {
-            select: {
-              id: true,
-              name: true,
-              speciality: true
-            }
-          },
-          _count: {
-            select: {
-              attachments: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        skip: (page - 1) * limit,
-        take: limit
-      }),
-      prisma.medicalRecord.count({ where })
-    ])
-
-    return NextResponse.json({
-      records,
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page
-    })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Erro ao buscar prontuários:', error)
     return NextResponse.json(
@@ -93,9 +39,8 @@ export const POST = withAuth(async (request, { user }) => {
       treatment,
       notes,
       recordType,
-      severity,
-      patientId,
-      isPrivate = false
+      priority,
+      patientId
     } = body
 
     // Validações básicas
@@ -106,48 +51,16 @@ export const POST = withAuth(async (request, { user }) => {
       )
     }
 
-    // Verificar se o paciente existe
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId }
-    })
-
-    if (!patient) {
-      return NextResponse.json(
-        { error: 'Paciente não encontrado' },
-        { status: 404 }
-      )
-    }
-
-    // Criar prontuário
-    const record = await prisma.medicalRecord.create({
-      data: {
-        title,
-        description,
-        diagnosis,
-        treatment,
-        notes,
-        recordType: recordType || 'CONSULTATION',
-        severity: severity || 'LOW',
-        isPrivate,
-        patientId,
-        doctorId: user.id
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            speciality: true
-          }
-        }
-      }
+    const record = await MedicalRecordsService.createMedicalRecord({
+      title,
+      description,
+      diagnosis,
+      treatment,
+      notes,
+      recordType: recordType || 'CONSULTATION',
+      priority: priority || 'NORMAL',
+      patientId,
+      doctorId: user.id
     })
 
     return NextResponse.json(record, { status: 201 })

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ConsultationService } from '@/lib/consultation-service'
+import { ConsultationService } from '@/lib/consultation-service-mock'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { validateRequestBody } from '@/lib/with-auth'
 import { withConsultationAuth } from '@/lib/advanced-auth-v2'

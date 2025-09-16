@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/navigation/page-header'
 import {
   FileText,
   Search,
@@ -39,6 +41,7 @@ interface MedicalRecord {
 
 export default function MedicalRecordsPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -110,21 +113,24 @@ export default function MedicalRecordsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="h-8 w-8 text-blue-600" />
-            Prontuários Médicos
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie registros médicos e documentação clínica
-          </p>
-        </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Prontuário
-        </Button>
-      </div>
+      <PageHeader
+        title="Prontuários Médicos"
+        description="Gerencie registros médicos e documentação clínica"
+        breadcrumbs={[
+          { label: 'Prontuários Médicos' }
+        ]}
+        showBackButton={false}
+        showHomeButton={true}
+        actions={
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => router.push('/records/new')}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Prontuário
+          </Button>
+        }
+      />
 
       {/* Filtros e Busca */}
       <Card>
@@ -190,7 +196,7 @@ export default function MedicalRecordsPage() {
               <p className="text-gray-600 mb-4">
                 Não há prontuários médicos correspondentes aos filtros aplicados.
               </p>
-              <Button>
+              <Button onClick={() => router.push('/records/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Prontuário
               </Button>
@@ -261,11 +267,19 @@ export default function MedicalRecordsPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/records/${record.id}`)}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       Visualizar
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/records/${record.id}/edit`)}
+                    >
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </Button>

@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -131,33 +134,45 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex pt-16">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-6 pt-24">
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="outline" 
-          onClick={() => router.back()}
-          className="flex items-center space-x-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar</span>
-        </Button>
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <BarChart3 className="h-6 w-6 text-indigo-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Relatórios</h1>
-            <p className="text-sm text-gray-500">Geração e análise de relatórios do sistema</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 pt-24">
+          <PageHeader
+            title="Relatórios e Analytics"
+            description="Geração e análise de relatórios do sistema"
+            breadcrumbs={[
+              { label: 'Dashboard', href: '/' },
+              { label: 'Relatórios', href: '/reports' }
+            ]}
+            icon={<BarChart3 className="w-8 h-8 text-indigo-600" />}
+            actions={[
+              {
+                label: 'Voltar',
+                onClick: () => router.back(),
+                variant: 'outline' as const,
+                icon: <ArrowLeft className="w-4 h-4" />
+              }
+            ]}
+          />
+
+          <div className="space-y-6">
 
       {/* Estatísticas Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -341,6 +356,9 @@ export default function ReportsPage() {
           </div>
         </CardContent>
       </Card>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

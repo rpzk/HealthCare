@@ -1,0 +1,13 @@
+{
+  "patientId": "123",
+  "medications": [
+    {
+      "name": "Amoxicilina",
+      "dosage": "500mg",
+      "frequency": "8/8h",
+      "duration": "7 dias",
+      "instructions": "Após refeições"
+    }
+  ],
+  "notes": "Teste via curl.exe"
+}
