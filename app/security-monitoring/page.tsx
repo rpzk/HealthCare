@@ -13,14 +13,12 @@ interface SecurityStats {
     failedLogins: number;
     systemHealth: 'healthy' | 'warning' | 'critical';
   };
-  rateLimitStats: {
-    [key: string]: {
-      limit: number;
-      remaining: number;
-      resetTime: number;
-      isBlocked: boolean;
-    };
-  };
+  rateLimitStats: Record<string, {
+    limit: number;
+    remaining: number;
+    resetTime: number;
+    isBlocked: boolean;
+  }>;
   auditStats: {
     totalEvents: number;
     recentEvents: Array<{
@@ -38,6 +36,31 @@ export default function SecurityMonitoringDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Normaliza diferentes formatos possíveis vindos da API (overview, stats etc.)
+  const normalize = (raw: any): SecurityStats => {
+    // A rota atual retorna { success, overview } com: overview.rateLimit, overview.audit, overview.systemHealth
+    // Construímos contadores sintéticos porque ainda não temos totalUsers reais.
+    const ov = raw?.overview || raw?.securityOverview || {};
+    const rate = ov.rateLimit || raw?.rateLimitStats || {};
+    const audit = ov.audit || raw?.auditStats || {};
+    const sysHealth = ov.systemHealth?.status || ov.systemHealth || 'healthy';
+
+    return {
+      securityOverview: {
+        totalUsers: (ov.totalUsers ?? 0),
+        activeUsers: (ov.activeUsers ?? 0),
+        blockedIPs: (rate.blockedIPs ?? 0),
+        failedLogins: (ov.failedLogins ?? 0),
+        systemHealth: ['healthy','warning','critical'].includes(sysHealth) ? sysHealth : 'healthy'
+      },
+      rateLimitStats: rate || {},
+      auditStats: {
+        totalEvents: (audit.totalRecent ?? audit.totalEvents ?? 0),
+        recentEvents: audit.recentLogs || audit.recentEvents || []
+      }
+    }
+  }
+
   const fetchSecurityStats = async () => {
     try {
       setRefreshing(true);
@@ -45,8 +68,9 @@ export default function SecurityMonitoringDashboard() {
       if (!response.ok) {
         throw new Error('Falha ao carregar estatísticas de segurança');
       }
-      const data = await response.json();
-      setStats(data);
+  const data = await response.json();
+  const normalized = normalize(data);
+  setStats(normalized);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
