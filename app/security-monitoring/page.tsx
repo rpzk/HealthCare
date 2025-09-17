@@ -1,5 +1,9 @@
 'use client';
 
+// Força renderização dinâmica para evitar caches/resíduos que possam servir bundle antigo
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +52,7 @@ const DEFAULT_STATS: SecurityStats = {
 
 export default function SecurityMonitoringDashboard() {
   // Versão de depuração para inspecionar se bundle atualizado foi carregado
-  const COMPONENT_VERSION = 'secmon-v3';
+  const COMPONENT_VERSION = 'secmon-v4';
   const [stats, setStats] = useState<SecurityStats>(DEFAULT_STATS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,14 +100,30 @@ export default function SecurityMonitoringDashboard() {
   const fetchSecurityStats = async () => {
     try {
       setRefreshing(true);
-      const response = await fetch('/api/admin/security?action=security-overview');
+      const response = await fetch('/api/admin/security?action=security-overview', {
+        cache: 'no-store'
+      });
       if (!response.ok) {
         throw new Error('Falha ao carregar estatísticas de segurança');
       }
   const data = await response.json();
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[SecurityMonitoring][raw-response]', data);
+  }
   try {
     const normalized = normalize(data);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[SecurityMonitoring][normalized]', normalized);
+    }
     setStats(normalized);
+    if (typeof window !== 'undefined') {
+      (window as any).__SEC_MON__ = {
+        ts: Date.now(),
+        raw: data,
+        normalized,
+        version: COMPONENT_VERSION
+      };
+    }
   } catch (e) {
     console.error('[SecurityMonitoring] Falha ao normalizar payload', e, data);
   }
@@ -215,10 +235,19 @@ export default function SecurityMonitoringDashboard() {
             {refreshing ? '🔄' : '↻'} Atualizar
           </Button>
           {(() => {
-            const safeHealth = stats?.securityOverview?.systemHealth ?? 'healthy';
+            const safeHealthRaw = stats?.securityOverview?.systemHealth;
+            const safeHealth = (safeHealthRaw && ['healthy','warning','critical'].includes(safeHealthRaw))
+              ? safeHealthRaw
+              : 'healthy';
+            let label: string;
+            try {
+              label = safeHealth.toUpperCase();
+            } catch {
+              label = 'HEALTHY';
+            }
             return (
               <Badge className={getHealthBadgeColor(safeHealth)}>
-                🏥 {safeHealth.toUpperCase()}
+                🏥 {label}
               </Badge>
             )
           })()}
