@@ -47,6 +47,8 @@ const DEFAULT_STATS: SecurityStats = {
 }
 
 export default function SecurityMonitoringDashboard() {
+  // Versão de depuração para inspecionar se bundle atualizado foi carregado
+  const COMPONENT_VERSION = 'secmon-v3';
   const [stats, setStats] = useState<SecurityStats>(DEFAULT_STATS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -190,6 +192,8 @@ export default function SecurityMonitoringDashboard() {
     return remaining > 0 ? `${remaining}s` : 'Reset';
   };
 
+  // Mini error boundary local
+  try {
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
@@ -199,7 +203,7 @@ export default function SecurityMonitoringDashboard() {
             🛡️ Monitoramento de Segurança
           </h1>
           <p className="text-gray-600">
-            Dashboard em tempo real - Sistema HealthCare
+            Dashboard em tempo real - Sistema HealthCare <span className="text-xs text-gray-400">{COMPONENT_VERSION}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -394,4 +398,19 @@ export default function SecurityMonitoringDashboard() {
       </Card>
     </div>
   );
+  } catch (runtimeErr: any) {
+    console.error('[SecurityMonitoring] Runtime render error capturado', runtimeErr);
+    return (
+      <div className="p-8">
+        <Card className="p-6 border-red-200 bg-red-50 space-y-2">
+          <h2 className="text-lg font-semibold text-red-800">Erro no Dashboard de Segurança</h2>
+          <p className="text-sm text-red-700">Falha inesperada de renderização (capturada pelo fallback local).</p>
+          <pre className="text-xs overflow-auto max-h-40 bg-red-100 p-2 rounded">
+            {String(runtimeErr?.message || runtimeErr)}
+          </pre>
+          <Button onClick={() => location.reload()} variant="destructive">Recarregar Página</Button>
+        </Card>
+      </div>
+    )
+  }
 }
