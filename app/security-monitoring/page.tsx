@@ -30,8 +30,24 @@ interface SecurityStats {
   };
 }
 
+// Default object to avoid transient undefined property access during early renders
+const DEFAULT_STATS: SecurityStats = {
+  securityOverview: {
+    totalUsers: 0,
+    activeUsers: 0,
+    blockedIPs: 0,
+    failedLogins: 0,
+    systemHealth: 'healthy'
+  },
+  rateLimitStats: {},
+  auditStats: {
+    totalEvents: 0,
+    recentEvents: []
+  }
+}
+
 export default function SecurityMonitoringDashboard() {
-  const [stats, setStats] = useState<SecurityStats | null>(null);
+  const [stats, setStats] = useState<SecurityStats>(DEFAULT_STATS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,24 +57,38 @@ export default function SecurityMonitoringDashboard() {
     // A rota atual retorna { success, overview } com: overview.rateLimit, overview.audit, overview.systemHealth
     // Construímos contadores sintéticos porque ainda não temos totalUsers reais.
     const ov = raw?.overview || raw?.securityOverview || {};
-    const rate = ov.rateLimit || raw?.rateLimitStats || {};
-    const audit = ov.audit || raw?.auditStats || {};
-    const sysHealth = ov.systemHealth?.status || ov.systemHealth || 'healthy';
+    const rate = ov?.rateLimit || raw?.rateLimitStats || {};
+    const audit = ov?.audit || raw?.auditStats || {};
+    const rawSys = ov?.systemHealth;
+    const sysHealth = (rawSys && typeof rawSys === 'object' && 'status' in rawSys)
+      ? (rawSys as any).status
+      : (typeof rawSys === 'string' ? rawSys : 'healthy');
 
-    return {
+    const normalized: SecurityStats = {
       securityOverview: {
-        totalUsers: (ov.totalUsers ?? 0),
-        activeUsers: (ov.activeUsers ?? 0),
-        blockedIPs: (rate.blockedIPs ?? 0),
-        failedLogins: (ov.failedLogins ?? 0),
-        systemHealth: ['healthy','warning','critical'].includes(sysHealth) ? sysHealth : 'healthy'
+        totalUsers: (ov?.totalUsers ?? 0),
+        activeUsers: (ov?.activeUsers ?? 0),
+        blockedIPs: (rate?.blockedIPs ?? 0),
+        failedLogins: (ov?.failedLogins ?? 0),
+        systemHealth: ['healthy','warning','critical'].includes(sysHealth) ? sysHealth as any : 'healthy'
       },
       rateLimitStats: rate || {},
       auditStats: {
-        totalEvents: (audit.totalRecent ?? audit.totalEvents ?? 0),
-        recentEvents: audit.recentLogs || audit.recentEvents || []
+        totalEvents: (audit?.totalRecent ?? audit?.totalEvents ?? 0),
+        recentEvents: (audit?.recentLogs || audit?.recentEvents || []).filter(Boolean)
+      }
+    };
+
+    // Lightweight runtime diagnostics (dev only)
+    if (process.env.NODE_ENV !== 'production') {
+      if (!raw) console.warn('[SecurityMonitoring] raw response vazio ou undefined');
+      if (!ov) console.warn('[SecurityMonitoring] overview ausente no payload');
+      if (!raw?.overview?.systemHealth && !raw?.securityOverview?.systemHealth) {
+        console.warn('[SecurityMonitoring] systemHealth ausente, usando valor padrão "healthy"');
       }
     }
+
+    return normalized;
   }
 
   const fetchSecurityStats = async () => {
@@ -69,8 +99,12 @@ export default function SecurityMonitoringDashboard() {
         throw new Error('Falha ao carregar estatísticas de segurança');
       }
   const data = await response.json();
-  const normalized = normalize(data);
-  setStats(normalized);
+  try {
+    const normalized = normalize(data);
+    setStats(normalized);
+  } catch (e) {
+    console.error('[SecurityMonitoring] Falha ao normalizar payload', e, data);
+  }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -194,13 +228,13 @@ export default function SecurityMonitoringDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
               <p className="text-2xl font-bold text-green-600">
-                {stats?.securityOverview.activeUsers || 0}
+                {stats?.securityOverview?.activeUsers || 0}
               </p>
             </div>
             <div className="text-3xl">👥</div>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Total: {stats?.securityOverview.totalUsers || 0}
+            Total: {stats?.securityOverview?.totalUsers || 0}
           </p>
         </Card>
 
@@ -209,7 +243,7 @@ export default function SecurityMonitoringDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-600">IPs Bloqueados</p>
               <p className="text-2xl font-bold text-red-600">
-                {stats?.securityOverview.blockedIPs || 0}
+                {stats?.securityOverview?.blockedIPs || 0}
               </p>
             </div>
             <div className="text-3xl">🚫</div>
@@ -224,7 +258,7 @@ export default function SecurityMonitoringDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-600">Logins Falharam</p>
               <p className="text-2xl font-bold text-orange-600">
-                {stats?.securityOverview.failedLogins || 0}
+                {stats?.securityOverview?.failedLogins || 0}
               </p>
             </div>
             <div className="text-3xl">🔐</div>
@@ -239,7 +273,7 @@ export default function SecurityMonitoringDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-600">Eventos de Auditoria</p>
               <p className="text-2xl font-bold text-blue-600">
-                {stats?.auditStats.totalEvents || 0}
+                {stats?.auditStats?.totalEvents || 0}
               </p>
             </div>
             <div className="text-3xl">📊</div>
@@ -307,7 +341,7 @@ export default function SecurityMonitoringDashboard() {
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">📋 Eventos Recentes de Auditoria</h2>
         <div className="space-y-2">
-          {stats?.auditStats.recentEvents?.length ? (
+          {stats?.auditStats?.recentEvents?.length ? (
             stats.auditStats.recentEvents.map((event, index) => (
               <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
                 <div className="flex items-center gap-3">
