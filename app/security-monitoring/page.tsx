@@ -176,9 +176,14 @@ export default function SecurityMonitoringDashboard() {
           >
             {refreshing ? '🔄' : '↻'} Atualizar
           </Button>
-          <Badge className={getHealthBadgeColor(stats?.securityOverview.systemHealth || 'healthy')}>
-            🏥 {stats?.securityOverview.systemHealth?.toUpperCase()}
-          </Badge>
+          {(() => {
+            const safeHealth = stats?.securityOverview?.systemHealth ?? 'healthy';
+            return (
+              <Badge className={getHealthBadgeColor(safeHealth)}>
+                🏥 {safeHealth.toUpperCase()}
+              </Badge>
+            )
+          })()}
         </div>
       </div>
 
