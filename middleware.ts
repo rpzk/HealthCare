@@ -39,16 +39,28 @@ export default withAuth(
       res.headers.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains; preload')
     }
 
-    // CSP mais rígida (ajuste se necessário para assets externos)
+    // CSP com relaxamento em desenvolvimento para suportar React Refresh (precisa de eval)
+    const dev = !isProd
+    const scriptSrc = dev
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'"
+    const connectSrc = dev
+      ? "connect-src 'self' ws: http://localhost:3000 http://localhost:3001 https://generativelanguage.googleapis.com"
+      : "connect-src 'self' https://generativelanguage.googleapis.com"
+
     res.headers.set('Content-Security-Policy', [
       "default-src 'self'",
       "base-uri 'self'",
       "form-action 'self'",
-      "script-src 'self' 'unsafe-inline'", // evite 'unsafe-inline' quando possível usando nonce
-      "style-src 'self' 'unsafe-inline'",
+      scriptSrc, // em prod não inclui 'unsafe-eval'
+      // Allow Google Fonts stylesheet (used by app/globals.css)
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      // Explicit element-level style source (fallback used previously)
+      "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob:",
-      "connect-src 'self' https://generativelanguage.googleapis.com",
-      "font-src 'self' data:",
+      connectSrc,
+      // Allow font files from Google Fonts
+      "font-src 'self' data: https://fonts.gstatic.com",
       "object-src 'none'",
       "frame-ancestors 'none'"
     ].join('; '))

@@ -12,7 +12,9 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
     const { searchParams } = new URL(request.url)
     const doctorId = searchParams.get('doctorId') || undefined
 
-    const stats = await ConsultationService.getStats(doctorId)
+  // Map optional doctorId into filters object
+  const filters = doctorId ? { doctorId } : undefined
+  const stats = await ConsultationService.getStats(filters)
 
     auditLogger.logSuccess(
       user.id,

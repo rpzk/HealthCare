@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { 
   Users, 
   Calendar, 
@@ -24,10 +25,13 @@ interface DashboardStats {
 
 interface UpcomingAppointment {
   id: string
+  consultationId?: string
+  patientId?: string
   patient: string
   time: string
   type: string
   duration: string
+  date?: string
 }
 
 interface RecentPatient {
@@ -49,6 +53,7 @@ export function DashboardOverview() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     fetchDashboardData()
@@ -199,35 +204,48 @@ export function DashboardOverview() {
             <div className="space-y-4">
               {data.appointments && data.appointments.length > 0 ? (
                 data.appointments.map((appointment) => (
-                  <div 
+                  <button
                     key={appointment.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                    className="w-full text-left flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-medical-primary"
+                    aria-label={`Ver detalhes da consulta de ${appointment.patient} às ${appointment.time}`}
+                    title={`Abrir consulta • ${appointment.patient} • ${appointment.time}`}
+                    onClick={() => {
+                      if (appointment.consultationId) {
+                        router.push(`/consultations/${appointment.consultationId}`)
+                        return
+                      }
+                      const params = new URLSearchParams()
+                      if (appointment.patientId) params.set('patientId', appointment.patientId)
+                      if (appointment.date) params.set('date', appointment.date)
+                      const qs = params.toString()
+                      router.push(qs ? `/consultations?${qs}` : '/consultations')
+                    }}
                   >
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {appointment.patient}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {appointment.type}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">
-                      {appointment.time}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {appointment.duration}
-                    </p>
-                  </div>
-                </div>
-              ))
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {appointment.patient}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {appointment.type}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">
+                        {appointment.time}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {appointment.duration}
+                      </p>
+                    </div>
+                  </button>
+                ))
               ) : (
                 <p className="text-center text-gray-500 py-4">
                   Nenhuma consulta agendada
                 </p>
               )}
             </div>
-            <Button className="w-full mt-4" variant="outline">
+            <Button className="w-full mt-4" variant="outline" onClick={() => router.push('/consultations')}>
               Ver Agenda Completa
             </Button>
           </CardContent>
@@ -284,7 +302,7 @@ export function DashboardOverview() {
                 </p>
               )}
             </div>
-            <Button className="w-full mt-4" variant="outline">
+            <Button className="w-full mt-4" variant="outline" onClick={() => router.push('/patients')}>
               Ver Todos os Pacientes
             </Button>
           </CardContent>

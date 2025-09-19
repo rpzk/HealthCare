@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authMiddleware } from './auth-middleware'
 import { auditLogger, AuditAction } from './audit-logger'
 import { getRateLimiterForPath } from './rate-limiter'
-import { redisRateLimiter } from './redis-integration'
+import { createRedisRateLimiter } from './redis-integration'
 import { aiAnomalyDetector } from './ai-anomaly-detector'
 import { recordRequest } from './metrics'
 
@@ -102,7 +102,7 @@ export function withRateLimitedAuth(
         )
 
         // Usar Redis Rate Limiter para distribuição horizontal
-        const rateLimitResult = await redisRateLimiter.checkRateLimit(
+  const rateLimitResult = await createRedisRateLimiter().checkRateLimit(
           userId, 
           limit, 
           windowMs, 

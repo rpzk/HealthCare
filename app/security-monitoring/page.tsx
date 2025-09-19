@@ -1,445 +1,169 @@
-'use client';
+import React from 'react';
+import { headers, cookies } from 'next/headers'
+import { ClientLogger } from './ClientLogger'
+import { SecurityDashboardClient } from './SecurityDashboardClient'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AlertTriangle, Shield, Users, Activity, ListChecks } from 'lucide-react'
 
-// Força renderização dinâmica para evitar caches/resíduos que possam servir bundle antigo
+// Server Component settings
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+type FetchResult = { data: any; error: string | null; status: number }
 
-interface SecurityStats {
-  securityOverview: {
-    totalUsers: number;
-    activeUsers: number;
-    blockedIPs: number;
-    failedLogins: number;
-    systemHealth: 'healthy' | 'warning' | 'critical';
-  };
-  rateLimitStats: Record<string, {
-    limit: number;
-    remaining: number;
-    resetTime: number;
-    isBlocked: boolean;
-  }>;
-  auditStats: {
-    totalEvents: number;
-    recentEvents: Array<{
-      action: string;
-      userId: string;
-      timestamp: number;
-      ip: string;
-    }>;
-  };
-}
-
-// Default object to avoid transient undefined property access during early renders
-const DEFAULT_STATS: SecurityStats = {
-  securityOverview: {
-    totalUsers: 0,
-    activeUsers: 0,
-    blockedIPs: 0,
-    failedLogins: 0,
-    systemHealth: 'healthy'
-  },
-  rateLimitStats: {},
-  auditStats: {
-    totalEvents: 0,
-    recentEvents: []
+async function fetchSecurityOverview(): Promise<FetchResult> {
+  const hdrs = headers();
+  const host = hdrs.get('host') || 'localhost:3000';
+  const proto = hdrs.get('x-forwarded-proto') || 'http';
+  const base = `${proto}://${host}`;
+  const url = `${base}/api/admin/security?action=security-overview`;
+  try {
+    const cookieHeader = cookies().toString();
+    const res = await fetch(url, {
+      headers: { cookie: cookieHeader },
+      cache: 'no-store'
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('[SecurityMonitoring][fetch] Falha', res.status, text);
+      return { data: null, error: `Status ${res.status}: ${text.slice(0,400)}`, status: res.status };
+    }
+    const json = await res.json();
+    return { data: json, error: null, status: res.status };
+  } catch (e:any) {
+    console.error('[SecurityMonitoring][fetch] Exceção', e);
+    return { data: null, error: e.message || String(e), status: 0 };
   }
 }
 
-export default function SecurityMonitoringDashboard() {
-  // Versão de depuração para inspecionar se bundle atualizado foi carregado
-  const COMPONENT_VERSION = 'secmon-v4';
-  const [stats, setStats] = useState<SecurityStats>(DEFAULT_STATS);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default async function SecurityMonitoringDashboard() {
+  const result = await fetchSecurityOverview();
+  const overview = result.data?.overview
+  const health = overview?.systemHealth === 'healthy' ? 'Saudável' : (overview?.systemHealth || 'N/A')
+  const reqs = String(overview?.rateLimit?.totalRequests ?? 0)
+  const clients = String(overview?.rateLimit?.totalClients ?? 0)
+  const blocked = String(overview?.rateLimit?.blockedClients ?? 0)
+  const audits1h = String(overview?.audit?.lastHour ?? 0)
+  const auditErrors = String(overview?.audit?.errors ?? 0)
 
-  // Normaliza diferentes formatos possíveis vindos da API (overview, stats etc.)
-  const normalize = (raw: any): SecurityStats => {
-    // A rota atual retorna { success, overview } com: overview.rateLimit, overview.audit, overview.systemHealth
-    // Construímos contadores sintéticos porque ainda não temos totalUsers reais.
-    const ov = raw?.overview || raw?.securityOverview || {};
-    const rate = ov?.rateLimit || raw?.rateLimitStats || {};
-    const audit = ov?.audit || raw?.auditStats || {};
-    const rawSys = ov?.systemHealth;
-    const sysHealth = (rawSys && typeof rawSys === 'object' && 'status' in rawSys)
-      ? (rawSys as any).status
-      : (typeof rawSys === 'string' ? rawSys : 'healthy');
-
-    const normalized: SecurityStats = {
-      securityOverview: {
-        totalUsers: (ov?.totalUsers ?? 0),
-        activeUsers: (ov?.activeUsers ?? 0),
-        blockedIPs: (rate?.blockedIPs ?? 0),
-        failedLogins: (ov?.failedLogins ?? 0),
-        systemHealth: ['healthy','warning','critical'].includes(sysHealth) ? sysHealth as any : 'healthy'
-      },
-      rateLimitStats: rate || {},
-      auditStats: {
-        totalEvents: (audit?.totalRecent ?? audit?.totalEvents ?? 0),
-        recentEvents: (audit?.recentLogs || audit?.recentEvents || []).filter(Boolean)
-      }
-    };
-
-    // Lightweight runtime diagnostics (dev only)
-    if (process.env.NODE_ENV !== 'production') {
-      if (!raw) console.warn('[SecurityMonitoring] raw response vazio ou undefined');
-      if (!ov) console.warn('[SecurityMonitoring] overview ausente no payload');
-      if (!raw?.overview?.systemHealth && !raw?.securityOverview?.systemHealth) {
-        console.warn('[SecurityMonitoring] systemHealth ausente, usando valor padrão "healthy"');
-      }
-    }
-
-    return normalized;
-  }
-
-  const fetchSecurityStats = async () => {
-    try {
-      setRefreshing(true);
-      const response = await fetch('/api/admin/security?action=security-overview', {
-        cache: 'no-store'
-      });
-      if (!response.ok) {
-        throw new Error('Falha ao carregar estatísticas de segurança');
-      }
-  const data = await response.json();
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[SecurityMonitoring][raw-response]', data);
-  }
-  try {
-    const normalized = normalize(data);
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[SecurityMonitoring][normalized]', normalized);
-    }
-    setStats(normalized);
-    if (typeof window !== 'undefined') {
-      (window as any).__SEC_MON__ = {
-        ts: Date.now(),
-        raw: data,
-        normalized,
-        version: COMPONENT_VERSION
-      };
-    }
-  } catch (e) {
-    console.error('[SecurityMonitoring] Falha ao normalizar payload', e, data);
-  }
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const resetRateLimit = async (userId: string) => {
-    try {
-      const response = await fetch('/api/admin/security', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reset-rate-limit',
-          userId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Falha ao resetar rate limit');
-      }
-      
-      await fetchSecurityStats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao resetar rate limit');
-    }
-  };
-
-  useEffect(() => {
-    fetchSecurityStats();
-    const interval = setInterval(fetchSecurityStats, 10000); // Atualizar a cada 10 segundos
-    return () => clearInterval(interval);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-64"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <Card className="p-6 border-red-200 bg-red-50">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">
-            Erro ao Carregar Dashboard
-          </h2>
-          <p className="text-red-600">{error}</p>
-          <Button onClick={fetchSecurityStats} className="mt-4">
-            Tentar Novamente
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  const getHealthBadgeColor = (health: string) => {
-    switch (health) {
-      case 'healthy': return 'bg-green-100 text-green-800';
-      case 'warning': return 'bg-yellow-100 text-yellow-800';
-      case 'critical': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString('pt-BR');
-  };
-
-  const formatResetTime = (resetTime: number) => {
-    const remaining = Math.max(0, Math.ceil((resetTime - Date.now()) / 1000));
-    return remaining > 0 ? `${remaining}s` : 'Reset';
-  };
-
-  // Mini error boundary local
-  try {
   return (
-    <div className="p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            🛡️ Monitoramento de Segurança
-          </h1>
-          <p className="text-gray-600">
-            Dashboard em tempo real - Sistema HealthCare <span className="text-xs text-gray-400">{COMPONENT_VERSION}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={fetchSecurityStats} 
-            disabled={refreshing}
-            variant="outline"
-          >
-            {refreshing ? '🔄' : '↻'} Atualizar
-          </Button>
-          {(() => {
-            const safeHealthRaw = stats?.securityOverview?.systemHealth;
-            const safeHealth = (safeHealthRaw && ['healthy','warning','critical'].includes(safeHealthRaw))
-              ? safeHealthRaw
-              : 'healthy';
-            let label: string;
-            try {
-              label = safeHealth.toUpperCase();
-            } catch {
-              label = 'HEALTHY';
-            }
-            return (
-              <Badge className={getHealthBadgeColor(safeHealth)}>
-                🏥 {label}
-              </Badge>
-            )
-          })()}
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6">
+          <PageHeader
+            title="Monitoramento de Segurança"
+            description="Visão em tempo real de limites, auditoria e integridade do sistema"
+            breadcrumbs={[{ label: 'Segurança' }, { label: 'Monitoramento' }]}
+            showBackButton={false}
+          />
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
-              <p className="text-2xl font-bold text-green-600">
-                {stats?.securityOverview?.activeUsers || 0}
-              </p>
+          {result.error && (
+            <div className="bg-red-50 text-red-700 border border-red-200 rounded p-3 mb-4 text-sm">
+              <strong>Erro ao obter overview:</strong> {result.error}
             </div>
-            <div className="text-3xl">👥</div>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Total: {stats?.securityOverview?.totalUsers || 0}
-          </p>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">IPs Bloqueados</p>
-              <p className="text-2xl font-bold text-red-600">
-                {stats?.securityOverview?.blockedIPs || 0}
-              </p>
-            </div>
-            <div className="text-3xl">🚫</div>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Rate limiting ativo
-          </p>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Logins Falharam</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {stats?.securityOverview?.failedLogins || 0}
-              </p>
-            </div>
-            <div className="text-3xl">🔐</div>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Últimas 24h
-          </p>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Eventos de Auditoria</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {stats?.auditStats?.totalEvents || 0}
-              </p>
-            </div>
-            <div className="text-3xl">📊</div>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Total registrado
-          </p>
-        </Card>
-      </div>
-
-      {/* Rate Limiting Status */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">⚡ Status do Rate Limiting</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats?.rateLimitStats && Object.entries(stats.rateLimitStats).map(([key, rateLimitData]) => (
-            <div key={key} className="border rounded-lg p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-gray-900">
-                  {key === 'AI_MEDICAL' && '🧠 IA Médica'}
-                  {key === 'CONSULTATIONS' && '🏥 Consultas'}
-                  {key === 'PATIENTS' && '👥 Pacientes'}
-                  {key === 'DASHBOARD' && '📈 Dashboard'}
-                  {!['AI_MEDICAL', 'CONSULTATIONS', 'PATIENTS', 'DASHBOARD'].includes(key) && `🔧 ${key}`}
-                </h3>
-                <Badge 
-                  variant={rateLimitData.isBlocked ? "destructive" : "default"}
-                >
-                  {rateLimitData.isBlocked ? 'BLOQUEADO' : 'ATIVO'}
-                </Badge>
-              </div>
-              
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Limite:</span>
-                  <span className="font-medium">{rateLimitData.limit}/min</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Restante:</span>
-                  <span className={`font-medium ${rateLimitData.remaining < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                    {rateLimitData.remaining}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Reset:</span>
-                  <span className="font-medium">{formatResetTime(rateLimitData.resetTime)}</span>
-                </div>
-              </div>
-
-              {rateLimitData.isBlocked && (
-                <Button 
-                  onClick={() => resetRateLimit(key)}
-                  size="sm"
-                  className="w-full mt-2"
-                  variant="destructive"
-                >
-                  🔓 Reset Limite
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Recent Audit Events */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">📋 Eventos Recentes de Auditoria</h2>
-        <div className="space-y-2">
-          {stats?.auditStats?.recentEvents?.length ? (
-            stats.auditStats.recentEvents.map((event, index) => (
-              <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline">{event.action}</Badge>
-                  <span className="text-sm text-gray-900">
-                    Usuário: {event.userId}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    IP: {event.ip}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {formatTimestamp(event.timestamp)}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center py-4">
-              Nenhum evento de auditoria recente
-            </p>
           )}
-        </div>
-      </Card>
 
-      {/* System Status */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">🔧 Status do Sistema</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl mb-2">✅</div>
-            <p className="text-sm font-medium text-green-800">Rate Limiting</p>
-            <p className="text-xs text-green-600">Operacional</p>
+          {/* Métricas rápidas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Saúde</p>
+                    <p className={`text-xl font-semibold ${overview?.systemHealth === 'healthy' ? 'text-green-600' : 'text-red-600'}`}>{health}</p>
+                  </div>
+                  <Shield className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Requisições</p>
+                    <p className="text-xl font-semibold">{reqs}</p>
+                  </div>
+                  <Activity className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Clientes</p>
+                    <p className="text-xl font-semibold">{clients}</p>
+                  </div>
+                  <Users className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Bloqueados</p>
+                    <p className={`text-xl font-semibold ${Number(blocked) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{blocked}</p>
+                  </div>
+                  <AlertTriangle className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Auditorias (1h)</p>
+                    <p className="text-xl font-semibold">{audits1h}</p>
+                  </div>
+                  <ListChecks className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">Erros de Auditoria</p>
+                    <p className={`text-xl font-semibold ${Number(auditErrors) > 0 ? 'text-red-600' : 'text-green-600'}`}>{auditErrors}</p>
+                  </div>
+                  <AlertTriangle className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl mb-2">🔐</div>
-            <p className="text-sm font-medium text-green-800">Autenticação</p>
-            <p className="text-xs text-green-600">Operacional</p>
+
+          {/* Atualizações em tempo real e detalhes */}
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Atualizações em Tempo Real</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SecurityDashboardClient initialOverview={overview} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhes (JSON)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs bg-black text-green-400 p-3 rounded overflow-x-auto">
+{JSON.stringify(result.data, null, 2) || 'Nenhum dado'}
+                </pre>
+              </CardContent>
+            </Card>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl mb-2">📊</div>
-            <p className="text-sm font-medium text-green-800">Auditoria</p>
-            <p className="text-xs text-green-600">Operacional</p>
-          </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl mb-2">🛡️</div>
-            <p className="text-sm font-medium text-green-800">Segurança Geral</p>
-            <p className="text-xs text-green-600">22/22 APIs Protegidas</p>
-          </div>
-        </div>
-      </Card>
+
+          <ClientLogger data={result.data} />
+        </main>
+      </div>
     </div>
   );
-  } catch (runtimeErr: any) {
-    console.error('[SecurityMonitoring] Runtime render error capturado', runtimeErr);
-    return (
-      <div className="p-8">
-        <Card className="p-6 border-red-200 bg-red-50 space-y-2">
-          <h2 className="text-lg font-semibold text-red-800">Erro no Dashboard de Segurança</h2>
-          <p className="text-sm text-red-700">Falha inesperada de renderização (capturada pelo fallback local).</p>
-          <pre className="text-xs overflow-auto max-h-40 bg-red-100 p-2 rounded">
-            {String(runtimeErr?.message || runtimeErr)}
-          </pre>
-          <Button onClick={() => location.reload()} variant="destructive">Recarregar Página</Button>
-        </Card>
-      </div>
-    )
-  }
 }

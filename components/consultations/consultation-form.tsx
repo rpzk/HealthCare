@@ -363,8 +363,38 @@ export function ConsultationForm({
                 Cancelar
               </Button>
               <Button
-                type="submit"
+                type="button"
                 variant="medical"
+                disabled={loading}
+                onClick={async () => {
+                  setError('');
+                  if (!formData.patientId) {
+                    setError('Selecione um paciente');
+                    return;
+                  }
+                  try {
+                    const now = new Date();
+                    const submitData = {
+                      patientId: formData.patientId,
+                      doctorId: formData.doctorId,
+                      scheduledDate: now.toISOString(),
+                      type: formData.type,
+                      description: formData.description,
+                      notes: formData.notes,
+                      duration: formData.duration,
+                      status: 'IN_PROGRESS'
+                    };
+                    await onSubmit(submitData);
+                  } catch (error: any) {
+                    setError(error.message || 'Erro ao iniciar consulta');
+                  }
+                }}
+              >
+                {loading ? 'Iniciando...' : 'Iniciar Consulta Agora'}
+              </Button>
+              <Button
+                type="submit"
+                variant="outline"
                 disabled={loading}
               >
                 {loading ? 'Agendando...' : 'Agendar Consulta'}

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authMiddleware } from './auth-middleware'
 import { auditLogger, AuditAction } from './audit-logger'
 import { getRateLimiterForPath } from './rate-limiter'
-import { redisRateLimiter } from './redis-integration'
+import { createRedisRateLimiter } from './redis-integration'
 import { aiAnomalyDetector } from './ai-anomaly-detector'
 
 export interface AdvancedAuthenticatedApiHandler {
@@ -101,7 +101,7 @@ export function withRateLimitedAuth(
         )
 
         // Usar Redis Rate Limiter para distribuição horizontal
-        const rateLimitResult = await redisRateLimiter.checkRateLimit(
+  const rateLimitResult = await createRedisRateLimiter().checkRateLimit(
           userId, 
           limit, 
           windowMs, 
@@ -322,7 +322,7 @@ export function withAdminAuthUnlimited(handler: AdvancedAuthenticatedApiHandler)
 export function createRateLimitStatsAPI() {
   return async (request: NextRequest) => {
     try {
-      const stats = await redisRateLimiter.getStats()
+  const stats = await createRedisRateLimiter().getStats()
       const detectorStats = aiAnomalyDetector.getDetectorStats()
 
       return NextResponse.json({
@@ -354,7 +354,7 @@ export function createRateLimitResetAPI() {
         )
       }
 
-      await redisRateLimiter.resetRateLimit(userId)
+  await createRedisRateLimiter().resetRateLimit(userId)
 
       return NextResponse.json({
         success: true,

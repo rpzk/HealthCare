@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { incCounter } from '@/lib/metrics'
-import { redisRateLimiter } from '@/lib/redis-integration'
+import { createRedisRateLimiter } from '@/lib/redis-integration'
 import pkg from '../../../package.json'
 
 // Garantir runtime Node.js para acesso ao Redis, e execução dinâmica
@@ -31,7 +31,9 @@ export async function GET() {
 
   // Redis check
   try {
-    const redisStatus = await redisRateLimiter.getStatus()
+    const rl = createRedisRateLimiter()
+    // getStats provides a richer view; adapt if older helper existed
+    const redisStatus = typeof rl.getStats === 'function' ? await rl.getStats() : { redisConnected: false }
     diagnostics.checks.redis = redisStatus
   } catch (err: any) {
     diagnostics.checks.redis = { status: 'degraded', activeUsers: 0, mode: 'auto' }

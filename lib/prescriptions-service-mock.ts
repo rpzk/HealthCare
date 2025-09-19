@@ -1,3 +1,5 @@
+import { prisma } from './prisma'
+
 export interface PrescriptionFilters {
   search?: string
   patientId?: string
@@ -93,8 +95,36 @@ export class PrescriptionsService {
     page = 1,
     limit = 10
   ) {
-    console.log('Usando dados mock para prescrições')
-    return this.getMockPrescriptions(filters, page, limit)
+    const { search, patientId, doctorId, status, dateFrom, dateTo } = filters;
+    const where: any = {};
+    if (patientId) where.patientId = patientId;
+    if (doctorId) where.doctorId = doctorId;
+    if (status) where.status = status;
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = dateFrom;
+      if (dateTo) where.createdAt.lte = dateTo;
+    }
+    if (search) {
+      where.OR = [
+        { notes: { contains: search, mode: 'insensitive' } },
+        { medication: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    const [total, prescriptions] = await Promise.all([
+      prisma.prescription.count({ where }),
+      prisma.prescription.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          patient: true,
+          doctor: true,
+        },
+      })
+    ]);
+    return { total, prescriptions };
   }
 
   // Dados mock para prescrições

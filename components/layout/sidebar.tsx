@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { 
   Calendar, 
   FileText, 
@@ -25,6 +26,7 @@ interface MenuItem {
   href: string;
   submenu?: Array<{ title: string; href: string }>;
   badge?: string;
+  allowedRoles?: Array<'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST'>;
 }
 
 const menuItems: MenuItem[] = [
@@ -115,18 +117,44 @@ const menuItems: MenuItem[] = [
     icon: Activity,
     href: '/security-monitoring',
     badge: 'ADMIN',
+    allowedRoles: ['ADMIN'],
   },
   {
     title: 'AI Enterprise Analytics',
     icon: Brain,
     href: '/ai-enterprise-analytics',
     badge: 'AI',
+    allowedRoles: ['ADMIN'],
   },
 ]
 
 export function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const userRole = (session as any)?.user?.role as 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | undefined
+
+  const visibleMenuItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      if (!item.allowedRoles) return true
+      if (!userRole) return false
+      return item.allowedRoles.includes(userRole)
+    })
+  }, [userRole])
+
+  // Auto-expand groups that contain the active route
+  useEffect(() => {
+    const toExpand: string[] = []
+    for (const item of menuItems) {
+      if (item.submenu && item.submenu.some((s) => pathname.startsWith(s.href))) {
+        toExpand.push(item.title)
+      }
+    }
+    setExpandedItems((prev) => {
+      const merged = Array.from(new Set([...prev, ...toExpand]))
+      return merged
+    })
+  }, [pathname])
 
   const toggleExpanded = (title: string) => {
     setExpandedItems(prev => 
@@ -143,7 +171,7 @@ export function Sidebar() {
   return (
     <div className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 overflow-y-auto">
       <nav className="p-4 space-y-2">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <div key={item.title}>
             {item.submenu ? (
               <button
@@ -154,6 +182,8 @@ export function Sidebar() {
                     ? "bg-medical-primary text-white" 
                     : "text-gray-700 hover:bg-gray-100"
                 )}
+                aria-expanded={expandedItems.includes(item.title)}
+                aria-controls={`submenu-${item.title}`}
               >
                 <div className="flex items-center space-x-3">
                   <item.icon className="h-5 w-5" />
@@ -180,7 +210,7 @@ export function Sidebar() {
                   <item.icon className="h-5 w-5 mr-3" />
                   <span>{item.title}</span>
                 </div>
-                {item.badge && (
+                {item.badge && (!item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))) && (
                   <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 rounded">
                     {item.badge}
                   </span>
@@ -189,7 +219,7 @@ export function Sidebar() {
             )}
             
             {item.submenu && expandedItems.includes(item.title) && (
-              <div className="ml-4 mt-2 space-y-1">
+              <div className="ml-4 mt-2 space-y-1" id={`submenu-${item.title}`} role="region" aria-label={`Submenu ${item.title}`}>
                 {item.submenu.map((subItem) => (
                   <Link
                     key={subItem.title}
@@ -200,6 +230,7 @@ export function Sidebar() {
                         ? "bg-medical-light text-medical-primary font-medium"
                         : "text-gray-600 hover:bg-gray-50"
                     )}
+                    aria-current={isActive(subItem.href) ? 'page' : undefined}
                   >
                     {subItem.title}
                   </Link>

@@ -132,7 +132,7 @@ class AuditLogger {
 
     // Persistir no banco quando possível (desabilitado temporariamente)
     // TODO: Reativar quando o banco estiver configurado
-    if (false && this.persistEnabled) {
+    if (this.persistEnabled) {
       import('@/lib/prisma').then(async ({ prisma }) => {
         try {
           const client = prisma as any

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -139,7 +141,11 @@ export default function ProfilePage() {
   const currentProfile = editMode ? editedProfile! : profile
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 space-y-6">
       <PageHeader
         title="Meu Perfil"
         description="Gerencie suas informações pessoais"
@@ -465,6 +471,8 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+        </main>
       </div>
     </div>
   )

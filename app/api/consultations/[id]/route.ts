@@ -41,13 +41,27 @@ export const GET = withAuth(async (request: NextRequest, { params, user }) => {
   try {
     const consultation = await ConsultationService.getConsultationById(params.id)
     
+  if (!consultation) {
+      auditLogger.logError(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.CONSULTATION_READ,
+        'Consultation',
+        'Consulta não encontrada',
+        { consultationId: params.id }
+      )
+
+      return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
+    }
+
     auditLogger.logSuccess(
       user.id,
       user.email,
       user.role,
       AuditAction.CONSULTATION_READ,
       'Consultation',
-      { consultationId: params.id, patientName: consultation.patient.name }
+      { consultationId: params.id, patientName: consultation.patient?.name ?? 'N/A' }
     )
     
     return NextResponse.json({ consultation })
@@ -105,18 +119,30 @@ export const PUT = withDoctorAuth(async (request: NextRequest, { params, user })
 
     const consultation = await ConsultationService.updateConsultation(params.id, validatedData)
 
-    auditLogger.logSuccess(
-      user.id,
-      user.email,
-      user.role,
-      AuditAction.CONSULTATION_UPDATE,
-      'Consultation',
-      { 
-        consultationId: params.id,
-        updatedFields: Object.keys(validatedData),
-        patientName: consultation.patient.name
-      }
-    )
+    if (!consultation) {
+      auditLogger.logError(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.CONSULTATION_UPDATE,
+        'Consultation',
+        'Consulta não encontrada ao atualizar',
+        { consultationId: params.id }
+      )
+    } else {
+      auditLogger.logSuccess(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.CONSULTATION_UPDATE,
+        'Consultation',
+        { 
+          consultationId: params.id,
+          updatedFields: Object.keys(validatedData),
+          patientName: (consultation as any)?.patient?.name ?? 'N/A'
+        }
+      )
+    }
 
     return NextResponse.json({
       message: 'Consulta atualizada com sucesso',

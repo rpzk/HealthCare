@@ -8,6 +8,18 @@
 			"args": [],
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "Prisma generate",
+			"type": "shell",
+			"command": "npx prisma generate",
+			"group": "build"
+		},
+		{
+			"label": "Docker up dev",
+			"type": "shell",
+			"command": "docker compose up -d postgres redis",
+			"group": "build"
 		}
 	]
 }

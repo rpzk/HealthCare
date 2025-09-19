@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { aiAnomalyDetector } from '@/lib/ai-anomaly-detector'
-import { redisRateLimiter, redisCache } from '@/lib/redis-integration'
+import { createRedisRateLimiter, createRedisCache, getRedisCombinedStats } from '@/lib/redis-integration'
 
 const handler = withAdminAuthUnlimited(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url)
@@ -67,7 +67,7 @@ async function getAllAIAnalytics() {
  */
 async function getAIAnalyticsOverview() {
   const detectorStats = aiAnomalyDetector.getDetectorStats()
-  const redisStats = await redisRateLimiter.getStats()
+  const redisStats = await createRedisRateLimiter().getStats()
 
   return {
     aiSystem: {
@@ -125,7 +125,7 @@ async function getAnomalyDetectionStats() {
  * ⚡ Ameaças em tempo real
  */
 async function getRealTimeThreats() {
-  const redisStats = await redisRateLimiter.getStats()
+  const redisStats = await createRedisRateLimiter().getStats()
   
   return {
     activeThreats: [
@@ -209,7 +209,7 @@ async function getUserBehaviorAnalysis() {
  * ⚡ Métricas de performance do sistema
  */
 async function getPerformanceMetrics() {
-  const redisStats = await redisRateLimiter.getStats()
+  const redisStats = await createRedisRateLimiter().getStats()
   
   return {
     systemPerformance: {

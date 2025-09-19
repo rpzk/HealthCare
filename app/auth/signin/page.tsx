@@ -79,6 +79,7 @@ export default function SignIn() {
               placeholder="admin@healthcare.com"
               required
               disabled={loading}
+              autoComplete="username"
             />
           </div>
 
@@ -94,6 +95,7 @@ export default function SignIn() {
               placeholder="••••••••"
               required
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 

@@ -1,3 +1,5 @@
+import { prisma } from './prisma'
+
 export interface MedicalRecordFilters {
   search?: string
   type?: string
@@ -36,9 +38,39 @@ export class MedicalRecordsService {
     page = 1,
     limit = 10
   ) {
-    // Por enquanto, sempre usar dados mock até o banco estar configurado
-    console.log('Usando dados mock para prontuários médicos')
-    return this.getMockMedicalRecords(filters, page, limit)
+    const { search, type, patientId, doctorId, dateFrom, dateTo } = filters;
+    const where: any = {};
+    if (patientId) where.patientId = patientId;
+    if (doctorId) where.doctorId = doctorId;
+    if (type) where.recordType = type;
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = dateFrom;
+      if (dateTo) where.createdAt.lte = dateTo;
+    }
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { diagnosis: { contains: search, mode: 'insensitive' } },
+        { treatment: { contains: search, mode: 'insensitive' } },
+        { notes: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    const [total, medicalRecords] = await Promise.all([
+      prisma.medicalRecord.count({ where }),
+      prisma.medicalRecord.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          patient: true,
+          doctor: true,
+        },
+      })
+    ]);
+    return { total, medicalRecords };
   }
 
   // Dados mock para prontuários

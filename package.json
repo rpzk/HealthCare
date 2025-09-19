@@ -44,7 +44,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.52.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.53.0",
     "@opentelemetry/sdk-trace-node": "^1.25.1",
-    "@prisma/client": "^5.19.1",
+    "@prisma/client": "^6.16.2",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -96,7 +96,7 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "postcss": "^8.4.41",
-    "prisma": "^5.19.1",
+    "prisma": "^6.16.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.17.0",
     "typescript": "^5.5.4"

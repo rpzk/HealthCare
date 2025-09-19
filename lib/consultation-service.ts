@@ -574,7 +574,7 @@ export class ConsultationService {
 
     // Gerar slots disponíveis (a cada 30 minutos)
     const availableSlots = []
-    let currentTime = new Date(startOfDay)
+    const currentTime = new Date(startOfDay)
 
     while (currentTime < endOfDay) {
       const isBooked = existingConsultations.some(consultation => {

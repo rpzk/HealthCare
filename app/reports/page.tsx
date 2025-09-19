@@ -162,14 +162,12 @@ export default function ReportsPage() {
               { label: 'Relatórios', href: '/reports' }
             ]}
             icon={<BarChart3 className="w-8 h-8 text-indigo-600" />}
-            actions={[
-              {
-                label: 'Voltar',
-                onClick: () => router.back(),
-                variant: 'outline' as const,
-                icon: <ArrowLeft className="w-4 h-4" />
-              }
-            ]}
+            actions={(
+              <Button variant="outline" onClick={() => router.back()}>
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </Button>
+            )}
           />
 
           <div className="space-y-6">
