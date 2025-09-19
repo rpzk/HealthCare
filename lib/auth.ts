@@ -7,9 +7,11 @@ async function getPrisma() {
     const { PrismaClient } = await import('@prisma/client')
     prismaRef = new PrismaClient()
   }
-  return prismaRef as { user: { findUnique: Function } }
+  // Widen type to avoid TS narrowing issues with findFirst/select
+  return prismaRef as any
 }
 import bcrypt from "bcryptjs"
+const DEBUG_AUTH = (process.env.DEBUG_AUTH || '') === '1'
 
 // Mitigação simples de brute-force (dev). Em produção, usar Redis/ip-based limiter
 const loginAttempts = new Map<string, { count: number; blockedUntil?: number }>()
@@ -35,19 +37,36 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          // Extra: log de diagnóstico do DATABASE_URL (seguro, sem expor senha)
+          if (DEBUG_AUTH) {
+            try {
+              const raw = process.env.DATABASE_URL || ''
+              const u = raw ? new URL(raw) : undefined
+              const user = u?.username || 'n/a'
+              const host = u?.hostname || 'n/a'
+              const db = (u?.pathname || '').replace(/^\//,'') || 'n/a'
+              const pwLen = (u?.password || '').length
+              console.log('[DEBUG_AUTH] DB info:', { user, host, db, pwLen })
+            } catch (e) {
+              console.log('[DEBUG_AUTH] DB URL parse error')
+            }
+          }
+
           const ip = (req as any)?.headers?.get?.('x-forwarded-for') || (req as any)?.headers?.get?.('x-real-ip')
           const key = getLoginKey(credentials.email, ip)
           const attempt = loginAttempts.get(key) || { count: 0 }
           const now = Date.now()
-          if (attempt.blockedUntil && attempt.blockedUntil > now) {
+          const bruteForceDisabled = (process.env.DISABLE_LOGIN_BRUTEFORCE || '') === '1'
+          if (!bruteForceDisabled && attempt.blockedUntil && attempt.blockedUntil > now) {
             console.warn(`IP/email bloqueado temporariamente: ${credentials.email}`)
             return null
           }
 
           const prisma = await getPrisma()
-          const user = await prisma.user.findUnique({
+          // Case-insensitive search to avoid email casing issues
+          const user = await prisma.user.findFirst({
             where: {
-              email: credentials.email
+              email: { equals: credentials.email, mode: 'insensitive' }
             },
             select: {
               id: true,
@@ -61,6 +80,9 @@ export const authOptions: NextAuthOptions = {
 
           if (!user) {
             console.warn(`Tentativa de login com email não encontrado: ${credentials.email}`)
+            if (DEBUG_AUTH) {
+              console.warn('DEBUG_AUTH: usuário não encontrado; verifique se o seed rodou e o DATABASE_URL aponta para o mesmo banco.')
+            }
             return null
           }
 
@@ -70,18 +92,23 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Validar estritamente com hash (sem fallback inseguro)
-          const isPasswordValid = !!user.password
+          const isPasswordValid = user.password
             ? await bcrypt.compare(credentials.password, user.password)
             : false
+          if (DEBUG_AUTH) {
+            console.log(`[DEBUG_AUTH] user.email=${user.email} role=${user.role} hashPrefix=${(user.password||'').slice(0,12)} valid=${isPasswordValid}`)
+          }
 
           if (!isPasswordValid) {
             console.warn(`Senha incorreta para usuário: ${credentials.email}`)
             // incrementar tentativas
-            attempt.count += 1
-            if (attempt.count >= MAX_ATTEMPTS) {
-              attempt.blockedUntil = now + BLOCK_MS
+            if (!bruteForceDisabled) {
+              attempt.count += 1
+              if (attempt.count >= MAX_ATTEMPTS) {
+                attempt.blockedUntil = now + BLOCK_MS
+              }
+              loginAttempts.set(key, attempt)
             }
-            loginAttempts.set(key, attempt)
             return null
           }
 
@@ -96,6 +123,10 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Erro na autenticação:', error)
+          if (DEBUG_AUTH) {
+            const db = process.env.DATABASE_URL || ''
+            console.error('[DEBUG_AUTH] DATABASE_URL host/db (mascarado):', db.replace(/:\/\/.*@/,'://***@').replace(/(\/)[^\?]+(\?*)/,'$1***$2'))
+          }
           return null
         }
       }

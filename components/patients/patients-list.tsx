@@ -27,7 +27,7 @@ interface Patient {
   totalRecords: number
 }
 
-interface PatientsData {
+interface PatientsDataNewShape {
   patients: Patient[]
   pagination: {
     page: number
@@ -35,6 +35,15 @@ interface PatientsData {
     total: number
     pages: number
   }
+}
+
+// Suporte ao formato antigo que a API devolvia anteriormente
+interface PatientsDataLegacyShape {
+  patients: Patient[]
+  total?: number
+  totalPages?: number
+  currentPage?: number
+  limit?: number
 }
 
 export function PatientsList() {
@@ -57,25 +66,36 @@ export function PatientsList() {
   const fetchPatients = async (page = 1, search = '') => {
     try {
       setLoading(true)
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '10',
-        isActive: 'true'
-      })
-
-      if (search) {
-        params.append('search', search)
-      }
-
+      const params = new URLSearchParams({ page: page.toString(), limit: '10', isActive: 'true' })
+      if (search) params.append('search', search)
       const response = await fetch(`/api/patients?${params}`)
-      
-      if (!response.ok) {
-        throw new Error('Falha ao carregar pacientes')
+      if (!response.ok) throw new Error('Falha ao carregar pacientes')
+      const raw = await response.json()
+      console.log('[PatientsList] Raw /api/patients response:', raw)
+      let patientsData: Patient[] = []
+      let pageMeta = { page: 1, limit: 10, total: 0, pages: 0 }
+      if (raw && Array.isArray(raw.patients) && raw.pagination) {
+        patientsData = raw.patients
+        pageMeta = {
+          page: raw.pagination?.page || 1,
+          limit: raw.pagination?.limit || 10,
+          total: raw.pagination?.total || 0,
+          pages: raw.pagination?.pages || 0
+        }
+      } else if (raw && Array.isArray(raw.patients) && (raw.totalPages !== undefined || raw.currentPage !== undefined)) {
+        patientsData = raw.patients
+        pageMeta = {
+          page: raw.currentPage || 1,
+          limit: raw.limit || 10,
+          total: raw.total || raw.patients.length,
+          pages: raw.totalPages || 0
+        }
+      } else {
+        console.warn('[PatientsList] Formato inesperado de resposta /api/patients:', raw)
       }
-
-      const data: PatientsData = await response.json()
-      setPatients(data.patients)
-      setPagination(data.pagination)
+      console.log('[PatientsList] Normalized pagination meta:', pageMeta)
+      setPatients(patientsData)
+      setPagination(pageMeta)
     } catch (err) {
       console.error('Erro ao carregar pacientes:', err)
       setError('Erro ao carregar pacientes. Mostrando dados de exemplo.')
@@ -216,6 +236,9 @@ export function PatientsList() {
     }
     return 'Novo paciente'
   }
+
+  // Before rendering pagination, ensure pagination is defined
+  const totalPagesSafe = pagination?.pages ?? 0
 
   return (
     <div className="space-y-6">
@@ -399,7 +422,7 @@ export function PatientsList() {
       )}
 
       {/* Paginação */}
-      {!loading && pagination.pages > 1 && (
+  {!loading && totalPagesSafe > 1 && (
         <div className="flex justify-center items-center space-x-2">
           <Button
             variant="outline"
@@ -411,13 +434,13 @@ export function PatientsList() {
           </Button>
           
           <span className="text-sm text-gray-600">
-            Página {pagination.page} de {pagination.pages} ({pagination.total} pacientes)
+            Página {pagination?.page ?? 1} de {totalPagesSafe} ({pagination?.total ?? patients.length} pacientes)
           </span>
           
           <Button
             variant="outline"
             size="sm"
-            disabled={currentPage === pagination.pages}
+            disabled={currentPage === totalPagesSafe || totalPagesSafe === 0}
             onClick={() => setCurrentPage(currentPage + 1)}
           >
             Próxima

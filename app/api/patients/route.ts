@@ -16,9 +16,9 @@ export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
     const limit = parseInt(searchParams.get('limit') || '10')
     
     // Filtros
-  const search = searchParams.get('search') || undefined
-  const gender = searchParams.get('gender') || undefined
-  const riskLevel = searchParams.get('riskLevel') || undefined
+    const search = searchParams.get('search') || undefined
+    const gender = searchParams.get('gender') || undefined
+    const riskLevel = searchParams.get('riskLevel') || undefined
     
     // Filtro de idade
     let ageRange: { min: number; max: number } | undefined = undefined
@@ -31,14 +31,28 @@ export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
       }
     }
 
-  const result = await startSpan('patients.list', () => PatientService.getPatients(
+    const result = await startSpan('patients.list', () => PatientService.getPatients(
       { search, gender, riskLevel, ageRange },
       page,
       limit
     ))
-  // Aplicar masking na coleção
-  const masked = { ...result, patients: applyPatientsCollectionMasking(result.patients) }
-  return NextResponse.json(masked)
+    // Aplicar masking na coleção
+    const masked = { ...result, patients: applyPatientsCollectionMasking(result.patients) }
+    
+    // Transformar para o formato esperado pelo frontend
+    const response = {
+      patients: masked.patients,
+      pagination: {
+        page: masked.currentPage,
+        limit,
+        total: masked.total,
+        pages: masked.totalPages
+      }
+    }
+
+    console.log('[PatientsAPI] Returning pagination', response.pagination)
+    
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Erro na API de pacientes:', error)
     return NextResponse.json(
@@ -68,9 +82,9 @@ export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
       return NextResponse.json({ error: 'Data de nascimento inválida' }, { status: 400 })
     }
 
-  const patient = await startSpan('patients.create', () => PatientService.createPatient({
+    const patient = await startSpan('patients.create', () => PatientService.createPatient({
       name: data.name,
-  email: data.email!,
+      email: data.email!,
       phone: data.phone,
       cpf: data.cpf,
       birthDate,
@@ -82,11 +96,11 @@ export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
       currentMedications: Array.isArray((data as any).currentMedications) ? (data as any).currentMedications.join(', ') : undefined,
       riskLevel: (data as any).riskLevel,
       insuranceNumber: (data as any).insuranceNumber,
-    // Não vincula automaticamente a um médico durante testes/bypass para evitar falha de FK
-    // userId: user.id
+      // Não vincula automaticamente a um médico durante testes/bypass para evitar falha de FK
+      // userId: user.id
     }))
-  // Mask de retorno (apenas confirmação sem dados sensíveis)
-  return NextResponse.json(applyPatientMasking(patient), { status: 201 })
+    // Mask de retorno (apenas confirmação sem dados sensíveis)
+    return NextResponse.json(applyPatientMasking(patient), { status: 201 })
   } catch (error: any) {
     console.error('Erro ao criar paciente:', error)
     

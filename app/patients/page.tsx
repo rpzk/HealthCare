@@ -3,11 +3,15 @@ import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PatientsList } from '@/components/patients/patients-list'
 import { PageHeader } from '@/components/navigation/page-header'
+import { HydrationGuard } from '@/components/hydration-guard'
 
 export const metadata: Metadata = {
   title: 'Pacientes - Sistema de Prontuário Eletrônico',
   description: 'Gestão de pacientes do sistema médico',
 }
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function PatientsPage() {
   return (
@@ -25,7 +29,9 @@ export default function PatientsPage() {
             showBackButton={false}
             showHomeButton={true}
           />
-          <PatientsList />
+          <HydrationGuard fallback={<div className="text-sm text-gray-500">Carregando pacientes...</div>}>
+            <PatientsList />
+          </HydrationGuard>
         </main>
       </div>
     </div>

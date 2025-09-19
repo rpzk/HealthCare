@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -111,7 +113,11 @@ export default function MedicalRecordsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 space-y-6">
       {/* Header */}
       <PageHeader
         title="Prontuários Médicos"
@@ -315,6 +321,8 @@ export default function MedicalRecordsPage() {
           </Button>
         </div>
       )}
+        </main>
+      </div>
     </div>
   )
 }

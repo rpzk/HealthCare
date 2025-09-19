@@ -43,11 +43,12 @@ export async function POST(request: NextRequest) {
       birthDate: registrationData.dataNascimento ? new Date(registrationData.dataNascimento) : null,
       gender: registrationData.sexo || 'UNKNOWN',
       address: registrationData.endereco || null,
-      medicalHistory: registrationData.historicoMedico || null,
+      // Use available fields from PatientRegistrationData
+      medicalHistory: registrationData.observacoes || null,
       allergies: registrationData.alergias || [],
-      currentMedications: registrationData.medicamentosAtuais || [],
+      currentMedications: registrationData.medicamentosUso || [],
       emergencyContact: registrationData.contatoEmergencia || null,
-      insuranceNumber: registrationData.numeroConvenio || null,
+      insuranceNumber: registrationData.convenio?.numero || null,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date()

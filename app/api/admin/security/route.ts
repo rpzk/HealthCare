@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuthUnlimited, createRateLimitStatsAPI, createRateLimitResetAPI } from '@/lib/advanced-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { MemoryRateLimiter } from '@/lib/rate-limiter'
+import { getRedisCombinedStats } from '@/lib/redis-integration'
 
 /**
  * GET - Estatísticas gerais do sistema de segurança
@@ -55,6 +56,37 @@ export const GET = withAdminAuthUnlimited(async (request: NextRequest, { user })
           timestamp: new Date().toISOString()
         })
 
+      case 'redis-stats': {
+        const redisStats = await getRedisCombinedStats();
+        auditLogger.logSuccess(
+          user.id,
+          user.email,
+          user.role,
+          AuditAction.AI_INTERACTION,
+          'Redis Stats',
+          { requestedBy: user.id }
+        );
+        return NextResponse.json({ success: true, redis: redisStats, timestamp: new Date().toISOString() })
+      }
+      case 'audit-recent': {
+        const recent = auditLogger.getRecentLogs(200).map(l => ({
+          t: l.timestamp.toISOString(),
+            action: l.action,
+            resource: l.resource,
+            success: l.success,
+            user: l.userEmail,
+            err: l.errorMessage
+        }));
+        auditLogger.logSuccess(
+          user.id,
+          user.email,
+          user.role,
+          AuditAction.AI_INTERACTION,
+          'Audit Recent',
+          { requestedBy: user.id }
+        );
+        return NextResponse.json({ success: true, logs: recent, count: recent.length, timestamp: new Date().toISOString() })
+      }
       case 'security-overview':
         const systemRateLimitStats = MemoryRateLimiter.getStats()
         const recentAudits = auditLogger.getRecentLogs(100)
@@ -68,12 +100,7 @@ export const GET = withAdminAuthUnlimited(async (request: NextRequest, { user })
               log => log.timestamp.getTime() > Date.now() - 60 * 60 * 1000
             ).length
           },
-          systemHealth: {
-            status: 'healthy',
-            uptime: process.uptime(),
-            memoryUsage: process.memoryUsage(),
-            timestamp: new Date().toISOString()
-          }
+          systemHealth: 'healthy', // Simplificado para corresponder à interface do frontend
         }
 
         auditLogger.logSuccess(
@@ -93,7 +120,7 @@ export const GET = withAdminAuthUnlimited(async (request: NextRequest, { user })
 
       default:
         return NextResponse.json(
-          { error: 'Ação não reconhecida. Use: rate-limit-stats, audit-stats, security-overview' },
+          { error: 'Ação não reconhecida. Use: rate-limit-stats, audit-stats, security-overview, redis-stats, audit-recent' },
           { status: 400 }
         )
     }

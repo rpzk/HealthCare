@@ -1,9 +1,50 @@
+import * as prismaLib from './prisma'
+const prisma = prismaLib.prisma
+
 export class DashboardService {
-  // Buscar estatísticas principais do dashboard
+  // Buscar estatísticas principais do dashboard (com fallback seguro)
   static async getStats() {
-    // Por enquanto, sempre usar dados mock até o banco estar configurado
-    console.log('Usando dados mock para estatísticas do dashboard')
-    return this.getMockStats()
+    try {
+  await prismaLib.ensurePrismaConnected()
+
+      const now = new Date()
+      const startOfDay = new Date(now)
+      startOfDay.setHours(0, 0, 0, 0)
+      const endOfDay = new Date(now)
+      endOfDay.setHours(23, 59, 59, 999)
+      const sevenDaysAgo = new Date(now)
+      sevenDaysAgo.setDate(now.getDate() - 7)
+
+      const [totalPatients, consultationsToday, updatedRecords, periodTotal, periodCompleted] = await Promise.all([
+        prisma.patient.count(),
+        prisma.consultation.count({
+          where: {
+            scheduledDate: { gte: startOfDay, lte: endOfDay },
+          },
+        }),
+        prisma.medicalRecord.count({
+          where: { updatedAt: { gte: startOfDay } },
+        }),
+        prisma.consultation.count({
+          where: { updatedAt: { gte: sevenDaysAgo } },
+        }),
+        prisma.consultation.count({
+          where: { updatedAt: { gte: sevenDaysAgo }, status: 'COMPLETED' },
+        }),
+      ])
+
+      const completionRate = periodTotal > 0 ? Math.round((periodCompleted / periodTotal) * 100) : 0
+
+      return {
+        totalPatients,
+        consultationsToday,
+        updatedRecords,
+        completionRate,
+      }
+    } catch (err) {
+      console.warn('[dashboard] fallback para dados mock em getStats()', err)
+      return this.getMockStats()
+    }
   }
 
   // Dados mock para quando o banco não estiver disponível
@@ -12,22 +53,77 @@ export class DashboardService {
       totalPatients: 156,
       consultationsToday: 8,
       updatedRecords: 23,
-      completionRate: 87
+      completionRate: 87,
     }
   }
 
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
-    // Por enquanto, sempre usar dados mock até o banco estar configurado
-    console.log('Usando dados mock para próximas consultas')
-    return this.getMockAppointments(limit)
+    try {
+  await prismaLib.ensurePrismaConnected()
+
+      const now = new Date()
+      const upcoming = await prisma.consultation.findMany({
+        where: {
+          scheduledDate: { gte: now },
+          status: { in: ['SCHEDULED', 'IN_PROGRESS'] as any },
+        },
+        orderBy: { scheduledDate: 'asc' },
+        take: limit,
+        select: {
+          id: true,
+          scheduledDate: true,
+          type: true,
+          duration: true,
+          patient: { select: { id: true, name: true } },
+        },
+      })
+
+      return upcoming.map((c) => ({
+        id: c.id,
+        consultationId: c.id,
+        patientId: c.patient?.id,
+        patient: c.patient?.name ?? 'Paciente',
+        time: new Date(c.scheduledDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        type: this.getConsultationTypeLabel(String(c.type)),
+        duration: c.duration ? `${c.duration} min` : '—',
+        date: new Date(c.scheduledDate).toISOString(),
+      }))
+    } catch (err) {
+      console.warn('[dashboard] fallback para dados mock em getUpcomingAppointments()', err)
+      return this.getMockAppointments(limit)
+    }
   }
 
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
-    // Por enquanto, sempre usar dados mock até o banco estar configurado
-    console.log('Usando dados mock para pacientes recentes')
-    return this.getMockPatients(limit)
+    try {
+  await prismaLib.ensurePrismaConnected()
+
+      const patients = await prisma.patient.findMany({
+        orderBy: { updatedAt: 'desc' },
+        take: limit,
+        include: {
+          consultations: { orderBy: { updatedAt: 'desc' }, take: 1 },
+        },
+      })
+
+      return patients.map((p) => {
+        const lastConsultation = p.consultations?.[0]
+        const lastVisitDate = lastConsultation?.updatedAt ?? p.updatedAt ?? p.createdAt
+        return {
+          id: p.id,
+          name: p.name,
+          age: this.calculateAge(p.birthDate as unknown as Date),
+          lastVisit: new Date(lastVisitDate).toLocaleDateString('pt-BR'),
+          status: this.getPatientStatus(p as any, lastConsultation as any),
+          priority: this.getPatientPriority(p as any),
+        }
+      })
+    } catch (err) {
+      console.warn('[dashboard] fallback para dados mock em getRecentPatients()', err)
+      return this.getMockPatients(limit)
+    }
   }
 
   // Métodos auxiliares
@@ -75,15 +171,10 @@ export class DashboardService {
   }
 
   private static getPatientPriority(patient: any): 'normal' | 'high' {
-    // Lógica para determinar prioridade baseada em condições crônicas
-    const criticalConditions = ['diabetes', 'hipertensão', 'cardiopatia']
-    const hasHighPriorityCondition = patient.chronicDiseases?.some((disease: string) => 
-      criticalConditions.some(condition => 
-        disease.toLowerCase().includes(condition.toLowerCase())
-      )
-    )
-    
-    return hasHighPriorityCondition ? 'high' : 'normal'
+    // Deriva prioridade do nível de risco do paciente
+    const highRiskLevels = ['ALTO', 'CRITICO']
+    const level = String(patient?.riskLevel || '').toUpperCase()
+    return highRiskLevels.includes(level) ? 'high' : 'normal'
   }
 
   // Métodos mock para quando o banco não estiver disponível

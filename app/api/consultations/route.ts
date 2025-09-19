@@ -67,14 +67,8 @@ export const POST = withConsultationAuth(async (request: NextRequest, { user }) 
       }
     }
 
-    // Validar data
+    // Permitir criar consulta imediata (sem exigir data futura)
     const scheduledDate = new Date(body.scheduledDate)
-    if (scheduledDate <= new Date()) {
-      return NextResponse.json(
-        { error: 'A data da consulta deve ser futura' },
-        { status: 400 }
-      )
-    }
 
     // Validar tipo de consulta
     const validTypes = ['ROUTINE', 'URGENT', 'EMERGENCY', 'FOLLOW_UP', 'PREVENTIVE']
@@ -92,13 +86,14 @@ export const POST = withConsultationAuth(async (request: NextRequest, { user }) 
       type: body.type,
       description: body.description || '',
       notes: body.notes || '',
-      duration: body.duration || 60
+      duration: body.duration || 60,
+      status: body.status || 'SCHEDULED'
     }
 
     const consultation = await ConsultationService.createConsultation(consultationData)
 
     const resp = NextResponse.json({
-      message: 'Consulta agendada com sucesso',
+      message: 'Consulta criada com sucesso',
       consultation
     }, { status: 201 })
     if ((limit as any)?.headers) {

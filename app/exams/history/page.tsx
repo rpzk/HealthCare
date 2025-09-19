@@ -91,7 +91,7 @@ export default function ExamHistoryPage() {
     // Filtro por data
     if (dateRange) {
       const now = new Date()
-      let startDate = new Date()
+      const startDate = new Date()
 
       switch (dateRange) {
         case '7days':

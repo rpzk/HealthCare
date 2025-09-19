@@ -15,6 +15,7 @@ interface PageHeaderProps {
   showBackButton?: boolean
   showHomeButton?: boolean
   actions?: React.ReactNode
+  icon?: React.ReactNode
 }
 
 export function PageHeader({
@@ -23,7 +24,8 @@ export function PageHeader({
   breadcrumbs = [],
   showBackButton = true,
   showHomeButton = true,
-  actions
+  actions,
+  icon
 }: PageHeaderProps) {
   const router = useRouter()
 
@@ -86,7 +88,7 @@ export function PageHeader({
 
       {/* Header Content */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
           {/* Back Button */}
           {showBackButton && (
             <Button
@@ -114,11 +116,14 @@ export function PageHeader({
           )}
 
           {/* Title and Description */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-            {description && (
-              <p className="text-gray-600 mt-1">{description}</p>
-            )}
+          <div className="flex items-center gap-3">
+            {icon}
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+              {description && (
+                <p className="text-gray-600 mt-1">{description}</p>
+              )}
+            </div>
           </div>
         </div>
 

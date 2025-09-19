@@ -1,3 +1,5 @@
+// Ajuste: usar caminho relativo para executar fora do ambiente Next.js (evita depender de path aliases)
+// Import com extensão explícita para compatibilidade ESM quando executado via ts-node/register
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 

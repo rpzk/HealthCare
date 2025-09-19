@@ -58,7 +58,7 @@ export function recordRequest(path: string, method: string, status: number, dura
 }
 
 export async function renderPrometheus(prisma?: any) {
-  let out: string[] = []
+  const out: string[] = []
   out.push('# HELP api_request_total Total de requisições API por path/método/status')
   out.push('# TYPE api_request_total counter')
   for (const k of Object.keys(counters)) {

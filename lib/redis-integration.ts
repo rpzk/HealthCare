@@ -1,5 +1,35 @@
 import Redis from 'ioredis';
 
+// Util para throttling de logs repetidos de erro Redis
+class LogThrottler {
+  private lastMsg: string | null = null;
+  private lastTime = 0;
+  private suppressed = 0;
+  constructor(private intervalMs: number = 5000) {}
+  logError(prefix: string, err: any) {
+    const msg = err?.message || String(err);
+    const now = Date.now();
+    if (this.lastMsg === msg && (now - this.lastTime) < this.intervalMs) {
+      this.suppressed++;
+      if (this.suppressed === 1) {
+        // primeira vez que suprimimos, avisamos
+        console.error(prefix + ' (repetindo, suprimindo logs por alguns segundos)');
+      }
+      return;
+    }
+    if (this.suppressed > 0) {
+      console.error(`${prefix} (+${this.suppressed} repetidos suprimidos)`);
+      this.suppressed = 0;
+    }
+    this.lastMsg = msg;
+    this.lastTime = now;
+    console.error(prefix, msg);
+  }
+}
+
+const rateLimiterLogThrottler = new LogThrottler();
+const cacheLogThrottler = new LogThrottler();
+
 interface RedisConfig {
   host: string;
   port: number;
@@ -40,15 +70,37 @@ export class RedisRateLimiter {
 
     const finalConfig = { ...defaultConfig, ...config };
 
-    this.redis = new Redis({
-      host: finalConfig.host,
-      port: finalConfig.port,
-      password: finalConfig.password,
-      db: finalConfig.db,
-      keyPrefix: finalConfig.keyPrefix,
-      maxRetriesPerRequest: 2,
-      lazyConnect: true
-    });
+    // Suporte a REDIS_URL (prioritário) caso definido
+    if (process.env.REDIS_URL) {
+      try {
+        this.redis = new Redis(process.env.REDIS_URL, {
+          keyPrefix: finalConfig.keyPrefix,
+          lazyConnect: true,
+          maxRetriesPerRequest: 2
+        });
+      } catch (e) {
+        console.error('❌ Erro ao parsear REDIS_URL, fallback para host/port:', e);
+        this.redis = new Redis({
+          host: finalConfig.host,
+          port: finalConfig.port,
+          password: finalConfig.password,
+          db: finalConfig.db,
+          keyPrefix: finalConfig.keyPrefix,
+          maxRetriesPerRequest: 2,
+          lazyConnect: true
+        });
+      }
+    } else {
+      this.redis = new Redis({
+        host: finalConfig.host,
+        port: finalConfig.port,
+        password: finalConfig.password,
+        db: finalConfig.db,
+        keyPrefix: finalConfig.keyPrefix,
+        maxRetriesPerRequest: 2,
+        lazyConnect: true
+      });
+    }
 
     if (process.env.DISABLE_REDIS === '1') {
       console.log('🔕 Redis desativado via DISABLE_REDIS=1 (usando apenas fallback em memória)')
@@ -72,7 +124,7 @@ export class RedisRateLimiter {
     });
 
     this.redis.on('error', (error) => {
-      console.error('❌ Erro no Redis, usando fallback em memória:', error.message);
+      rateLimiterLogThrottler.logError('❌ Erro no Redis rate limiter:', error);
       this.isRedisConnected = false;
     });
 
@@ -92,9 +144,29 @@ export class RedisRateLimiter {
   private async initializeConnection(): Promise<void> {
     try {
       await this.redis.connect();
-    } catch (error) {
-      console.error('❌ Falha na conexão inicial do Redis:', error);
+    } catch (error: any) {
+      rateLimiterLogThrottler.logError('❌ Falha na conexão inicial do Redis:', error);
       this.isRedisConnected = false;
+      // Fallback rápido: se host padrão "redis" e falhou DNS ou timeout, tenta localhost 1x
+      const hostTried = (this.redis as any).options?.host;
+      if (hostTried === 'redis' || hostTried === 'redis-cache') {
+        try {
+          console.log('🔁 Tentando fallback para localhost:6379 (rate limiter)');
+          this.redis.disconnect();
+          this.redis = new Redis({
+            host: 'localhost',
+            port: 6379,
+            db: parseInt(process.env.REDIS_DB || '0'),
+            keyPrefix: 'healthcare:ratelimit:',
+            maxRetriesPerRequest: 2,
+            lazyConnect: true
+          });
+          this.setupRedisEventHandlers();
+          await this.redis.connect();
+        } catch (e2) {
+          rateLimiterLogThrottler.logError('❌ Fallback localhost falhou (rate limiter):', e2);
+        }
+      }
     }
   }
 
@@ -398,14 +470,33 @@ export class RedisCache {
 
     const finalConfig = { ...defaultConfig, ...config };
 
-    this.redis = new Redis({
-      host: finalConfig.host,
-      port: finalConfig.port,
-      password: finalConfig.password,
-      db: finalConfig.db,
-      keyPrefix: finalConfig.keyPrefix,
-      lazyConnect: true
-    });
+    if (process.env.REDIS_URL) {
+      try {
+        this.redis = new Redis(process.env.REDIS_URL, {
+          keyPrefix: finalConfig.keyPrefix,
+          lazyConnect: true
+        });
+      } catch (e) {
+        console.error('❌ Erro ao parsear REDIS_URL (cache), fallback host/port:', e);
+        this.redis = new Redis({
+          host: finalConfig.host,
+          port: finalConfig.port,
+          password: finalConfig.password,
+          db: finalConfig.db,
+          keyPrefix: finalConfig.keyPrefix,
+          lazyConnect: true
+        });
+      }
+    } else {
+      this.redis = new Redis({
+        host: finalConfig.host,
+        port: finalConfig.port,
+        password: finalConfig.password,
+        db: finalConfig.db,
+        keyPrefix: finalConfig.keyPrefix,
+        lazyConnect: true
+      });
+    }
 
     if (process.env.DISABLE_REDIS === '1') {
       console.log('🔕 Redis Cache desativado via DISABLE_REDIS=1 (fallback memória)')
@@ -422,7 +513,7 @@ export class RedisCache {
     });
 
     this.redis.on('error', (error) => {
-      console.error('❌ Erro no Redis Cache:', error.message);
+      cacheLogThrottler.logError('❌ Erro no Redis Cache:', error);
       this.isRedisConnected = false;
     });
   }
@@ -430,9 +521,27 @@ export class RedisCache {
   private async initializeConnection(): Promise<void> {
     try {
       await this.redis.connect();
-    } catch (error) {
-      console.error('❌ Falha na conexão Redis Cache:', error);
+    } catch (error: any) {
+      cacheLogThrottler.logError('❌ Falha na conexão Redis Cache:', error);
       this.isRedisConnected = false;
+      const hostTried = (this.redis as any).options?.host;
+      if (hostTried === 'redis' || hostTried === 'redis-cache') {
+        try {
+          console.log('🔁 Tentando fallback para localhost:6379 (cache)');
+          this.redis.disconnect();
+          this.redis = new Redis({
+            host: 'localhost',
+            port: 6379,
+            db: parseInt(process.env.REDIS_CACHE_DB || '1'),
+            keyPrefix: 'healthcare:cache:',
+            lazyConnect: true
+          });
+          this.setupEventHandlers();
+          await this.redis.connect();
+        } catch (e2) {
+          cacheLogThrottler.logError('❌ Fallback localhost falhou (cache):', e2);
+        }
+      }
     }
   }
 
@@ -510,11 +619,71 @@ export class RedisCache {
 }
 
 // 🌟 Instâncias singleton
-export const redisRateLimiter = new RedisRateLimiter();
-export const redisCache = new RedisCache();
+// Note: avoid creating connections during module evaluation so Next.js build/prerender doesn't
+// attempt to connect to Redis (which can fail in CI or during static export). Provide
+// factory/getter functions that create singletons on demand at runtime.
+let _redisRateLimiter: RedisRateLimiter | null = null;
+let _redisCache: RedisCache | null = null;
 
-// 🔄 Limpeza automática a cada 10 minutos
-setInterval(() => {
-  redisRateLimiter.cleanup();
-  redisCache.cleanup();
-}, 10 * 60 * 1000);
+export function getRedisRateLimiter(): RedisRateLimiter {
+  if (!_redisRateLimiter) {
+    _redisRateLimiter = new RedisRateLimiter();
+  }
+  return _redisRateLimiter;
+}
+
+export function getRedisCache(): RedisCache {
+  if (!_redisCache) {
+    _redisCache = new RedisCache();
+  }
+  return _redisCache;
+}
+
+// Helper para expor estatísticas do cache Redis (uso interno no dashboard)
+export async function getRedisCacheStats() {
+  const cache = _redisCache || null;
+  const isConnected = !!(cache && (cache as any).isRedisConnected);
+  const memoryFallbackEntries = cache && (cache as any).fallbackMemory ? (cache as any).fallbackMemory.size : 0;
+  return {
+    redisConnected: isConnected,
+    memoryFallbackEntries
+  };
+}
+
+export async function getRedisCombinedStats() {
+  const rl = _redisRateLimiter ? await _redisRateLimiter.getStats() : { redisConnected: false, totalKeys: 0, activeUsers:0, blockedUsers:0, memoryFallbackEntries: 0 };
+  const cache = await getRedisCacheStats();
+  return { rateLimiter: rl, cache };
+}
+
+// Start a background cleanup only when singletons are created at runtime
+function startBackgroundCleanupIfNeeded() {
+  if (_redisRateLimiter || _redisCache) {
+    // If already started, don't create another interval (simple guard)
+    if ((global as any).__healthcare_redis_cleanup_started) return;
+    (global as any).__healthcare_redis_cleanup_started = true;
+    setInterval(() => {
+      try {
+        _redisRateLimiter?.cleanup();
+        _redisCache?.cleanup();
+      } catch (e) {
+        console.error('Erro durante limpeza periódica do Redis:', e);
+      }
+    }, 10 * 60 * 1000);
+  }
+}
+
+// Wrap factory to start cleanup when created
+const originalGetRedisRateLimiter = getRedisRateLimiter;
+const originalGetRedisCache = getRedisCache;
+export function createRedisRateLimiter() {
+  const rl = originalGetRedisRateLimiter();
+  startBackgroundCleanupIfNeeded();
+  return rl;
+}
+
+export function createRedisCache() {
+  const c = originalGetRedisCache();
+  startBackgroundCleanupIfNeeded();
+  return c;
+}

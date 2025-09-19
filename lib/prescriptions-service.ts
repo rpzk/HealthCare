@@ -77,96 +77,150 @@ export class PrescriptionsServiceDb {
       ]
     }
 
-    const [rows, total] = await Promise.all([
-      prisma.prescription.findMany({
-        where,
-        include: {
-          patient: { select: { id: true, name: true, email: true, phone: true } },
-          doctor: { select: { id: true, name: true, email: true, speciality: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.prescription.count({ where }),
-    ])
+    try {
+      const [rows, total] = await Promise.all([
+        prisma.prescription.findMany({
+          where,
+          include: {
+            patient: { select: { id: true, name: true, email: true, phone: true } },
+            doctor: { select: { id: true, name: true, email: true, speciality: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.prescription.count({ where }),
+      ])
 
-    return {
-      prescriptions: rows.map(this.toApiShape),
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      return {
+        prescriptions: rows.map(this.toApiShape),
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      }
+    } catch (err: any) {
+      console.error('Prisma error in PrescriptionsServiceDb.list', {
+        message: err?.message,
+        code: err?.code,
+        meta: err?.meta,
+        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+      })
+      throw err
     }
   }
 
   static async getById(id: string) {
-    const row = await prisma.prescription.findUnique({
-      where: { id },
-      include: {
-        patient: { select: { id: true, name: true, email: true, phone: true } },
-        doctor: { select: { id: true, name: true, email: true, speciality: true } },
-      },
-    })
-    return row ? this.toApiShape(row) : null
+    try {
+      const row = await prisma.prescription.findUnique({
+        where: { id },
+        include: {
+          patient: { select: { id: true, name: true, email: true, phone: true } },
+          doctor: { select: { id: true, name: true, email: true, speciality: true } },
+        },
+      })
+      return row ? this.toApiShape(row) : null
+    } catch (err: any) {
+      console.error('Prisma error in PrescriptionsServiceDb.getById', {
+        message: err?.message,
+        code: err?.code,
+        meta: err?.meta,
+        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+      })
+      throw err
+    }
   }
 
   static async create(data: PrescriptionCreateData) {
-    // Bypass-friendly: ensure doctor exists (or create a minimal stub) if ALLOW_TEST_BYPASS
-    let doctorId = data.doctorId
-    if (process.env.ALLOW_TEST_BYPASS === 'true') {
-      const existing = await prisma.user.findUnique({ where: { id: data.doctorId } })
-      if (!existing) {
-        const email = `bypass_doctor_${data.doctorId}@local.test`
-        const created = await prisma.user.upsert({
-          where: { id: data.doctorId },
-          update: {},
-          create: {
-            id: data.doctorId,
-            email,
-            name: 'Dr. Bypass',
-            role: 'DOCTOR',
-          },
-        })
-        doctorId = created.id
+    try {
+      // Bypass-friendly: ensure doctor exists (or create a minimal stub) if ALLOW_TEST_BYPASS
+      let doctorId = data.doctorId
+      if (process.env.ALLOW_TEST_BYPASS === 'true') {
+        try {
+          const existing = await prisma.user.findUnique({ where: { id: data.doctorId } })
+          if (!existing) {
+            const email = `bypass_doctor_${data.doctorId}@local.test`
+            const created = await prisma.user.upsert({
+              where: { id: data.doctorId },
+              update: {},
+              create: {
+                id: data.doctorId,
+                email,
+                name: 'Dr. Bypass',
+                role: 'DOCTOR',
+              },
+            })
+            doctorId = created.id
+          }
+        } catch (inner) {
+          console.warn('Bypass doctor ensure failed', inner)
+        }
       }
-    }
 
-    const med = this.fromApiToDb({ medications: data.medications })
-    const created = await prisma.prescription.create({
-      data: {
-        patientId: data.patientId,
-        doctorId: doctorId,
-        consultationId: data.consultationId || null,
-        status: (data.status as any) || 'ACTIVE',
-        ...med,
-      },
-      include: {
-        patient: { select: { id: true, name: true, email: true, phone: true } },
-        doctor: { select: { id: true, name: true, email: true, speciality: true } },
-      },
-    })
-    return this.toApiShape(created)
+      const med = this.fromApiToDb({ medications: data.medications })
+      const created = await prisma.prescription.create({
+        data: {
+          patientId: data.patientId,
+          doctorId: doctorId,
+            consultationId: data.consultationId || null,
+          status: (data.status as any) || 'ACTIVE',
+          ...med,
+        },
+        include: {
+          patient: { select: { id: true, name: true, email: true, phone: true } },
+          doctor: { select: { id: true, name: true, email: true, speciality: true } },
+        },
+      })
+      return this.toApiShape(created)
+    } catch (err: any) {
+      console.error('Prisma error in PrescriptionsServiceDb.create', {
+        message: err?.message,
+        code: err?.code,
+        meta: err?.meta,
+        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+      })
+      throw err
+    }
   }
 
   static async update(id: string, payload: Partial<PrescriptionCreateData>) {
-    const data: any = {}
-    if (payload.medications && payload.medications.length > 0) {
-      Object.assign(data, this.fromApiToDb({ medications: payload.medications }))
-    }
-    if (payload.status) data.status = payload.status as any
-    if (payload.consultationId !== undefined) data.consultationId = payload.consultationId
+    try {
+      const data: any = {}
+      if (payload.medications && payload.medications.length > 0) {
+        Object.assign(data, this.fromApiToDb({ medications: payload.medications }))
+      }
+      if (payload.status) data.status = payload.status as any
+      if (payload.consultationId !== undefined) data.consultationId = payload.consultationId
 
-    const updated = await prisma.prescription.update({
-      where: { id },
-      data,
-      include: {
-        patient: { select: { id: true, name: true, email: true, phone: true } },
-        doctor: { select: { id: true, name: true, email: true, speciality: true } },
-      },
-    })
-    return this.toApiShape(updated)
+      const updated = await prisma.prescription.update({
+        where: { id },
+        data,
+        include: {
+          patient: { select: { id: true, name: true, email: true, phone: true } },
+          doctor: { select: { id: true, name: true, email: true, speciality: true } },
+        },
+      })
+      return this.toApiShape(updated)
+    } catch (err: any) {
+      console.error('Prisma error in PrescriptionsServiceDb.update', {
+        message: err?.message,
+        code: err?.code,
+        meta: err?.meta,
+        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+      })
+      throw err
+    }
   }
 
   static async remove(id: string) {
-    await prisma.prescription.delete({ where: { id } })
-    return { success: true }
+    try {
+      await prisma.prescription.delete({ where: { id } })
+      return { success: true }
+    } catch (err: any) {
+      console.error('Prisma error in PrescriptionsServiceDb.remove', {
+        message: err?.message,
+        code: err?.code,
+        meta: err?.meta,
+        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+      })
+      throw err
+    }
   }
 }

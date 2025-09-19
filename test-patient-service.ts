@@ -14,8 +14,16 @@ async function run(){
   console.log('Criado:', patient.id)
 
   const list = await PatientService.getPatients({}, 1, 10)
-  console.log('Total listados:', list.total)
-  if (list.total < 1) throw new Error('Paciente não listado')
+  // Support both shapes: { total } or { pagination: { total } }
+  function extractTotal(l: any): number {
+    if (typeof l.total === 'number') return l.total
+    if (l.pagination && typeof l.pagination.total === 'number') return l.pagination.total
+    return 0
+  }
+
+  const total = extractTotal(list)
+  console.log('Total listados:', total)
+  if (total < 1) throw new Error('Paciente não listado')
 
   const fetched = await PatientService.getPatientById(patient.id)
   console.log('Fetch OK:', fetched.id)

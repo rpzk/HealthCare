@@ -1,4 +1,5 @@
 import { ConsultationStatus, ConsultationType } from '@prisma/client'
+import { prisma } from './prisma'
 
 export interface ConsultationFilters {
   patientId?: string
@@ -49,9 +50,40 @@ export class ConsultationService {
     page = 1,
     limit = 10
   ) {
-    // Por enquanto, sempre usar dados mock até o banco estar configurado
-    console.log('Usando dados mock para consultas')
-    return this.getMockConsultations(filters, page, limit)
+    const { patientId, doctorId, status, type, dateFrom, dateTo, search } = filters;
+    const where: any = {};
+    if (patientId) where.patientId = patientId;
+    if (doctorId) where.doctorId = doctorId;
+    if (status) where.status = status;
+    if (type) where.type = type;
+    if (dateFrom || dateTo) {
+      where.scheduledDate = {};
+      if (dateFrom) where.scheduledDate.gte = dateFrom;
+      if (dateTo) where.scheduledDate.lte = dateTo;
+    }
+    if (search) {
+      where.OR = [
+        { chiefComplaint: { contains: search, mode: 'insensitive' } },
+        { notes: { contains: search, mode: 'insensitive' } },
+        { assessment: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    const [total, consultations] = await Promise.all([
+      prisma.consultation.count({ where }),
+      prisma.consultation.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { scheduledDate: 'desc' },
+        include: {
+          patient: true,
+          doctor: true,
+          prescriptions: true,
+          examRequests: true,
+        },
+      })
+    ]);
+    return { total, consultations };
   }
 
   // Dados mock para consultas
@@ -194,27 +226,23 @@ export class ConsultationService {
 
   // Criar consulta
   static async createConsultation(data: ConsultationCreateData) {
-    console.log('Criando consulta mock:', data)
-    return {
-      id: Date.now().toString(),
-      ...data,
-      status: 'SCHEDULED' as ConsultationStatus,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      patient: {
-        id: data.patientId,
-        name: 'Paciente Mock',
-        email: 'mock@email.com',
-        phone: '(11) 00000-0000'
+    const consultation = await prisma.consultation.create({
+      data: {
+        patientId: data.patientId,
+        doctorId: data.doctorId,
+        scheduledDate: data.scheduledDate,
+        type: data.type,
+  chiefComplaint: data.description,
+        notes: data.notes,
+        duration: data.duration,
+        status: 'SCHEDULED',
       },
-      doctor: {
-        id: data.doctorId,
-        name: 'Dr. Mock',
-        email: 'mock@healthcare.com',
-        speciality: 'Geral',
-        crmNumber: '00000-SP'
+      include: {
+        patient: true,
+        doctor: true,
       }
-    }
+    });
+    return consultation;
   }
 
   // Buscar consulta por ID
@@ -274,6 +302,17 @@ export class ConsultationService {
     }
   }
 
+  // Iniciar consulta
+  static async startConsultation(id: string) {
+    console.log('Iniciando consulta mock:', id)
+    return {
+      id,
+      status: 'IN_PROGRESS',
+      actualStartTime: new Date(),
+      updatedAt: new Date()
+    }
+  }
+
   // Marcar como concluída
   static async completeConsultation(id: string, notes?: string) {
     console.log('Concluindo consulta mock:', id, notes)
@@ -296,6 +335,11 @@ export class ConsultationService {
     }
   }
 
+  // Alias para compatibilidade com a rota PATCH (usa markAsNoShow)
+  static async markAsNoShow(id: string) {
+    return this.markNoShow(id)
+  }
+
   // Estatísticas de consultas
   static async getConsultationStats(filters: ConsultationFilters = {}) {
     console.log('Buscando estatísticas mock de consultas')
@@ -311,15 +355,34 @@ export class ConsultationService {
     }
   }
 
+  // Compatibility alias expected by some routes
+  static async getStats(filters: ConsultationFilters = {}) {
+    return this.getConsultationStats(filters)
+  }
+
   // Consultas de hoje
-  static async getTodayConsultations() {
-    console.log('Buscando consultas de hoje mock')
+  static async getTodayConsultations(doctorId?: string) {
+    console.log('Buscando consultas de hoje mock', doctorId)
+    // Return empty array for now; could filter mock data by doctorId
     return []
   }
 
   // Próximas consultas
-  static async getUpcomingConsultations(limit = 5) {
-    console.log('Buscando próximas consultas mock')
+  static async getUpcomingConsultations(doctorId?: string, limit = 5) {
+    console.log('Buscando próximas consultas mock', doctorId, limit)
     return []
+  }
+
+  // Available slots for a doctor on a given date (return Date[])
+  static async getAvailableSlots(doctorId: string, date: Date) {
+    console.log('Buscando horários disponíveis mock for', doctorId, date.toISOString())
+    // Return a few slots for the middle of the day
+    const base = new Date(date)
+    base.setHours(9, 0, 0, 0)
+    return [0, 30, 60, 90].map(mins => {
+      const d = new Date(base)
+      d.setMinutes(base.getMinutes() + mins)
+      return d
+    })
   }
 }

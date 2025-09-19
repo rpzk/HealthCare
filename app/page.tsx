@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { DashboardOverview } from '@/components/dashboard/overview'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 
 export const metadata: Metadata = {
   title: 'Dashboard - Sistema de Prontuário Eletrônico',
@@ -16,12 +17,12 @@ export default function DashboardPage() {
         <Sidebar />
         <main className="flex-1 ml-64 p-6">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Dashboard Médico
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Visão geral dos seus pacientes e atividades médicas
-            </p>
+            <PageHeader
+              title="Dashboard Médico"
+              description="Visão geral dos seus pacientes e atividades médicas"
+              breadcrumbs={[{ label: 'Dashboard' }]}
+              showBackButton={false}
+            />
           </div>
           <DashboardOverview />
         </main>
