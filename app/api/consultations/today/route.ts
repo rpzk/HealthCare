@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const runtime = 'nodejs'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service-mock'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
 // GET - Consultas de hoje
-export const GET = withAuth(async (request: NextRequest, { user }) => {
+export const GET = withAuth(async (request, { user }) => {
   try {
     const { searchParams } = new URL(request.url)
     const doctorId = searchParams.get('doctorId') || undefined

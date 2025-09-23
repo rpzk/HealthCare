@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
 export const GET = async (_req: NextRequest, { params }: { params: { width: string; height: string } }) => {
   const w = parseInt(params.width) || 100

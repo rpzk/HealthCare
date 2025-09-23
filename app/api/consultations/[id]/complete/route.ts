@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 

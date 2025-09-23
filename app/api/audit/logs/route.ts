@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth-v2'
 
 // GET /api/audit/logs?limit=50&userId=...&action=...
-export const GET = withAdminAuthUnlimited(async (req: NextRequest, { user }) => {
+export const GET = withAdminAuthUnlimited(async (req: NextRequest, { user: _user }) => {
   try {
     const { searchParams } = new URL(req.url)
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)

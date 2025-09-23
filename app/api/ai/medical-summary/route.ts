@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import aiService from '@/lib/ai-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
@@ -21,7 +21,7 @@ const medicalSummarySchema = z.object({
  * Gera resumo médico completo do paciente usando IA
  * Requer autenticação de médico
  */
-export const POST = withDoctorAuth(async (request: NextRequest, { user }) => {
+export const POST = withDoctorAuth(async (request, { user }) => {
   try {
     const body = await request.json()
     
