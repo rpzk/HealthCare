@@ -2,7 +2,7 @@ import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
 import { AIAnalyticsDashboard } from '@/components/ai/analytics-dashboard'
-import { BarChart3 } from 'lucide-react'
+// BarChart3 icon removed (unused)
 import { RefreshButton } from '@/components/navigation/refresh-button'
 
 export default function AIAnalyticsPage() {
