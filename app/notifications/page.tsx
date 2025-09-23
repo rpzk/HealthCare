@@ -1,28 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
   Bell, 
-  BellRing,
   Settings,
   Search,
-  Filter,
   Calendar,
   AlertCircle,
   CheckCircle,
   Clock,
   User,
   FileText,
-  Activity,
   Trash2,
-  Archive,
   RefreshCw
 } from 'lucide-react'
 
@@ -49,9 +45,32 @@ export default function NotificationsPage() {
     fetchNotifications()
   }, [])
 
+  const filterNotifications = useCallback(() => {
+    let filtered = notifications
+
+    // Filtrar por tipo
+    if (filter !== 'all') {
+      if (filter === 'unread') {
+        filtered = filtered.filter(n => !n.read)
+      } else {
+        filtered = filtered.filter(n => n.type === filter)
+      }
+    }
+
+    // Filtrar por termo de busca
+    if (searchTerm) {
+      filtered = filtered.filter(n => 
+        n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        n.message.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    setFilteredNotifications(filtered)
+  }, [notifications, filter, searchTerm])
+
   useEffect(() => {
     filterNotifications()
-  }, [notifications, filter, searchTerm])
+  }, [filterNotifications])
 
   const fetchNotifications = async () => {
     setLoading(true)
@@ -148,28 +167,7 @@ export default function NotificationsPage() {
     }, 1000)
   }
 
-  const filterNotifications = () => {
-    let filtered = notifications
-
-    // Filtrar por tipo
-    if (filter !== 'all') {
-      if (filter === 'unread') {
-        filtered = filtered.filter(n => !n.read)
-      } else {
-        filtered = filtered.filter(n => n.type === filter)
-      }
-    }
-
-    // Filtrar por termo de busca
-    if (searchTerm) {
-      filtered = filtered.filter(n => 
-        n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        n.message.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    setFilteredNotifications(filtered)
-  }
+  
 
   const markAsRead = (notificationId: string) => {
     setNotifications(prev => 
