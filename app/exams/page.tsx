@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,7 @@ interface ExamRequest {
 }
 
 export default function ExamsPage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const router = useRouter()
   const [exams, setExams] = useState<ExamRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,11 +56,7 @@ export default function ExamsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  useEffect(() => {
-    fetchExams()
-  }, [currentPage, filterStatus, filterUrgency, searchTerm])
-
-  const fetchExams = async () => {
+  const fetchExams = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -82,7 +78,11 @@ export default function ExamsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, filterStatus, filterUrgency, searchTerm])
+
+  useEffect(() => {
+    fetchExams()
+  }, [fetchExams])
 
   const getStatusColor = (status: string) => {
     const colors = {
