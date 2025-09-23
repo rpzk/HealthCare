@@ -6,9 +6,13 @@ import { validateAddress } from '@/lib/validation-schemas'
 export const GET = withPatientAuth(async (req) => {
   const { searchParams } = new URL(req.url)
   const patientId = searchParams.get('patientId')
-  if (!patientId) return NextResponse.json({ error: 'patientId é obrigatório' }, { status: 400 })
-  const data = await AddressService.listAddressesByPatient(patientId)
-  return NextResponse.json(data)
+  if (patientId) {
+    const data = await AddressService.listAddressesByPatient(patientId)
+    return NextResponse.json(data)
+  }
+  // fallback: all with coordinates (for aggregated map)
+  const all = await AddressService.listAllGeocoded()
+  return NextResponse.json(all)
 })
 
 export const POST = withPatientAuth(async (req) => {

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { MapPicker } from '@/components/map/map-picker'
 import { MicroAreasOverlayMap } from '@/components/map/micro-areas-overlay'
+// (Editor de polígonos avançado desativado: react-leaflet-draw requer React 19)
+// Mantemos somente textarea + mapa de centroid; futura melhoria pode migrar para lib compatível.
 
 interface MicroArea {
   id: string
@@ -70,7 +72,7 @@ export default function MicroAreasPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Polígono (GeoJSON Feature/Polygon ou MultiPolygon)</label>
             <Textarea placeholder='{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[...]]]}}' value={polygonGeo} onChange={e => setPolygonGeo(e.target.value)} className="font-mono text-xs" rows={6} />
-            <p className="text-xs text-muted-foreground mt-1">Opcional: cole GeoJSON válido para a área.</p>
+            <p className="text-xs text-muted-foreground mt-1">Edição gráfica de polígonos desativada (compatibilidade React 18). Cole GeoJSON válido manualmente.</p>
           </div>
           <Button onClick={save} disabled={saving || !form.name}>{saving ? 'Salvando...' : 'Criar micro-área'}</Button>
         </div>

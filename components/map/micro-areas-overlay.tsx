@@ -11,7 +11,7 @@ const GeoJSON = dynamic(() => import('react-leaflet').then(m => m.GeoJSON), { ss
 
 interface MicroArea { id:string; name:string; polygonGeo?:string; centroidLat?:number; centroidLng?:number }
 interface Place { id:string; name:string; latitude?:number; longitude?:number; microAreaId?:string }
-interface Address { id:string; latitude?:number; longitude?:number; microAreaId?:string }
+interface Address { id:string; latitude?:number; longitude?:number; microAreaId?:string; patientId?:string }
 
 export function MicroAreasOverlayMap(){
   const [microAreas,setMicroAreas]=useState<MicroArea[]>([])
@@ -25,8 +25,7 @@ export function MicroAreasOverlayMap(){
         const [ma,p,addr] = await Promise.all([
           fetch('/api/micro-areas').then(r=>r.json()),
           fetch('/api/places').then(r=>r.json()),
-          // For addresses we might want only those with coords
-          fetch('/api/addresses?patientId=dummy-ignore').then(()=>[]) // placeholder (would need a global endpoint if desired)
+          fetch('/api/addresses').then(r=>r.json())
         ])
         setMicroAreas(ma)
         setPlaces(p)
@@ -65,8 +64,17 @@ export function MicroAreasOverlayMap(){
         {places.map(pl => pl.latitude && pl.longitude ? (
           <Marker key={pl.id} position={[pl.latitude, pl.longitude]}>
             <Popup>
-              <div className="text-sm font-medium">{pl.name}</div>
+              <div className="text-sm font-medium">Place: {pl.name}</div>
               {pl.microAreaId && <div className="text-xs text-muted-foreground">Micro-área: {pl.microAreaId.slice(0,6)}</div>}
+            </Popup>
+          </Marker>
+        ): null)}
+        {addresses.map(a => a.latitude && a.longitude ? (
+          <Marker key={a.id} position={[a.latitude, a.longitude]}>
+            <Popup>
+              <div className="text-sm font-medium">Endereço</div>
+              {a.microAreaId && <div className="text-xs text-muted-foreground">Micro-área: {a.microAreaId.slice(0,6)}</div>}
+              {a.patientId && <div className="text-[10px] text-muted-foreground">Paciente: {a.patientId.slice(0,6)}</div>}
             </Popup>
           </Marker>
         ): null)}
