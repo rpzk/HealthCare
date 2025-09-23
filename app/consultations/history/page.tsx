@@ -1,7 +1,7 @@
-'use client'
+ 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,33 +33,7 @@ export default function ConsultationHistoryPage() {
   const [typeFilter, setTypeFilter] = useState('')
   const [dateRange, setDateRange] = useState('')
 
-  useEffect(() => {
-    fetchConsultations()
-  }, [])
-
-  useEffect(() => {
-    filterConsultations()
-  }, [consultations, searchTerm, statusFilter, typeFilter, dateRange])
-
-  const fetchConsultations = async () => {
-    try {
-      const response = await fetch('/api/consultations')
-      if (response.ok) {
-        const data = await response.json()
-        // Ordenar por data mais recente primeiro
-        const sorted = data.sort((a: Consultation, b: Consultation) => 
-          new Date(b.consultation_date).getTime() - new Date(a.consultation_date).getTime()
-        )
-        setConsultations(sorted)
-      }
-    } catch (error) {
-      console.error('Erro ao buscar consultas:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterConsultations = () => {
+  const filterConsultations = useCallback(() => {
     let filtered = [...consultations]
 
     // Filtro por texto
@@ -109,7 +83,34 @@ export default function ConsultationHistoryPage() {
     }
 
     setFilteredConsultations(filtered)
+  }, [consultations, searchTerm, statusFilter, typeFilter, dateRange])
+
+  const fetchConsultations = async () => {
+    try {
+      const response = await fetch('/api/consultations')
+      if (response.ok) {
+        const data = await response.json()
+        // Ordenar por data mais recente primeiro
+        const sorted = data.sort((a: Consultation, b: Consultation) => 
+          new Date(b.consultation_date).getTime() - new Date(a.consultation_date).getTime()
+        )
+        setConsultations(sorted)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar consultas:', error)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => {
+    fetchConsultations()
+  }, [])
+
+  useEffect(() => {
+    filterConsultations()
+  }, [filterConsultations])
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
