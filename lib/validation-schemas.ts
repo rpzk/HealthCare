@@ -180,3 +180,56 @@ export function validateSymptomAnalysis(data: any) {
     errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
   }
 }
+
+// ---------------- Geospatial & Structured Entities ----------------
+
+// Basic GeoJSON Feature/Polygon/MultiPolygon validator (lightweight)
+const geoJsonGeometryTypes = ['Polygon', 'MultiPolygon'] as const
+const geoJsonSchema = z.object({
+  type: z.literal('Feature').optional(),
+  geometry: z.object({
+    type: z.enum(geoJsonGeometryTypes),
+    coordinates: z.any() // deeper structural validation could be added
+  })
+}).refine(v => !!v.geometry, { message: 'GeoJSON inválido: geometry ausente' })
+
+export const addressSchema = z.object({
+  street: z.string().min(1),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().min(1),
+  state: z.string().length(2, 'UF deve ter 2 caracteres'),
+  zipCode: z.string().regex(/^[0-9]{5}-?[0-9]{3}$/,'CEP inválido').optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  patientId: z.string().cuid().optional(),
+  microAreaId: z.string().cuid().optional(),
+  isPrimary: z.boolean().optional()
+})
+
+export const placeSchema = z.object({
+  name: z.string().min(2),
+  description: z.string().max(1000).optional(),
+  category: z.string().max(100).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  addressId: z.string().cuid().optional(),
+  microAreaId: z.string().cuid().optional()
+})
+
+export const microAreaSchema = z.object({
+  name: z.string().min(2),
+  code: z.string().max(30).optional(),
+  description: z.string().max(2000).optional(),
+  polygonGeo: z.string().transform(s => s.trim()).optional().refine(val => {
+    if (!val) return true
+    try { const parsed = JSON.parse(val); geoJsonSchema.parse(parsed); return true } catch { return false }
+  }, 'GeoJSON inválido (esperado Feature com Polygon ou MultiPolygon)'),
+  centroidLat: z.number().min(-90).max(90).optional(),
+  centroidLng: z.number().min(-180).max(180).optional()
+})
+
+export function validateAddress(data:any){ const r = addressSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
+export function validatePlace(data:any){ const r = placeSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
+export function validateMicroArea(data:any){ const r = microAreaSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }

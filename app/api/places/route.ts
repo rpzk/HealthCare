@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withPatientAuth } from '@/lib/advanced-auth-v2'
 import { AddressService } from '@/lib/address-service'
+import { validatePlace } from '@/lib/validation-schemas'
 
 export const GET = withPatientAuth(async (req) => {
   const { searchParams } = new URL(req.url)
@@ -11,6 +12,8 @@ export const GET = withPatientAuth(async (req) => {
 
 export const POST = withPatientAuth(async (req) => {
   const body = await req.json()
-  const created = await AddressService.createPlace(body)
+  const v = validatePlace(body)
+  if (!v.success) return NextResponse.json({ errors: v.errors }, { status: 400 })
+  const created = await AddressService.createPlace(v.data!)
   return NextResponse.json(created, { status: 201 })
 })
