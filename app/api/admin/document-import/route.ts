@@ -3,7 +3,7 @@
  * Sistema completo de importação inteligente com IA
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { medicalDocumentAI, type MedicalDocument, type DocumentAnalysis } from '@/lib/medical-document-ai'
 
@@ -13,7 +13,7 @@ export const revalidate = 0
 export const runtime = 'nodejs'
 
 // GET - Listar documentos processados
-const getHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
+const getHandler = withAdminAuthUnlimited(async (request) => {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const limit = parseInt(searchParams.get('limit') || '50')
@@ -87,7 +87,7 @@ const getHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
 })
 
 // POST - Upload e processamento de documento
-const postHandler = withAdminAuthUnlimited(async (request: NextRequest) => {
+const postHandler = withAdminAuthUnlimited(async (request) => {
   try {
   const formData = await request.formData()
   const file = formData.get('file') as File
