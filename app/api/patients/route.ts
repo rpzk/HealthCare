@@ -7,7 +7,7 @@ import { validatePatient } from '../../../lib/validation-schemas'
 import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
-export const GET = withPatientAuth(async (req: NextRequest, { user }) => {
+export const GET = withPatientAuth(async (req: NextRequest, { user: _user }) => {
   try {
     const { searchParams } = new URL(req.url)
     

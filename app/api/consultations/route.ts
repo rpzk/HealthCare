@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service-mock'
 import { rateLimiters } from '@/lib/rate-limiter'
-import { validateRequestBody } from '@/lib/with-auth'
 import { withConsultationAuth } from '@/lib/advanced-auth-v2'
-import { validateConsultation } from '@/lib/validation-schemas'
 import { ConsultationType } from '@prisma/client'
 
 // GET - Listar consultas (protegido por autenticação)

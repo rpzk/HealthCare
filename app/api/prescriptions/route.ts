@@ -5,7 +5,7 @@ import { validatePrescription } from '@/lib/validation-schemas'
 import { PrescriptionsService as PrescriptionsMock } from '@/lib/prescriptions-service-mock'
 
 // GET - Buscar prescrições médicas
-export const GET = withAuth(async (request, { user }) => {
+export const GET = withAuth(async (request, { user: _user }) => {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
