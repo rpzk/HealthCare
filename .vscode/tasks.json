@@ -20,6 +20,24 @@
 			"type": "shell",
 			"command": "docker compose up -d postgres redis",
 			"group": "build"
+		},
+		{
+			"label": "Prisma generate (ad-hoc)",
+			"type": "shell",
+			"command": "npx prisma generate",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Prisma migrate dev (ad-hoc)",
+			"type": "shell",
+			"command": "npx prisma migrate dev --name geo-addresses",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
 		}
 	]
 }
