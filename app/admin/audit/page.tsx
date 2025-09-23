@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
-import { Shield } from 'lucide-react'
+// lucide icon removed (unused)
 import { RefreshButton } from '@/components/navigation/refresh-button'
 
 export default async function AuditPage() {
