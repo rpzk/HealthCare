@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { ExamRequestsService } from '@/lib/exam-requests-service-mock'
 
 // GET - Buscar solicitações de exames
-export const GET = withAuth(async (request, { user }) => {
+export const GET = withAuth(async (request, { user: _user }) => {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
