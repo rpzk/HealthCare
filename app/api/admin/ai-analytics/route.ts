@@ -2,12 +2,12 @@
  * 🧠 API para AI Analytics e Anomaly Detection Dashboard
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { aiAnomalyDetector } from '@/lib/ai-anomaly-detector'
-import { createRedisRateLimiter, createRedisCache, getRedisCombinedStats } from '@/lib/redis-integration'
+import { createRedisRateLimiter } from '@/lib/redis-integration'
 
-const handler = withAdminAuthUnlimited(async (request: NextRequest) => {
+const handler = withAdminAuthUnlimited(async (request) => {
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action')
 
