@@ -1,7 +1,7 @@
-'use client'
+ 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,33 +37,7 @@ export default function ExamHistoryPage() {
   const [urgencyFilter, setUrgencyFilter] = useState('')
   const [dateRange, setDateRange] = useState('')
 
-  useEffect(() => {
-    fetchExamHistory()
-  }, [])
-
-  useEffect(() => {
-    filterExams()
-  }, [examRequests, searchTerm, statusFilter, urgencyFilter, dateRange])
-
-  const fetchExamHistory = async () => {
-    try {
-      const response = await fetch('/api/exam-requests')
-      if (response.ok) {
-        const data = await response.json()
-        // Ordenar por data de criação mais recente primeiro
-        const sorted = data.sort((a: HistoryExamRequest, b: HistoryExamRequest) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-        setExamRequests(sorted)
-      }
-    } catch (error) {
-      console.error('Erro ao buscar histórico de exames:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterExams = () => {
+  const filterExams = useCallback(() => {
     let filtered = [...examRequests]
 
     // Filtro por texto
@@ -117,7 +91,33 @@ export default function ExamHistoryPage() {
     }
 
     setFilteredExams(filtered)
+  }, [examRequests, searchTerm, statusFilter, urgencyFilter, dateRange])
+
+  const fetchExamHistory = async () => {
+    try {
+      const response = await fetch('/api/exam-requests')
+      if (response.ok) {
+        const data = await response.json()
+        // Ordenar por data de criação mais recente primeiro
+        const sorted = data.sort((a: HistoryExamRequest, b: HistoryExamRequest) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        setExamRequests(sorted)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar histórico de exames:', error)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => {
+    fetchExamHistory()
+  }, [])
+
+  useEffect(() => {
+    filterExams()
+  }, [filterExams])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
