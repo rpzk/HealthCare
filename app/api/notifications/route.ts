@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth, validateRequestBody } from '@/lib/with-auth'
 import { validateNotification } from '@/lib/validation-schemas'
 import { NotificationService } from '@/lib/notification-service'

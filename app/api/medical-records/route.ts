@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { MedicalRecordsService } from '@/lib/medical-records-service-mock'
 
