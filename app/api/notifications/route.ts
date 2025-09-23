@@ -5,7 +5,7 @@ import { NotificationService } from '@/lib/notification-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
 // GET - Buscar notificações do usuário
-export const GET = withAuth(async (request, { user }) => {
+export const GET = withAuth(async (request, { user: _user }) => {
   const { searchParams } = new URL(request.url)
   const unreadOnly = searchParams.get('unreadOnly') === 'true'
   const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
@@ -13,14 +13,14 @@ export const GET = withAuth(async (request, { user }) => {
   const type = searchParams.get('type') as any
 
   const notifications = await NotificationService.getUserNotifications(
-    user.id,
+    _user.id,
     { unreadOnly, limit, priority, type }
   )
 
   auditLogger.logSuccess(
-    user.id,
-    user.email,
-    user.role,
+    _user.id,
+    _user.email,
+    _user.role,
     AuditAction.NOTIFICATION_READ,
     'notifications',
     { count: notifications.length, filters: { unreadOnly, priority, type } }

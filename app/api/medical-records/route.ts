@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { MedicalRecordsService } from '@/lib/medical-records-service-mock'
 
 // GET - Buscar prontuários médicos
-export const GET = withAuth(async (request, { user }) => {
+export const GET = withAuth(async (request, { user: _user }) => {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
