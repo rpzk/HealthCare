@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -42,7 +42,7 @@ interface MedicalRecord {
 }
 
 export default function MedicalRecordsPage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const router = useRouter()
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,10 +50,6 @@ export default function MedicalRecordsPage() {
   const [filterType, setFilterType] = useState('ALL')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-
-  useEffect(() => {
-    fetchRecords()
-  }, [currentPage, filterType, searchTerm])
 
   const fetchRecords = async () => {
     try {
@@ -77,7 +73,10 @@ export default function MedicalRecordsPage() {
       setLoading(false)
     }
   }
-
+  
+  useEffect(() => {
+    fetchRecords()
+  }, [currentPage, filterType, searchTerm])
   const getSeverityColor = (severity: string) => {
     const colors = {
       'LOW': 'bg-green-100 text-green-800 border-green-200',

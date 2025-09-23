@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,7 @@ interface Prescription {
 }
 
 export default function PrescriptionsPage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const router = useRouter()
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,10 +54,6 @@ export default function PrescriptionsPage() {
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-
-  useEffect(() => {
-    fetchPrescriptions()
-  }, [currentPage, filterStatus, searchTerm])
 
   const fetchPrescriptions = async () => {
     try {
@@ -82,7 +78,10 @@ export default function PrescriptionsPage() {
       setLoading(false)
     }
   }
-
+  
+  useEffect(() => {
+    fetchPrescriptions()
+  }, [currentPage, filterStatus, searchTerm])
   const getStatusColor = (status: string) => {
     const colors = {
       'ACTIVE': 'bg-green-100 text-green-800 border-green-200',
