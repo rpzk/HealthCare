@@ -31,3 +31,5 @@ postgres.log
 
 # Prisma generated artifacts (kept via prisma generate in build)
 prisma/*.db
+
+ssf/
