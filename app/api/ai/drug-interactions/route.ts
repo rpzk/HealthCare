@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
 import { medicalAI } from '@/lib/advanced-medical-ai'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'

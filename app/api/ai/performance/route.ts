@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const runtime = 'nodejs'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAdminAuth } from '@/lib/with-auth'
 import { AIAnalyticsService } from '@/lib/ai-analytics'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'

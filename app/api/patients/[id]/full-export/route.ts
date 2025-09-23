@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withRbac } from '@/lib/with-auth'
 import { PatientService } from '@/lib/patient-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
