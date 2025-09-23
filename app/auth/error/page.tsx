@@ -14,7 +14,7 @@ function AuthErrorInner() {
   const getErrorMessage = (error: string | null) => {
     switch (error) {
       case 'CredentialsSignin':
-        return 'Credenciais inválidas. Verifique seu email e senha.'
+        return 'Login falhou. Verifique os detalhes fornecidos.'
       case 'OAuthSignin':
         return 'Erro ao fazer login com provedor externo.'
       case 'OAuthCallback':
@@ -29,8 +29,6 @@ function AuthErrorInner() {
         return 'Para confirmar sua identidade, faça login com a mesma conta usada originalmente.'
       case 'EmailSignin':
         return 'Erro ao enviar email de login.'
-      case 'CredentialsSignin':
-        return 'Login falhou. Verifique os detalhes fornecidos.'
       case 'SessionRequired':
         return 'Você precisa estar logado para acessar esta página.'
       default:
