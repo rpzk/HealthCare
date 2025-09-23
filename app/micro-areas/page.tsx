@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { MapPicker } from '@/components/map/map-picker'
+import { MicroAreasOverlayMap } from '@/components/map/micro-areas-overlay'
 
 interface MicroArea {
   id: string
@@ -89,6 +90,11 @@ export default function MicroAreasPage() {
           )}
         </div>
       </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold">Visualização agregada</h2>
+          <MicroAreasOverlayMap />
+          <p className="text-xs text-muted-foreground">Mapa demonstra polígonos (quando fornecidos), centroides e locais associados.</p>
+        </div>
     </div>
   )
 }

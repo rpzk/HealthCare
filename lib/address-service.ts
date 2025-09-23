@@ -37,6 +37,25 @@ export type MicroAreaInput = {
 
 export class AddressService {
   static async createAddress(data: AddressInput) {
+    // If no microAreaId but we have coordinates, attempt naive proximity association
+    if (!data.microAreaId && data.latitude !== undefined && data.longitude !== undefined) {
+      const microAreas = await prisma.microArea.findMany({
+        where: { centroidLat: { not: null }, centroidLng: { not: null } },
+        select: { id: true, centroidLat: true, centroidLng: true }
+      })
+      if (microAreas.length) {
+        let bestId: string | undefined
+        let bestDist = Number.POSITIVE_INFINITY
+        for (const ma of microAreas) {
+          if (ma.centroidLat == null || ma.centroidLng == null) continue
+          const dLat = data.latitude - ma.centroidLat
+            const dLng = data.longitude - ma.centroidLng
+          const dist = dLat * dLat + dLng * dLng
+          if (dist < bestDist) { bestDist = dist; bestId = ma.id }
+        }
+        if (bestId) data.microAreaId = bestId
+      }
+    }
     return prisma.address.create({ data })
   }
   static async listAddressesByPatient(patientId: string) {

@@ -300,6 +300,8 @@ model Address {
   Place       Place[]
 
   @@index([patientId])
+  @@index([microAreaId])
+  @@index([latitude, longitude])
   @@map("addresses")
 }
 
@@ -321,6 +323,8 @@ model Place {
   microAreaId String?
 
   @@map("places")
+  @@index([microAreaId])
+  @@index([latitude, longitude])
 }
 
 // Microáreas/áreas adstritas para planejamento epidemiológico
@@ -338,6 +342,7 @@ model MicroArea {
   // Relacionamentos
   addresses Address[]
   places    Place[]
+  @@index([centroidLat, centroidLng])
 
   @@map("micro_areas")
 }
