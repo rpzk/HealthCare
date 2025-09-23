@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ConsultationsPageClient } from '@/components/consultations/consultations-page-client'
-import { Suspense } from 'react'
+// Suspense not needed in this server component
 
 export const metadata: Metadata = {
   title: 'Consultas - Sistema de Prontuário Eletrônico',
