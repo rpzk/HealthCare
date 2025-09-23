@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth, validateRequestBody } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 import { validatePrescription } from '@/lib/validation-schemas'

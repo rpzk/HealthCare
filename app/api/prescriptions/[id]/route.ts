@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 
 // GET /api/prescriptions/[id]
-export const GET = withAuth(async (_req: NextRequest, { params }) => {
+export const GET = withAuth(async (_req, { params }) => {
   try {
     const { id } = params
     const item = await PrescriptionsServiceDb.getById(id)
@@ -16,7 +16,7 @@ export const GET = withAuth(async (_req: NextRequest, { params }) => {
 })
 
 // PATCH /api/prescriptions/[id]
-export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
+export const PATCH = withAuth(async (req, { params, user }) => {
   try {
     const { id } = params
     const body = await req.json()
@@ -33,7 +33,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
 })
 
 // DELETE /api/prescriptions/[id]
-export const DELETE = withAuth(async (_req: NextRequest, { params }) => {
+export const DELETE = withAuth(async (_req, { params }) => {
   try {
     const { id } = params
     const result = await PrescriptionsServiceDb.remove(id)

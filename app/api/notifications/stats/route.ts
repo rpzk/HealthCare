@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { NotificationService } from '@/lib/notification-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 
-export const GET = withAuth(async (request: NextRequest, { user }) => {
+export const GET = withAuth(async (request, { user }) => {
   try {
     const stats = await NotificationService.getNotificationStats(user.id)
 
@@ -36,7 +36,7 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
   }
 }) as AuthenticatedApiHandler
 
-export const POST = withAuth(async (request: NextRequest, { user }) => {
+export const POST = withAuth(async (request, { user }) => {
   try {
     const success = await NotificationService.markAllAsRead(user.id)
     

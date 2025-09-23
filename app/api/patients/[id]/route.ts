@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { PatientService } from '@/lib/patient-service'
 import { withAuth, withDoctorAuth, AuthenticatedApiHandler, withRbac } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
@@ -38,7 +38,7 @@ const patchPatientSchema = z.object({
 })
 
 // GET /api/patients/[id] - Buscar paciente por ID
-export const GET = withRbac('patient.read', async (req: NextRequest, { params, user }) => {
+export const GET = withRbac('patient.read', async (req, { params, user }) => {
   try {
   const patient = await startSpan('patient.get', () => PatientService.getPatientById(params.id))
     
@@ -80,7 +80,7 @@ export const GET = withRbac('patient.read', async (req: NextRequest, { params, u
 }) as AuthenticatedApiHandler
 
 // PUT /api/patients/[id] - Atualizar paciente
-export const PUT = withRbac('patient.write', async (req: NextRequest, { params, user }) => {
+export const PUT = withRbac('patient.write', async (req, { params, user }) => {
   try {
     const data = await req.json()
     
@@ -155,7 +155,7 @@ export const PUT = withRbac('patient.write', async (req: NextRequest, { params, 
 }) as AuthenticatedApiHandler
 
 // PATCH /api/patients/[id] - Desativar/Reativar paciente
-export const PATCH = withRbac('patient.write', async (req: NextRequest, { params, user }) => {
+export const PATCH = withRbac('patient.write', async (req, { params, user }) => {
   try {
     const data = await req.json()
     
@@ -201,7 +201,7 @@ export const PATCH = withRbac('patient.write', async (req: NextRequest, { params
 }) as AuthenticatedApiHandler
 
 // DELETE /api/patients/[id] - Excluir paciente (hard delete - use com cuidado)
-export const DELETE = withRbac('patient.write', async (req: NextRequest, { params, user }) => {
+export const DELETE = withRbac('patient.write', async (req, { params, user }) => {
   try {
   await startSpan('patient.delete', () => PatientService.deletePatient(params.id))
     

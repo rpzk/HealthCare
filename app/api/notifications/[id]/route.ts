@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { NotificationService } from '@/lib/notification-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
@@ -18,7 +18,7 @@ const patchNotificationSchema = z.object({
 })
 
 // PATCH - Marcar notificação como lida
-export const PATCH = withAuth(async (request: NextRequest, { params, user }) => {
+export const PATCH = withAuth(async (request, { params, user }) => {
   try {
     const body = await request.json()
     
@@ -97,7 +97,7 @@ export const PATCH = withAuth(async (request: NextRequest, { params, user }) => 
 }) as AuthenticatedApiHandler
 
 // DELETE - Excluir notificação
-export const DELETE = withAuth(async (request: NextRequest, { params, user }) => {
+export const DELETE = withAuth(async (request, { params, user }) => {
   try {
     const success = await NotificationService.deleteNotification(params.id, user.id)
     

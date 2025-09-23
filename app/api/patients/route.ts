@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { PatientService } from '../../../lib/patient-service'
 import { validateRequestBody } from '../../../lib/with-auth'
 import { withPatientAuth } from '@/lib/advanced-auth-v2'
@@ -7,7 +7,7 @@ import { validatePatient } from '../../../lib/validation-schemas'
 import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
-export const GET = withPatientAuth(async (req: NextRequest, { user: _user }) => {
+export const GET = withPatientAuth(async (req, { user: _user }) => {
   try {
     const { searchParams } = new URL(req.url)
     
@@ -63,7 +63,7 @@ export const GET = withPatientAuth(async (req: NextRequest, { user: _user }) => 
 })
 
 // POST /api/patients - Criar paciente (protegido por autenticação)
-export const POST = withPatientAuth(async (req: NextRequest, { user }) => {
+export const POST = withPatientAuth(async (req, { user }) => {
   try {
     // Validar dados de entrada
     const validation = await validateRequestBody(req, validatePatient)

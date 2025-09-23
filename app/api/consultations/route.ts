@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service-mock'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { withConsultationAuth } from '@/lib/advanced-auth-v2'
 import { ConsultationType } from '@prisma/client'
 
 // GET - Listar consultas (protegido por autenticação)
-export const GET = withConsultationAuth(async (request: NextRequest, { user }) => {
-  const limit = rateLimiters.consultations(request, user.id)
-  if ((limit as any)?.status === 429) return limit as any
+export const GET = withConsultationAuth(async (request, { user }) => {
+  const rateLimitResult = rateLimiters.consultations(request, user.id)
+  if ((rateLimitResult as any)?.status === 429) return rateLimitResult as any
   try {
     const { searchParams } = new URL(request.url)
     
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = parseInt(searchParams.get('limit') || '10')
     const patientId = searchParams.get('patientId') || undefined
     const doctorId = searchParams.get('doctorId') || undefined
     const status = searchParams.get('status') as any
@@ -34,8 +34,8 @@ export const GET = withConsultationAuth(async (request: NextRequest, { user }) =
     const result = await ConsultationService.getConsultations(filters, page, limit)
 
     const resp = NextResponse.json(result)
-    if ((limit as any)?.headers) {
-      Object.entries((limit as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
+    if ((rateLimitResult as any)?.headers) {
+      Object.entries((rateLimitResult as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
     }
     return resp
   } catch (error) {
@@ -48,9 +48,9 @@ export const GET = withConsultationAuth(async (request: NextRequest, { user }) =
 })
 
 // POST - Criar nova consulta (protegido por autenticação)
-export const POST = withConsultationAuth(async (request: NextRequest, { user }) => {
-  const limit = rateLimiters.consultations(request, user.id)
-  if ((limit as any)?.status === 429) return limit as any
+export const POST = withConsultationAuth(async (request, { user }) => {
+  const rateLimitResult = rateLimiters.consultations(request, user.id)
+  if ((rateLimitResult as any)?.status === 429) return rateLimitResult as any
   try {
     const body = await request.json()
 
@@ -94,8 +94,8 @@ export const POST = withConsultationAuth(async (request: NextRequest, { user }) 
       message: 'Consulta criada com sucesso',
       consultation
     }, { status: 201 })
-    if ((limit as any)?.headers) {
-      Object.entries((limit as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
+    if ((rateLimitResult as any)?.headers) {
+      Object.entries((rateLimitResult as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
     }
     return resp
 
@@ -114,8 +114,8 @@ export const POST = withConsultationAuth(async (request: NextRequest, { user }) 
       { error: 'Erro interno do servidor' },
       { status: 500 }
     )
-    if ((limit as any)?.headers) {
-      Object.entries((limit as any).headers as Record<string,string>).forEach(([k,v]) => respErr.headers.set(k, v))
+    if ((rateLimitResult as any)?.headers) {
+      Object.entries((rateLimitResult as any).headers as Record<string,string>).forEach(([k,v]) => respErr.headers.set(k, v))
     }
     return respErr
   }
