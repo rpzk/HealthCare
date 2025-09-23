@@ -3,11 +3,19 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { MapPicker } from '@/components/map/map-picker'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
+import { useEffect } from 'react'
 
 export function AddressForm({ patientId, onSaved }: { patientId: string, onSaved?: () => void }) {
   const [form, setForm] = useState<any>({ city: '', state: '', street: '', zipCode: '' })
   const [coords, setCoords] = useState<{ lat: number, lng: number } | undefined>(undefined)
   const [saving, setSaving] = useState(false)
+  const [microAreas, setMicroAreas] = useState<any[]>([])
+  const [microAreaId, setMicroAreaId] = useState<string | undefined>()
+
+  useEffect(() => {
+    fetch('/api/micro-areas').then(r => r.json()).then(setMicroAreas).catch(()=>{})
+  }, [])
 
   async function saveAddress() {
     setSaving(true)
@@ -20,7 +28,8 @@ export function AddressForm({ patientId, onSaved }: { patientId: string, onSaved
           patientId,
           latitude: coords?.lat,
           longitude: coords?.lng,
-          isPrimary: true
+          isPrimary: true,
+          microAreaId
         })
       })
       if (!res.ok) throw new Error('Falha ao salvar endereço')
@@ -46,6 +55,19 @@ export function AddressForm({ patientId, onSaved }: { patientId: string, onSaved
         <label className="block text-sm font-medium mb-1">Localização no mapa</label>
         <MapPicker value={coords} onChange={setCoords} />
         <p className="text-xs text-gray-500 mt-1">Clique no mapa para definir latitude/longitude</p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Micro-área (opcional)</label>
+        <Select value={microAreaId} onValueChange={(v)=>setMicroAreaId(v)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecionar micro-área" />
+          </SelectTrigger>
+          <SelectContent>
+            {microAreas.map((m:any) => (
+              <SelectItem key={m.id} value={m.id}>{m.name}{m.code ? ` (${m.code})` : ''}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <Button onClick={saveAddress} disabled={saving}>{saving ? 'Salvando...' : 'Salvar endereço'}</Button>
     </div>
