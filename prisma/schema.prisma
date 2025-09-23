@@ -62,6 +62,7 @@ model Patient {
   documents      MedicalDocument[]
   examResults    ExamResult[]
   medicalRecords MedicalRecord[]
+  addresses      Address[]
   User           User?             @relation(fields: [userId], references: [id])
   userId         String?
   ExamRequest    ExamRequest[]
@@ -273,6 +274,72 @@ model ExamResult {
   patientId String
 
   @@map("exam_results")
+}
+
+// Endereços estruturados com georreferenciamento
+model Address {
+  id           String     @id @default(cuid())
+  street       String
+  number       String?
+  complement   String?
+  neighborhood String?
+  city         String
+  state        String
+  zipCode      String?
+  latitude     Float?
+  longitude    Float?
+  isPrimary    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relacionamentos
+  patient     Patient?   @relation(fields: [patientId], references: [id])
+  patientId   String?
+  microArea   MicroArea? @relation(fields: [microAreaId], references: [id])
+  microAreaId String?
+  Place       Place[]
+
+  @@index([patientId])
+  @@map("addresses")
+}
+
+// Locais de interesse (unidades, eventos, etc.) com georreferenciamento
+model Place {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relacionamentos
+  address   Address?   @relation(fields: [addressId], references: [id])
+  addressId String?
+  microArea MicroArea? @relation(fields: [microAreaId], references: [id])
+  microAreaId String?
+
+  @@map("places")
+}
+
+// Microáreas/áreas adstritas para planejamento epidemiológico
+model MicroArea {
+  id           String   @id @default(cuid())
+  name         String
+  code         String?  @unique
+  description  String?
+  polygonGeo   String?  @db.Text // GeoJSON da área (opcional)
+  centroidLat  Float?
+  centroidLng  Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  addresses Address[]
+  places    Place[]
+
+  @@map("micro_areas")
 }
 
 enum DocumentFileType {
