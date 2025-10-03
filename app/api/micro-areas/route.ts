@@ -8,19 +8,21 @@ export const GET = withPatientAuth(async () => {
   return NextResponse.json(data)
 })
 
-export const POST = withPatientAuth(async (req) => {
+export const POST = withPatientAuth(async (req, { user }) => {
   const body = await req.json()
+  if (!body.changedByUser) body.changedByUser = user.id
   const v = validateMicroArea(body)
   if (!v.success) return NextResponse.json({ errors: v.errors }, { status: 400 })
   const created = await AddressService.createMicroArea(v.data!)
   return NextResponse.json(created, { status: 201 })
 })
 
-export const PUT = withPatientAuth(async (req) => {
+export const PUT = withPatientAuth(async (req, { user }) => {
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 })
   const body = await req.json()
+  if (!body.changedByUser) body.changedByUser = user.id
   const v = validateMicroArea(body)
   if (!v.success) return NextResponse.json({ errors: v.errors }, { status: 400 })
   const updated = await AddressService.updateMicroArea(id, v.data!)

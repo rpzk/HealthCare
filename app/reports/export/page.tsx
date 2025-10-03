@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import type { ChangeEvent, ComponentType, SVGProps } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,11 +11,9 @@ import {
   FileText, 
   ArrowLeft, 
   Download, 
-  Calendar, 
   Users, 
   Activity, 
   Target,
-  Mail,
   FileSpreadsheet,
   FileBarChart,
   FileImage,
@@ -24,12 +23,60 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
+type ExportFormatValue = 'pdf' | 'excel' | 'csv' | 'json'
+type ExportStatus = 'completed' | 'processing' | 'error' | 'pending'
+type ExportType = ReportType['id'] | 'multiple'
+type DateRangeValue = '7days' | '30days' | '90days' | '6months' | '1year' | 'custom'
+
+interface ReportType {
+  id: string
+  name: string
+  description: string
+  icon: IconComponent
+  color: string
+  estimatedSize: string
+}
+
+interface ExportFormatOption {
+  value: ExportFormatValue
+  label: string
+  icon: IconComponent
+  description: string
+}
+
+interface DateRangeOption {
+  value: DateRangeValue
+  label: string
+}
+
+interface CustomSettings {
+  includeCharts: boolean
+  includeSummary: boolean
+  includeRawData: boolean
+  emailDelivery: boolean
+  email: string
+  customTitle: string
+  notes: string
+}
+
+interface ExportHistoryEntry {
+  id: number
+  name: string
+  type: ExportType
+  format: ExportFormatValue
+  date: string
+  status: ExportStatus
+  size: string
+  downloads: number
+}
+
 export default function ExportPage() {
   const router = useRouter()
   const [selectedReports, setSelectedReports] = useState<string[]>([])
-  const [exportFormat, setExportFormat] = useState('pdf')
-  const [dateRange, setDateRange] = useState('30days')
-  const [customSettings, setCustomSettings] = useState({
+  const [exportFormat, setExportFormat] = useState<ExportFormatValue>('pdf')
+  const [dateRange, setDateRange] = useState<DateRangeValue>('30days')
+  const [customSettings, setCustomSettings] = useState<CustomSettings>({
     includeCharts: true,
     includeSummary: true,
     includeRawData: false,
@@ -38,10 +85,10 @@ export default function ExportPage() {
     customTitle: '',
     notes: ''
   })
-  const [exportHistory, setExportHistory] = useState<any[]>([])
+  const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>([])
   const [isExporting, setIsExporting] = useState(false)
 
-  const reportTypes = [
+  const reportTypes: ReportType[] = [
     {
       id: 'patients',
       name: 'Relatório de Pacientes',
@@ -92,14 +139,14 @@ export default function ExportPage() {
     }
   ]
 
-  const exportFormats = [
+  const exportFormats: ExportFormatOption[] = [
     { value: 'pdf', label: 'PDF', icon: FileText, description: 'Formato universal, ideal para compartilhamento' },
     { value: 'excel', label: 'Excel', icon: FileSpreadsheet, description: 'Planilha editável com dados detalhados' },
     { value: 'csv', label: 'CSV', icon: FileBarChart, description: 'Dados tabulares para análise' },
     { value: 'json', label: 'JSON', icon: FileText, description: 'Dados estruturados para integração' }
   ]
 
-  const dateRangeOptions = [
+  const dateRangeOptions: DateRangeOption[] = [
     { value: '7days', label: 'Últimos 7 dias' },
     { value: '30days', label: 'Últimos 30 dias' },
     { value: '90days', label: 'Últimos 3 meses' },
@@ -144,7 +191,7 @@ export default function ExportPage() {
     ])
   }, [])
 
-  const handleReportSelection = (reportId: string) => {
+  const handleReportSelection = (reportId: ReportType['id']) => {
     setSelectedReports(prev => 
       prev.includes(reportId) 
         ? prev.filter(id => id !== reportId)
@@ -159,13 +206,20 @@ export default function ExportPage() {
     }
 
     setIsExporting(true)
+    const [primaryReportId] = selectedReports
+    if (!primaryReportId) {
+      setIsExporting(false)
+      return
+    }
     
     // Simular processo de exportação
     setTimeout(() => {
-      const newExport = {
+      const selectedReportName = reportTypes.find(r => r.id === primaryReportId)?.name ?? 'Relatório'
+      const exportType: ExportType = selectedReports.length > 1 ? 'multiple' : primaryReportId
+      const newExport: ExportHistoryEntry = {
         id: Date.now(),
-        name: `${selectedReports.length > 1 ? 'Relatórios Múltiplos' : reportTypes.find(r => r.id === selectedReports[0])?.name} - ${new Date().toLocaleDateString('pt-BR')}`,
-        type: selectedReports.length > 1 ? 'multiple' : selectedReports[0],
+        name: `${selectedReports.length > 1 ? 'Relatórios Múltiplos' : selectedReportName} - ${new Date().toLocaleDateString('pt-BR')}`,
+        type: exportType,
         format: exportFormat,
         date: new Date().toISOString().split('T')[0],
         status: 'completed',
@@ -184,7 +238,7 @@ export default function ExportPage() {
     }, 3000)
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: ExportStatus): JSX.Element => {
     switch (status) {
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-600" />
@@ -197,7 +251,7 @@ export default function ExportPage() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: ExportStatus): JSX.Element => {
     switch (status) {
       case 'completed':
         return <Badge className="bg-green-100 text-green-800 border-green-200">Concluído</Badge>
@@ -323,7 +377,7 @@ export default function ExportPage() {
             <CardContent>
               <select
                 value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) => setDateRange(event.target.value as DateRangeValue)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {dateRangeOptions.map(option => (

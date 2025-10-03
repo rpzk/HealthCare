@@ -236,7 +236,7 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle>Relatórios Disponíveis</CardTitle>
           <CardDescription>
-            Clique em "Gerar" para criar e baixar o relatório desejado
+            Clique em &quot;Gerar&quot; para criar e baixar o relatório desejado
           </CardDescription>
         </CardHeader>
         <CardContent>

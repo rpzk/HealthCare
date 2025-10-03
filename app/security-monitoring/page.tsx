@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 import { headers, cookies } from 'next/headers'
 import { ClientLogger } from './ClientLogger'
 import { SecurityDashboardClient } from './SecurityDashboardClient'
@@ -7,47 +7,58 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Shield, Users, Activity, ListChecks } from 'lucide-react'
+import type { SecurityOverviewResponse } from './types'
+import { isSecurityOverviewResponse } from './validation'
 
 // Server Component settings
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-type FetchResult = { data: any; error: string | null; status: number }
+interface FetchResult<T> {
+  data: T | null
+  error: string | null
+  status: number
+}
 
-async function fetchSecurityOverview(): Promise<FetchResult> {
-  const hdrs = headers();
-  const host = hdrs.get('host') || 'localhost:3000';
-  const proto = hdrs.get('x-forwarded-proto') || 'http';
-  const base = `${proto}://${host}`;
-  const url = `${base}/api/admin/security?action=security-overview`;
+async function fetchSecurityOverview(): Promise<FetchResult<SecurityOverviewResponse>> {
+  const hdrs = headers()
+  const host = hdrs.get('host') || 'localhost:3000'
+  const proto = hdrs.get('x-forwarded-proto') || 'http'
+  const base = `${proto}://${host}`
+  const url = `${base}/api/admin/security?action=security-overview`
   try {
-    const cookieHeader = cookies().toString();
+    const cookieHeader = cookies().toString()
     const res = await fetch(url, {
       headers: { cookie: cookieHeader },
       cache: 'no-store'
-    });
+    })
     if (!res.ok) {
-      const text = await res.text();
-      console.error('[SecurityMonitoring][fetch] Falha', res.status, text);
-      return { data: null, error: `Status ${res.status}: ${text.slice(0,400)}`, status: res.status };
+      const text = await res.text()
+      console.error('[SecurityMonitoring][fetch] Falha', res.status, text)
+      return { data: null, error: `Status ${res.status}: ${text.slice(0, 400)}`, status: res.status }
     }
-    const json = await res.json();
-    return { data: json, error: null, status: res.status };
-  } catch (e:any) {
-    console.error('[SecurityMonitoring][fetch] Exceção', e);
-    return { data: null, error: e.message || String(e), status: 0 };
+    const json: unknown = await res.json()
+    if (!isSecurityOverviewResponse(json)) {
+      console.error('[SecurityMonitoring][fetch] Resposta inesperada', json)
+      return { data: null, error: 'Resposta da API em formato inesperado.', status: res.status }
+    }
+    return { data: json, error: null, status: res.status }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[SecurityMonitoring][fetch] Exceção', message)
+    return { data: null, error: message, status: 0 }
   }
 }
 
 export default async function SecurityMonitoringDashboard() {
-  const result = await fetchSecurityOverview();
-  const overview = result.data?.overview
-  const health = overview?.systemHealth === 'healthy' ? 'Saudável' : (overview?.systemHealth || 'N/A')
-  const reqs = String(overview?.rateLimit?.totalRequests ?? 0)
-  const clients = String(overview?.rateLimit?.totalClients ?? 0)
-  const blocked = String(overview?.rateLimit?.blockedClients ?? 0)
-  const audits1h = String(overview?.audit?.lastHour ?? 0)
-  const auditErrors = String(overview?.audit?.errors ?? 0)
+  const result = await fetchSecurityOverview()
+  const overview = result.data?.overview ?? null
+  const health = overview?.systemHealth === 'healthy' ? 'Saudável' : (overview?.systemHealth ?? 'N/A')
+  const reqs = String(overview?.rateLimit.totalRequests ?? 0)
+  const clients = String(overview?.rateLimit.totalClients ?? 0)
+  const blocked = String(overview?.rateLimit.blockedClients ?? 0)
+  const audits1h = String(overview?.audit.lastHour ?? 0)
+  const auditErrors = String(overview?.audit.errors ?? 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -155,15 +166,15 @@ export default async function SecurityMonitoringDashboard() {
               </CardHeader>
               <CardContent>
                 <pre className="text-xs bg-black text-green-400 p-3 rounded overflow-x-auto">
-{JSON.stringify(result.data, null, 2) || 'Nenhum dado'}
+  {result.data ? JSON.stringify(result.data, null, 2) : 'Nenhum dado'}
                 </pre>
               </CardContent>
             </Card>
           </div>
 
-          <ClientLogger data={result.data} />
+            <ClientLogger data={result.data} />
         </main>
       </div>
     </div>
-  );
+    )
 }

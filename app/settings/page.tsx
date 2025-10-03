@@ -1,17 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/navigation/page-header'
-import { Settings, User, Shield, Bell, Database, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { User, Shield, Bell, Database, Save, Eye, EyeOff } from 'lucide-react'
 
 export default function SettingsPage() {
-  const router = useRouter()
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
   
@@ -36,14 +35,14 @@ export default function SettingsPage() {
     maintenanceMode: false
   })
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     // Simular salvamento
     alert('Perfil atualizado com sucesso!')
   }
 
-  const handleSystemSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSystemSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     // Simular salvamento
     alert('Configurações do sistema atualizadas!')
   }

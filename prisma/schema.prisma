@@ -31,6 +31,10 @@ model User {
   examRequests   ExamRequest[]
   medicalRecords MedicalRecord[]
   aiInteractions AIInteraction[]
+  // Ocupações / Capability
+  evaluationsAsSubject  CapabilityEvaluation[]
+  evaluationsAsEvaluator CapabilityEvaluation[] @relation("EvaluatorUser")
+  jobRoles UserJobRole[]
 
   @@map("users")
 }
@@ -63,6 +67,7 @@ model Patient {
   examResults    ExamResult[]
   medicalRecords MedicalRecord[]
   addresses      Address[]
+  diagnoses      Diagnosis[]
   User           User?             @relation(fields: [userId], references: [id])
   userId         String?
   ExamRequest    ExamRequest[]
@@ -119,6 +124,7 @@ model Consultation {
   prescriptions Prescription[]
   examRequests  ExamRequest[]
   vitalSigns    VitalSigns[]
+  diagnoses     Diagnosis[]
 
   @@map("consultations")
 }
@@ -338,13 +344,128 @@ model MicroArea {
   centroidLng  Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  // Bounding box derivado para pré-filtro espacial
+  minLat       Float?
+  minLng       Float?
+  maxLat       Float?
+  maxLng       Float?
 
   // Relacionamentos
   addresses Address[]
   places    Place[]
+  revisions MicroAreaRevision[]
   @@index([centroidLat, centroidLng])
+  @@index([minLat, maxLat])
+  @@index([minLng, maxLng])
 
   @@map("micro_areas")
+}
+
+model MicroAreaRevision {
+  id            String    @id @default(cuid())
+  microArea     MicroArea @relation(fields: [microAreaId], references: [id])
+  microAreaId   String
+  previousGeo   String?   @db.Text
+  newGeo        String?   @db.Text
+  changedByUser String?
+  reason        String?
+  createdAt     DateTime  @default(now())
+
+  @@index([microAreaId, createdAt])
+  @@map("micro_area_revisions")
+}
+
+// ---------------------- SISTEMA DE CODIFICAÇÃO CLÍNICA ----------------------
+
+model CodeSystem {
+  id          String          @id @default(cuid())
+  kind        CodeSystemKind
+  name        String
+  version     String?
+  description String?
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  codes       MedicalCode[]
+
+  @@unique([kind, version])
+  @@map("code_systems")
+}
+
+model MedicalCode {
+  id             String        @id @default(cuid())
+  system         CodeSystem    @relation(fields: [systemId], references: [id])
+  systemId       String
+  code           String
+  display        String
+  description    String?       @db.Text
+  parentId       String?
+  parent         MedicalCode?  @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
+  children       MedicalCode[] @relation("MedicalCodeHierarchy")
+  synonyms       String?       @db.Text // JSON string array para sinônimos
+  searchableText String?       @db.Text
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  primaryIn      Diagnosis[]   @relation("PrimaryCode")
+  secondaryIn    DiagnosisSecondaryCode[]
+
+  @@unique([systemId, code])
+  @@index([code])
+  @@index([display])
+  @@map("medical_codes")
+}
+
+model Diagnosis {
+  id              String                  @id @default(cuid())
+  patient         Patient                 @relation(fields: [patientId], references: [id])
+  patientId       String
+  consultation    Consultation?           @relation(fields: [consultationId], references: [id])
+  consultationId  String?
+  primaryCode     MedicalCode             @relation("PrimaryCode", fields: [primaryCodeId], references: [id])
+  primaryCodeId   String
+  secondaryCodes  DiagnosisSecondaryCode[]
+  status          DiagnosisStatus         @default(ACTIVE)
+  certainty       DiagnosisCertainty      @default(CONFIRMED)
+  notes           String?                 @db.Text
+  onsetDate       DateTime?
+  resolvedDate    DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  revisions       DiagnosisRevision[]
+
+  @@index([patientId])
+  @@index([consultationId])
+  @@map("diagnoses")
+}
+
+model DiagnosisSecondaryCode {
+  id           String      @id @default(cuid())
+  diagnosis    Diagnosis   @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+  diagnosisId  String
+  code         MedicalCode @relation(fields: [codeId], references: [id])
+  codeId       String
+  order        Int         @default(0)
+  createdAt    DateTime    @default(now())
+
+  @@unique([diagnosisId, codeId])
+  @@index([codeId])
+  @@map("diagnosis_secondary_codes")
+}
+
+// Histórico de revisões de diagnósticos (auditoria de mudanças)
+model DiagnosisRevision {
+  id             String     @id @default(cuid())
+  diagnosis      Diagnosis  @relation(fields: [diagnosisId], references: [id])
+  diagnosisId    String
+  previous       Json?
+  next           Json?
+  changedAt      DateTime   @default(now())
+  changedByUserId String?
+  reason         String?
+
+  @@index([diagnosisId, changedAt])
+  @@map("diagnosis_revisions")
 }
 
 enum DocumentFileType {
@@ -537,4 +658,163 @@ enum AIRequestType {
   SYMPTOM_ANALYSIS
   MEDICAL_SUMMARY
   RISK_ASSESSMENT
+}
+
+// Enum para distinguir sistemas de codificação suportados
+enum CodeSystemKind {
+  CID10
+  CID11
+  CIAP2
+  NURSING
+}
+
+enum DiagnosisStatus {
+  ACTIVE
+  RESOLVED
+  ENTERED_IN_ERROR
+  INACTIVE
+}
+
+enum DiagnosisCertainty {
+  SUSPECTED
+  PROBABLE
+  CONFIRMED
+  RULED_OUT
+}
+
+// Log de atualizações externas (CID/ICD/CIAP/CBO)
+enum ExternalSourceType {
+  ICD10
+  ICD11
+  CIAP2
+  NURSING
+  CBO
+}
+
+model ExternalSourceUpdate {
+  id            String            @id @default(cuid())
+  sourceType    ExternalSourceType
+  versionTag    String?
+  status        String            // RUNNING | SUCCESS | ERROR
+  startedAt     DateTime          @default(now())
+  finishedAt    DateTime?
+  fetchedCount  Int               @default(0)
+  insertedCount Int               @default(0)
+  updatedCount  Int               @default(0)
+  skippedCount  Int               @default(0)
+  retiredCount  Int               @default(0)
+  checksum      String?           // hash do arquivo bruto
+  errorMessage  String?           @db.Text
+  meta          String?           @db.Text // JSON extra
+
+  @@index([sourceType, startedAt])
+  @@map("external_source_updates")
+}
+
+// --------- Elliott Jaques / CBO Occupation & Capability System ---------
+
+enum StratumLevel {
+  S1
+  S2
+  S3
+  S4
+  S5
+  S6
+  S7
+  S8
+}
+
+// Grupos hierárquicos do CBO (grande grupo, subgrupo, família etc.)
+model CBOGroup {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  level     Int        // 1=Grande Grupo, 2=Subgrupo Principal, 3=Subgrupo, 4=Família
+  parentId  String?
+  parent    CBOGroup?  @relation("CBOGroupHierarchy", fields: [parentId], references: [id])
+  children  CBOGroup[] @relation("CBOGroupHierarchy")
+  occupations Occupation[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([level])
+  @@map("cbo_groups")
+}
+
+model Occupation {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  title       String
+  description String?   @db.Text
+  groupId     String?
+  group       CBOGroup? @relation(fields: [groupId], references: [id])
+  synonyms    String?   @db.Text // JSON array
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  roles       JobRole[]
+
+  @@index([groupId])
+  @@map("occupations")
+}
+
+// Papel / Cargo específico associado a uma ocupação (pode refinar requisitos)
+model JobRole {
+  id                 String      @id @default(cuid())
+  title              String
+  occupationId       String?
+  occupation         Occupation? @relation(fields: [occupationId], references: [id])
+  requiredMinStratum StratumLevel
+  requiredMaxStratum StratumLevel?
+  description        String?     @db.Text
+  tasks              String?     @db.Text // lista ou markdown
+  capabilitiesJson   String?     @db.Text // JSON com pesos por dimensão
+  active             Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  evaluations        CapabilityEvaluation[]
+  userAssignments    UserJobRole[]
+
+  @@index([occupationId])
+  @@map("job_roles")
+}
+
+// Atribuição de usuário a um papel/cargo
+model UserJobRole {
+  id        String   @id @default(cuid())
+  userId    String
+  jobRoleId String
+  assignedAt DateTime @default(now())
+  active    Boolean  @default(true)
+
+  user    User    @relation(fields: [userId], references: [id])
+  jobRole JobRole @relation(fields: [jobRoleId], references: [id])
+
+  @@unique([userId, jobRoleId])
+  @@index([jobRoleId])
+  @@map("user_job_roles")
+}
+
+// Avaliação de capacidade segundo Estratos de Elliott Jaques
+model CapabilityEvaluation {
+  id              String       @id @default(cuid())
+  subjectUserId   String
+  subjectUser     User         @relation(fields: [subjectUserId], references: [id])
+  evaluatorUserId String
+  evaluatorUser   User         @relation("EvaluatorUser", fields: [evaluatorUserId], references: [id])
+  jobRoleId       String?
+  jobRole         JobRole?     @relation(fields: [jobRoleId], references: [id])
+  stratumAssessed StratumLevel
+  potentialStratum StratumLevel?
+  timeSpanMonths  Int?         // Estimativa de alcance temporal de decisão
+  evidence        String?      @db.Text // Observações qualitativas
+  gaps            String?      @db.Text // JSON com lacunas por dimensão
+  recommendations String?      @db.Text // Ações sugeridas
+  capabilityScores String?     @db.Text // JSON com pontuação calculada por dimensão
+  createdAt       DateTime     @default(now())
+
+  @@index([subjectUserId, createdAt])
+  @@index([evaluatorUserId, createdAt])
+  @@index([jobRoleId])
+  @@map("capability_evaluations")
 }
