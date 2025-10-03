@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import type { ChangeEvent } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,6 @@ import {
   Activity, 
   Server,
   Database,
-  Wifi,
   HardDrive,
   Cpu,
   MemoryStick,
@@ -17,57 +17,61 @@ import {
   CheckCircle,
   Clock,
   RefreshCw,
-  Filter,
   Download,
   Search,
-  TrendingUp,
-  TrendingDown,
   Minus
 } from 'lucide-react'
+
+type MetricStatus = 'good' | 'warning' | 'critical'
+type ServiceStatus = 'online' | 'offline' | 'maintenance'
+type LogLevel = 'info' | 'warning' | 'error' | 'critical'
+type LogLevelFilter = 'all' | LogLevel
+type ServiceFilter = 'all' | 'API' | 'Database' | 'Cache' | 'Storage' | 'Email'
+const AUTO_REFRESH_INTERVAL_MS = 30_000
 
 interface SystemMetrics {
   cpu: {
     usage: number
     cores: number
     temperature: number
-    status: 'good' | 'warning' | 'critical'
+    status: MetricStatus
   }
   memory: {
     used: number
     total: number
     percentage: number
-    status: 'good' | 'warning' | 'critical'
+    status: MetricStatus
   }
   storage: {
     used: number
     total: number
     percentage: number
-    status: 'good' | 'warning' | 'critical'
+    status: MetricStatus
   }
   database: {
     connections: number
     maxConnections: number
     queryTime: number
-    status: 'good' | 'warning' | 'critical'
+    status: MetricStatus
   }
   network: {
     latency: number
     uptime: number
-    status: 'good' | 'warning' | 'critical'
+    status: MetricStatus
   }
   services: {
-    api: 'online' | 'offline' | 'maintenance'
-    database: 'online' | 'offline' | 'maintenance'
-    cache: 'online' | 'offline' | 'maintenance'
-    storage: 'online' | 'offline' | 'maintenance'
-    email: 'online' | 'offline' | 'maintenance'
+    api: ServiceStatus
+    database: ServiceStatus
+    cache: ServiceStatus
+    storage: ServiceStatus
+    email: ServiceStatus
   }
 }
 
 interface LogEntry {
   id: string
   timestamp: string
-  level: 'info' | 'warning' | 'error' | 'critical'
+  level: LogLevel
   service: string
   message: string
   details?: string
@@ -79,26 +83,13 @@ export default function SystemMonitorPage() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [autoRefresh, setAutoRefresh] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [logLevel, setLogLevel] = useState('all')
-  const [selectedService, setSelectedService] = useState('all')
+  const [loading, setLoading] = useState<boolean>(true)
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true)
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [logLevel, setLogLevel] = useState<LogLevelFilter>('all')
+  const [selectedService, setSelectedService] = useState<ServiceFilter>('all')
 
-  useEffect(() => {
-    fetchSystemData()
-    
-    if (autoRefresh) {
-      const interval = setInterval(fetchSystemData, 30000) // 30 segundos
-      return () => clearInterval(interval)
-    }
-  }, [autoRefresh])
-
-  useEffect(() => {
-    filterLogs()
-  }, [logs, searchTerm, logLevel, selectedService])
-
-  const fetchSystemData = async () => {
+  const fetchSystemData = useCallback(() => {
     // Simular dados do sistema
     const mockMetrics: SystemMetrics = {
       cpu: {
@@ -152,7 +143,10 @@ export default function SystemMonitorPage() {
     setMetrics(mockMetrics)
 
     // Simular logs apenas na primeira carga
-    if (logs.length === 0) {
+    setLogs((previousLogs) => {
+      if (previousLogs.length > 0) {
+        return previousLogs
+      }
       const mockLogs: LogEntry[] = [
         {
           id: '1',
@@ -178,7 +172,7 @@ export default function SystemMonitorPage() {
           level: 'info',
           service: 'Cache',
           message: 'Cache limpo automaticamente',
-          details: '1.2GB de dados removidos do cache',
+          details: '1.2GB de dados removidos do cache'
         },
         {
           id: '4',
@@ -213,7 +207,7 @@ export default function SystemMonitorPage() {
           level: 'warning',
           service: 'Database',
           message: 'Conexões próximas do limite',
-          details: '85/100 conexões ativas',
+          details: '85/100 conexões ativas'
         },
         {
           id: '8',
@@ -225,41 +219,58 @@ export default function SystemMonitorPage() {
           userId: 'admin'
         }
       ]
-
-      setLogs(mockLogs)
-    }
+      return mockLogs
+    })
 
     setLoading(false)
-  }
+  }, [])
 
-  const filterLogs = () => {
-    let filtered = logs
-
-    // Filtrar por nível
-    if (logLevel !== 'all') {
-      filtered = filtered.filter(log => log.level === logLevel)
-    }
-
-    // Filtrar por serviço
-    if (selectedService !== 'all') {
-      filtered = filtered.filter(log => 
-        log.service.toLowerCase() === selectedService.toLowerCase()
+  const filterLogs = useCallback(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase()
+    const filtered = logs.filter((log) => {
+      if (logLevel !== 'all' && log.level !== logLevel) {
+        return false
+      }
+      if (selectedService !== 'all' && log.service.toLowerCase() !== selectedService.toLowerCase()) {
+        return false
+      }
+      if (!normalizedSearch) {
+        return true
+      }
+      const detailsMatch = log.details?.toLowerCase().includes(normalizedSearch) ?? false
+      const userMatch = log.userId?.toLowerCase().includes(normalizedSearch) ?? false
+      const ipMatch = log.ip?.toLowerCase().includes(normalizedSearch) ?? false
+      return (
+        log.message.toLowerCase().includes(normalizedSearch) ||
+        log.service.toLowerCase().includes(normalizedSearch) ||
+        detailsMatch ||
+        userMatch ||
+        ipMatch
       )
-    }
-
-    // Filtrar por termo de busca
-    if (searchTerm) {
-      filtered = filtered.filter(log => 
-        log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (log.details && log.details.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    }
+    })
 
     setFilteredLogs(filtered)
-  }
+  }, [logs, logLevel, searchTerm, selectedService])
 
-  const getStatusColor = (status: string) => {
+  useEffect(() => {
+    fetchSystemData()
+  }, [fetchSystemData])
+
+  useEffect(() => {
+    if (!autoRefresh) {
+      return undefined
+    }
+    const intervalId = window.setInterval(() => {
+      fetchSystemData()
+    }, AUTO_REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(intervalId)
+  }, [autoRefresh, fetchSystemData])
+
+  useEffect(() => {
+    filterLogs()
+  }, [filterLogs])
+
+  const getStatusColor = (status: MetricStatus | ServiceStatus) => {
     switch (status) {
       case 'good':
       case 'online':
@@ -276,7 +287,7 @@ export default function SystemMonitorPage() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: MetricStatus | ServiceStatus) => {
     switch (status) {
       case 'good':
       case 'online':
@@ -293,7 +304,7 @@ export default function SystemMonitorPage() {
     }
   }
 
-  const getLogLevelColor = (level: string) => {
+  const getLogLevelColor = (level: LogLevel) => {
     switch (level) {
       case 'info':
         return 'text-blue-600 bg-blue-100 border-blue-200'
@@ -308,21 +319,8 @@ export default function SystemMonitorPage() {
     }
   }
 
-  const formatBytes = (bytes: number) => {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-    }
-    if (bytes >= 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    }
-    if (bytes >= 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`
-    }
-    return `${bytes} B`
-  }
-
-  const services = ['all', 'API', 'Database', 'Cache', 'Storage', 'Email']
-  const logLevels = ['all', 'info', 'warning', 'error', 'critical']
+  const services: ServiceFilter[] = ['all', 'API', 'Database', 'Cache', 'Storage', 'Email']
+  const logLevels: LogLevelFilter[] = ['all', 'info', 'warning', 'error', 'critical']
 
   if (loading || !metrics) {
     return (
@@ -351,7 +349,7 @@ export default function SystemMonitorPage() {
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
-            onClick={() => setAutoRefresh(!autoRefresh)}
+            onClick={() => setAutoRefresh((prev) => !prev)}
             className={`flex items-center space-x-2 ${
               autoRefresh ? 'bg-green-50 border-green-200' : ''
             }`}
@@ -571,7 +569,7 @@ export default function SystemMonitorPage() {
 
             <select
               value={logLevel}
-              onChange={(e) => setLogLevel(e.target.value)}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => setLogLevel(event.target.value as LogLevelFilter)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {logLevels.map(level => (
@@ -583,7 +581,7 @@ export default function SystemMonitorPage() {
 
             <select
               value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => setSelectedService(event.target.value as ServiceFilter)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {services.map(service => (

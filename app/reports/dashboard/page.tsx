@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import type { ComponentType, SVGProps } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,8 +11,25 @@ import { useRouter } from 'next/navigation'
 interface SpecialtyStat { name: string; count: number }
 interface AgeGroup { range: string; count: number }
 interface GenderGroup { gender: string; count: number }
-interface KPI { title: string; value: number | string; change: string; changeType: 'positive' | 'neutral'; icon: any; color: string; bgColor: string }
-interface PerformanceMetric { title: string; value: string | number; unit: string; icon: any; color: string }
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
+
+interface KPI {
+  title: string
+  value: number | string
+  change: string
+  changeType: 'positive' | 'neutral'
+  icon: IconComponent
+  color: string
+  bgColor: string
+}
+
+interface PerformanceMetric {
+  title: string
+  value: string | number
+  unit: string
+  icon: IconComponent
+  color: string
+}
 interface DashboardData {
   totalPatients: number
   newPatientsThisMonth: number
@@ -94,7 +112,7 @@ export default function DashboardReportsPage() {
     return () => clearTimeout(timer)
   }, [])
 
-  const kpiCards = [
+  const kpiCards: KPI[] = [
     {
       title: 'Total de Pacientes',
       value: dashboardData.totalPatients,
@@ -133,7 +151,7 @@ export default function DashboardReportsPage() {
     }
   ]
 
-  const performanceMetrics = [
+  const performanceMetrics: PerformanceMetric[] = [
     {
       title: 'Média de Consultas/Dia',
       value: dashboardData.averageConsultationsPerDay.toFixed(1),

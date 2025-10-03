@@ -59,6 +59,40 @@ class MicroAreaLocator {
   static invalidate() { _microAreaCache = null }
 }
 
+// Utilitário para derivar bounding box de um polygon GeoJSON (Polygon ou MultiPolygon)
+function deriveGeoComputed(polygonGeo?: string | null): { bboxFields: any } {
+  if (!polygonGeo) return { bboxFields: {} }
+  try {
+    const parsed = JSON.parse(polygonGeo)
+    const geom = parsed?.geometry
+    if (!geom) return { bboxFields: {} }
+    const collect: Array<[number, number]> = [] // [lat,lng]
+    if (geom.type === 'Polygon') {
+      for (const ring of geom.coordinates as number[][][]) {
+        for (const p of ring) collect.push([p[1], p[0]])
+      }
+    } else if (geom.type === 'MultiPolygon') {
+      for (const poly of geom.coordinates as number[][][][]) {
+        for (const ring of poly) {
+          for (const p of ring) collect.push([p[1], p[0]])
+        }
+      }
+    } else return { bboxFields: {} }
+    if (!collect.length) return { bboxFields: {} }
+    let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity
+    for (const [lat, lng] of collect) {
+      if (lat < minLat) minLat = lat
+      if (lat > maxLat) maxLat = lat
+      if (lng < minLng) minLng = lng
+      if (lng > maxLng) maxLng = lng
+    }
+    if (!isFinite(minLat) || !isFinite(minLng) || !isFinite(maxLat) || !isFinite(maxLng)) {
+      return { bboxFields: {} }
+    }
+  return { bboxFields: { minLat, minLng, maxLat, maxLng } }
+  } catch { return { bboxFields: {} } }
+}
+
 export type AddressInput = {
   street: string
   number?: string
@@ -91,6 +125,8 @@ export type MicroAreaInput = {
   polygonGeo?: string // GeoJSON
   centroidLat?: number
   centroidLng?: number
+  changedByUser?: string // opcional para auditoria
+  reason?: string // motivo da alteração
 }
 
 export class AddressService {
@@ -132,7 +168,23 @@ export class AddressService {
   }
 
   static async createMicroArea(data: MicroAreaInput) {
-    const created = await prisma.microArea.create({ data })
+    // Deriva bounding box se houver polygonGeo
+    const { bboxFields } = deriveGeoComputed(data.polygonGeo)
+    const created = await prisma.$transaction(async (tx) => {
+      const micro = await tx.microArea.create({ data: { ...data, ...bboxFields } })
+      if (data.polygonGeo) {
+  await (tx as any).microAreaRevision.create({
+          data: {
+            microAreaId: micro.id,
+            previousGeo: null,
+            newGeo: data.polygonGeo,
+            changedByUser: data.changedByUser,
+            reason: data.reason || 'create'
+          }
+        })
+      }
+      return micro
+    })
     MicroAreaLocator.invalidate()
     return created
   }
@@ -140,7 +192,29 @@ export class AddressService {
     return prisma.microArea.findMany({ orderBy: { name: 'asc' } })
   }
   static async updateMicroArea(id: string, data: Partial<MicroAreaInput>) {
-    const updated = await prisma.microArea.update({ where: { id }, data })
+    // Buscar atual para auditoria & diff
+    const current = await prisma.microArea.findUnique({ where: { id }, select: { polygonGeo: true } })
+    if (!current) throw new Error('MicroArea not found')
+    let polygonChanged = false
+    if (data.polygonGeo !== undefined && data.polygonGeo !== current.polygonGeo) {
+      polygonChanged = true
+    }
+    const { bboxFields } = polygonChanged ? deriveGeoComputed(data.polygonGeo) : { bboxFields: {} }
+    const updated = await prisma.$transaction(async (tx) => {
+      const micro = await tx.microArea.update({ where: { id }, data: { ...data, ...(polygonChanged ? bboxFields : {}) } })
+      if (polygonChanged) {
+  await (tx as any).microAreaRevision.create({
+          data: {
+            microAreaId: micro.id,
+            previousGeo: current.polygonGeo,
+            newGeo: data.polygonGeo || null,
+            changedByUser: (data as any).changedByUser,
+            reason: (data as any).reason || 'update'
+          }
+        })
+      }
+      return micro
+    })
     MicroAreaLocator.invalidate()
     return updated
   }

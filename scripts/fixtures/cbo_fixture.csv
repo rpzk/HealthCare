@@ -1,0 +1,8 @@
+Codigo,Titulo,Descricao
+1,Diretores,Diretores e chefes de grandes setores
+11,Profissionais de Saúde,Subgrupo principal de saúde
+111,Medicina,Subgrupo medicina
+1111,Familia Médica,Família de profissões médicas
+1111-01,Médico Clínico,Atende pacientes em ambulatório
+1111-02,Médico de Família e Comunidade,Atuação em atenção primária
+2222-05,Enfermeiro,Cuidados gerais de enfermagem

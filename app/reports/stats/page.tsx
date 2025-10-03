@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useCallback } from 'react'
+import type { ChangeEvent } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { BarChart3, ArrowLeft, TrendingUp, TrendingDown, Users, Calendar, Activity, Target } from 'lucide-react'
+import { BarChart3, ArrowLeft, TrendingUp, Users, Calendar, Activity, Target } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface AgeGroupDetailed { range: string; count: number; percentage: number }
 interface SpecialtyBreakdown { specialty: string; count: number; percentage: number }
 interface ExamTypeStat { type: string; count: number }
 interface TimeSeriesPoint { month: string; count: number }
+type StatsTimeRange = '7days' | '30days' | '90days' | '1year'
 interface StatsData {
   patientStats: {
     total: number
@@ -54,7 +56,7 @@ interface StatsData {
 export default function StatsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState<'7days' | '30days' | '90days' | '1year'>('30days')
+  const [timeRange, setTimeRange] = useState<StatsTimeRange>('30days')
   const [statsData, setStatsData] = useState<StatsData>({
     patientStats: {
       total: 0,
@@ -95,14 +97,10 @@ export default function StatsPage() {
     }
   })
 
-  useEffect(() => {
-    fetchStatistics()
-  }, [timeRange])
-
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(() => {
     setLoading(true)
     // Simular carregamento de dados com base no período selecionado
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       const multiplier = timeRange === '7days' ? 0.25 : timeRange === '30days' ? 1 : timeRange === '90days' ? 3 : 12
 
       setStatsData({
@@ -173,9 +171,15 @@ export default function StatsPage() {
       })
       setLoading(false)
     }, 1000)
-  }
+    return () => clearTimeout(timer)
+  }, [timeRange])
 
-  const timeRangeOptions = [
+  useEffect(() => {
+    const cleanup = fetchStatistics()
+    return cleanup
+  }, [fetchStatistics])
+
+  const timeRangeOptions: Array<{ value: StatsTimeRange; label: string }> = [
     { value: '7days', label: 'Últimos 7 dias' },
     { value: '30days', label: 'Últimos 30 dias' },
     { value: '90days', label: 'Últimos 3 meses' },
@@ -216,7 +220,7 @@ export default function StatsPage() {
         <div className="flex items-center space-x-3">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as '7days' | '30days' | '90days' | '1year')}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => setTimeRange(event.target.value as StatsTimeRange)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {timeRangeOptions.map(option => (
