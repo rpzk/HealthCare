@@ -5,11 +5,31 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
+interface Place {
+  id: string
+  name: string
+  category: string
+  latitude?: number
+  longitude?: number
+  microAreaId?: string
+}
+
+interface MicroArea {
+  id: string
+  name: string
+  code?: string
+}
+
+interface PlaceForm {
+  name: string
+  category: string
+}
+
 export default function PlacesPage() {
-  const [places, setPlaces] = useState<any[]>([])
-  const [form, setForm] = useState<any>({ name: '', category: '' })
+  const [places, setPlaces] = useState<Place[]>([])
+  const [form, setForm] = useState<PlaceForm>({ name: '', category: '' })
   const [coords, setCoords] = useState<{ lat: number, lng: number } | undefined>(undefined)
-  const [microAreas, setMicroAreas] = useState<any[]>([])
+  const [microAreas, setMicroAreas] = useState<MicroArea[]>([])
   const [microAreaId, setMicroAreaId] = useState<string | undefined>()
 
   async function load() {
@@ -18,7 +38,13 @@ export default function PlacesPage() {
     setPlaces(data)
   }
   async function loadMicroAreas() {
-    try { const r = await fetch('/api/micro-areas'); const d = await r.json(); setMicroAreas(d) } catch {}
+    try { 
+      const response = await fetch('/api/micro-areas')
+      const data = await response.json()
+      setMicroAreas(data)
+    } catch {
+      // Handle fetch error silently
+    }
   }
   useEffect(() => { load(); loadMicroAreas() }, [])
 
@@ -35,8 +61,16 @@ export default function PlacesPage() {
       <h1 className="text-2xl font-bold">Locais de Interesse</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Input placeholder="Nome" value={form.name} onChange={e => setForm((f:any) => ({ ...f, name: e.target.value }))} />
-          <Input placeholder="Categoria" value={form.category} onChange={e => setForm((f:any) => ({ ...f, category: e.target.value }))} />
+          <Input 
+            placeholder="Nome" 
+            value={form.name} 
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
+          />
+          <Input 
+            placeholder="Categoria" 
+            value={form.category} 
+            onChange={e => setForm(f => ({ ...f, category: e.target.value }))} 
+          />
           <MapPicker value={coords} onChange={setCoords} />
           <div>
             <label className="block text-sm font-medium mb-1">Micro-área (opcional)</label>
@@ -45,7 +79,7 @@ export default function PlacesPage() {
                 <SelectValue placeholder="Selecionar micro-área" />
               </SelectTrigger>
               <SelectContent>
-                {microAreas.map((m:any)=>(<SelectItem key={m.id} value={m.id}>{m.name}{m.code?` (${m.code})`:''}</SelectItem>))}
+                {microAreas.map((m)=>(<SelectItem key={m.id} value={m.id}>{m.name}{m.code?` (${m.code})`:''}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>

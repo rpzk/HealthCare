@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
@@ -55,7 +55,7 @@ export default function PrescriptionsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  const fetchPrescriptions = async () => {
+  const fetchPrescriptions = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -68,20 +68,20 @@ export default function PrescriptionsPage() {
       const response = await fetch(`/api/prescriptions?${params}`)
       if (!response.ok) throw new Error('Falha ao carregar prescrições')
 
-  const data = await response.json()
-  setPrescriptions(data.prescriptions || [])
-  const total = (data.pagination?.total ?? data.total ?? 0) as number
-  setTotalPages(Math.ceil(total / 10))
+      const data = await response.json()
+      setPrescriptions(data.prescriptions || [])
+      const total = (data.pagination?.total ?? data.total ?? 0) as number
+      setTotalPages(Math.ceil(total / 10))
     } catch (error) {
       console.error('Erro ao buscar prescrições:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, filterStatus, searchTerm])
   
   useEffect(() => {
     fetchPrescriptions()
-  }, [currentPage, filterStatus, searchTerm])
+  }, [fetchPrescriptions])
   const getStatusColor = (status: string) => {
     const colors = {
       'ACTIVE': 'bg-green-100 text-green-800 border-green-200',
@@ -199,13 +199,13 @@ export default function PrescriptionsPage() {
           </Card>
         ) : (
           prescriptions.map((prescription) => {
-            const meds = (prescription as any).medications as Array<any> | undefined
-            const main = meds && meds.length > 0 ? meds[0] : undefined
-            const medName = main?.name || 'Medicamentos'
-            const medDosage = main?.dosage || '-'
-            const medFrequency = main?.frequency || '-'
-            const medDuration = main?.duration || '-'
-            const instructions = main?.instructions
+            const meds = (prescription as any).medications as Array<unknown> | undefined
+            const main = meds && meds.length > 0 ? meds[0] as Record<string, unknown> : undefined
+            const medName = (main?.name as string) || 'Medicamentos'
+            const medDosage = (main?.dosage as string) || '-'
+            const medFrequency = (main?.frequency as string) || '-'
+            const medDuration = (main?.duration as string) || '-'
+            const instructions = main?.instructions as string
             return (
             <Card key={prescription.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">

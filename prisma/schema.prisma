@@ -84,8 +84,14 @@ model MedicalRecord {
   notes          String?
   recordType     RecordType
   severity       Severity   @default(LOW)
+  priority       String     @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
   isPrivate      Boolean    @default(false)
   sourceDocument String? // Para vincular a documentos importados
+  
+  // Phase 2: Security & Audit
+  version        Int        @default(1) // Optimistic locking for concurrent updates
+  deletedAt      DateTime?  // Soft-delete timestamp (LGPD: allows record restoration)
+  
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
@@ -97,6 +103,12 @@ model MedicalRecord {
   attachments Attachment[]
   aiAnalysis  AIAnalysis[]
 
+  // Indexes for performance and audit
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([recordType])
+  @@index([createdAt])
+  @@index([deletedAt]) // For soft-delete queries
   @@map("medical_records")
 }
 
@@ -545,23 +557,53 @@ model AIQuotaUsage {
 
 // Logs de auditoria persistentes
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String
-  userEmail   String
-  userRole    String
-  action      String
-  resource    String
-  resourceId  String?
-  details     String?   @db.Text
-  ipAddress   String?
-  userAgent   String?
-  success     Boolean   @default(true)
-  errorMessage String?
-  createdAt   DateTime  @default(now())
+  id            String   @id @default(cuid())
+  
+  // Core tracking
+  action        String   // CREATE, READ, UPDATE, DELETE, ERROR
+  resourceType  String   @default("MEDICAL_RECORD")
+  resourceId    String
+  
+  // User attribution
+  userId        String
+  userEmail     String
+  userRole      String
+  
+  // Operation details
+  success       Boolean   @default(true)
+  errorMessage  String?   @db.Text
+  
+  // Change tracking (Phase 2: before/after snapshots)
+  changes       Json?    // Array of { field, before, after } objects
+  metadata      Json?    // { ipAddress, userAgent, reason, ... }
+  
+  // Request context
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([action, createdAt])
+  @@index([resourceId, createdAt])
+  @@index([resourceType, createdAt])
+  @@index([success, createdAt]) // For error tracking
   @@map("audit_logs")
+}
+
+// Phase 2: Rate Limiting tracking for distributed systems (Phase 3 Redis migration)
+model RateLimitLog {
+  id        String   @id @default(cuid())
+  userId    String
+  operation String   // CREATE, READ, UPDATE, DELETE
+  timestamp DateTime @default(now())
+  
+  // Expires after 1 day for daily limits, 1 hour for hourly, 1 minute for per-minute
+  expiresAt DateTime? // Used for automatic cleanup
+  
+  @@index([userId, operation, timestamp])
+  @@index([expiresAt]) // For cleanup queries
+  @@map("rate_limit_logs")
 }
 
 // Enums
