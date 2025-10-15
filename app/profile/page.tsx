@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Avatar } from '@/components/ui/avatar'
 import { PageHeader } from '@/components/navigation/page-header'
 import { 
   User, 
@@ -203,11 +202,19 @@ export default function ProfilePage() {
                 <div className="relative">
                   <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
                     {currentProfile.avatar ? (
-                      <img 
-                        src={currentProfile.avatar} 
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
+                      <picture>
+                        <source 
+                          srcSet={currentProfile.avatar}
+                          type="image/webp"
+                        />
+                        <img 
+                          src={currentProfile.avatar} 
+                          alt="Avatar do usuário"
+                          width="96"
+                          height="96"
+                          className="w-full h-full object-cover"
+                        />
+                      </picture>
                     ) : (
                       <User className="h-12 w-12 text-gray-400" />
                     )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
@@ -51,7 +51,7 @@ export default function MedicalRecordsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -72,11 +72,11 @@ export default function MedicalRecordsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, filterType, searchTerm])
   
   useEffect(() => {
     fetchRecords()
-  }, [currentPage, filterType, searchTerm])
+  }, [fetchRecords])
   const getSeverityColor = (severity: string) => {
     const colors = {
       'LOW': 'bg-green-100 text-green-800 border-green-200',
