@@ -1,3 +1,5 @@
+'use server'
+
 import { PrismaClient } from '@prisma/client'
 
 interface GlobalWithPrisma {
@@ -40,5 +42,5 @@ export async function ensurePrismaConnected() {
   return prisma
 }
 
-// Dispara conexão em background (não bloqueia start) – será aguardada explicitamente onde necessário
-ensurePrismaConnected().catch(()=>{})
+// NÃO chamar automaticamente aqui - deixar as dependências chamarem quando necessário
+// ensurePrismaConnected().catch(()=>{})
