@@ -3,8 +3,6 @@
  * Registra ações críticas no sistema para compliance e segurança
  */
 
-'use server'
-
 export interface AuditLog {
   userId: string
   userEmail: string

@@ -1,5 +1,3 @@
-'use server'
-
 import { prisma } from '@/lib/prisma'
 import * as PrismaNS from '@prisma/client'
 const { StratumLevel } = PrismaNS as any

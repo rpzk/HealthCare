@@ -1,5 +1,3 @@
-'use server'
-
 import ollamaClient from './ollama-client'
 import { prisma } from '@/lib/prisma'
 import type { Consultation, VitalSigns as VitalSignsModel, Prescription as PrescriptionModel, ExamRequest as ExamRequestModel, MedicalRecord as MedicalRecordModel } from '@prisma/client'

@@ -1,5 +1,3 @@
-'use server'
-
 import { prisma } from '@/lib/prisma'
 // Usar import amplo para contornar cache de tipos em hot-reload
 import * as PrismaNS from '@prisma/client'

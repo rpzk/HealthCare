@@ -1,5 +1,3 @@
-'use server'
-
 import { PrismaClient } from '@prisma/client'
 
 interface GlobalWithPrisma {
