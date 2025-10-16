@@ -1,5 +1,5 @@
 import { ConsultationStatus, ConsultationType } from '@prisma/client'
-import { prisma } from './prisma'
+import { prisma, ensurePrismaConnected } from './prisma'
 
 export interface ConsultationFilters {
   patientId?: string
@@ -50,6 +50,13 @@ export class ConsultationService {
     page = 1,
     limit = 10
   ) {
+    try {
+      await ensurePrismaConnected()
+    } catch (e) {
+      console.error('[ConsultationService] Falha ao conectar Prisma:', e)
+      throw new Error('Erro de conexão com banco de dados')
+    }
+
     const { patientId, doctorId, status, type, dateFrom, dateTo, search } = filters;
     const where: any = {};
     if (patientId) where.patientId = patientId;
