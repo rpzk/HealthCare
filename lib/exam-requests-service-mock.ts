@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import { prisma, ensurePrismaConnected } from './prisma'
 import type { Urgency } from '@prisma/client'
 
 export interface ExamRequestFilters {
@@ -56,6 +56,13 @@ export class ExamRequestsService {
     page = 1,
     limit = 10
   ) {
+    try {
+      await ensurePrismaConnected()
+    } catch (e) {
+      console.error('[ExamRequestsService] Falha ao conectar Prisma:', e)
+      throw new Error('Erro de conexão com banco de dados')
+    }
+
     const { search, patientId, doctorId, status, type, dateFrom, dateTo } = filters;
     const where: any = {};
     if (patientId) where.patientId = patientId;
