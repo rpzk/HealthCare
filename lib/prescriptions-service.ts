@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
+'use server'
 
-const prisma = new PrismaClient()
+import { prisma } from './prisma'
 
 export interface PrescriptionFilters {
   search?: string
