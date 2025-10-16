@@ -136,10 +136,7 @@ class AuditLogger {
     if (this.persistEnabled) {
       import('@/lib/prisma').then(async (prismaModule) => {
         try {
-          const { prisma, ensurePrismaConnected } = prismaModule
-          
-          // Garantir que Prisma está conectado
-          await ensurePrismaConnected()
+          const { prisma } = prismaModule
           
           const client = prisma as any
           if (!client?.auditLog?.create) {
