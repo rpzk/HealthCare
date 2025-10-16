@@ -1,4 +1,4 @@
-import { prisma, ensurePrismaConnected } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 export interface PrescriptionFilters {
   search?: string
@@ -96,42 +96,40 @@ export class PrescriptionsService {
     limit = 10
   ) {
     try {
-      await ensurePrismaConnected()
-    } catch (e) {
-      console.error('[PrescriptionsService] Falha ao conectar Prisma:', e)
-      throw new Error('Erro de conexão com banco de dados')
+      const { search, patientId, doctorId, status, dateFrom, dateTo } = filters;
+      const where: any = {};
+      if (patientId) where.patientId = patientId;
+      if (doctorId) where.doctorId = doctorId;
+      if (status) where.status = status;
+      if (dateFrom || dateTo) {
+        where.createdAt = {};
+        if (dateFrom) where.createdAt.gte = dateFrom;
+        if (dateTo) where.createdAt.lte = dateTo;
+      }
+      if (search) {
+        where.OR = [
+          { notes: { contains: search, mode: 'insensitive' } },
+          { medication: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+      const [total, prescriptions] = await Promise.all([
+        prisma.prescription.count({ where }),
+        prisma.prescription.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            patient: true,
+            doctor: true,
+          },
+        })
+      ]);
+      return { total, prescriptions };
+    } catch (error) {
+      console.error('[PrescriptionsService] Error fetching prescriptions:', error)
+      throw error
     }
-
-    const { search, patientId, doctorId, status, dateFrom, dateTo } = filters;
-    const where: any = {};
-    if (patientId) where.patientId = patientId;
-    if (doctorId) where.doctorId = doctorId;
-    if (status) where.status = status;
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) where.createdAt.gte = dateFrom;
-      if (dateTo) where.createdAt.lte = dateTo;
-    }
-    if (search) {
-      where.OR = [
-        { notes: { contains: search, mode: 'insensitive' } },
-        { medication: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-    const [total, prescriptions] = await Promise.all([
-      prisma.prescription.count({ where }),
-      prisma.prescription.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          patient: true,
-          doctor: true,
-        },
-      })
-    ]);
-    return { total, prescriptions };
   }
 
   // Dados mock para prescrições
