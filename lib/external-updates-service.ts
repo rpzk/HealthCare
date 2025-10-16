@@ -1,5 +1,3 @@
-'use server'
-
 import { prisma } from '@/lib/prisma'
 import type { CodeSystemKind, Prisma } from '@prisma/client'
 import crypto from 'crypto'

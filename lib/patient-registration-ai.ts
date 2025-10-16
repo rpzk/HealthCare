@@ -3,8 +3,6 @@
  * Especializado em processar documentos cadastrais completos
  */
 
-'use server'
-
 import { medicalDocumentAI } from './medical-document-ai'
 import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'

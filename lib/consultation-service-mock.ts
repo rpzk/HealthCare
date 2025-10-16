@@ -1,5 +1,3 @@
-'use server'
-
 import { ConsultationStatus, ConsultationType } from '@prisma/client'
 import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 

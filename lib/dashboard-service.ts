@@ -1,5 +1,3 @@
-'use server'
-
 import * as prismaLib from '@/lib/prisma'
 const prisma = prismaLib.prisma
 

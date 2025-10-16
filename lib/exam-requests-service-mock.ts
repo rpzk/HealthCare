@@ -1,5 +1,3 @@
-'use server'
-
 import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 import type { Urgency } from '@prisma/client'
 
