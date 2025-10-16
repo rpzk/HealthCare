@@ -1,4 +1,7 @@
 // Address, Place, MicroArea services using Prisma
+
+'use server'
+
 import { prisma } from '@/lib/prisma'
 import type { MicroArea } from '@prisma/client'
 
