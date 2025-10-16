@@ -1,4 +1,4 @@
-import { prisma, ensurePrismaConnected } from './prisma'
+import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 
 export interface MedicalRecordFilters {
   search?: string
