@@ -1,5 +1,7 @@
+'use server'
+
 import ollamaClient from './ollama-client'
-import { prisma } from './prisma'
+import { prisma } from '@/lib/prisma'
 import type { Consultation, VitalSigns as VitalSignsModel, Prescription as PrescriptionModel, ExamRequest as ExamRequestModel, MedicalRecord as MedicalRecordModel } from '@prisma/client'
 
 const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'llama3' })

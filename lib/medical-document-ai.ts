@@ -3,6 +3,8 @@
  * Processa documentos externos e distribui automaticamente no sistema
  */
 
+'use server'
+
 import { prisma } from '@/lib/prisma';
 
 export interface MedicalDocument {

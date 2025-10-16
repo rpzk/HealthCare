@@ -1,4 +1,6 @@
-import * as prismaLib from './prisma'
+'use server'
+
+import * as prismaLib from '@/lib/prisma'
 const prisma = prismaLib.prisma
 
 export class DashboardService {
