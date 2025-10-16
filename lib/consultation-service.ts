@@ -1,5 +1,5 @@
 import { Consultation, ConsultationStatus, ConsultationType } from '@prisma/client'
-import { prisma } from '@/lib/prisma'
+import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 
 export interface ConsultationFilters {
   patientId?: string
@@ -50,6 +50,13 @@ export class ConsultationService {
     page = 1,
     limit = 10
   ) {
+    try {
+      await ensurePrismaConnected()
+    } catch (e) {
+      console.error('[ConsultationService] Falha ao conectar Prisma:', e)
+      throw new Error('Erro de conexão com banco de dados')
+    }
+
     const skip = (page - 1) * limit
     
     const where: any = {}
