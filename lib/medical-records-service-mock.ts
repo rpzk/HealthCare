@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import { prisma, ensurePrismaConnected } from './prisma'
 
 export interface MedicalRecordFilters {
   search?: string
@@ -38,6 +38,13 @@ export class MedicalRecordsService {
     page = 1,
     limit = 10
   ) {
+    try {
+      await ensurePrismaConnected()
+    } catch (e) {
+      console.error('[MedicalRecordsService] Falha ao conectar Prisma:', e)
+      throw new Error('Erro de conexão com banco de dados')
+    }
+
     const { search, type, patientId, doctorId, dateFrom, dateTo } = filters;
     const where: any = {};
     if (patientId) where.patientId = patientId;
