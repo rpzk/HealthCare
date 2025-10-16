@@ -1,4 +1,4 @@
-import { prisma, ensurePrismaConnected } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import type { Urgency } from '@prisma/client'
 
 export interface ExamRequestFilters {
@@ -57,45 +57,43 @@ export class ExamRequestsService {
     limit = 10
   ) {
     try {
-      await ensurePrismaConnected()
-    } catch (e) {
-      console.error('[ExamRequestsService] Falha ao conectar Prisma:', e)
-      throw new Error('Erro de conexão com banco de dados')
+      const { search, patientId, doctorId, status, type, dateFrom, dateTo } = filters;
+      const where: any = {};
+      if (patientId) where.patientId = patientId;
+      if (doctorId) where.doctorId = doctorId;
+      if (status) where.status = status;
+      if (type) where.examType = type;
+      if (dateFrom || dateTo) {
+        where.requestDate = {};
+        if (dateFrom) where.requestDate.gte = dateFrom;
+        if (dateTo) where.requestDate.lte = dateTo;
+      }
+      if (search) {
+        where.OR = [
+          { description: { contains: search, mode: 'insensitive' } },
+          { notes: { contains: search, mode: 'insensitive' } },
+          { examType: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+      const [total, examRequests] = await Promise.all([
+        prisma.examRequest.count({ where }),
+        prisma.examRequest.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: { requestDate: 'desc' },
+          include: {
+            patient: true,
+            doctor: true,
+            consultation: true,
+          },
+        })
+      ]);
+      return { total, examRequests };
+    } catch (error) {
+      console.error('[ExamRequestsService] Error fetching exam requests:', error)
+      throw error
     }
-
-    const { search, patientId, doctorId, status, type, dateFrom, dateTo } = filters;
-    const where: any = {};
-    if (patientId) where.patientId = patientId;
-    if (doctorId) where.doctorId = doctorId;
-    if (status) where.status = status;
-    if (type) where.examType = type;
-    if (dateFrom || dateTo) {
-      where.requestDate = {};
-      if (dateFrom) where.requestDate.gte = dateFrom;
-      if (dateTo) where.requestDate.lte = dateTo;
-    }
-    if (search) {
-      where.OR = [
-        { description: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } },
-        { examType: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-    const [total, examRequests] = await Promise.all([
-      prisma.examRequest.count({ where }),
-      prisma.examRequest.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { requestDate: 'desc' },
-        include: {
-          patient: true,
-          doctor: true,
-          consultation: true,
-        },
-      })
-    ]);
-    return { total, examRequests };
   }
 
   // Dados mock para solicitações de exame

@@ -1,5 +1,5 @@
 import { ConsultationStatus, ConsultationType } from '@prisma/client'
-import { prisma, ensurePrismaConnected } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 export interface ConsultationFilters {
   patientId?: string
@@ -51,46 +51,44 @@ export class ConsultationService {
     limit = 10
   ) {
     try {
-      await ensurePrismaConnected()
-    } catch (e) {
-      console.error('[ConsultationService] Falha ao conectar Prisma:', e)
-      throw new Error('Erro de conexão com banco de dados')
+      const { patientId, doctorId, status, type, dateFrom, dateTo, search } = filters;
+      const where: any = {};
+      if (patientId) where.patientId = patientId;
+      if (doctorId) where.doctorId = doctorId;
+      if (status) where.status = status;
+      if (type) where.type = type;
+      if (dateFrom || dateTo) {
+        where.scheduledDate = {};
+        if (dateFrom) where.scheduledDate.gte = dateFrom;
+        if (dateTo) where.scheduledDate.lte = dateTo;
+      }
+      if (search) {
+        where.OR = [
+          { chiefComplaint: { contains: search, mode: 'insensitive' } },
+          { notes: { contains: search, mode: 'insensitive' } },
+          { assessment: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+      const [total, consultations] = await Promise.all([
+        prisma.consultation.count({ where }),
+        prisma.consultation.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: { scheduledDate: 'desc' },
+          include: {
+            patient: true,
+            doctor: true,
+            prescriptions: true,
+            examRequests: true,
+          },
+        })
+      ]);
+      return { total, consultations };
+    } catch (error) {
+      console.error('[ConsultationService] Error fetching consultations:', error)
+      throw error
     }
-
-    const { patientId, doctorId, status, type, dateFrom, dateTo, search } = filters;
-    const where: any = {};
-    if (patientId) where.patientId = patientId;
-    if (doctorId) where.doctorId = doctorId;
-    if (status) where.status = status;
-    if (type) where.type = type;
-    if (dateFrom || dateTo) {
-      where.scheduledDate = {};
-      if (dateFrom) where.scheduledDate.gte = dateFrom;
-      if (dateTo) where.scheduledDate.lte = dateTo;
-    }
-    if (search) {
-      where.OR = [
-        { chiefComplaint: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } },
-        { assessment: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-    const [total, consultations] = await Promise.all([
-      prisma.consultation.count({ where }),
-      prisma.consultation.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { scheduledDate: 'desc' },
-        include: {
-          patient: true,
-          doctor: true,
-          prescriptions: true,
-          examRequests: true,
-        },
-      })
-    ]);
-    return { total, consultations };
   }
 
   // Dados mock para consultas
