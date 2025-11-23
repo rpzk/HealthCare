@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation'
 import { Search, Plus, Filter, Calendar, Clock, User, Phone, Play, CheckCircle, XCircle, UserX, Edit, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { ConsultationForm } from './consultation-form-ssf'
 
 interface Consultation {
@@ -49,9 +51,8 @@ export function ConsultationsList() {
   // Botão destacado no topo
   const TopBar = () => (
     <div className="flex items-center justify-between mb-6">
-      <h2 className="text-2xl font-bold text-gray-900">Consultas</h2>
+      <h2 className="text-2xl font-bold text-foreground">Consultas</h2>
       <Button
-        variant="medical"
         onClick={() => {
           setEditingConsultation(null)
           setShowForm(true)
@@ -169,15 +170,15 @@ export function ConsultationsList() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'IN_PROGRESS':
-        return 'px-2 py-1 bg-green-500/20 text-green-300 text-xs font-medium rounded-full'
+        return 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/20'
       case 'CANCELLED':
-        return 'px-2 py-1 bg-red-500/20 text-red-300 text-xs font-medium rounded-full'
+        return 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/20'
       case 'COMPLETED':
-        return 'px-2 py-1 bg-blue-500/20 text-blue-300 text-xs font-medium rounded-full'
+        return 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/20'
       case 'NO_SHOW':
-        return 'px-2 py-1 bg-orange-500/20 text-orange-300 text-xs font-medium rounded-full'
+        return 'bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/20'
       default:
-        return 'px-2 py-1 bg-gray-500/20 text-gray-300 text-xs font-medium rounded-full'
+        return 'bg-muted text-muted-foreground border-border'
     }
   }
 
@@ -217,9 +218,9 @@ export function ConsultationsList() {
 
   if (loading) {
     return (
-      <div className="ssf-section p-8 text-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#40e0d0] border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-300">Carregando consultas...</p>
+      <div className="p-8 text-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Carregando consultas...</p>
       </div>
     )
   }
@@ -231,253 +232,264 @@ export function ConsultationsList() {
 
       {/* Banner de erro se houver */}
       {error && (
-        <div className="ssf-section p-4 border border-red-500">
+        <div className="p-4 border border-destructive/50 bg-destructive/10 rounded-lg">
           <div className="flex">
             <div className="ml-3">
-              <p className="text-sm text-red-400">{error}</p>
-              <button 
+              <p className="text-sm text-destructive">{error}</p>
+              <Button 
                 onClick={fetchConsultations}
-                className="ssf-btn mt-2 px-4 py-2"
+                variant="outline"
+                className="mt-2"
               >
                 Tentar novamente
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {/* Filtros e ações */}
-      <div className="ssf-section p-6">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="flex flex-1 items-center space-x-2">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar consultas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-black/30 text-white border-gray-600"
-              />
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between">
+            <div className="flex flex-1 items-center space-x-2">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar consultas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">Todos os status</option>
+                <option value="SCHEDULED">Agendadas</option>
+                <option value="IN_PROGRESS">Em andamento</option>
+                <option value="COMPLETED">Concluídas</option>
+                <option value="CANCELLED">Canceladas</option>
+                <option value="NO_SHOW">Faltaram</option>
+              </select>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">Todos os tipos</option>
+                <option value="ROUTINE">Rotina</option>
+                <option value="URGENT">Urgente</option>
+                <option value="EMERGENCY">Emergência</option>
+                <option value="FOLLOW_UP">Retorno</option>
+                <option value="PREVENTIVE">Preventiva</option>
+              </select>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-black/30 text-white border-gray-600 rounded-lg"
-            >
-              <option value="all">Todos os status</option>
-              <option value="SCHEDULED">Agendadas</option>
-              <option value="IN_PROGRESS">Em andamento</option>
-              <option value="COMPLETED">Concluídas</option>
-              <option value="CANCELLED">Canceladas</option>
-              <option value="NO_SHOW">Faltaram</option>
-            </select>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-3 py-2 bg-black/30 text-white border-gray-600 rounded-lg"
-            >
-              <option value="all">Todos os tipos</option>
-              <option value="ROUTINE">Rotina</option>
-              <option value="URGENT">Urgente</option>
-              <option value="EMERGENCY">Emergência</option>
-              <option value="FOLLOW_UP">Retorno</option>
-              <option value="PREVENTIVE">Preventiva</option>
-            </select>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Lista de consultas */}
       <div className="grid gap-6">
         {consultations.map((consultation) => {
           const { date, time } = formatDateTime(consultation.scheduledDate)
           return (
-            <div key={consultation.id} className="ssf-section p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-[#40e0d0] rounded-full flex items-center justify-center text-black font-bold">
-                    <Calendar className="h-6 w-6 text-black" />
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <h3 className="text-lg font-semibold text-[#40e0d0]">
-                        {consultation.patient.name}
-                      </h3>
-                      <span className={getStatusColor(consultation.status)}>
-                        {getStatusText(consultation.status)}
-                      </span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs font-medium rounded-full">
-                        {getTypeText(consultation.type)}
-                      </span>
+            <Card key={consultation.id} className="hover:shadow-md transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Calendar className="h-6 w-6 text-primary" />
                     </div>
                     
-                    <div className="flex items-center space-x-4 mt-1 text-sm text-gray-300">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{date}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <h3 className="text-lg font-semibold text-primary">
+                          {consultation.patient.name}
+                        </h3>
+                        <Badge variant="outline" className={getStatusColor(consultation.status)}>
+                          {getStatusText(consultation.status)}
+                        </Badge>
+                        <Badge variant="secondary">
+                          {getTypeText(consultation.type)}
+                        </Badge>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{time} ({consultation.duration}min)</span>
+                      
+                      <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{date}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{time} ({consultation.duration}min)</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <User className="h-4 w-4" />
+                          <span>Dr. {consultation.doctor.name}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <User className="h-4 w-4" />
-                        <span>Dr. {consultation.doctor.name}</span>
-                      </div>
+                      
+                      {consultation.patient.phone && (
+                        <div className="flex items-center space-x-1 mt-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{consultation.patient.phone}</span>
+                        </div>
+                      )}
+                      
+                      {consultation.description && (
+                        <div className="mt-2">
+                          <span className="text-sm text-muted-foreground">
+                            <strong className="text-primary">Motivo:</strong> {consultation.description}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    
-                    {consultation.patient.phone && (
-                      <div className="flex items-center space-x-1 mt-2">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-300">{consultation.patient.phone}</span>
-                      </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    {consultation.status === 'SCHEDULED' && (
+                      <>
+                        <Button
+                          onClick={() => handleUpdateConsultation(consultation.id, 'start')}
+                          disabled={formLoading}
+                          size="sm"
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Iniciar
+                        </Button>
+                        <Button
+                          onClick={() => handleUpdateConsultation(consultation.id, 'cancel', 'Cancelada pelo médico')}
+                          disabled={formLoading}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Cancelar
+                        </Button>
+                      </>
                     )}
                     
-                    {consultation.description && (
-                      <div className="mt-2">
-                        <span className="text-sm text-gray-300">
-                          <strong className="text-[#40e0d0]">Motivo:</strong> {consultation.description}
-                        </span>
-                      </div>
+                    {consultation.status === 'IN_PROGRESS' && (
+                      <Button
+                        onClick={() => handleUpdateConsultation(consultation.id, 'complete')}
+                        disabled={formLoading}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Finalizar
+                      </Button>
                     )}
+                    
+                    {consultation.status === 'SCHEDULED' && (
+                      <Button
+                        onClick={() => handleUpdateConsultation(consultation.id, 'no-show', 'Paciente não compareceu')}
+                        disabled={formLoading}
+                        variant="outline"
+                        size="sm"
+                        className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:border-orange-900/50 dark:hover:bg-orange-900/20"
+                      >
+                        <UserX className="h-4 w-4 mr-1" />
+                        Faltou
+                      </Button>
+                    )}
+                    
+                    <Button 
+                      onClick={() => router.push(`/consultations/${consultation.id}`)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Ver Detalhes
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  {consultation.status === 'SCHEDULED' && (
-                    <>
-                      <button
-                        onClick={() => handleUpdateConsultation(consultation.id, 'start')}
-                        disabled={formLoading}
-                        className="ssf-btn px-3 py-2 text-sm"
-                      >
-                        <Play className="h-4 w-4 mr-1" />
-                        Iniciar
-                      </button>
-                      <button
-                        onClick={() => handleUpdateConsultation(consultation.id, 'cancel', 'Cancelada pelo médico')}
-                        disabled={formLoading}
-                        className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm transition-all duration-300 border border-red-500/50"
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Cancelar
-                      </button>
-                    </>
-                  )}
-                  
-                  {consultation.status === 'IN_PROGRESS' && (
-                    <button
-                      onClick={() => handleUpdateConsultation(consultation.id, 'complete')}
-                      disabled={formLoading}
-                      className="ssf-btn px-3 py-2 text-sm"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Finalizar
-                    </button>
-                  )}
-                  
-                  {consultation.status === 'SCHEDULED' && (
-                    <button
-                      onClick={() => handleUpdateConsultation(consultation.id, 'no-show', 'Paciente não compareceu')}
-                      disabled={formLoading}
-                      className="px-3 py-2 bg-orange-600/80 hover:bg-orange-600 text-white rounded-lg text-sm transition-all duration-300 border border-orange-500/50"
-                    >
-                      <UserX className="h-4 w-4 mr-1" />
-                      Faltou
-                    </button>
-                  )}
-                  
-                  <button 
-                    onClick={() => router.push(`/consultations/${consultation.id}`)}
-                    className="ssf-btn px-4 py-2 text-sm"
-                  >
-                    Ver Detalhes
-                  </button>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )
         })}
       </div>
 
       {/* Paginação */}
       {(pagination?.pages ?? 0) > 1 && (
-        <div className="ssf-section p-4">
-          <div className="flex justify-center space-x-2">
-            <button
-              disabled={(pagination?.page ?? 1) === 1}
-              onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
-              className="ssf-btn px-4 py-2 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="flex items-center px-4 text-gray-300">
-              Página {pagination?.page ?? 1} de {pagination?.pages ?? 0}
-            </span>
-            <button
-              disabled={(pagination?.page ?? 1) === (pagination?.pages ?? 0)}
-              onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
-              className="ssf-btn px-4 py-2 disabled:opacity-50"
-            >
-              Próxima
-            </button>
-          </div>
+        <div className="flex justify-center space-x-2 p-4">
+          <Button
+            disabled={(pagination?.page ?? 1) === 1}
+            onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
+            variant="outline"
+          >
+            Anterior
+          </Button>
+          <span className="flex items-center px-4 text-muted-foreground">
+            Página {pagination?.page ?? 1} de {pagination?.pages ?? 0}
+          </span>
+          <Button
+            disabled={(pagination?.page ?? 1) === (pagination?.pages ?? 0)}
+            onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
+            variant="outline"
+          >
+            Próxima
+          </Button>
         </div>
       )}
 
       {consultations.length === 0 && !loading && (
-        <div className="ssf-section p-12 text-center">
-          <div className="text-gray-400 mb-4">
-            <Calendar className="h-12 w-12 mx-auto text-[#40e0d0]" />
+        <div className="p-12 text-center">
+          <div className="text-muted-foreground mb-4">
+            <Calendar className="h-12 w-12 mx-auto text-primary" />
           </div>
-          <h3 className="text-lg font-medium text-[#40e0d0] mb-2">
+          <h3 className="text-lg font-medium text-primary mb-2">
             Nenhuma consulta encontrada
           </h3>
-          <p className="text-gray-300">
+          <p className="text-muted-foreground">
             {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
               ? 'Tente ajustar os filtros ou pesquisar por outros termos.' 
               : 'Ainda não há consultas agendadas.'
             }
           </p>
-          <button className="ssf-btn mt-4 px-6 py-3" onClick={() => setShowForm(true)}>
+          <Button className="mt-4" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Agendar Primeira Consulta
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Formulário de consulta */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="ssf-section p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-[#40e0d0]">
-                {editingConsultation ? 'Editar Consulta' : 'Nova Consulta'}
-              </h2>
-              <button
-                onClick={() => {
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-primary">
+                  {editingConsultation ? 'Editar Consulta' : 'Nova Consulta'}
+                </h2>
+                <Button
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingConsultation(null)
+                  }}
+                  variant="ghost"
+                  size="icon"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <ConsultationForm
+                patient={editingConsultation?.patient}
+                onSubmit={async (data) => {
+                  setShowForm(false)
+                  setEditingConsultation(null)
+                  fetchConsultations()
+                }}
+                onCancel={() => {
                   setShowForm(false)
                   setEditingConsultation(null)
                 }}
-                className="p-2 text-gray-400 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <ConsultationForm
-              patient={editingConsultation?.patient}
-              onSubmit={async (data) => {
-                setShowForm(false)
-                setEditingConsultation(null)
-                fetchConsultations()
-              }}
-              onCancel={() => {
-                setShowForm(false)
-                setEditingConsultation(null)
-              }}
-            />
-          </div>
+              />
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

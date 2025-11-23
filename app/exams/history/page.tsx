@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -132,13 +132,13 @@ export default function ExamHistoryPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'REQUESTED': 'bg-yellow-100 text-yellow-800',
-      'SCHEDULED': 'bg-blue-100 text-blue-800',
-      'IN_PROGRESS': 'bg-purple-100 text-purple-800',
-      'COMPLETED': 'bg-green-100 text-green-800',
-      'CANCELLED': 'bg-red-100 text-red-800'
+      'REQUESTED': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300',
+      'SCHEDULED': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
+      'IN_PROGRESS': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300',
+      'COMPLETED': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
+      'CANCELLED': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[status as keyof typeof colors] || 'bg-muted text-muted-foreground'
   }
 
   const getStatusLabel = (status: string) => {
@@ -154,11 +154,11 @@ export default function ExamHistoryPage() {
 
   const getUrgencyColor = (urgency: string) => {
     const colors = {
-      'URGENT': 'bg-red-100 text-red-800',
-      'ROUTINE': 'bg-green-100 text-green-800',
-      'SCHEDULED': 'bg-blue-100 text-blue-800'
+      'URGENT': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300',
+      'ROUTINE': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
+      'SCHEDULED': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
     }
-    return colors[urgency as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[urgency as keyof typeof colors] || 'bg-muted text-muted-foreground'
   }
 
   const getUrgencyLabel = (urgency: string) => {
@@ -217,12 +217,12 @@ export default function ExamHistoryPage() {
             <span>Voltar</span>
           </Button>
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TestTube className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <TestTube className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Histórico de Exames</h1>
-              <p className="text-sm text-gray-500">Todos os exames realizados ao longo do tempo</p>
+              <h1 className="text-2xl font-bold text-foreground">Histórico de Exames</h1>
+              <p className="text-sm text-muted-foreground">Todos os exames realizados ao longo do tempo</p>
             </div>
           </div>
         </div>
@@ -249,11 +249,11 @@ export default function ExamHistoryPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Buscar
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -264,13 +264,13 @@ export default function ExamHistoryPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todos</option>
                 <option value="COMPLETED">Concluído</option>
@@ -282,13 +282,13 @@ export default function ExamHistoryPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Urgência
               </label>
               <select
                 value={urgencyFilter}
                 onChange={(e) => setUrgencyFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todas</option>
                 <option value="URGENT">Urgente</option>
@@ -298,13 +298,13 @@ export default function ExamHistoryPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Período
               </label>
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todo o histórico</option>
                 <option value="7days">Últimos 7 dias</option>
@@ -339,10 +339,10 @@ export default function ExamHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total</p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold">{filteredExams.length}</p>
               </div>
-              <TestTube className="h-8 w-8 text-green-600" />
+              <TestTube className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
           </CardContent>
         </Card>
@@ -351,13 +351,13 @@ export default function ExamHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Concluídos</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm font-medium text-muted-foreground">Concluídos</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {filteredExams.filter(e => e.status === 'COMPLETED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-green-600"></div>
+              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-400"></div>
               </div>
             </div>
           </CardContent>
@@ -367,13 +367,13 @@ export default function ExamHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Cancelados</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className="text-sm font-medium text-muted-foreground">Cancelados</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {filteredExams.filter(e => e.status === 'CANCELLED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-red-600"></div>
+              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-red-600 dark:bg-red-400"></div>
               </div>
             </div>
           </CardContent>
@@ -383,12 +383,12 @@ export default function ExamHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Urgentes</p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-sm font-medium text-muted-foreground">Urgentes</p>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                   {filteredExams.filter(e => e.urgency === 'URGENT').length}
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-orange-600" />
+              <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
           </CardContent>
         </Card>
@@ -397,12 +397,12 @@ export default function ExamHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Com Resultado</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-sm font-medium text-muted-foreground">Com Resultado</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {filteredExams.filter(e => e.result).length}
                 </p>
               </div>
-              <Eye className="h-8 w-8 text-blue-600" />
+              <Eye className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </CardContent>
         </Card>
@@ -419,30 +419,30 @@ export default function ExamHistoryPage() {
               <div
                 key={exam.id}
                 className={`border rounded-lg p-4 transition-colors ${
-                  exam.status === 'COMPLETED' ? 'bg-green-50 border-green-200' :
-                  exam.status === 'CANCELLED' ? 'bg-red-50 border-red-200' :
-                  'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  exam.status === 'COMPLETED' ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/20' :
+                  exam.status === 'CANCELLED' ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/20' :
+                  'bg-card border-border hover:bg-muted/50'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center space-x-3">
                       <div className={`p-2 rounded-lg ${
-                        exam.status === 'COMPLETED' ? 'bg-green-100' :
-                        exam.status === 'CANCELLED' ? 'bg-red-100' :
-                        'bg-green-100'
+                        exam.status === 'COMPLETED' ? 'bg-green-100 dark:bg-green-900/20' :
+                        exam.status === 'CANCELLED' ? 'bg-red-100 dark:bg-red-900/20' :
+                        'bg-green-100 dark:bg-green-900/20'
                       }`}>
                         <TestTube className={`h-4 w-4 ${
-                          exam.status === 'COMPLETED' ? 'text-green-600' :
-                          exam.status === 'CANCELLED' ? 'text-red-600' :
-                          'text-green-600'
+                          exam.status === 'COMPLETED' ? 'text-green-600 dark:text-green-400' :
+                          exam.status === 'CANCELLED' ? 'text-red-600 dark:text-red-400' :
+                          'text-green-600 dark:text-green-400'
                         }`} />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-foreground">
                           {exam.exam_type}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {exam.patient.name} • CPF: {exam.patient.cpf}
                         </p>
                       </div>
@@ -456,11 +456,11 @@ export default function ExamHistoryPage() {
                       </div>
                     </div>
 
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       <strong>Descrição:</strong> {exam.description}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4" />
                         <span>Dr(a). {exam.requested_by}</span>
@@ -480,27 +480,27 @@ export default function ExamHistoryPage() {
                       
                       {exam.completed_at && (
                         <div className="flex items-center space-x-2">
-                          <div className="h-4 w-4 rounded-full bg-green-600"></div>
+                          <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-400"></div>
                           <span>Concluído: {formatDate(exam.completed_at)}</span>
                         </div>
                       )}
                     </div>
 
                     {exam.result && (
-                      <div className="bg-white border border-green-200 rounded-lg p-3">
+                      <div className="bg-background border border-green-200 dark:border-green-900/20 rounded-lg p-3">
                         <div className="flex items-start space-x-2">
-                          <Eye className="h-4 w-4 text-green-600 mt-0.5" />
+                          <Eye className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
                           <div>
-                            <p className="text-sm font-medium text-green-900">Resultado</p>
-                            <p className="text-sm text-green-700 mt-1">{exam.result}</p>
+                            <p className="text-sm font-medium text-green-900 dark:text-green-300">Resultado</p>
+                            <p className="text-sm text-green-700 dark:text-green-400 mt-1">{exam.result}</p>
                           </div>
                         </div>
                       </div>
                     )}
 
                     {exam.observations && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">
+                      <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/20 rounded-lg p-3">
+                        <p className="text-sm text-blue-800 dark:text-blue-300">
                           <strong>Observações:</strong> {exam.observations}
                         </p>
                       </div>
@@ -512,9 +512,9 @@ export default function ExamHistoryPage() {
 
             {filteredExams.length === 0 && (
               <div className="text-center py-12">
-                <TestTube className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-xl text-gray-500 mb-2">Nenhum exame encontrado</p>
-                <p className="text-sm text-gray-400 mb-4">
+                <TestTube className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-xl text-muted-foreground mb-2">Nenhum exame encontrado</p>
+                <p className="text-sm text-muted-foreground mb-4">
                   {searchTerm || statusFilter || urgencyFilter || dateRange 
                     ? 'Nenhum exame corresponde aos filtros aplicados' 
                     : 'Ainda não há exames registrados no histórico'

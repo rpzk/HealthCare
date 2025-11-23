@@ -85,13 +85,13 @@ export function ScheduleConfig() {
       </CardHeader>
       <CardContent className="space-y-6">
         {schedule.map((day, index) => (
-          <div key={index} className="flex items-center gap-4 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900">
+          <div key={index} className="flex items-center gap-4 p-4 border rounded-lg bg-muted/50">
             <div className="w-32 flex items-center gap-2">
               <Switch 
                 checked={day.active}
                 onCheckedChange={(checked: boolean) => updateDay(index, 'active', checked)}
               />
-              <span className={day.active ? 'font-medium' : 'text-gray-400'}>{DAYS[index]}</span>
+              <span className={day.active ? 'font-medium' : 'text-muted-foreground'}>{DAYS[index]}</span>
             </div>
             
             {day.active && (
@@ -129,7 +129,7 @@ export function ScheduleConfig() {
         ))}
 
         <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700">
+          <Button onClick={handleSave}>
             <Save className="w-4 h-4 mr-2" />
             Salvar Alterações
           </Button>

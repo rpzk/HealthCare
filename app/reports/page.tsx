@@ -46,7 +46,7 @@ export default function ReportsPage() {
       description: 'Lista completa de pacientes com dados demográficos',
       icon: Users,
       type: 'PDF',
-      color: 'bg-blue-100 text-blue-800',
+      color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
       data: stats.totalPatients
     },
     {
@@ -55,7 +55,7 @@ export default function ReportsPage() {
       description: 'Relatório detalhado das consultas do mês',
       icon: Stethoscope,
       type: 'PDF',
-      color: 'bg-purple-100 text-purple-800',
+      color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300',
       data: stats.consultationsThisMonth
     },
     {
@@ -64,7 +64,7 @@ export default function ReportsPage() {
       description: 'Exames realizados e resultados',
       icon: TestTube,
       type: 'Excel',
-      color: 'bg-green-100 text-green-800',
+      color: 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300',
       data: stats.examsThisMonth
     },
     {
@@ -73,7 +73,7 @@ export default function ReportsPage() {
       description: 'Exportação completa dos registros médicos',
       icon: FileText,
       type: 'PDF',
-      color: 'bg-orange-100 text-orange-800',
+      color: 'bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300',
       data: stats.totalRecords
     },
     {
@@ -82,7 +82,7 @@ export default function ReportsPage() {
       description: 'Resumo financeiro e faturamento',
       icon: TrendingUp,
       type: 'Excel',
-      color: 'bg-emerald-100 text-emerald-800',
+      color: 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300',
       data: 'R$ 45.230'
     },
     {
@@ -91,7 +91,7 @@ export default function ReportsPage() {
       description: 'Indicadores de desempenho e produtividade',
       icon: BarChart3,
       type: 'PDF',
-      color: 'bg-indigo-100 text-indigo-800',
+      color: 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300',
       data: '98.5%'
     }
   ]
@@ -101,29 +101,29 @@ export default function ReportsPage() {
       title: 'Total de Pacientes',
       value: stats.totalPatients,
       icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-100 dark:bg-blue-900/20'
     },
     {
       title: 'Consultas Realizadas',
       value: stats.totalConsultations,
       icon: Stethoscope,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-100 dark:bg-purple-900/20'
     },
     {
       title: 'Exames Solicitados',
       value: stats.totalExams,
       icon: TestTube,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-100 dark:bg-green-900/20'
     },
     {
       title: 'Registros Médicos',
       value: stats.totalRecords,
       icon: FileText,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100'
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-100 dark:bg-orange-900/20'
     }
   ]
 
@@ -134,7 +134,7 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-muted/40">
         <Header />
         <div className="flex pt-16">
           <Sidebar />
@@ -149,7 +149,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -161,7 +161,7 @@ export default function ReportsPage() {
               { label: 'Dashboard', href: '/' },
               { label: 'Relatórios', href: '/reports' }
             ]}
-            icon={<BarChart3 className="w-8 h-8 text-indigo-600" />}
+            icon={<BarChart3 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />}
             actions={(
               <Button variant="outline" onClick={() => router.back()}>
                 <ArrowLeft className="w-4 h-4" />
@@ -179,8 +179,8 @@ export default function ReportsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                 </div>
                 <div className={`p-2 ${stat.bgColor} rounded-lg`}>
                   <stat.icon className={`h-6 w-6 ${stat.color}`} />
@@ -204,28 +204,28 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="flex items-center justify-center mb-2">
-                <Users className="h-8 w-8 text-blue-600" />
+                <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-2xl font-bold text-blue-900">{stats.newPatientsThisMonth}</p>
-              <p className="text-sm text-blue-600">Novos Pacientes</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">{stats.newPatientsThisMonth}</p>
+              <p className="text-sm text-blue-600 dark:text-blue-400">Novos Pacientes</p>
             </div>
             
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
               <div className="flex items-center justify-center mb-2">
-                <Stethoscope className="h-8 w-8 text-purple-600" />
+                <Stethoscope className="h-8 w-8 text-purple-600 dark:text-purple-400" />
               </div>
-              <p className="text-2xl font-bold text-purple-900">{stats.consultationsThisMonth}</p>
-              <p className="text-sm text-purple-600">Consultas Realizadas</p>
+              <p className="text-2xl font-bold text-purple-900 dark:text-purple-300">{stats.consultationsThisMonth}</p>
+              <p className="text-sm text-purple-600 dark:text-purple-400">Consultas Realizadas</p>
             </div>
             
-            <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="flex items-center justify-center mb-2">
-                <TestTube className="h-8 w-8 text-green-600" />
+                <TestTube className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
-              <p className="text-2xl font-bold text-green-900">{stats.examsThisMonth}</p>
-              <p className="text-sm text-green-600">Exames Solicitados</p>
+              <p className="text-2xl font-bold text-green-900 dark:text-green-300">{stats.examsThisMonth}</p>
+              <p className="text-sm text-green-600 dark:text-green-400">Exames Solicitados</p>
             </div>
           </div>
         </CardContent>
@@ -244,7 +244,7 @@ export default function ReportsPage() {
             {reports.map((report) => (
               <div
                 key={report.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className={`p-2 ${report.color.split(' ')[0]}-100 rounded-lg`}>
@@ -255,11 +255,11 @@ export default function ReportsPage() {
                   </Badge>
                 </div>
                 
-                <h3 className="font-semibold text-gray-900 mb-1">{report.title}</h3>
-                <p className="text-sm text-gray-600 mb-3">{report.description}</p>
+                <h3 className="font-semibold text-foreground mb-1">{report.title}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{report.description}</p>
                 
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     Dados: {report.data}
                   </div>
                   <Button
@@ -282,11 +282,11 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="p-3 bg-blue-100 rounded-lg w-fit mx-auto mb-3">
-                <Users className="h-8 w-8 text-blue-600" />
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg w-fit mx-auto mb-3">
+                <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
               <h3 className="font-semibold mb-2">Dashboard de Pacientes</h3>
-              <p className="text-sm text-gray-600 mb-4">Visão geral detalhada dos pacientes</p>
+              <p className="text-sm text-muted-foreground mb-4">Visão geral detalhada dos pacientes</p>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -301,11 +301,11 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="p-3 bg-green-100 rounded-lg w-fit mx-auto mb-3">
-                <BarChart3 className="h-8 w-8 text-green-600" />
+              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg w-fit mx-auto mb-3">
+                <BarChart3 className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <h3 className="font-semibold mb-2">Estatísticas Avançadas</h3>
-              <p className="text-sm text-gray-600 mb-4">Análises e métricas detalhadas</p>
+              <p className="text-sm text-muted-foreground mb-4">Análises e métricas detalhadas</p>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -320,11 +320,11 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="p-3 bg-purple-100 rounded-lg w-fit mx-auto mb-3">
-                <Download className="h-8 w-8 text-purple-600" />
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg w-fit mx-auto mb-3">
+                <Download className="h-8 w-8 text-purple-600 dark:text-purple-400" />
               </div>
               <h3 className="font-semibold mb-2">Exportar Dados</h3>
-              <p className="text-sm text-gray-600 mb-4">Exportação personalizada de dados</p>
+              <p className="text-sm text-muted-foreground mb-4">Exportação personalizada de dados</p>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -343,7 +343,7 @@ export default function ReportsPage() {
           <CardTitle className="text-lg">Informações Importantes</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
             <div className="space-y-2 text-sm">
               <p>• <strong>Relatórios PDF:</strong> Adequados para impressão e apresentações</p>
               <p>• <strong>Relatórios Excel:</strong> Permitem análise e manipulação de dados</p>

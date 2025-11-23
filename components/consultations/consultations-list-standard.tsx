@@ -206,7 +206,7 @@ export function ConsultationsList() {
       <Card>
         <CardContent className="p-8 text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando consultas...</p>
+          <p className="text-muted-foreground">Carregando consultas...</p>
         </CardContent>
       </Card>
     )
@@ -241,7 +241,7 @@ export function ConsultationsList() {
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <div className="flex flex-1 items-center space-x-2">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar consultas..."
                   value={searchTerm}
@@ -253,7 +253,7 @@ export function ConsultationsList() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="px-3 py-2 border border-input rounded-md text-sm"
               >
                 <option value="all">Todos os status</option>
                 <option value="SCHEDULED">Agendadas</option>
@@ -266,7 +266,7 @@ export function ConsultationsList() {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="px-3 py-2 border border-input rounded-md text-sm"
               >
                 <option value="all">Todos os tipos</option>
                 <option value="ROUTINE">Rotina</option>
@@ -301,7 +301,7 @@ export function ConsultationsList() {
                     
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-foreground">
                           {consultation.patient.name}
                         </h3>
                         <Badge variant={getStatusVariant(consultation.status)}>
@@ -312,7 +312,7 @@ export function ConsultationsList() {
                         </Badge>
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4" />
                           <span>{date}</span>
@@ -328,7 +328,7 @@ export function ConsultationsList() {
                       </div>
                       
                       {consultation.patient.phone && (
-                        <div className="flex items-center space-x-1 mt-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-1 mt-2 text-sm text-muted-foreground">
                           <Phone className="h-4 w-4" />
                           <span>{consultation.patient.phone}</span>
                         </div>
@@ -336,7 +336,7 @@ export function ConsultationsList() {
                       
                       {consultation.description && (
                         <div className="mt-2">
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-muted-foreground">
                             <strong>Motivo:</strong> {consultation.description}
                           </span>
                         </div>
@@ -415,7 +415,7 @@ export function ConsultationsList() {
               >
                 Anterior
               </Button>
-              <span className="flex items-center px-4 text-gray-600">
+              <span className="flex items-center px-4 text-muted-foreground">
                 Página {pagination?.page ?? 1} de {pagination?.pages ?? 0}
               </span>
               <Button
@@ -434,13 +434,13 @@ export function ConsultationsList() {
       {consultations.length === 0 && !loading && (
         <Card>
           <CardContent className="p-12 text-center">
-            <div className="text-gray-400 mb-4">
-              <Calendar className="h-12 w-12 mx-auto text-gray-400" />
+            <div className="text-muted-foreground mb-4">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Nenhuma consulta encontrada
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
                 ? 'Tente ajustar os filtros ou pesquisar por outros termos.' 
                 : 'Ainda não há consultas agendadas.'

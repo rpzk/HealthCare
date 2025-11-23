@@ -159,11 +159,11 @@ export function ConsultationForm({
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
-      <div className="border-b border-gray-600 pb-4">
-        <h2 className="text-2xl font-bold text-[#40e0d0] mb-2">
+      <div className="border-b border-border pb-4">
+        <h2 className="text-2xl font-bold text-primary mb-2">
           {patient ? `Agendar Consulta - ${patient.name}` : 'Nova Consulta'}
         </h2>
-        <p className="text-gray-300">
+        <p className="text-muted-foreground">
           Preencha os dados para agendar uma nova consulta médica
         </p>
       </div>
@@ -173,14 +173,14 @@ export function ConsultationForm({
         {/* Seleção de Paciente */}
         {!patient && (
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-[#40e0d0]">
+            <label className="block text-sm font-medium text-primary">
               <User className="inline h-4 w-4 mr-1" />
               Paciente *
             </label>
             <select
               value={formData.patientId}
               onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-              className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
               required
             >
               <option value="">Selecione um paciente</option>
@@ -196,27 +196,27 @@ export function ConsultationForm({
 
         {/* Info do Paciente Selecionado */}
         {patient && (
-          <div className="p-4 bg-[#40e0d0]/10 border border-[#40e0d0]/30 rounded-lg">
-            <h3 className="font-semibold text-[#40e0d0] mb-2">Dados do Paciente</h3>
+          <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
+            <h3 className="font-semibold text-primary mb-2">Dados do Paciente</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-[#40e0d0]" />
-                <span className="text-gray-300">{patient.name}</span>
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-muted-foreground">{patient.name}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-[#40e0d0]" />
-                <span className="text-gray-300">{patient.age} anos</span>
+                <Calendar className="h-4 w-4 text-primary" />
+                <span className="text-muted-foreground">{patient.age} anos</span>
               </div>
               {patient.phone && (
                 <div className="flex items-center space-x-2">
-                  <Phone className="h-4 w-4 text-[#40e0d0]" />
-                  <span className="text-gray-300">{patient.phone}</span>
+                  <Phone className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">{patient.phone}</span>
                 </div>
               )}
               {patient.email && (
                 <div className="flex items-center space-x-2">
-                  <Mail className="h-4 w-4 text-[#40e0d0]" />
-                  <span className="text-gray-300">{patient.email}</span>
+                  <Mail className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">{patient.email}</span>
                 </div>
               )}
             </div>
@@ -226,7 +226,7 @@ export function ConsultationForm({
         {/* Data e Horário */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-[#40e0d0]">
+            <label className="block text-sm font-medium text-primary">
               <Calendar className="inline h-4 w-4 mr-1" />
               Data da Consulta *
             </label>
@@ -235,21 +235,21 @@ export function ConsultationForm({
               value={formData.scheduledDate}
               onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-[#40e0d0]">
+            <label className="block text-sm font-medium text-primary">
               <Clock className="inline h-4 w-4 mr-1" />
               Horário *
-              {loadingSlots && <span className="text-xs text-gray-400 ml-2">Carregando...</span>}
+              {loadingSlots && <span className="text-xs text-muted-foreground ml-2">Carregando...</span>}
             </label>
             <select
               value={formData.scheduledTime}
               onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
-              className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
               required
               disabled={!formData.scheduledDate || loadingSlots}
             >
@@ -266,13 +266,13 @@ export function ConsultationForm({
         {/* Tipo e Duração */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-[#40e0d0]">
+            <label className="block text-sm font-medium text-primary">
               Tipo de Consulta *
             </label>
             <select
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-              className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
               required
             >
               <option value="ROUTINE">Rotina</option>
@@ -284,13 +284,13 @@ export function ConsultationForm({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-[#40e0d0]">
+            <label className="block text-sm font-medium text-primary">
               Duração (minutos)
             </label>
             <select
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
             >
               <option value={30}>30 minutos</option>
               <option value={45}>45 minutos</option>
@@ -302,7 +302,7 @@ export function ConsultationForm({
 
         {/* Motivo da Consulta */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#40e0d0]">
+          <label className="block text-sm font-medium text-primary">
             <FileText className="inline h-4 w-4 mr-1" />
             Motivo da Consulta *
           </label>
@@ -311,14 +311,14 @@ export function ConsultationForm({
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
             placeholder="Descreva o motivo principal da consulta..."
-            className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent resize-none"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
             required
           />
         </div>
 
         {/* Observações */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#40e0d0]">
+          <label className="block text-sm font-medium text-primary">
             Observações
           </label>
           <textarea
@@ -326,16 +326,16 @@ export function ConsultationForm({
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             rows={2}
             placeholder="Observações adicionais (opcional)..."
-            className="w-full px-3 py-2 bg-black/30 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[#40e0d0] focus:border-transparent resize-none"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
           />
         </div>
 
         {/* Erro */}
         {error && (
-          <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg">
+          <div className="p-3 bg-destructive/20 border border-destructive rounded-lg">
             <div className="flex items-center space-x-2">
-              <AlertCircle className="h-4 w-4 text-red-400" />
-              <span className="text-red-400 text-sm">{error}</span>
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <span className="text-destructive text-sm">{error}</span>
             </div>
           </div>
         )}
@@ -345,14 +345,14 @@ export function ConsultationForm({
           <button
             type="button"
             onClick={onCancel}
-            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            className="px-6 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg transition-colors"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="ssf-btn px-6 py-3 disabled:opacity-50"
+            className="px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50"
           >
             {loading ? 'Agendando...' : 'Agendar Consulta'}
           </button>

@@ -193,7 +193,9 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
         allergies: formData.allergies.split(',').map((a: string) => a.trim()).filter((a: string) => a),
         chronicDiseases: formData.chronicDiseases.split(',').map((d: string) => d.trim()).filter((d: string) => d),
         bloodType: formData.bloodType || null,
-        doctorId: session.user.id // Usar ID do usuário logado
+        doctorId: session.user.id, // Usar ID do usuário logado
+        latitude: coordinates ? parseFloat(coordinates.lat) : null,
+        longitude: coordinates ? parseFloat(coordinates.lon) : null
       }
 
       await onSubmit(submitData)

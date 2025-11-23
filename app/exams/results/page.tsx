@@ -106,13 +106,13 @@ export default function ExamResultsPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'REQUESTED': 'bg-yellow-100 text-yellow-800',
-      'SCHEDULED': 'bg-blue-100 text-blue-800',
-      'IN_PROGRESS': 'bg-purple-100 text-purple-800',
-      'COMPLETED': 'bg-green-100 text-green-800',
-      'CANCELLED': 'bg-red-100 text-red-800'
+      'REQUESTED': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300',
+      'SCHEDULED': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
+      'IN_PROGRESS': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300',
+      'COMPLETED': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
+      'CANCELLED': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[status as keyof typeof colors] || 'bg-muted text-muted-foreground'
   }
 
   const getStatusLabel = (status: string) => {
@@ -128,11 +128,11 @@ export default function ExamResultsPage() {
 
   const getUrgencyColor = (urgency: string) => {
     const colors = {
-      'URGENT': 'bg-red-100 text-red-800',
-      'ROUTINE': 'bg-green-100 text-green-800',
-      'SCHEDULED': 'bg-blue-100 text-blue-800'
+      'URGENT': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300',
+      'ROUTINE': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
+      'SCHEDULED': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
     }
-    return colors[urgency as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[urgency as keyof typeof colors] || 'bg-muted text-muted-foreground'
   }
 
   const getUrgencyLabel = (urgency: string) => {
@@ -167,12 +167,12 @@ export default function ExamResultsPage() {
           <span>Voltar</span>
         </Button>
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <TestTube className="h-6 w-6 text-green-600" />
+          <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+            <TestTube className="h-6 w-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Resultados de Exames</h1>
-            <p className="text-sm text-gray-500">Visualizar resultados e status dos exames</p>
+            <h1 className="text-2xl font-bold text-foreground">Resultados de Exames</h1>
+            <p className="text-sm text-muted-foreground">Visualizar resultados e status dos exames</p>
           </div>
         </div>
       </div>
@@ -188,11 +188,11 @@ export default function ExamResultsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Buscar
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -203,13 +203,13 @@ export default function ExamResultsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todos os status</option>
                 <option value="COMPLETED">Concluído</option>
@@ -221,13 +221,13 @@ export default function ExamResultsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Urgência
               </label>
               <select
                 value={urgencyFilter}
                 onChange={(e) => setUrgencyFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todas as urgências</option>
                 <option value="URGENT">Urgente</option>
@@ -237,13 +237,13 @@ export default function ExamResultsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Tipo de Exame
               </label>
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todos os tipos</option>
                 {examTypes.map(type => (
@@ -261,10 +261,10 @@ export default function ExamResultsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total</p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold">{filteredExams.length}</p>
               </div>
-              <TestTube className="h-8 w-8 text-green-600" />
+              <TestTube className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
           </CardContent>
         </Card>
@@ -273,13 +273,13 @@ export default function ExamResultsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Concluídos</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm font-medium text-muted-foreground">Concluídos</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {filteredExams.filter(e => e.status === 'COMPLETED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-green-600"></div>
+              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-400"></div>
               </div>
             </div>
           </CardContent>
@@ -289,12 +289,12 @@ export default function ExamResultsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Em Andamento</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-sm font-medium text-muted-foreground">Em Andamento</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {filteredExams.filter(e => e.status === 'IN_PROGRESS').length}
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-purple-600" />
+              <Clock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             </div>
           </CardContent>
         </Card>
@@ -303,13 +303,13 @@ export default function ExamResultsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Urgentes</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className="text-sm font-medium text-muted-foreground">Urgentes</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {filteredExams.filter(e => e.urgency === 'URGENT').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-red-600"></div>
+              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-red-600 dark:bg-red-400"></div>
               </div>
             </div>
           </CardContent>
@@ -319,12 +319,12 @@ export default function ExamResultsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Com Resultado</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-sm font-medium text-muted-foreground">Com Resultado</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {filteredExams.filter(e => e.result).length}
                 </p>
               </div>
-              <Download className="h-8 w-8 text-blue-600" />
+              <Download className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </CardContent>
         </Card>
@@ -340,19 +340,19 @@ export default function ExamResultsPage() {
             {filteredExams.map((exam) => (
               <div
                 key={exam.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <TestTube className="h-4 w-4 text-green-600" />
+                      <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                        <TestTube className="h-4 w-4 text-green-600 dark:text-green-400" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-foreground">
                           {exam.exam_type}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {exam.patient.name} • Solicitado por: Dr(a). {exam.requested_by}
                         </p>
                       </div>
@@ -366,19 +366,19 @@ export default function ExamResultsPage() {
                       </div>
                     </div>
 
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       <strong>Descrição:</strong> {exam.description}
                     </div>
 
                     {exam.result && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="bg-green-50/50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/20 rounded-lg p-3">
                         <div className="flex items-start space-x-2">
-                          <Download className="h-4 w-4 text-green-600 mt-0.5" />
+                          <Download className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
                           <div>
-                            <p className="text-sm font-medium text-green-900">Resultado Disponível</p>
-                            <p className="text-sm text-green-700 mt-1">{exam.result}</p>
+                            <p className="text-sm font-medium text-green-900 dark:text-green-300">Resultado Disponível</p>
+                            <p className="text-sm text-green-700 dark:text-green-400 mt-1">{exam.result}</p>
                             {exam.completed_at && (
-                              <p className="text-xs text-green-600 mt-1">
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                                 Concluído em: {formatDate(exam.completed_at)}
                               </p>
                             )}
@@ -387,7 +387,7 @@ export default function ExamResultsPage() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4" />
                         <span>Solicitado: {formatDate(exam.created_at)}</span>
@@ -412,8 +412,8 @@ export default function ExamResultsPage() {
 
             {filteredExams.length === 0 && (
               <div className="text-center py-8">
-                <TestTube className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum exame encontrado com os filtros aplicados</p>
+                <TestTube className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhum exame encontrado com os filtros aplicados</p>
               </div>
             )}
           </div>

@@ -55,7 +55,7 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -84,8 +84,8 @@ export default function SettingsPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg transition-colors ${
                     activeTab === tab.id
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'hover:bg-gray-100'
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-muted'
                   }`}
                 >
                   <tab.icon className="h-4 w-4" />
@@ -111,7 +111,7 @@ export default function SettingsPage() {
                 <form onSubmit={handleProfileSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Nome Completo
                       </label>
                       <Input
@@ -122,7 +122,7 @@ export default function SettingsPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Email
                       </label>
                       <Input
@@ -134,7 +134,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Telefone
                       </label>
                       <Input
@@ -145,7 +145,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Especialidade
                       </label>
                       <Input
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         CRM (opcional)
                       </label>
                       <Input
@@ -191,7 +191,7 @@ export default function SettingsPage() {
                 <CardContent>
                   <form className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Senha Atual
                       </label>
                       <div className="relative">
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Nova Senha
                       </label>
                       <Input
@@ -224,7 +224,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Confirmar Nova Senha
                       </label>
                       <Input
@@ -254,20 +254,20 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                       <div>
                         <p className="font-medium">Autenticação por SMS</p>
-                        <p className="text-sm text-gray-600">Receba códigos via SMS</p>
+                        <p className="text-sm text-muted-foreground">Receba códigos via SMS</p>
                       </div>
                       <Button variant="outline" size="sm">
                         Configurar
                       </Button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                       <div>
                         <p className="font-medium">App Autenticador</p>
-                        <p className="text-sm text-gray-600">Use Google Authenticator ou similar</p>
+                        <p className="text-sm text-muted-foreground">Use Google Authenticator ou similar</p>
                       </div>
                       <Button variant="outline" size="sm">
                         Configurar
@@ -294,7 +294,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Notificações no Sistema</p>
-                        <p className="text-sm text-gray-600">Notificações dentro da plataforma</p>
+                        <p className="text-sm text-muted-foreground">Notificações dentro da plataforma</p>
                       </div>
                       <input
                         type="checkbox"
@@ -310,7 +310,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Notificações por Email</p>
-                        <p className="text-sm text-gray-600">Receber emails sobre atividades importantes</p>
+                        <p className="text-sm text-muted-foreground">Receber emails sobre atividades importantes</p>
                       </div>
                       <input
                         type="checkbox"
@@ -326,7 +326,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Notificações por SMS</p>
-                        <p className="text-sm text-gray-600">Mensagens de texto para alertas críticos</p>
+                        <p className="text-sm text-muted-foreground">Mensagens de texto para alertas críticos</p>
                       </div>
                       <input
                         type="checkbox"
@@ -365,7 +365,7 @@ export default function SettingsPage() {
                   <form onSubmit={handleSystemSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
                           Timeout de Sessão (minutos)
                         </label>
                         <Input
@@ -381,7 +381,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
                           Máximo de Tentativas de Login
                         </label>
                         <Input
@@ -397,7 +397,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
                           Frequência de Backup
                         </label>
                         <select
@@ -406,7 +406,7 @@ export default function SettingsPage() {
                             ...prev, 
                             backupFrequency: e.target.value 
                           }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
                         >
                           <option value="hourly">A cada hora</option>
                           <option value="daily">Diário</option>
@@ -417,10 +417,10 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                         <div>
                           <p className="font-medium">Modo Manutenção</p>
-                          <p className="text-sm text-gray-600">Bloquear acesso de usuários para manutenção</p>
+                          <p className="text-sm text-muted-foreground">Bloquear acesso de usuários para manutenção</p>
                         </div>
                         <input
                           type="checkbox"

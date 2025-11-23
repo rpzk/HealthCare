@@ -84,12 +84,12 @@ export default function PrescriptionsPage() {
   }, [fetchPrescriptions])
   const getStatusColor = (status: string) => {
     const colors = {
-      'ACTIVE': 'bg-green-100 text-green-800 border-green-200',
-      'COMPLETED': 'bg-blue-100 text-blue-800 border-blue-200',
-      'CANCELLED': 'bg-red-100 text-red-800 border-red-200',
-      'EXPIRED': 'bg-gray-100 text-gray-800 border-gray-200'
+      'ACTIVE': 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
+      'COMPLETED': 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+      'CANCELLED': 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
+      'EXPIRED': 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200'
+    return colors[status as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700'
   }
 
   const getStatusIcon = (status: string) => {
@@ -113,7 +113,7 @@ export default function PrescriptionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -141,7 +141,7 @@ export default function PrescriptionsPage() {
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por medicamento, paciente ou médico..."
                   value={searchTerm}
@@ -153,7 +153,7 @@ export default function PrescriptionsPage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="ALL">Todos os Status</option>
               <option value="ACTIVE">Ativas</option>
@@ -173,9 +173,9 @@ export default function PrescriptionsPage() {
               <Card key={i} className="animate-pulse">
                 <CardContent className="p-6">
                   <div className="space-y-3">
-                    <div className="h-5 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-5 bg-muted rounded w-1/3"></div>
+                    <div className="h-4 bg-muted rounded w-2/3"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
                   </div>
                 </CardContent>
               </Card>
@@ -184,11 +184,11 @@ export default function PrescriptionsPage() {
         ) : prescriptions.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <Pill className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <Pill className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Nenhuma prescrição encontrada
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Não há prescrições correspondentes aos filtros aplicados.
               </p>
               <Button onClick={() => router.push('/prescriptions/new')}>
@@ -213,11 +213,11 @@ export default function PrescriptionsPage() {
                   <div className="flex-1 space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                          <Pill className="h-5 w-5 text-green-600" />
+                        <h3 className="font-semibold text-lg text-foreground flex items-center gap-2">
+                          <Pill className="h-5 w-5 text-green-600 dark:text-green-400" />
                           {medName}
                         </h3>
-                        <div className="space-y-1 text-sm text-gray-600">
+                        <div className="space-y-1 text-sm text-muted-foreground">
                           <p><strong>Dosagem:</strong> {medDosage}</p>
                           <p><strong>Frequência:</strong> {medFrequency}</p>
                           <p><strong>Duração:</strong> {medDuration}</p>
@@ -233,14 +233,14 @@ export default function PrescriptionsPage() {
                     </div>
 
                     {instructions && (
-                      <div className="bg-blue-50 p-3 rounded-md">
-                        <p className="text-sm text-blue-900">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+                        <p className="text-sm text-blue-900 dark:text-blue-300">
                           <strong>Instruções:</strong> {instructions}
                         </p>
                       </div>
                     )}
 
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
                         <span>{prescription.patient.name}</span>
@@ -249,7 +249,7 @@ export default function PrescriptionsPage() {
                         <Stethoscope className="h-4 w-4" />
                         <span>{prescription.doctor.name}</span>
                         {prescription.doctor.speciality && (
-                          <span className="text-gray-400">
+                          <span className="text-muted-foreground">
                             • {prescription.doctor.speciality}
                           </span>
                         )}
@@ -307,7 +307,7 @@ export default function PrescriptionsPage() {
           >
             Anterior
           </Button>
-          <span className="px-4 py-2 text-sm text-gray-600">
+          <span className="px-4 py-2 text-sm text-muted-foreground">
             Página {currentPage} de {totalPages}
           </span>
           <Button

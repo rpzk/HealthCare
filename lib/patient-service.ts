@@ -27,6 +27,8 @@ export interface PatientCreateData {
   riskLevel?: RiskLevel
   insuranceNumber?: string
   userId?: string
+  latitude?: number
+  longitude?: number
 }
 
 export interface PatientUpdateData extends Partial<PatientCreateData> {
@@ -264,7 +266,9 @@ export class PatientService {
           currentMedications: data.currentMedications ? encrypt(data.currentMedications) : undefined,
           riskLevel: data.riskLevel || 'BAIXO',
           insuranceNumber: data.insuranceNumber,
-          userId: data.userId
+          userId: data.userId,
+          latitude: data.latitude,
+          longitude: data.longitude
         },
         include: {
           User: {

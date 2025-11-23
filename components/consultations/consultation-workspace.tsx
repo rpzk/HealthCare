@@ -273,13 +273,13 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             </div>
             <div>
               <div className="flex items-center space-x-3">
-                <h2 className="text-xl font-semibold text-gray-900">{consultation.patient?.name || 'Paciente'}</h2>
+                <h2 className="text-xl font-semibold text-foreground">{consultation.patient?.name || 'Paciente'}</h2>
                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">{consultation.status}</span>
                 {consultation.type && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">{consultation.type}</span>
+                  <span className="px-2 py-1 bg-muted text-foreground text-xs font-medium rounded-full">{consultation.type}</span>
                 )}
               </div>
-              <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+              <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
                 {consultation.scheduledDate && (
                   <>
                     <div className="flex items-center space-x-1">
@@ -347,28 +347,28 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             <TabsContent value="prescriptions" className="pt-4 space-y-3">
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-700">Medicamento</label>
+                  <label className="text-sm text-foreground">Medicamento</label>
                   <input className="w-full border rounded p-2" value={rx.name} onChange={e => setRx({ ...rx, name: e.target.value })} placeholder="Dipirona 500mg comprimido" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Dosagem</label>
+                  <label className="text-sm text-foreground">Dosagem</label>
                   <input className="w-full border rounded p-2" value={rx.dosage} onChange={e => setRx({ ...rx, dosage: e.target.value })} placeholder="1 comprimido" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Frequência</label>
+                  <label className="text-sm text-foreground">Frequência</label>
                   <input className="w-full border rounded p-2" value={rx.frequency} onChange={e => setRx({ ...rx, frequency: e.target.value })} placeholder="a cada 8h" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Duração</label>
+                  <label className="text-sm text-foreground">Duração</label>
                   <input className="w-full border rounded p-2" value={rx.duration} onChange={e => setRx({ ...rx, duration: e.target.value })} placeholder="por 5 dias" />
                 </div>
               </div>
               <div>
-                <label className="text-sm text-gray-700">Instruções</label>
+                <label className="text-sm text-foreground">Instruções</label>
                 <input className="w-full border rounded p-2" value={rx.instructions} onChange={e => setRx({ ...rx, instructions: e.target.value })} placeholder="não ingerir em jejum" />
               </div>
               <div>
-                <label className="text-sm text-gray-700">Observações</label>
+                <label className="text-sm text-foreground">Observações</label>
                 <textarea className="w-full border rounded p-2 h-24" value={rx.observations} onChange={e => setRx({ ...rx, observations: e.target.value })} placeholder="Orientações adicionais..." />
               </div>
               <div className="flex justify-end">
@@ -381,11 +381,11 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             <TabsContent value="exams" className="pt-4 space-y-3">
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-700">Tipo de Exame</label>
+                  <label className="text-sm text-foreground">Tipo de Exame</label>
                   <input className="w-full border rounded p-2" value={exam.examType} onChange={e => setExam({ ...exam, examType: e.target.value })} placeholder="Hemograma, Raio-X, ECG..." />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Prioridade</label>
+                  <label className="text-sm text-foreground">Prioridade</label>
                   <select className="w-full border rounded p-2" value={exam.priority} onChange={e => setExam({ ...exam, priority: e.target.value })}>
                     <option value="NORMAL">Normal</option>
                     <option value="HIGH">Alta</option>
@@ -393,16 +393,16 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
                 </div>
               </div>
               <div>
-                <label className="text-sm text-gray-700">Descrição</label>
+                <label className="text-sm text-foreground">Descrição</label>
                 <input className="w-full border rounded p-2" value={exam.description} onChange={e => setExam({ ...exam, description: e.target.value })} placeholder="Detalhes da solicitação" />
               </div>
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-700">Notas</label>
+                  <label className="text-sm text-foreground">Notas</label>
                   <input className="w-full border rounded p-2" value={exam.notes} onChange={e => setExam({ ...exam, notes: e.target.value })} placeholder="Instruções adicionais" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Data agendada (opcional)</label>
+                  <label className="text-sm text-foreground">Data agendada (opcional)</label>
                   <input type="datetime-local" className="w-full border rounded p-2" value={exam.scheduledDate} onChange={e => setExam({ ...exam, scheduledDate: e.target.value })} />
                 </div>
               </div>
@@ -416,11 +416,11 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             <TabsContent value="referrals" className="pt-4 space-y-3">
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-700">Especialidade/Serviço</label>
+                  <label className="text-sm text-foreground">Especialidade/Serviço</label>
                   <input className="w-full border rounded p-2" value={referral.specialty} onChange={e => setReferral({ ...referral, specialty: e.target.value })} placeholder="Cardiologia, Fisioterapia, etc." />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Prioridade</label>
+                  <label className="text-sm text-foreground">Prioridade</label>
                   <select className="w-full border rounded p-2" value={referral.priority} onChange={e => setReferral({ ...referral, priority: e.target.value })}>
                     <option value="NORMAL">Normal</option>
                     <option value="HIGH">Alta</option>
@@ -428,11 +428,11 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
                 </div>
               </div>
               <div>
-                <label className="text-sm text-gray-700">Descrição do Encaminhamento</label>
+                <label className="text-sm text-foreground">Descrição do Encaminhamento</label>
                 <input className="w-full border rounded p-2" value={referral.description} onChange={e => setReferral({ ...referral, description: e.target.value })} placeholder="Motivo e orientações do encaminhamento" />
               </div>
               <div>
-                <label className="text-sm text-gray-700">Notas</label>
+                <label className="text-sm text-foreground">Notas</label>
                 <input className="w-full border rounded p-2" value={referral.notes} onChange={e => setReferral({ ...referral, notes: e.target.value })} placeholder="Observações adicionais (opcional)" />
               </div>
               <div className="flex justify-end">
@@ -443,7 +443,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             </TabsContent>
 
             <TabsContent value="attachments" className="pt-4">
-              <div className="text-gray-600">Gerencie anexos aqui</div>
+              <div className="text-muted-foreground">Gerencie anexos aqui</div>
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -456,16 +456,16 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         </CardHeader>
         <CardContent>
           {activityLog.length === 0 ? (
-            <div className="text-sm text-gray-500">Nenhuma atividade registrada ainda. Execute ações (Iniciar/Finalizar/Cancelar) ou salve nas abas para ver aqui.</div>
+            <div className="text-sm text-muted-foreground">Nenhuma atividade registrada ainda. Execute ações (Iniciar/Finalizar/Cancelar) ou salve nas abas para ver aqui.</div>
           ) : (
             <ul className="space-y-2">
               {activityLog.map((it) => (
                 <li key={it.id} className="flex items-center justify-between rounded border p-2">
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center rounded-full bg-medical-primary/10 px-2 py-0.5 text-xs text-medical-primary">{it.type}</span>
-                    <span className="text-sm text-gray-800">{it.message}</span>
+                    <span className="text-sm text-foreground">{it.message}</span>
                   </div>
-                  <span className="text-xs text-gray-500">{it.time}</span>
+                  <span className="text-xs text-muted-foreground">{it.time}</span>
                 </li>
               ))}
             </ul>

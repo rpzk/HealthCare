@@ -237,13 +237,13 @@ export default function HelpPage() {
       {/* Cabeçalho */}
       <div className="text-center space-y-4">
         <div className="flex justify-center">
-          <div className="p-3 bg-blue-100 rounded-full">
-            <HelpCircle className="h-8 w-8 text-blue-600" />
+          <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
+            <HelpCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           </div>
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Central de Ajuda</h1>
-          <p className="text-lg text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Central de Ajuda</h1>
+          <p className="text-lg text-muted-foreground mt-2">
             Encontre respostas, tutoriais e entre em contato com nosso suporte
           </p>
         </div>
@@ -253,7 +253,7 @@ export default function HelpPage() {
       <Card>
         <CardContent className="p-6">
           <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
               placeholder="Pesquisar por tópicos, funcionalidades..."
               value={searchTerm}
@@ -294,8 +294,8 @@ export default function HelpPage() {
                     </Badge>
                   </div>
                 </div>
-                <h3 className="font-medium text-gray-900 mb-1">{topic.title}</h3>
-                <p className="text-sm text-gray-600">{topic.description}</p>
+                <h3 className="font-medium text-foreground mb-1">{topic.title}</h3>
+                <p className="text-sm text-muted-foreground">{topic.description}</p>
               </div>
             ))}
           </div>
@@ -323,8 +323,8 @@ export default function HelpPage() {
                       onClick={() => setSelectedCategory(category.id)}
                       className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
                         selectedCategory === category.id
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                          : 'text-muted-foreground hover:bg-muted'
                       }`}
                     >
                       <div className="flex items-center space-x-3">
@@ -357,9 +357,9 @@ export default function HelpPage() {
             <CardContent>
               {filteredTopics.length === 0 ? (
                 <div className="text-center py-8">
-                  <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum resultado encontrado</h3>
-                  <p className="text-gray-500">
+                  <Search className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">Nenhum resultado encontrado</h3>
+                  <p className="text-muted-foreground">
                     Tente ajustar seus termos de busca ou escolha uma categoria diferente.
                   </p>
                 </div>
@@ -373,27 +373,27 @@ export default function HelpPage() {
                       <div className="flex items-start space-x-4 flex-1">
                         <div className="mt-1">
                           {topic.type === 'video' ? (
-                            <div className="p-2 bg-red-100 rounded-lg">
-                              <Play className="h-4 w-4 text-red-600" />
+                            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                              <Play className="h-4 w-4 text-red-600 dark:text-red-400" />
                             </div>
                           ) : (
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                              <FileText className="h-4 w-4 text-blue-600" />
+                            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
                           )}
                         </div>
 
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="font-medium text-gray-900">{topic.title}</h3>
+                            <h3 className="font-medium text-foreground">{topic.title}</h3>
                             {topic.popular && (
-                              <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs">
+                              <Badge className="bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800 text-xs">
                                 Popular
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">{topic.description}</p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                          <p className="text-sm text-muted-foreground mb-2">{topic.description}</p>
+                          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                             <span>{topic.type === 'video' ? 'Vídeo' : 'Artigo'}</span>
                             <span>•</span>
                             <span>{topic.readTime}</span>
@@ -401,7 +401,7 @@ export default function HelpPage() {
                         </div>
                       </div>
 
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
                   ))}
                 </div>
@@ -434,16 +434,16 @@ export default function HelpPage() {
                 >
                   <div className="flex items-center space-x-3 mb-3">
                     <div className={`p-2 rounded-lg ${
-                      action.available ? 'bg-green-100' : 'bg-gray-100'
+                      action.available ? 'bg-green-100 dark:bg-green-900/20' : 'bg-muted'
                     }`}>
                       <Icon className={`h-5 w-5 ${
-                        action.available ? 'text-green-600' : 'text-gray-400'
+                        action.available ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                       }`} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{action.title}</h3>
+                      <h3 className="font-medium text-foreground">{action.title}</h3>
                       {action.available ? (
-                        <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                        <Badge className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800 text-xs">
                           Disponível
                         </Badge>
                       ) : (
@@ -454,9 +454,8 @@ export default function HelpPage() {
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 mb-3">{action.description}</p>
-
-                  <div className="space-y-1 text-xs text-gray-500">
+                  <p className="text-sm text-muted-foreground mb-3">{action.description}</p>
+                  <div className="space-y-1 text-xs text-muted-foreground">
                     {action.estimatedWait && (
                       <p>Tempo de espera: {action.estimatedWait}</p>
                     )}
@@ -490,12 +489,12 @@ export default function HelpPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6 text-center">
-            <Mail className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-2">Email</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-3" />
+            <h3 className="font-medium text-foreground mb-2">Email</h3>
+            <p className="text-sm text-muted-foreground mb-3">
               Para dúvidas gerais e suporte técnico
             </p>
-            <p className="text-sm font-medium text-blue-600">
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
               suporte@healthcare.com
             </p>
           </CardContent>
@@ -503,12 +502,12 @@ export default function HelpPage() {
 
         <Card>
           <CardContent className="p-6 text-center">
-            <Phone className="h-8 w-8 text-green-600 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-2">Telefone</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <Phone className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-3" />
+            <h3 className="font-medium text-foreground mb-2">Telefone</h3>
+            <p className="text-sm text-muted-foreground mb-3">
               Atendimento em horário comercial
             </p>
-            <p className="text-sm font-medium text-green-600">
+            <p className="text-sm font-medium text-green-600 dark:text-green-400">
               +55 11 4000-0000
             </p>
           </CardContent>
@@ -516,12 +515,12 @@ export default function HelpPage() {
 
         <Card>
           <CardContent className="p-6 text-center">
-            <ExternalLink className="h-8 w-8 text-purple-600 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-2">Documentação</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <ExternalLink className="h-8 w-8 text-purple-600 dark:text-purple-400 mx-auto mb-3" />
+            <h3 className="font-medium text-foreground mb-2">Documentação</h3>
+            <p className="text-sm text-muted-foreground mb-3">
               Guia completo do desenvolvedor
             </p>
-            <p className="text-sm font-medium text-purple-600">
+            <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
               docs.healthcare.com
             </p>
           </CardContent>

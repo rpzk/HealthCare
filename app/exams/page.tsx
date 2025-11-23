@@ -23,7 +23,9 @@ import {
   XCircle,
   FileText,
   Eye,
-  Edit
+  Edit,
+  Download,
+  MoreVertical
 } from 'lucide-react'
 
 interface ExamRequest {
@@ -86,22 +88,22 @@ export default function ExamsPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'REQUESTED': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'SCHEDULED': 'bg-blue-100 text-blue-800 border-blue-200',
-      'IN_PROGRESS': 'bg-purple-100 text-purple-800 border-purple-200',
-      'COMPLETED': 'bg-green-100 text-green-800 border-green-200',
-      'CANCELLED': 'bg-red-100 text-red-800 border-red-200'
+      'REQUESTED': 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+      'SCHEDULED': 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+      'IN_PROGRESS': 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+      'COMPLETED': 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
+      'CANCELLED': 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200'
+    return colors[status as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700'
   }
 
   const getUrgencyColor = (urgency: string) => {
     const colors = {
-      'ROUTINE': 'bg-gray-100 text-gray-800 border-gray-200',
-      'URGENT': 'bg-orange-100 text-orange-800 border-orange-200',
-      'EMERGENCY': 'bg-red-100 text-red-800 border-red-200'
+      'ROUTINE': 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700',
+      'URGENT': 'bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+      'EMERGENCY': 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
     }
-    return colors[urgency as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200'
+    return colors[urgency as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700'
   }
 
   const getStatusIcon = (status: string) => {
@@ -136,7 +138,7 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -164,7 +166,7 @@ export default function ExamsPage() {
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por tipo de exame, paciente ou médico..."
                   value={searchTerm}
@@ -177,7 +179,7 @@ export default function ExamsPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="ALL">Todos os Status</option>
                 <option value="REQUESTED">Solicitados</option>
@@ -189,7 +191,7 @@ export default function ExamsPage() {
               <select
                 value={filterUrgency}
                 onChange={(e) => setFilterUrgency(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="ALL">Toda Urgência</option>
                 <option value="ROUTINE">Rotina</option>
@@ -202,150 +204,79 @@ export default function ExamsPage() {
       </Card>
 
       {/* Lista de Exames */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    <div className="h-5 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : exams.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <TestTube className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Nenhum exame encontrado
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Não há exames correspondentes aos filtros aplicados.
-              </p>
-              <Button onClick={() => router.push('/exams/new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Solicitar Primeiro Exame
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          exams.map((exam) => (
-            <Card key={exam.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                          <TestTube className="h-5 w-5 text-purple-600" />
-                          {exam.examType}
-                        </h3>
-                        {exam.description && (
-                          <p className="text-gray-600 text-sm">
-                            {exam.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`flex items-center gap-1 ${getStatusColor(exam.status)}`}
-                        >
-                          {getStatusIcon(exam.status)}
-                          {getStatusLabel(exam.status)}
-                        </Badge>
-                        <Badge 
-                          variant="outline" 
-                          className={getUrgencyColor(exam.urgency)}
-                        >
-                          {exam.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3" />}
-                          {getUrgencyLabel(exam.urgency)}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {exam.results && (
-                      <div className="bg-green-50 p-3 rounded-md">
-                        <p className="text-sm text-green-900">
-                          <strong>Resultados:</strong> {exam.results}
-                        </p>
-                      </div>
-                    )}
-
-                    {exam.notes && (
-                      <div className="bg-blue-50 p-3 rounded-md">
-                        <p className="text-sm text-blue-900">
-                          <strong>Observações:</strong> {exam.notes}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <User className="h-4 w-4" />
-                        <span>{exam.patient.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Stethoscope className="h-4 w-4" />
-                        <span>{exam.doctor.name}</span>
-                        {exam.doctor.speciality && (
-                          <span className="text-gray-400">
-                            • {exam.doctor.speciality}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          Solicitado: {new Date(exam.requestDate).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                      {exam.scheduledDate && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Agendado: {new Date(exam.scheduledDate).toLocaleDateString('pt-BR')}
-                          </span>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Exame</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Paciente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Data</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Urgência</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="bg-card divide-y divide-border">
+                {exams.map((exam) => (
+                  <tr key={exam.id} className="hover:bg-muted/50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-primary" />
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {exam.results && (
-                      <Button variant="outline" size="sm">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Ver Resultados
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => router.push(`/exams/${exam.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => router.push(`/exams/${exam.id}/edit`)}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-foreground">{exam.examType}</div>
+                          <div className="text-sm text-muted-foreground">Dr. {exam.doctor.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-foreground">{exam.patient.name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="mr-1.5 h-4 w-4" />
+                        {new Date(exam.requestDate).toLocaleDateString('pt-BR')}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(exam.status)}`}>
+                        {exam.status === 'REQUESTED' && 'Solicitado'}
+                        {exam.status === 'SCHEDULED' && 'Agendado'}
+                        {exam.status === 'IN_PROGRESS' && 'Em Andamento'}
+                        {exam.status === 'COMPLETED' && 'Concluído'}
+                        {exam.status === 'CANCELLED' && 'Cancelado'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getUrgencyColor(exam.urgency)}`}>
+                        {exam.urgency === 'ROUTINE' && 'Rotina'}
+                        {exam.urgency === 'URGENT' && 'Urgente'}
+                        {exam.urgency === 'EMERGENCY' && 'Emergência'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Paginação */}
       {totalPages > 1 && (

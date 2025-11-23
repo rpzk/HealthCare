@@ -201,9 +201,9 @@ export function ConsultationsList() {
 
   if (loading) {
     return (
-      <div className="ssf-section p-8 text-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#40e0d0] border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-300">Carregando consultas...</p>
+      <div className="bg-card border border-border rounded-lg p-8 text-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Carregando consultas...</p>
       </div>
     )
   }
@@ -212,39 +212,40 @@ export function ConsultationsList() {
     <div className="space-y-6">
       {/* Banner de erro se houver */}
       {error && (
-        <div className="ssf-section p-4 border border-red-500">
+        <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
           <div className="flex">
             <div className="ml-3">
-              <p className="text-sm text-red-400">{error}</p>
-              <button 
+              <p className="text-sm text-destructive">{error}</p>
+              <Button 
                 onClick={fetchConsultations}
-                className="ssf-btn mt-2 px-4 py-2"
+                variant="outline"
+                className="mt-2"
               >
                 Tentar novamente
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {/* Filtros e ações */}
-      <div className="ssf-section p-6">
+      <div className="bg-card border border-border rounded-lg p-6">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
           <div className="flex flex-1 items-center space-x-2">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar consultas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-black/30 text-white border-gray-600"
+                className="pl-10 bg-background text-foreground border-input"
               />
             </div>
             
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-black/30 text-white border-gray-600 rounded-lg"
+              className="px-3 py-2 bg-background text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="all">Todos os status</option>
               <option value="SCHEDULED">Agendadas</option>
@@ -257,7 +258,7 @@ export function ConsultationsList() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-3 py-2 bg-black/30 text-white border-gray-600 rounded-lg"
+              className="px-3 py-2 bg-background text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="all">Todos os tipos</option>
               <option value="ROUTINE">Rotina</option>
@@ -268,10 +269,10 @@ export function ConsultationsList() {
             </select>
           </div>
           
-          <button onClick={() => setShowForm(true)} className="ssf-btn px-6 py-3">
+          <Button onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Agendar Consulta
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -281,27 +282,27 @@ export function ConsultationsList() {
           const { date, time } = formatDateTime(consultation.scheduledDate)
           
           return (
-            <div key={consultation.id} className="ssf-section p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
+            <div key={consultation.id} className="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-[#40e0d0] rounded-full flex items-center justify-center text-black font-bold">
-                    <Calendar className="h-6 w-6 text-black" />
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
+                    <Calendar className="h-6 w-6 text-primary" />
                   </div>
                   
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <h3 className="text-lg font-semibold text-[#40e0d0]">
+                      <h3 className="text-lg font-semibold text-primary">
                         {consultation.patient.name}
                       </h3>
                       <span className={getStatusColor(consultation.status)}>
                         {getStatusText(consultation.status)}
                       </span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs font-medium rounded-full">
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-medium rounded-full">
                         {getTypeText(consultation.type)}
                       </span>
                     </div>
                     
-                    <div className="flex items-center space-x-4 mt-1 text-sm text-gray-300">
+                    <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
                         <span>{date}</span>
@@ -318,15 +319,15 @@ export function ConsultationsList() {
                     
                     {consultation.patient.phone && (
                       <div className="flex items-center space-x-1 mt-2">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-300">{consultation.patient.phone}</span>
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{consultation.patient.phone}</span>
                       </div>
                     )}
                     
                     {consultation.description && (
                       <div className="mt-2">
-                        <span className="text-sm text-gray-300">
-                          <strong className="text-[#40e0d0]">Motivo:</strong> {consultation.description}
+                        <span className="text-sm text-muted-foreground">
+                          <strong className="text-primary">Motivo:</strong> {consultation.description}
                         </span>
                       </div>
                     )}
@@ -336,53 +337,58 @@ export function ConsultationsList() {
                 <div className="flex items-center space-x-2">
                   {consultation.status === 'SCHEDULED' && (
                     <>
-                      <button
+                      <Button
                         onClick={() => handleUpdateConsultation(consultation.id, 'start')}
                         disabled={formLoading}
-                        className="ssf-btn px-3 py-2 text-sm"
+                        size="sm"
                       >
                         <Play className="h-4 w-4 mr-1" />
                         Iniciar
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleUpdateConsultation(consultation.id, 'cancel', 'Cancelada pelo médico')}
                         disabled={formLoading}
-                        className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+                        variant="destructive"
+                        size="sm"
                       >
                         <XCircle className="h-4 w-4 mr-1" />
                         Cancelar
-                      </button>
+                      </Button>
                     </>
                   )}
                   
                   {consultation.status === 'IN_PROGRESS' && (
-                    <button
+                    <Button
                       onClick={() => handleUpdateConsultation(consultation.id, 'complete')}
                       disabled={formLoading}
-                      className="ssf-btn px-3 py-2 text-sm"
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Finalizar
-                    </button>
+                    </Button>
                   )}
                   
                   {consultation.status === 'SCHEDULED' && (
-                    <button
+                    <Button
                       onClick={() => handleUpdateConsultation(consultation.id, 'no-show', 'Paciente não compareceu')}
                       disabled={formLoading}
-                      className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
+                      variant="outline"
+                      size="sm"
+                      className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:border-orange-900/50 dark:hover:bg-orange-900/20"
                     >
                       <UserX className="h-4 w-4 mr-1" />
                       Faltou
-                    </button>
+                    </Button>
                   )}
                   
-                  <button 
+                  <Button 
                     onClick={() => router.push(`/consultations/${consultation.id}`)}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
+                    variant="ghost"
+                    size="sm"
                   >
                     Ver Detalhes
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -392,54 +398,54 @@ export function ConsultationsList() {
 
       {/* Paginação */}
       {(pagination?.pages ?? 0) > 1 && (
-        <div className="ssf-section p-4">
+        <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex justify-center space-x-2">
-            <button
+            <Button
               disabled={(pagination?.page ?? 1) === 1}
               onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
-              className="ssf-btn px-4 py-2 disabled:opacity-50"
+              variant="outline"
             >
               Anterior
-            </button>
-            <span className="flex items-center px-4 text-gray-300">
+            </Button>
+            <span className="flex items-center px-4 text-muted-foreground">
               Página {pagination?.page ?? 1} de {pagination?.pages ?? 0}
             </span>
-            <button
+            <Button
               disabled={(pagination?.page ?? 1) === (pagination?.pages ?? 0)}
               onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
-              className="ssf-btn px-4 py-2 disabled:opacity-50"
+              variant="outline"
             >
               Próxima
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {consultations.length === 0 && !loading && (
-        <div className="ssf-section p-12 text-center">
-          <div className="text-gray-400 mb-4">
-            <Calendar className="h-12 w-12 mx-auto text-[#40e0d0]" />
+        <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <div className="text-muted-foreground mb-4">
+            <Calendar className="h-12 w-12 mx-auto text-primary" />
           </div>
-          <h3 className="text-lg font-medium text-[#40e0d0] mb-2">
+          <h3 className="text-lg font-medium text-primary mb-2">
             Nenhuma consulta encontrada
           </h3>
-          <p className="text-gray-300">
+          <p className="text-muted-foreground">
             {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
               ? 'Tente ajustar os filtros ou pesquisar por outros termos.' 
               : 'Ainda não há consultas agendadas.'
             }
           </p>
-          <button className="ssf-btn mt-4 px-6 py-3" onClick={() => setShowForm(true)}>
+          <Button className="mt-4" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Agendar Primeira Consulta
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Formulário de consulta */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="ssf-section p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <ConsultationForm
               // The ConsultationForm in this project expects patient prop and onSubmit/onCancel
               patient={editingConsultation ? editingConsultation.patient : null}
