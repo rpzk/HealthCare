@@ -1,11 +1,11 @@
-import * as prismaLib from '@/lib/prisma'
-const prisma = prismaLib.prisma
+import { prisma } from '@/lib/prisma'
 
 export class DashboardService {
   // Buscar estatísticas principais do dashboard
   static async getStats() {
     try {
-      await prismaLib.ensurePrismaConnected()
+      // Ensure connection (lazy)
+      // await prisma.$connect(); 
 
       const now = new Date()
       const startOfDay = new Date(now)
@@ -52,8 +52,6 @@ export class DashboardService {
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
     try {
-      await prismaLib.ensurePrismaConnected()
-
       const now = new Date()
       const upcoming = await prisma.consultation.findMany({
         where: {
@@ -90,8 +88,6 @@ export class DashboardService {
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
     try {
-      await prismaLib.ensurePrismaConnected()
-
       const patients = await prisma.patient.findMany({
         orderBy: { updatedAt: 'desc' },
         take: limit,
