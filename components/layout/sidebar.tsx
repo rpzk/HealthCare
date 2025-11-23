@@ -199,7 +199,7 @@ export function Sidebar() {
   }
 
   return (
-    <div className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-background border-r border-border overflow-y-auto transition-colors duration-300">
+    <div className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-card border-r border-border overflow-y-auto transition-colors duration-300 shadow-sm">
       <nav className="p-4 space-y-2">
         {visibleMenuItems.map((item) => (
           <div key={item.title}>
@@ -207,21 +207,21 @@ export function Sidebar() {
               <button
                 onClick={() => toggleExpanded(item.title)}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive(item.href)
-                    ? "bg-primary text-primary-foreground" 
-                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-primary text-primary-foreground shadow-md" 
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
                 aria-expanded={expandedItems.includes(item.title)}
                 aria-controls={`submenu-${item.title}`}
               >
                 <div className="flex items-center space-x-3">
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className={cn("h-5 w-5", isActive(item.href) ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                   <span>{item.title}</span>
                 </div>
                 <ChevronDown 
                   className={cn(
-                    "h-4 w-4 transition-transform",
+                    "h-4 w-4 transition-transform duration-200",
                     expandedItems.includes(item.title) && "rotate-180"
                   )}
                 />
@@ -230,18 +230,18 @@ export function Sidebar() {
               <Link
                 href={item.href}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive(item.href)
-                    ? "bg-primary text-primary-foreground" 
-                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-primary text-primary-foreground shadow-md" 
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <div className="flex items-center">
-                  <item.icon className="h-5 w-5 mr-3" />
+                  <item.icon className={cn("h-5 w-5 mr-3", isActive(item.href) ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                   <span>{item.title}</span>
                 </div>
                 {item.badge && (!item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))) && (
-                  <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 rounded">
+                  <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded">
                     {item.badge}
                   </span>
                 )}
@@ -249,7 +249,7 @@ export function Sidebar() {
             )}
             
             {item.submenu && expandedItems.includes(item.title) && (
-              <div className="ml-4 mt-2 space-y-1" id={`submenu-${item.title}`} role="region" aria-label={`Submenu ${item.title}`}>
+              <div className="ml-4 mt-2 space-y-1 border-l-2 border-border pl-2" id={`submenu-${item.title}`} role="region" aria-label={`Submenu ${item.title}`}>
                 {item.submenu.map((subItem) => (
                   <Link
                     key={subItem.title}
@@ -257,7 +257,7 @@ export function Sidebar() {
                     className={cn(
                       "w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors",
                       isActive(subItem.href)
-                        ? "bg-secondary text-primary font-medium"
+                        ? "bg-accent text-accent-foreground font-medium"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     aria-current={isActive(subItem.href) ? 'page' : undefined}
