@@ -81,7 +81,8 @@ export class DashboardService {
       }))
     } catch (err) {
       console.error('[dashboard] erro em getUpcomingAppointments()', err)
-      throw err
+      // Return empty array instead of throwing to prevent dashboard crash
+      return []
     }
   }
 
@@ -110,7 +111,8 @@ export class DashboardService {
       })
     } catch (err) {
       console.error('[dashboard] erro em getRecentPatients()', err)
-      throw err
+      // Return empty array instead of throwing
+      return []
     }
   }
 

@@ -38,7 +38,7 @@ export function PageHeader({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-gradient-to-r from-background to-muted/20 p-6 -mx-6 -mt-6 mb-6 border-b border-border/50">
       {/* Breadcrumb Navigation */}
       {breadcrumbs.length > 0 && (
         <Breadcrumb>
@@ -48,7 +48,7 @@ export function PageHeader({
                 <BreadcrumbItem>
                   <BreadcrumbLink 
                     href="/" 
-                    className="flex items-center gap-1 hover:text-blue-600"
+                    className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                     onClick={(e) => {
                       e.preventDefault()
                       handleHome()
@@ -72,12 +72,12 @@ export function PageHeader({
                         e.preventDefault()
                         router.push(crumb.href!)
                       }}
-                      className="hover:text-blue-600"
+                      className="text-muted-foreground hover:text-primary transition-colors"
                     >
                       {crumb.label}
                     </BreadcrumbLink>
                   ) : (
-                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    <BreadcrumbPage className="font-medium text-foreground">{crumb.label}</BreadcrumbPage>
                   )}
                 </BreadcrumbItem>
               </div>
@@ -92,10 +92,10 @@ export function PageHeader({
           {/* Back Button */}
           {showBackButton && (
             <Button
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon"
               onClick={handleBack}
-              className="flex items-center gap-2"
+              className="h-8 w-8 -ml-2 text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar
