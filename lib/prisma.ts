@@ -30,6 +30,24 @@ try {
 
 export const prisma = prismaInstance;
 
+/**
+ * Helper seguro para garantir acesso ao Prisma mesmo se a inicialização do módulo falhar
+ * devido a dependências circulares ou ordem de importação.
+ */
+export function getPrisma(): PrismaClient {
+  if (!prismaInstance) {
+    console.warn('[lib/prisma] getPrisma() called but prismaInstance is undefined. Creating fallback instance.');
+    try {
+      prismaInstance = new PrismaClient();
+      if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prismaInstance;
+    } catch (e) {
+      console.error('[lib/prisma] Failed to create fallback instance:', e);
+      throw e;
+    }
+  }
+  return prismaInstance;
+}
+
 async function internalConnect() {
   try {
     console.log('[lib/prisma] Connecting to database...');
