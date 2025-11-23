@@ -80,26 +80,18 @@ export function DashboardOverview() {
       setData(dashboardData.data || dashboardData)
     } catch (err) {
       console.error('Erro ao carregar dashboard:', err)
-      setError('Erro ao carregar dados. Mostrando dados de exemplo.')
+      setError('Não foi possível carregar os dados do dashboard.')
       
-      // Fallback para dados estáticos em caso de erro
+      // Em caso de erro, mostra zerado em vez de dados falsos
       setData({
         stats: {
-          totalPatients: 1247,
-          consultationsToday: 23,
-          updatedRecords: 89,
-          completionRate: 94
+          totalPatients: 0,
+          consultationsToday: 0,
+          updatedRecords: 0,
+          completionRate: 0
         },
-        appointments: [
-          { id: '1', patient: 'Carlos Oliveira', time: '14:00', type: 'Consulta inicial', duration: '30 min' },
-          { id: '2', patient: 'Fernanda Lima', time: '15:30', type: 'Retorno', duration: '20 min' },
-          { id: '3', patient: 'Roberto Alves', time: '16:30', type: 'Consulta de rotina', duration: '25 min' }
-        ],
-        patients: [
-          { id: '1', name: 'Maria Santos', age: 45, lastVisit: '2024-08-23', status: 'Em tratamento', priority: 'normal' },
-          { id: '2', name: 'João Silva', age: 62, lastVisit: '2024-08-22', status: 'Aguardando exame', priority: 'high' },
-          { id: '3', name: 'Ana Costa', age: 34, lastVisit: '2024-08-21', status: 'Consulta de retorno', priority: 'normal' }
-        ]
+        appointments: [],
+        patients: []
       })
     } finally {
       setLoading(false)
