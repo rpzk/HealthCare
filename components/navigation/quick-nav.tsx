@@ -21,6 +21,7 @@ export function QuickNav() {
   const pathname = usePathname()
 
   const isActive = (href: string) => {
+    if (!pathname) return false
     if (href === '/') {
       return pathname === '/'
     }

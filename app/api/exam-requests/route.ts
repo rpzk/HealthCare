@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
-import { ExamRequestsService } from '@/lib/exam-requests-service-mock'
+import { ExamRequestsService } from '@/lib/exam-requests-service'
 
 // GET - Buscar solicitações de exames
 export const GET = withAuth(async (request, { user: _user }) => {

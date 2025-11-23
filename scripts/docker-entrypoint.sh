@@ -18,6 +18,12 @@ fi
 echo "[entrypoint] Gerando Prisma Client (se necessário)"
 npx prisma generate || true
 
+# Seed opcional de usuários com senha (para logar no app) se habilitado
+if [[ "${SEED_AUTH:-0}" == "1" ]]; then
+  echo "[entrypoint] Executando seed de autenticação (ci-seed-auth.js)"
+  node scripts/ci-seed-auth.js || echo "[entrypoint] seed auth falhou (continuando)"
+fi
+
 PORT_TO_USE=${PORT:-3000}
 echo "[entrypoint] Iniciando Next.js em porta ${PORT_TO_USE}"
 exec node node_modules/next/dist/bin/next start -p "${PORT_TO_USE}"

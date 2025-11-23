@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { AddressAutocomplete, type AddressSuggestion } from '@/components/addresses/address-autocomplete'
+import { MapPicker } from '@/components/map/map-picker'
 import { Users, Save, ArrowLeft } from 'lucide-react'
 
 export default function NewPatientPage() {
@@ -24,6 +26,10 @@ export default function NewPatientPage() {
     allergies: '',
     current_medications: ''
   })
+  const [coords, setCoords] = useState<{ lat: number, lng: number } | undefined>()
+  const [addressParts, setAddressParts] = useState<{
+    street?: string; number?: string; neighborhood?: string; city?: string; state?: string; zipCode?: string
+  }>({})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,6 +44,30 @@ export default function NewPatientPage() {
 
       if (response.ok) {
         const patient = await response.json()
+        // If we have structured address and/or coords, persist an Address row
+        const hasStructured = addressParts.street || addressParts.city || addressParts.state || coords
+        if (hasStructured) {
+          try {
+            await fetch('/api/addresses', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                street: addressParts.street || formData.address,
+                number: addressParts.number,
+                neighborhood: addressParts.neighborhood,
+                city: addressParts.city,
+                state: addressParts.state,
+                zipCode: addressParts.zipCode,
+                latitude: coords?.lat,
+                longitude: coords?.lng,
+                isPrimary: true,
+                patientId: patient.id
+              })
+            })
+          } catch (e) {
+            console.warn('Falha ao salvar endereço estruturado', e)
+          }
+        }
         router.push(`/patients/${patient.id}`)
       } else {
         throw new Error('Erro ao criar paciente')
@@ -172,18 +202,31 @@ export default function NewPatientPage() {
               </div>
             </div>
 
-            {/* Endereço */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Endereço Completo
-              </label>
-              <Textarea
-                name="address"
+            {/* Endereço com autocomplete e mapa */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Endereço</label>
+              <AddressAutocomplete
                 value={formData.address}
-                onChange={handleChange}
-                placeholder="Rua, número, bairro, cidade, CEP"
-                rows={2}
+                onSelect={(s: AddressSuggestion) => {
+                  setFormData(prev => ({ ...prev, address: s.label }))
+                  setCoords({ lat: s.lat, lng: s.lng })
+                  setAddressParts({
+                    street: s.street,
+                    number: s.number,
+                    neighborhood: s.neighborhood,
+                    city: s.city,
+                    state: s.state,
+                    zipCode: s.zipCode
+                  })
+                }}
               />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ajuste no mapa</label>
+                <MapPicker value={coords} onChange={setCoords} />
+                {coords && (
+                  <p className="text-xs text-gray-500 mt-1">Lat: {coords.lat.toFixed(6)} | Lng: {coords.lng.toFixed(6)}</p>
+                )}
+              </div>
             </div>
 
             {/* Contato de Emergência */}

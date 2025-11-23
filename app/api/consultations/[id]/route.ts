@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { ConsultationService, ConsultationUpdateData } from '@/lib/consultation-service-mock'
+import { ConsultationService, ConsultationUpdateData } from '@/lib/consultation-service'
 import { withAuth, withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { ConsultationType, ConsultationStatus } from '@prisma/client'

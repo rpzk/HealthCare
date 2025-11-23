@@ -16,7 +16,8 @@ import {
   Activity,
   BarChart3,
   Settings,
-  Brain
+  Brain,
+  DollarSign
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -98,6 +99,13 @@ const menuItems: MenuItem[] = [
     ]
   },
   {
+    title: 'Financeiro',
+    icon: DollarSign,
+    href: '/admin/financial',
+    badge: 'ADMIN',
+    allowedRoles: ['ADMIN'],
+  },
+  {
     title: 'Relatórios',
     icon: BarChart3,
     href: '/reports',
@@ -111,6 +119,10 @@ const menuItems: MenuItem[] = [
     title: 'Configurações',
     icon: Settings,
     href: '/settings',
+    submenu: [
+      { title: 'Geral', href: '/settings' },
+      { title: 'Horários de Atendimento', href: '/settings/schedule' },
+    ]
   },
   {
     title: 'Monitoramento de Segurança',
@@ -146,6 +158,7 @@ export function Sidebar() {
   useEffect(() => {
     const toExpand: string[] = []
     for (const item of menuItems) {
+      if (!pathname) continue
       if (item.submenu && item.submenu.some((s) => pathname.startsWith(s.href))) {
         toExpand.push(item.title)
       }
@@ -165,6 +178,7 @@ export function Sidebar() {
   }
 
   const isActive = (href: string) => {
+    if (!pathname) return false
     return pathname === href || (href !== '/' && pathname.startsWith(href))
   }
 

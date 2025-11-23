@@ -35,7 +35,7 @@ export const PATCH = withAuth(async (request, { params, user }) => {
     const { action } = validationResult.data
 
     if (action === 'mark_read') {
-      const success = await NotificationService.markAsRead(params.id, user.id)
+      const success = await NotificationService.markAsRead(params.id)
       
       if (success) {
         auditLogger.logSuccess(
@@ -99,7 +99,7 @@ export const PATCH = withAuth(async (request, { params, user }) => {
 // DELETE - Excluir notificação
 export const DELETE = withAuth(async (request, { params, user }) => {
   try {
-    const success = await NotificationService.deleteNotification(params.id, user.id)
+    const success = await NotificationService.deleteNotification(params.id)
     
     if (success) {
       auditLogger.logSuccess(

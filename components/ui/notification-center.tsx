@@ -205,7 +205,7 @@ export function NotificationCenter() {
               >
                 <div className="flex items-start space-x-3">
                   <div className="mt-0.5">
-                    {getTypeIcon(notification.type)}
+                    {getTypeIcon(notification.type as NotificationType)}
                   </div>
                   
                   <div className="flex-1 min-w-0">
@@ -214,7 +214,7 @@ export function NotificationCenter() {
                         {notification.title}
                       </h4>
                       <Badge 
-                        variant={getPriorityBadgeVariant(notification.priority)}
+                        variant={getPriorityBadgeVariant(notification.priority as NotificationPriority)}
                         className="text-xs"
                       >
                         {notification.priority}

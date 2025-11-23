@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { ConsultationService } from '@/lib/consultation-service-mock'
+import { ConsultationService } from '@/lib/consultation-service'
 
 export async function GET() {
   try {

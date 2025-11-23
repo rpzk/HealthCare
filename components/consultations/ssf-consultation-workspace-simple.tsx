@@ -23,6 +23,7 @@ import {
   Activity
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast-simple'
+import { useRef } from 'react'
 
 type Patient = {
   id: string
@@ -85,6 +86,17 @@ export function SSFConsultationWorkspace({ consultationId }: { consultationId: s
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [recState, setRecState] = useState<'idle'|'recording'|'processing'|'done'|'error'>('idle')
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobResult, setJobResult] = useState<{ recordId?: string } | null>(null)
+  const [doctorId, setDoctorId] = useState<string | null>(null)
+  const [draftSoap, setDraftSoap] = useState<any | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [jobProgress, setJobProgress] = useState<{ step?: string; pct?: number } | null>(null)
+  const sseRef = useRef<EventSource | null>(null)
+  const [jobFailed, setJobFailed] = useState<string | null>(null)
 
   // Estado da consulta
   const [notes, setNotes] = useState({
@@ -156,6 +168,16 @@ export function SSFConsultationWorkspace({ consultationId }: { consultationId: s
       const data = await res.json()
       const c = data.consultation || data
       setConsultation(c)
+      // best effort: from consultation payload or session
+      if (c?.doctor?.id) setDoctorId(c.doctor.id)
+      try {
+        const me = await fetch('/api/auth/session', { method: 'GET' })
+        if (me.ok) {
+          const json = await me.json()
+          const uid = json?.user?.id || json?.user?.sub || null
+          if (uid) setDoctorId(uid)
+        }
+      } catch {}
       
       // Carregar dados existentes se houver
       if (c?.notes) {
@@ -172,6 +194,290 @@ export function SSFConsultationWorkspace({ consultationId }: { consultationId: s
     } finally {
       setLoading(false)
     }
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      chunksRef.current = []
+      mr.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => { stream.getTracks().forEach(t => t.stop()) }
+      mediaRecorderRef.current = mr
+      mr.start()
+      setRecState('recording')
+    } catch (e: any) {
+      setRecState('error')
+      toast({ title: 'Microfone', description: e?.message || 'Falha ao iniciar gravação', variant: 'destructive' })
+    }
+  }
+
+  const stopAndUpload = async () => {
+    const mr = mediaRecorderRef.current
+    if (!mr) return
+    setRecState('processing')
+    mr.stop()
+    // pequena espera para garantir ondataavailable finalizou
+    await new Promise(r => setTimeout(r, 200))
+    const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+    const file = new File([blob], `consulta-${consultationId}-${Date.now()}.webm`, { type: 'audio/webm' })
+    try {
+      const form = new FormData()
+      form.append('audio', file)
+      if (consultation?.patient?.id) form.append('patientId', consultation.patient.id)
+      if (doctorId) form.append('doctorId', doctorId)
+  const res = await fetch('/api/ai/transcribe/upload?enqueue=true', { method: 'POST', body: form })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Falha no upload/transcrição')
+      if (json.jobId) setJobId(json.jobId)
+      setRecState('done')
+      toast({ title: 'Áudio enviado', description: 'Processando transcrição e geração SOAP...' })
+      pollJob(json.jobId)
+    } catch (e: any) {
+      setRecState('error')
+      toast({ title: 'Upload STT', description: e?.message || 'Erro no envio', variant: 'destructive' })
+    }
+  }
+
+  const stopAndUploadDraft = async () => {
+    const mr = mediaRecorderRef.current
+    if (!mr) return
+    setRecState('processing')
+    mr.stop()
+    await new Promise(r => setTimeout(r, 200))
+    const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+    const file = new File([blob], `consulta-${consultationId}-${Date.now()}.webm`, { type: 'audio/webm' })
+    try {
+      const form = new FormData()
+      form.append('audio', file)
+      const res = await fetch('/api/ai/transcribe/upload?enqueue=true&mode=draft', { method: 'POST', body: form })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Falha no upload/transcrição (rascunho)')
+      if (json.jobId) setJobId(json.jobId)
+      setRecState('done')
+      toast({ title: 'Áudio enviado', description: 'Gerando SOAP (rascunho) para revisão...' })
+      pollJobDraft(json.jobId)
+    } catch (e: any) {
+      setRecState('error')
+      toast({ title: 'Upload STT (rascunho)', description: e?.message || 'Erro no envio', variant: 'destructive' })
+    }
+  }
+
+  const pollJobDraft = async (id: string) => {
+    if (!id) return
+    // Try SSE first; if it fails, fallback to polling
+    try {
+      if (!sseRef.current) {
+        const es = new EventSource(`/api/ai/jobs/${id}/events`)
+        sseRef.current = es
+        es.addEventListener('progress', (ev: any) => {
+          try { setJobProgress(JSON.parse(ev.data)) } catch {}
+        })
+        es.addEventListener('completed', (ev: any) => {
+          try {
+            const data = JSON.parse(ev.data)
+            if (data?.soap) {
+              setDraftSoap(data.soap)
+              toast({ title: 'Rascunho SOAP pronto', description: 'Revise e salve.' })
+            }
+          } catch {}
+          try { es.close() } catch {}
+          sseRef.current = null
+        })
+        es.addEventListener('failed', () => {
+          setJobFailed(id)
+          toast({ title: 'Job falhou', description: 'Você pode reprocessar.', variant: 'destructive' })
+          try { es.close() } catch {}
+          sseRef.current = null
+        })
+        es.onerror = () => {
+          try { es.close() } catch {}
+          sseRef.current = null
+        }
+        // give SSE a moment; if it closes immediately, we'll poll below
+        await new Promise(r => setTimeout(r, 200))
+        if (sseRef.current) return
+      }
+    } catch {}
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 1000))
+      try {
+        const res = await fetch(`/api/ai/jobs/${id}`)
+        const json = await res.json().catch(() => ({}))
+        if (json?.progress) setJobProgress(json.progress)
+        if (res.ok && (json.state === 'completed' || json.state === 'failed')) {
+          if (json.state === 'completed' && json.result?.soap) {
+            setDraftSoap(json.result.soap)
+            toast({ title: 'Rascunho SOAP pronto', description: 'Revise e salve.' })
+          } else if (json.state === 'failed') {
+            toast({ title: 'Job falhou', description: 'Tente novamente.', variant: 'destructive' })
+          }
+          break
+        }
+      } catch {}
+    }
+  }
+
+  const saveDraftSoap = async () => {
+    if (!draftSoap) return
+    if (!consultation?.patient?.id) {
+      toast({ title: 'Paciente ausente', description: 'Não foi possível determinar o paciente', variant: 'destructive' })
+      return
+    }
+    setSavingDraft(true)
+    try {
+      const res = await fetch('/api/ai/soap/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId: consultation.patient.id, doctorId, soap: draftSoap })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Falha ao salvar SOAP')
+      setDraftSoap(null)
+      setJobResult({ recordId: json.recordId })
+      toast({ title: 'Registro salvo', description: 'SOAP revisada e salva.' })
+    } catch (e: any) {
+      toast({ title: 'Salvar SOAP', description: e?.message || 'Erro ao salvar', variant: 'destructive' })
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  const pollJob = async (id: string) => {
+    if (!id) return
+    // Try SSE first; if it fails, fallback to polling
+    try {
+      if (!sseRef.current) {
+        const es = new EventSource(`/api/ai/jobs/${id}/events`)
+        sseRef.current = es
+        es.addEventListener('progress', (ev: any) => {
+          try { setJobProgress(JSON.parse(ev.data)) } catch {}
+        })
+        es.addEventListener('completed', (ev: any) => {
+          try {
+            const data = JSON.parse(ev.data)
+            if (data?.recordId) {
+              setJobResult({ recordId: data.recordId })
+              toast({ title: 'SOAP gerada', description: 'Registro médico criado.' })
+            }
+          } catch {}
+          try { es.close() } catch {}
+          sseRef.current = null
+        })
+        es.addEventListener('failed', () => {
+          setJobFailed(id)
+          toast({ title: 'Job falhou', description: 'Você pode reprocessar.', variant: 'destructive' })
+          try { es.close() } catch {}
+          sseRef.current = null
+        })
+        es.onerror = () => {
+          try { es.close() } catch {}
+          sseRef.current = null
+        }
+        await new Promise(r => setTimeout(r, 200))
+        if (sseRef.current) return
+      }
+    } catch {}
+    for (let i = 0; i < 60; i++) { // até ~60s
+      await new Promise(r => setTimeout(r, 1000))
+      try {
+        const res = await fetch(`/api/ai/jobs/${id}`)
+        const json = await res.json().catch(() => ({}))
+        if (json?.progress) setJobProgress(json.progress)
+        if (res.ok && (json.state === 'completed' || json.state === 'failed')) {
+          setJobResult(json.result || null)
+          if (json.state === 'completed' && json.result?.recordId) {
+            toast({ title: 'SOAP gerada', description: 'Registro médico criado.' })
+          } else if (json.state === 'failed') {
+            setJobFailed(id)
+            toast({ title: 'Job falhou', description: 'Você pode reprocessar.', variant: 'destructive' })
+          }
+          break
+        }
+      } catch {}
+    }
+  }
+
+  const retryJob = async () => {
+    if (!jobFailed) return
+    try {
+      const res = await fetch(`/api/ai/jobs/${jobFailed}/retry`, { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Falha ao reprocessar job')
+      setJobFailed(null)
+      setJobProgress(null)
+      setDraftSoap(null)
+      setJobResult(null)
+      setJobId(json.jobId)
+      // Reinscreve SSE para novo job
+      pollJob(json.jobId)
+    } catch (e: any) {
+      toast({ title: 'Reprocessar', description: e?.message || 'Erro ao reprocessar', variant: 'destructive' })
+    }
+  }
+
+  const applyAiSuggestions = () => {
+    if (!draftSoap?.plan) return
+
+    let addedPrescriptions = 0
+    let addedExams = 0
+
+    // Processar Medicações Sugeridas
+    if (Array.isArray(draftSoap.plan.medications)) {
+      const newPrescriptions = draftSoap.plan.medications.map((medStr: string) => {
+        // Tentativa simples de parse: "Nome Dosagem Frequência"
+        // Ex: "Amoxicilina 500mg 8/8h"
+        return {
+          id: Date.now().toString() + Math.random().toString().slice(2),
+          medication: medStr, // Por enquanto coloca tudo no nome para o médico editar
+          dosage: '',
+          frequency: '',
+          duration: '',
+          instructions: 'Sugerido via IA',
+          controlledMedication: false
+        }
+      })
+      setPrescriptions(prev => [...prev, ...newPrescriptions])
+      addedPrescriptions = newPrescriptions.length
+    }
+
+    // Processar Exames Sugeridos
+    if (Array.isArray(draftSoap.plan.tests)) {
+      const newExams = draftSoap.plan.tests.map((testStr: string) => {
+        return {
+          id: Date.now().toString() + Math.random().toString().slice(2),
+          examType: testStr,
+          description: 'Sugerido via IA',
+          priority: 'NORMAL' as const,
+          notes: ''
+        }
+      })
+      setExamRequests(prev => [...prev, ...newExams])
+      addedExams = newExams.length
+    }
+
+    // Atualizar notas com o texto da IA
+    setNotes(prev => ({
+      ...prev,
+      subjective: [
+        prev.subjective, 
+        draftSoap.subjective?.chiefComplaint, 
+        draftSoap.subjective?.historyOfPresentIllness
+      ].filter(Boolean).join('\n\n'),
+      assessment: [
+        prev.assessment,
+        draftSoap.assessment?.impression
+      ].filter(Boolean).join('\n\n'),
+      plan: [
+        prev.plan,
+        draftSoap.plan?.carePlan
+      ].filter(Boolean).join('\n\n')
+    }))
+
+    toast({
+      title: "Sugestões Aplicadas",
+      description: `Adicionados: ${addedPrescriptions} prescrições e ${addedExams} exames.`,
+    })
   }
 
   const addPrescription = () => {
@@ -391,6 +697,322 @@ export function SSFConsultationWorkspace({ consultationId }: { consultationId: s
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Coluna Esquerda - Anamnese e Sinais Vitais */}
         <div className="space-y-6">
+          {/* Captura de Áudio / IA SOAP */}
+          <Card className="ssf-section text-white border-[#40e0d0]">
+            <CardHeader>
+              <CardTitle className="flex items-center text-[#40e0d0]">
+                <Stethoscope className="h-5 w-5 mr-2" />
+                Capturar Anamnese por Áudio (Local)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3">
+                {recState !== 'recording' && (
+                  <Button variant="outline" onClick={startRecording} className="border-[#40e0d0] text-[#40e0d0]">
+                    Iniciar Gravação
+                  </Button>
+                )}
+                {recState === 'recording' && (
+                  <>
+                    <Button variant="destructive" onClick={stopAndUpload}>
+                      Parar e Salvar direto
+                    </Button>
+                    <Button variant="secondary" onClick={stopAndUploadDraft} className="ml-2">
+                      Parar e Revisar SOAP
+                    </Button>
+                  </>
+                )}
+                <span className="text-sm text-gray-300">
+                  {recState === 'idle' && 'Pronto para gravar'}
+                  {recState === 'recording' && 'Gravando...'}
+                  {recState === 'processing' && 'Enviando/Processando...'}
+                  {recState === 'done' && 'Enviado'}
+                  {recState === 'error' && 'Erro'}
+                </span>
+              </div>
+              {jobResult?.recordId && (
+                <div className="text-sm">
+                  Evolução criada. <a className="underline" href={`/medical-records/${jobResult.recordId}`} target="_blank">Abrir registro</a>
+                </div>
+              )}
+              {jobId && jobProgress && !draftSoap && !jobResult?.recordId && (
+                <div className="flex items-center gap-3 text-xs text-gray-300">
+                  <span>
+                    {jobProgress.step ? `Etapa: ${jobProgress.step}` : 'Processando...'}
+                    {typeof jobProgress.pct === 'number' ? ` • ${jobProgress.pct}%` : ''}
+                  </span>
+                  {jobProgress.step !== 'completed' && jobProgress.step !== 'cancelled' && (
+                    <Button variant="ghost" size="sm" onClick={async()=>{
+                      if (!jobId) return
+                      try {
+                        const res = await fetch(`/api/ai/jobs/${jobId}/cancel`, { method: 'POST' })
+                        const json = await res.json().catch(()=>({}))
+                        if (!res.ok) throw new Error(json.error || 'Falha ao cancelar')
+                        toast({ title: 'Job cancelado', description: 'Processamento interrompido.' })
+                        setJobProgress(null)
+                        setJobId(null)
+                      } catch(e:any){
+                        toast({ title: 'Cancelar', description: e?.message || 'Erro ao cancelar', variant: 'destructive' })
+                      }
+                    }} className="text-red-300">
+                      Cancelar
+                    </Button>
+                  )}
+                  {jobProgress.step === 'cancelled' && (
+                    <span className="text-amber-300">Processamento cancelado.</span>
+                  )}
+                </div>
+              )}
+              {jobFailed && (
+                <div className="flex items-center gap-2 text-sm text-red-400">
+                  Falha no processamento.
+                  <Button variant="outline" size="sm" onClick={retryJob} className="border-red-400 text-red-300">
+                    Reprocessar
+                  </Button>
+                </div>
+              )}
+              {draftSoap && (
+                <div className="space-y-2">
+                  <div className="text-sm text-[#40e0d0]">Rascunho SOAP</div>
+                  <Textarea value={JSON.stringify(draftSoap, null, 2)} onChange={e=>{
+                    try { setDraftSoap(JSON.parse(e.target.value)) } catch {}
+                  }} className="h-56 font-mono" />
+                  {/* Editor Estruturado (opcional) */}
+                  <div className="mt-2 border border-[#40e0d0]/40 rounded p-3 space-y-3">
+                    <div className="text-sm text-[#40e0d0]">Editor Estruturado</div>
+                    {/* Helpers */}
+                    {/* Atualiza campo aninhado no draftSoap */}
+                    {/* Note: funções inline para simplicidade */}
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Queixa Principal</label>
+                        <Input
+                          value={draftSoap?.subjective?.chiefComplaint || ''}
+                          onChange={(e)=>{
+                            const v = e.target.value
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.subjective = {...(next.subjective||{}), chiefComplaint: v}
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Resumo (Assessment)</label>
+                        <Input
+                          value={draftSoap?.assessment?.summary || ''}
+                          onChange={(e)=>{
+                            const v = e.target.value
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.assessment = {...(next.assessment||{}), summary: v}
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">Exame Físico</label>
+                      <Textarea
+                        value={draftSoap?.objective?.physicalExam || ''}
+                        onChange={(e)=>{
+                          const v = e.target.value
+                          setDraftSoap((prev:any)=>{
+                            const next = {...(prev||{})}
+                            next.objective = {...(next.objective||{}), physicalExam: v}
+                            return next
+                          })
+                        }}
+                        className="bg-black/30 text-white border-gray-600 h-24"
+                      />
+                    </div>
+                    {/* Diagnósticos estruturados */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs text-gray-300">Diagnósticos</label>
+                        <Button size="sm" variant="outline" className="border-[#40e0d0] text-[#40e0d0]" onClick={()=>{
+                          setDraftSoap((prev:any)=>{
+                            const next = {...(prev||{})}
+                            const cur = next.assessment?.diagnoses || []
+                            next.assessment = {
+                              ...(next.assessment||{}),
+                              diagnoses: [...cur, { label: '', certainty: 0.5, rationale: '' }]
+                            }
+                            return next
+                          })
+                        }}>Adicionar</Button>
+                      </div>
+                      <div className="space-y-3">
+                        {(draftSoap?.assessment?.diagnoses || []).map((d:any, idx:number)=> (
+                          <div key={idx} className="border border-gray-700 rounded p-3 space-y-2">
+                            <div className="grid md:grid-cols-3 gap-2">
+                              <div>
+                                <label className="block text-[11px] text-gray-400">Rótulo</label>
+                                <Input value={d?.label || ''} onChange={(e)=>{
+                                  const v = e.target.value
+                                  setDraftSoap((prev:any)=>{
+                                    const next = {...(prev||{})}
+                                    const list = [...(next.assessment?.diagnoses || [])]
+                                    list[idx] = { ...(list[idx]||{}), label: v }
+                                    next.assessment = { ...(next.assessment||{}), diagnoses: list }
+                                    return next
+                                  })
+                                }} className="bg-black/30 text-white border-gray-600" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] text-gray-400">Certeza (0-1)</label>
+                                <Input type="number" step="0.1" min={0} max={1} value={typeof d?.certainty==='number'? d.certainty: ''} onChange={(e)=>{
+                                  const v = Math.max(0, Math.min(1, parseFloat(e.target.value)))
+                                  setDraftSoap((prev:any)=>{
+                                    const next = {...(prev||{})}
+                                    const list = [...(next.assessment?.diagnoses || [])]
+                                    list[idx] = { ...(list[idx]||{}), certainty: isNaN(v) ? undefined : v }
+                                    next.assessment = { ...(next.assessment||{}), diagnoses: list }
+                                    return next
+                                  })
+                                }} className="bg-black/30 text-white border-gray-600" />
+                              </div>
+                              <div className="flex items-end justify-end">
+                                <Button size="sm" variant="ghost" className="text-red-300" onClick={()=>{
+                                  setDraftSoap((prev:any)=>{
+                                    const next = {...(prev||{})}
+                                    const list = [...(next.assessment?.diagnoses || [])]
+                                    list.splice(idx,1)
+                                    next.assessment = { ...(next.assessment||{}), diagnoses: list }
+                                    return next
+                                  })
+                                }}>Remover</Button>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] text-gray-400">Justificativa</label>
+                              <Textarea value={d?.rationale || ''} onChange={(e)=>{
+                                const v = e.target.value
+                                setDraftSoap((prev:any)=>{
+                                  const next = {...(prev||{})}
+                                  const list = [...(next.assessment?.diagnoses || [])]
+                                  list[idx] = { ...(list[idx]||{}), rationale: v }
+                                  next.assessment = { ...(next.assessment||{}), diagnoses: list }
+                                  return next
+                                })
+                              }} className="bg-black/30 text-white border-gray-600 h-16" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Alergias e Antecedentes */}
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Alergias (1 por linha)</label>
+                        <Textarea
+                          value={(draftSoap?.subjective?.allergies || []).join('\n')}
+                          onChange={(e)=>{
+                            const arr = e.target.value.split('\n').map(s=>s.trim()).filter(Boolean)
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.subjective = { ...(next.subjective||{}), allergies: arr }
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600 h-24"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Antecedentes (1 por linha)</label>
+                        <Textarea
+                          value={(draftSoap?.subjective?.pastMedicalHistory || []).join('\n')}
+                          onChange={(e)=>{
+                            const arr = e.target.value.split('\n').map(s=>s.trim()).filter(Boolean)
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.subjective = { ...(next.subjective||{}), pastMedicalHistory: arr }
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600 h-24"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Plano: Medicações (1 por linha)</label>
+                        <Textarea
+                          value={(draftSoap?.plan?.medications||[]).join('\n')}
+                          onChange={(e)=>{
+                            const arr = e.target.value.split('\n').map(s=>s.trim()).filter(Boolean)
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.plan = {...(next.plan||{}), medications: arr}
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600 h-24"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Plano: Exames (1 por linha)</label>
+                        <Textarea
+                          value={(draftSoap?.plan?.tests||[]).join('\n')}
+                          onChange={(e)=>{
+                            const arr = e.target.value.split('\n').map(s=>s.trim()).filter(Boolean)
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.plan = {...(next.plan||{}), tests: arr}
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600 h-24"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Plano: Condutas/Tratamentos (1 por linha)</label>
+                        <Textarea
+                          value={(draftSoap?.plan?.treatments||[]).join('\n')}
+                          onChange={(e)=>{
+                            const arr = e.target.value.split('\n').map(s=>s.trim()).filter(Boolean)
+                            setDraftSoap((prev:any)=>{
+                              const next = {...(prev||{})}
+                              next.plan = {...(next.plan||{}), treatments: arr}
+                              return next
+                            })
+                          }}
+                          className="bg-black/30 text-white border-gray-600 h-24"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">Plano: Follow-up</label>
+                      <Input
+                        value={draftSoap?.plan?.followUp || ''}
+                        onChange={(e)=>{
+                          const v = e.target.value
+                          setDraftSoap((prev:any)=>{
+                            const next = {...(prev||{})}
+                            next.plan = {...(next.plan||{}), followUp: v}
+                            return next
+                          })
+                        }}
+                        className="bg-black/30 text-white border-gray-600"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={saveDraftSoap} disabled={savingDraft}>Salvar como Registro</Button>
+                    <Button variant="secondary" onClick={applyAiSuggestions} className="bg-teal-600 hover:bg-teal-700 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Aplicar Sugestões
+                    </Button>
+                    <Button variant="outline" onClick={()=>setDraftSoap(null)}>Descartar</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           {/* Sinais Vitais */}
           <Card className="ssf-section text-white border-[#40e0d0]">
             <CardHeader>

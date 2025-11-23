@@ -1,5 +1,3 @@
-'use server'
-
 import { prisma } from './prisma'
 
 export interface PrescriptionFilters {
@@ -50,6 +48,7 @@ export class PrescriptionsServiceDb {
       updatedAt: db.updatedAt,
       patient: db.patient ? { id: db.patient.id, name: db.patient.name, email: db.patient.email, phone: db.patient.phone } : undefined,
       doctor: db.doctor ? { id: db.doctor.id, name: db.doctor.name, email: db.doctor.email, speciality: db.doctor.speciality } : undefined,
+      digitalSignature: db.digitalSignature || null,
     }
   }
 
@@ -128,6 +127,26 @@ export class PrescriptionsServiceDb {
     }
   }
 
+  static async getPrescriptionById(id: string) {
+    try {
+      const prescription = await prisma.prescription.findUnique({
+        where: { id },
+        include: {
+          patient: { select: { id: true, name: true, email: true, phone: true } },
+          doctor: { select: { id: true, name: true, email: true, speciality: true } },
+        },
+      })
+      if (!prescription) return null
+      return this.toApiShape(prescription)
+    } catch (err: any) {
+      console.error('Prisma error in PrescriptionsServiceDb.getPrescriptionById', {
+        message: err?.message,
+        code: err?.code,
+      })
+      throw err
+    }
+  }
+
   static async create(data: PrescriptionCreateData) {
     try {
       // Bypass-friendly: ensure doctor exists (or create a minimal stub) if ALLOW_TEST_BYPASS
@@ -179,6 +198,8 @@ export class PrescriptionsServiceDb {
       throw err
     }
   }
+
+
 
   static async update(id: string, payload: Partial<PrescriptionCreateData>) {
     try {

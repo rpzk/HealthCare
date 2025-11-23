@@ -47,6 +47,33 @@ class MedicalRecordsAuditService {
 
     // In Phase 3, this will be stored in database
     // For now, log to console and could be stored in memory
+    try {
+      // Persist to database using Prisma
+      // We use a dynamic import or assume prisma is available globally/imported
+      // Ideally import { prisma } from '@/lib/prisma' at the top
+      const { prisma } = await import('@/lib/prisma');
+      
+      await prisma.auditLog.create({
+        data: {
+          action: auditEntry.action,
+          resourceType: auditEntry.resourceType,
+          resourceId: auditEntry.resourceId,
+          userId: auditEntry.userId,
+          userRole: auditEntry.userRole,
+          success: auditEntry.success,
+          errorMessage: auditEntry.error,
+          changes: auditEntry.changes ? JSON.stringify(auditEntry.changes) : undefined,
+          metadata: auditEntry.metadata ? JSON.stringify(auditEntry.metadata) : undefined,
+          ipAddress: auditEntry.ipAddress,
+          userAgent: auditEntry.userAgent,
+          userEmail: 'unknown@system.com', // Should be passed in if available
+        }
+      });
+    } catch (dbError) {
+      console.error('Failed to persist audit log to database:', dbError);
+      // Fallback to console
+    }
+
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG_AUDIT) {
       console.log('[Medical Records Audit]', {
         action: audit.action,

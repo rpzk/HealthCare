@@ -53,21 +53,10 @@ IMPORTANTE: Esta análise é apenas para apoio médico e não substitui a avalia
 
       return {
         analysis,
-        suggestions: [
-          'Realizar anamnese detalhada',
-          'Exame físico completo',
-          'Considerar exames laboratoriais básicos'
-        ],
-        confidence: 0.75,
-        warnings: [
-          'Esta análise é apenas sugestiva',
-          'Consulte sempre um médico qualificado',
-          'Considere o contexto clínico completo'
-        ],
-        references: [
-          'Guidelines médicas atualizadas',
-          'Literatura médica baseada em evidências'
-        ]
+        suggestions: [],
+        confidence: 0,
+        warnings: [],
+        references: []
       }
     } catch (error) {
       console.error('Erro na análise de IA:', error)
@@ -107,21 +96,10 @@ Forneça uma análise detalhada baseada em farmacologia clínica.
 
       return {
         analysis,
-        suggestions: [
-          'Revisar posologia de cada medicação',
-          'Considerar alternativas terapêuticas se necessário',
-          'Estabelecer cronograma de monitoramento'
-        ],
-        confidence: 0.8,
-        warnings: [
-          'Sempre consulte um farmacêutico clínico',
-          'Considere características individuais do paciente',
-          'Monitore sinais de toxicidade'
-        ],
-        references: [
-          'Base de dados de interações medicamentosas',
-          'Literatura farmacológica atualizada'
-        ]
+        suggestions: [],
+        confidence: 0,
+        warnings: [],
+        references: []
       }
     } catch (error) {
       console.error('Erro na análise de interações:', error)

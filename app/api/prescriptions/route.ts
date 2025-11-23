@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { withAuth, validateRequestBody } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 import { validatePrescription } from '@/lib/validation-schemas'
-import { PrescriptionsService as PrescriptionsMock } from '@/lib/prescriptions-service-mock'
 
 // GET - Buscar prescrições médicas
 export const GET = withAuth(async (request, { user: _user }) => {
@@ -18,19 +17,7 @@ export const GET = withAuth(async (request, { user: _user }) => {
       status: status || undefined
     }
 
-    let result
-    try {
-      result = await PrescriptionsServiceDb.list(filters, page, limit)
-    } catch (innerErr: any) {
-      console.error('PrescriptionsServiceDb.list failed, falling back to mock', {
-        message: innerErr?.message,
-        code: innerErr?.code,
-        meta: innerErr?.meta
-      })
-      // Fallback: mock data to keep UI alive
-      result = await PrescriptionsMock.getPrescriptions(filters as any, page, limit)
-      ;(result as any).fallback = true
-    }
+    const result = await PrescriptionsServiceDb.list(filters, page, limit)
 
     return NextResponse.json(result)
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { incCounter } from '@/lib/metrics'
 import { createRedisRateLimiter } from '@/lib/redis-integration'
+import { prisma } from '@/lib/prisma'
 import pkg from '../../../package.json'
 
 // Garantir runtime Node.js para acesso ao Redis, e execução dinâmica
@@ -15,28 +16,37 @@ export async function GET() {
     ok: true
   }
 
-  // DB check - Mock para desenvolvimento
+  // DB check - real query
   try {
     if (!process.env.DATABASE_URL) {
       diagnostics.checks.db = { status: 'down', error: 'DATABASE_URL not set' }
       diagnostics.ok = false
     } else {
-      // Simular verificação de banco (mock)
-      diagnostics.checks.db = { status: 'up', mode: 'mock' }
+      // SELECT 1 ping (Prisma conecta lazy ao executar a query)
+      let prismaRef: any = prisma as any
+      if (!prismaRef) {
+        const mod = await import('@prisma/client')
+        prismaRef = new (mod as any).PrismaClient()
+      }
+      await prismaRef.$queryRaw`SELECT 1`
+      diagnostics.checks.db = { status: 'up' }
     }
   } catch (err: any) {
-    diagnostics.checks.db = { status: 'down', error: err.message }
+    diagnostics.checks.db = { status: 'down', error: err?.message || String(err) }
     diagnostics.ok = false
   }
 
   // Redis check
   try {
     const rl = createRedisRateLimiter()
-    // getStats provides a richer view; adapt if older helper existed
     const redisStatus = typeof rl.getStats === 'function' ? await rl.getStats() : { redisConnected: false }
     diagnostics.checks.redis = redisStatus
+    if (!redisStatus.redisConnected) {
+      // Não derruba o health total, mas marca como degradado
+      diagnostics.checks.redis.status = 'degraded'
+    }
   } catch (err: any) {
-    diagnostics.checks.redis = { status: 'degraded', activeUsers: 0, mode: 'auto' }
+    diagnostics.checks.redis = { status: 'degraded', activeUsers: 0, mode: 'fallback' }
   }
 
   // Metrics

@@ -44,9 +44,7 @@ export const POST = withAuth(async (request, { user }) => {
     title: data.title,
     message: data.message,
     userId: user.id,
-    patientId: data.patientId,
-    consultationId: data.consultationId,
-    metadata: data.metadata
+    metadata: { ...data.metadata, patientId: data.patientId, consultationId: data.consultationId }
   })
 
   auditLogger.logSuccess(

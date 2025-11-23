@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { ConsultationService } from '@/lib/consultation-service-mock'
+import { ConsultationService } from '@/lib/consultation-service'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { withConsultationAuth } from '@/lib/advanced-auth-v2'
 import { ConsultationType } from '@prisma/client'
