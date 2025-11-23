@@ -36,6 +36,10 @@ export interface NotificationCreateData {
 export class NotificationService {
   static async createNotification(data: NotificationCreateData) {
     try {
+      if (!prisma) {
+        console.error('[NotificationService] Prisma is undefined');
+        return null;
+      }
       const notification = await (prisma as any).notification.create({
         data: {
           userId: data.userId,
@@ -57,6 +61,10 @@ export class NotificationService {
   }
 
   static async getUserNotifications(userId: string, filters: { unreadOnly?: boolean, limit?: number, priority?: string, type?: string } | boolean = {}): Promise<Notification[]> {
+    if (!prisma) {
+      console.error('[NotificationService] Prisma is undefined');
+      return [];
+    }
     const options = typeof filters === 'boolean' ? { unreadOnly: filters } : filters
     const where: any = { userId }
     if (options.unreadOnly) where.read = false
