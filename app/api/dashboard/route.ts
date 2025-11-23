@@ -33,16 +33,24 @@ export const GET = withAuth(async (request, { user }) => {
     case 'all':
     default:
       actionDescription = 'Dashboard completo'
-      const [allStats, allAppointments, allPatients] = await Promise.all([
-        DashboardService.getStats(),
-        DashboardService.getUpcomingAppointments(),
-        DashboardService.getRecentPatients()
-      ])
+      try {
+        const [allStats, allAppointments, allPatients] = await Promise.all([
+          DashboardService.getStats(),
+          DashboardService.getUpcomingAppointments(),
+          DashboardService.getRecentPatients()
+        ])
 
-      data = {
-        stats: allStats,
-        appointments: allAppointments,
-        patients: allPatients
+        data = {
+          stats: allStats,
+          appointments: allAppointments,
+          patients: allPatients
+        }
+      } catch (error: any) {
+        console.error('[API] Dashboard error:', error);
+        return NextResponse.json(
+          { success: false, error: error.message || 'Internal Server Error', details: error.stack },
+          { status: 500 }
+        );
       }
       break
   }
