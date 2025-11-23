@@ -1475,4 +1475,4 @@ export function SSFConsultationWorkspace({ consultationId }: { consultationId: s
       </div>
     </div>
   )
-}}
+}

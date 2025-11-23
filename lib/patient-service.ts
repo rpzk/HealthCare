@@ -250,6 +250,36 @@ export class PatientService {
     try {
       const prisma = await getPrisma()
       // console.log('[patient-service] createPatient called')
+
+      // 1. Verificar se já existe uma Pessoa com este CPF
+      let personId: string | undefined
+
+      if (data.cpf) {
+        const existingPerson = await prisma.person.findUnique({
+          where: { cpf: data.cpf }
+        })
+        if (existingPerson) {
+          personId = existingPerson.id
+        }
+      }
+
+      // 2. Se não existir pessoa, criar uma nova
+      if (!personId) {
+        const newPerson = await prisma.person.create({
+          data: {
+            name: data.name,
+            cpf: data.cpf,
+            birthDate: data.birthDate,
+            gender: data.gender,
+            email: data.email,
+            phone: data.phone,
+            // Mapear outros campos se disponíveis no futuro
+          }
+        })
+        personId = newPerson.id
+      }
+
+      // 3. Criar o Paciente vinculado à Pessoa
       const patient = await prisma.patient.create({
         data: {
           name: data.name,
@@ -268,7 +298,8 @@ export class PatientService {
           insuranceNumber: data.insuranceNumber,
           userId: data.userId,
           latitude: data.latitude,
-          longitude: data.longitude
+          longitude: data.longitude,
+          personId: personId // Vínculo com a Pessoa
         },
         include: {
           User: {
@@ -276,7 +307,8 @@ export class PatientService {
               name: true,
               speciality: true
             }
-          }
+          },
+          person: true // Incluir dados da pessoa no retorno
         }
       })
 

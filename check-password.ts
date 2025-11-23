@@ -8,6 +8,10 @@ async function check() {
     return
   }
   console.log('Hash in DB:', user.password)
+  if (!user.password) {
+    console.log('Password is null')
+    return
+  }
   const match = await bcrypt.compare('admin123', user.password)
   console.log('Password match:', match)
 }
