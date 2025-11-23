@@ -1,8 +1,4 @@
-export * from './db-client'
-export { prisma as default } from './db-client'
 import { PrismaClient } from '@prisma/client'
-
-console.log('[lib/prisma] module evaluate check')
 
 type PrismaGlobal = typeof globalThis & {
   __prisma?: PrismaClient
@@ -31,21 +27,21 @@ export function getPrisma(): PrismaClient {
 
 async function internalConnect() {
   try {
-    console.log('[lib/prisma] Connecting to database...')
+    console.log('[lib/db-client] Connecting to database...')
     await getPrisma().$connect()
-    console.log('[lib/prisma] Connected successfully')
+    console.log('[lib/db-client] Connected successfully')
   } catch (e: any) {
-    console.error('[prisma] falha ao conectar:', e?.message)
+    console.error('[lib/db-client] falha ao conectar:', e?.message)
     throw e
   }
 }
 
 export async function ensurePrismaConnected() {
   if (!globalForPrisma.__prismaConnectPromise) {
-    console.log('[prisma] iniciando conexão (nova promise)')
+    console.log('[lib/db-client] iniciando conexão (nova promise)')
     globalForPrisma.__prismaConnectPromise = internalConnect()
   } else if (!(globalThis as any).__prismaReusingLogged) {
-    console.log('[prisma] reutilizando promise de conexão existente')
+    console.log('[lib/db-client] reutilizando promise de conexão existente')
     ;(globalThis as any).__prismaReusingLogged = true
   }
 
@@ -58,6 +54,3 @@ export async function ensurePrismaConnected() {
 
   return getPrisma()
 }
-
-// NÃO chamar automaticamente aqui - deixar as dependências chamarem quando necessário
-// ensurePrismaConnected().catch(()=>{})
