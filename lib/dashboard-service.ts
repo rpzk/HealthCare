@@ -69,16 +69,22 @@ export class DashboardService {
         },
       })
 
-      return upcoming.map((c) => ({
-        id: c.id,
-        consultationId: c.id,
-        patientId: c.patient?.id,
-        patient: c.patient?.name ?? 'Paciente',
-        time: new Date(c.scheduledDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        type: this.getConsultationTypeLabel(String(c.type)),
-        duration: c.duration ? `${c.duration} min` : '—',
-        date: new Date(c.scheduledDate).toISOString(),
-      }))
+      return upcoming.map((c) => {
+        // Safety check for patient relation
+        const patientName = c.patient ? c.patient.name : 'Paciente';
+        const patientId = c.patient ? c.patient.id : undefined;
+        
+        return {
+          id: c.id,
+          consultationId: c.id,
+          patientId: patientId,
+          patient: patientName,
+          time: new Date(c.scheduledDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          type: this.getConsultationTypeLabel(String(c.type)),
+          duration: c.duration ? `${c.duration} min` : '—',
+          date: new Date(c.scheduledDate).toISOString(),
+        };
+      })
     } catch (err) {
       console.error('[dashboard] erro em getUpcomingAppointments()', err)
       // Return empty array instead of throwing to prevent dashboard crash
@@ -97,8 +103,11 @@ export class DashboardService {
         },
       })
 
+      if (!patients) return [];
+
       return patients.map((p) => {
-        const lastConsultation = p.consultations?.[0]
+        if (!p) return null;
+        const lastConsultation = p.consultations && p.consultations.length > 0 ? p.consultations[0] : null;
         const lastVisitDate = lastConsultation?.updatedAt ?? p.updatedAt ?? p.createdAt
         return {
           id: p.id,
@@ -108,7 +117,7 @@ export class DashboardService {
           status: this.getPatientStatus(p as any, lastConsultation as any),
           priority: this.getPatientPriority(p as any),
         }
-      })
+      }).filter(Boolean); // Remove nulls
     } catch (err) {
       console.error('[dashboard] erro em getRecentPatients()', err)
       // Return empty array instead of throwing
