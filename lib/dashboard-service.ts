@@ -1,4 +1,4 @@
-import { ensurePrismaConnected, getPrisma } from '@/lib/prisma'
+import { ensurePrismaConnected, getPrisma } from './db-client'
 
 const prisma = getPrisma()
 
