@@ -136,7 +136,7 @@ class AuditLogger {
       import('@/lib/prisma').then(async (prismaModule) => {
         try {
           // Usar a instância exportada diretamente
-          const prisma = prismaModule.prisma
+          const prisma = prismaModule.prisma || prismaModule.default
           
           // Tentar conectar se necessário (opcional, o prisma gerencia isso)
           // await prismaModule.ensurePrismaConnected()

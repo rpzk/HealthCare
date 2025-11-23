@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -12,44 +9,41 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  password   String? // Campo de senha com hash bcrypt (opcional para compatibilidade)
-  name       String
-  role       Role     @default(DOCTOR)
-  speciality String?
-  crmNumber  String?  @unique
-  phone      String?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relacionamentos
-  patients       Patient[]
-  consultations  Consultation[]
-  prescriptions  Prescription[]
-  examRequests   ExamRequest[]
-  medicalRecords MedicalRecord[]
-  referrals      Referral[]
-  aiInteractions AIInteraction[]
-  // Ocupações / Capability
-  evaluationsAsSubject  CapabilityEvaluation[]
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  name                   String
+  role                   Role                   @default(DOCTOR)
+  speciality             String?
+  crmNumber              String?                @unique
+  phone                  String?
+  isActive               Boolean                @default(true)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  password               String?
+  aiInteractions         AIInteraction[]
   evaluationsAsEvaluator CapabilityEvaluation[] @relation("EvaluatorUser")
-  jobRoles UserJobRole[]
-  notifications Notification[]
-  doctorSchedules DoctorSchedule[]
-  scheduleExceptions ScheduleException[]
+  evaluationsAsSubject   CapabilityEvaluation[]
+  consultations          Consultation[]
+  doctorSchedules        DoctorSchedule[]
+  examRequests           ExamRequest[]
+  medicalRecords         MedicalRecord[]
+  notifications          Notification[]
+  patients               Patient[]
+  prescriptions          Prescription[]
+  referrals              Referral[]
+  scheduleExceptions     ScheduleException[]
+  jobRoles               UserJobRole[]
 
   @@map("users")
 }
 
 model SystemModule {
   id          String   @id @default(cuid())
-  key         String   @unique // ex: "psf", "integrative", "bi_analytics"
+  key         String   @unique
   name        String
   description String?
   isEnabled   Boolean  @default(false)
-  features    Json?    // Lista de features específicas ativas dentro do módulo
+  features    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -57,67 +51,59 @@ model SystemModule {
 }
 
 model Patient {
-  id                 String    @id @default(cuid())
-  name               String
-  email              String    @unique
-  phone              String?
-  cpf                String?   // armazenada criptografada
-  cpfHash            String?   @unique // hash para busca/indexação sem expor valor
-  birthDate          DateTime
-  gender             Gender
-  emergencyContact   String?
-  address            String?
-  medicalHistory     String?   @db.Text
-  allergies          String?   @db.Text
-  currentMedications String?   @db.Text
-  riskLevel          RiskLevel @default(BAIXO)
-  insuranceNumber    String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  // Relacionamentos
-  consultations  Consultation[]
-  prescriptions  Prescription[]
-  vitalSigns     VitalSigns[]
-  attachments    Attachment[]
-  documents      MedicalDocument[]
-  examResults    ExamResult[]
-  medicalRecords MedicalRecord[]
-  addresses      Address[]
-  diagnoses      Diagnosis[]
-  User           User?             @relation(fields: [userId], references: [id])
-  userId         String?
-  ExamRequest    ExamRequest[]
-  referrals      Referral[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  email                 String                 @unique
+  cpf                   String?
+  birthDate             DateTime
+  gender                Gender
+  phone                 String?
+  address               String?
+  emergencyContact      String?
+  allergies             String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  currentMedications    String?
+  insuranceNumber       String?
+  medicalHistory        String?
+  riskLevel             RiskLevel              @default(BAIXO)
+  userId                String?
+  cpfHash               String?                @unique
+  householdId           String?
+  isHeadOfHousehold     Boolean                @default(false)
+  addresses             Address[]
+  attachments           Attachment[]
+  consultations         Consultation[]
+  diagnoses             Diagnosis[]
+  ExamRequest           ExamRequest[]
+  examResults           ExamResult[]
   financialTransactions FinancialTransaction[]
-  
-  // PSF / Saúde da Família
-  household      Household? @relation(fields: [householdId], references: [id])
-  householdId    String?
-  isHeadOfHousehold Boolean @default(false)
+  documents             MedicalDocument[]
+  medicalRecords        MedicalRecord[]
+  household             Household?             @relation(fields: [householdId], references: [id])
+  User                  User?                  @relation(fields: [userId], references: [id])
+  prescriptions         Prescription[]
+  referrals             Referral[]
+  vitalSigns            VitalSigns[]
 
   @@map("patients")
 }
 
 model Household {
-  id          String   @id @default(cuid())
-  name        String   // ex: "Família Silva"
-  address     String
-  number      String?
-  complement  String?
+  id           String    @id @default(cuid())
+  name         String
+  address      String
+  number       String?
+  complement   String?
   neighborhood String?
-  city        String?
-  state       String?
-  zipCode     String?
-  
-  // PSF Info
-  microArea   String?
-  familyType  String?  // Nuclear, Estendida, Unipessoal
-  
-  members     Patient[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  city         String?
+  state        String?
+  zipCode      String?
+  microArea    String?
+  familyType   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  members      Patient[]
 
   @@map("households")
 }
@@ -128,222 +114,198 @@ model Referral {
   doctorId    String
   specialty   String
   description String
-  priority    String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
-  status      String   @default("PENDING") // PENDING, SCHEDULED, COMPLETED, CANCELLED
+  priority    String   @default("NORMAL")
+  status      String   @default("PENDING")
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relacionamentos
-  patient Patient @relation(fields: [patientId], references: [id])
-  doctor  User    @relation(fields: [doctorId], references: [id])
+  doctor      User     @relation(fields: [doctorId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
 
   @@map("referrals")
 }
 
 model MedicalRecord {
-  id             String     @id @default(cuid())
+  id             String       @id @default(cuid())
   title          String
   description    String
   diagnosis      String?
   treatment      String?
   notes          String?
   recordType     RecordType
-  severity       Severity   @default(LOW)
-  priority       String     @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
-  isPrivate      Boolean    @default(false)
-  sourceDocument String? // Para vincular a documentos importados
-  
-  // Phase 2: Security & Audit
-  version        Int        @default(1) // Optimistic locking for concurrent updates
-  deletedAt      DateTime?  // Soft-delete timestamp (LGPD: allows record restoration)
-  
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  severity       Severity     @default(LOW)
+  isPrivate      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  patientId      String
+  doctorId       String
+  sourceDocument String?
+  deletedAt      DateTime?
+  priority       String       @default("NORMAL")
+  version        Int          @default(1)
+  aiAnalysis     AIAnalysis[]
+  attachments    Attachment[]
+  doctor         User         @relation(fields: [doctorId], references: [id])
+  patient        Patient      @relation(fields: [patientId], references: [id])
 
-  // Relacionamentos
-  patient     Patient      @relation(fields: [patientId], references: [id])
-  patientId   String
-  doctor      User         @relation(fields: [doctorId], references: [id])
-  doctorId    String
-  attachments Attachment[]
-  aiAnalysis  AIAnalysis[]
-
-  // Indexes for performance and audit
   @@index([patientId])
   @@index([doctorId])
   @@index([recordType])
   @@index([createdAt])
-  @@index([deletedAt]) // For soft-delete queries
+  @@index([deletedAt])
   @@map("medical_records")
 }
 
 model Consultation {
-  id             String             @id @default(cuid())
-  scheduledDate  DateTime
-  actualDate     DateTime?
-  duration       Int? // em minutos
-  type           ConsultationType
-  status         ConsultationStatus @default(SCHEDULED)
-  chiefComplaint String?
-  history        String?
-  physicalExam   String?
-  assessment     String?
-  plan           String?
-  notes          String?
-  videoUrl       String?            // URL da gravação da teleconsulta
-  meetingLink    String?            // Link para a sala de teleconsulta
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-
-  // Relacionamentos
-  patient       Patient        @relation(fields: [patientId], references: [id])
-  patientId     String
-  doctor        User           @relation(fields: [doctorId], references: [id])
-  doctorId      String
-  prescriptions Prescription[]
-  examRequests  ExamRequest[]
-  vitalSigns    VitalSigns[]
-  diagnoses     Diagnosis[]
+  id                   String                @id @default(cuid())
+  scheduledDate        DateTime
+  actualDate           DateTime?
+  duration             Int?
+  type                 ConsultationType
+  status               ConsultationStatus    @default(SCHEDULED)
+  chiefComplaint       String?
+  history              String?
+  physicalExam         String?
+  assessment           String?
+  plan                 String?
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  patientId            String
+  doctorId             String
+  meetingLink          String?
+  videoUrl             String?
+  doctor               User                  @relation(fields: [doctorId], references: [id])
+  patient              Patient               @relation(fields: [patientId], references: [id])
+  diagnoses            Diagnosis[]
+  examRequests         ExamRequest[]
   financialTransaction FinancialTransaction?
+  prescriptions        Prescription[]
+  vitalSigns           VitalSigns[]
 
   @@map("consultations")
 }
 
 model Prescription {
-  id           String             @id @default(cuid())
-  medication   String
-  dosage       String
-  frequency    String
-  duration     String
-  instructions String?
-  status       PrescriptionStatus @default(ACTIVE)
-  startDate    DateTime           @default(now())
-  endDate      DateTime?
-  digitalSignature String?        // Assinatura digital (hash ou token)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-
-  // Relacionamentos
-  patient        Patient       @relation(fields: [patientId], references: [id])
-  patientId      String
-  doctor         User          @relation(fields: [doctorId], references: [id])
-  doctorId       String
-  consultation   Consultation? @relation(fields: [consultationId], references: [id])
-  consultationId String?
+  id               String             @id @default(cuid())
+  medication       String
+  dosage           String
+  frequency        String
+  duration         String
+  instructions     String?
+  status           PrescriptionStatus @default(ACTIVE)
+  startDate        DateTime           @default(now())
+  endDate          DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  patientId        String
+  doctorId         String
+  consultationId   String?
+  digitalSignature String?
+  consultation     Consultation?      @relation(fields: [consultationId], references: [id])
+  doctor           User               @relation(fields: [doctorId], references: [id])
+  patient          Patient            @relation(fields: [patientId], references: [id])
 
   @@map("prescriptions")
 }
 
 model ExamRequest {
-  id            String     @id @default(cuid())
-  examType      String
-  description   String?
-  urgency       Urgency    @default(ROUTINE)
-  status        ExamStatus @default(REQUESTED)
-  requestDate   DateTime   @default(now())
-  scheduledDate DateTime?
-  completedDate DateTime?
-  results       String?
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  // Relacionamentos
-  patient        Patient       @relation(fields: [patientId], references: [id])
+  id             String        @id @default(cuid())
+  examType       String
+  description    String?
+  urgency        Urgency       @default(ROUTINE)
+  status         ExamStatus    @default(REQUESTED)
+  requestDate    DateTime      @default(now())
+  scheduledDate  DateTime?
+  completedDate  DateTime?
+  results        String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   patientId      String
-  doctor         User          @relation(fields: [doctorId], references: [id])
   doctorId       String
-  consultation   Consultation? @relation(fields: [consultationId], references: [id])
   consultationId String?
   attachments    Attachment[]
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+  doctor         User          @relation(fields: [doctorId], references: [id])
+  patient        Patient       @relation(fields: [patientId], references: [id])
 
   @@map("exam_requests")
 }
 
 model VitalSigns {
-  id               String   @id @default(cuid())
-  systolicBP       Int? // Pressão arterial sistólica
-  diastolicBP      Int? // Pressão arterial diastólica
-  heartRate        Int? // Frequência cardíaca
-  respiratoryRate  Int? // Frequência respiratória
-  temperature      Float? // Temperatura corporal
-  weight           Float? // Peso em kg
-  height           Float? // Altura em cm
-  bmi              Float? // IMC calculado
-  oxygenSaturation Int? // Saturação de oxigênio
-  bloodGlucose     Int? // Glicemia
+  id               String        @id @default(cuid())
+  systolicBP       Int?
+  diastolicBP      Int?
+  heartRate        Int?
+  respiratoryRate  Int?
+  temperature      Float?
+  weight           Float?
+  height           Float?
+  bmi              Float?
+  oxygenSaturation Int?
+  bloodGlucose     Int?
   notes            String?
-  recordedAt       DateTime @default(now())
-  createdAt        DateTime @default(now())
-
-  // Relacionamentos
-  patient        Patient       @relation(fields: [patientId], references: [id])
-  patientId      String
-  consultation   Consultation? @relation(fields: [consultationId], references: [id])
-  consultationId String?
+  recordedAt       DateTime      @default(now())
+  createdAt        DateTime      @default(now())
+  patientId        String
+  consultationId   String?
+  consultation     Consultation? @relation(fields: [consultationId], references: [id])
+  patient          Patient       @relation(fields: [patientId], references: [id])
 
   @@map("vital_signs")
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
-  fileName     String
-  originalName String
-  fileSize     Int
-  mimeType     String
-  filePath     String
-  description  String?
-  createdAt    DateTime @default(now())
-
-  // Relacionamentos
-  medicalRecord   MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
+  id              String         @id @default(cuid())
+  fileName        String
+  originalName    String
+  fileSize        Int
+  mimeType        String
+  filePath        String
+  description     String?
+  createdAt       DateTime       @default(now())
   medicalRecordId String?
-  examRequest     ExamRequest?   @relation(fields: [examRequestId], references: [id])
   examRequestId   String?
-  Patient         Patient?       @relation(fields: [patientId], references: [id])
   patientId       String?
+  examRequest     ExamRequest?   @relation(fields: [examRequestId], references: [id])
+  medicalRecord   MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
+  Patient         Patient?       @relation(fields: [patientId], references: [id])
 
   @@map("attachments")
 }
 
-// 📄 Modelos para Importação Inteligente de Documentos Médicos
-
 model MedicalDocument {
   id            String                @id @default(cuid())
   fileName      String
-  content       String                @db.Text
+  content       String
   fileType      DocumentFileType
   status        DocumentProcessStatus @default(PENDING)
   uploadDate    DateTime              @default(now())
   errorMessage  String?
-  importResults String?               @db.Text
+  importResults String?
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
-
-  // Relacionamentos
-  patient   Patient?          @relation(fields: [patientId], references: [id])
-  patientId String?
-  analysis  DocumentAnalysis?
+  patientId     String?
+  analysis      DocumentAnalysis?
+  patient       Patient?              @relation(fields: [patientId], references: [id])
 
   @@map("medical_documents")
 }
 
 model DocumentAnalysis {
-  id               String       @id @default(cuid())
+  id               String          @id @default(cuid())
   confidence       Float
   documentType     DocumentType
-  patientInfo      String       @db.Text // JSON
-  extractedData    String       @db.Text // JSON
-  suggestedActions String       @db.Text // JSON
-  analysisDate     DateTime     @default(now())
-  reviewed         Boolean      @default(false)
+  patientInfo      String
+  extractedData    String
+  suggestedActions String
+  analysisDate     DateTime        @default(now())
+  reviewed         Boolean         @default(false)
   reviewedBy       String?
   reviewedAt       DateTime?
-
-  // Relacionamentos
-  document   MedicalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId String          @unique
+  documentId       String          @unique
+  document         MedicalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@map("document_analysis")
 }
@@ -351,20 +313,17 @@ model DocumentAnalysis {
 model ExamResult {
   id             String   @id @default(cuid())
   examType       String
-  results        String   @db.Text // JSON para múltiplos resultados
+  results        String
   examDate       DateTime
   sourceDocument String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-
-  // Relacionamentos
-  patient   Patient @relation(fields: [patientId], references: [id])
-  patientId String
+  patientId      String
+  patient        Patient  @relation(fields: [patientId], references: [id])
 
   @@map("exam_results")
 }
 
-// Endereços estruturados com georreferenciamento
 model Address {
   id           String     @id @default(cuid())
   street       String
@@ -379,13 +338,11 @@ model Address {
   isPrimary    Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-
-  // Relacionamentos
-  patient     Patient?   @relation(fields: [patientId], references: [id])
-  patientId   String?
-  microArea   MicroArea? @relation(fields: [microAreaId], references: [id])
-  microAreaId String?
-  Place       Place[]
+  patientId    String?
+  microAreaId  String?
+  microArea    MicroArea? @relation(fields: [microAreaId], references: [id])
+  patient      Patient?   @relation(fields: [patientId], references: [id])
+  Place        Place[]
 
   @@index([patientId])
   @@index([microAreaId])
@@ -393,7 +350,6 @@ model Address {
   @@map("addresses")
 }
 
-// Locais de interesse (unidades, eventos, etc.) com georreferenciamento
 model Place {
   id          String     @id @default(cuid())
   name        String
@@ -403,71 +359,63 @@ model Place {
   longitude   Float?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-
-  // Relacionamentos
-  address   Address?   @relation(fields: [addressId], references: [id])
-  addressId String?
-  microArea MicroArea? @relation(fields: [microAreaId], references: [id])
+  addressId   String?
   microAreaId String?
+  address     Address?   @relation(fields: [addressId], references: [id])
+  microArea   MicroArea? @relation(fields: [microAreaId], references: [id])
 
-  @@map("places")
   @@index([microAreaId])
   @@index([latitude, longitude])
+  @@map("places")
 }
 
-// Microáreas/áreas adstritas para planejamento epidemiológico
 model MicroArea {
-  id           String   @id @default(cuid())
-  name         String
-  code         String?  @unique
-  description  String?
-  polygonGeo   String?  @db.Text // GeoJSON da área (opcional)
-  centroidLat  Float?
-  centroidLng  Float?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  // Bounding box derivado para pré-filtro espacial
-  minLat       Float?
-  minLng       Float?
-  maxLat       Float?
-  maxLng       Float?
+  id          String              @id @default(cuid())
+  name        String
+  code        String?             @unique
+  description String?
+  polygonGeo  String?
+  centroidLat Float?
+  centroidLng Float?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  maxLat      Float?
+  maxLng      Float?
+  minLat      Float?
+  minLng      Float?
+  addresses   Address[]
+  revisions   MicroAreaRevision[]
+  places      Place[]
 
-  // Relacionamentos
-  addresses Address[]
-  places    Place[]
-  revisions MicroAreaRevision[]
   @@index([centroidLat, centroidLng])
   @@index([minLat, maxLat])
   @@index([minLng, maxLng])
-
   @@map("micro_areas")
 }
 
 model MicroAreaRevision {
   id            String    @id @default(cuid())
-  microArea     MicroArea @relation(fields: [microAreaId], references: [id])
   microAreaId   String
-  previousGeo   String?   @db.Text
-  newGeo        String?   @db.Text
+  previousGeo   String?
+  newGeo        String?
   changedByUser String?
   reason        String?
   createdAt     DateTime  @default(now())
+  microArea     MicroArea @relation(fields: [microAreaId], references: [id])
 
   @@index([microAreaId, createdAt])
   @@map("micro_area_revisions")
 }
 
-// ---------------------- SISTEMA DE CODIFICAÇÃO CLÍNICA ----------------------
-
 model CodeSystem {
-  id          String          @id @default(cuid())
+  id          String         @id @default(cuid())
   kind        CodeSystemKind
   name        String
   version     String?
   description String?
-  active      Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   codes       MedicalCode[]
 
   @@unique([kind, version])
@@ -475,22 +423,22 @@ model CodeSystem {
 }
 
 model MedicalCode {
-  id             String        @id @default(cuid())
-  system         CodeSystem    @relation(fields: [systemId], references: [id])
+  id             String                   @id @default(cuid())
   systemId       String
   code           String
   display        String
-  description    String?       @db.Text
+  description    String?
   parentId       String?
-  parent         MedicalCode?  @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
-  children       MedicalCode[] @relation("MedicalCodeHierarchy")
-  synonyms       String?       @db.Text // JSON string array para sinônimos
-  searchableText String?       @db.Text
-  active         Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  primaryIn      Diagnosis[]   @relation("PrimaryCode")
+  synonyms       String?
+  searchableText String?
+  active         Boolean                  @default(true)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  primaryIn      Diagnosis[]              @relation("PrimaryCode")
   secondaryIn    DiagnosisSecondaryCode[]
+  parent         MedicalCode?             @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
+  children       MedicalCode[]            @relation("MedicalCodeHierarchy")
+  system         CodeSystem               @relation(fields: [systemId], references: [id])
 
   @@unique([systemId, code])
   @@index([code])
@@ -499,22 +447,22 @@ model MedicalCode {
 }
 
 model Diagnosis {
-  id              String                  @id @default(cuid())
-  patient         Patient                 @relation(fields: [patientId], references: [id])
-  patientId       String
-  consultation    Consultation?           @relation(fields: [consultationId], references: [id])
-  consultationId  String?
-  primaryCode     MedicalCode             @relation("PrimaryCode", fields: [primaryCodeId], references: [id])
-  primaryCodeId   String
-  secondaryCodes  DiagnosisSecondaryCode[]
-  status          DiagnosisStatus         @default(ACTIVE)
-  certainty       DiagnosisCertainty      @default(CONFIRMED)
-  notes           String?                 @db.Text
-  onsetDate       DateTime?
-  resolvedDate    DateTime?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  revisions       DiagnosisRevision[]
+  id             String                   @id @default(cuid())
+  patientId      String
+  consultationId String?
+  primaryCodeId  String
+  status         DiagnosisStatus          @default(ACTIVE)
+  certainty      DiagnosisCertainty       @default(CONFIRMED)
+  notes          String?
+  onsetDate      DateTime?
+  resolvedDate   DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  consultation   Consultation?            @relation(fields: [consultationId], references: [id])
+  patient        Patient                  @relation(fields: [patientId], references: [id])
+  primaryCode    MedicalCode              @relation("PrimaryCode", fields: [primaryCodeId], references: [id])
+  revisions      DiagnosisRevision[]
+  secondaryCodes DiagnosisSecondaryCode[]
 
   @@index([patientId])
   @@index([consultationId])
@@ -522,32 +470,295 @@ model Diagnosis {
 }
 
 model DiagnosisSecondaryCode {
-  id           String      @id @default(cuid())
-  diagnosis    Diagnosis   @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
-  diagnosisId  String
-  code         MedicalCode @relation(fields: [codeId], references: [id])
-  codeId       String
-  order        Int         @default(0)
-  createdAt    DateTime    @default(now())
+  id          String      @id @default(cuid())
+  diagnosisId String
+  codeId      String
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  code        MedicalCode @relation(fields: [codeId], references: [id])
+  diagnosis   Diagnosis   @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
 
   @@unique([diagnosisId, codeId])
   @@index([codeId])
   @@map("diagnosis_secondary_codes")
 }
 
-// Histórico de revisões de diagnósticos (auditoria de mudanças)
 model DiagnosisRevision {
-  id             String     @id @default(cuid())
-  diagnosis      Diagnosis  @relation(fields: [diagnosisId], references: [id])
-  diagnosisId    String
-  previous       Json?
-  next           Json?
-  changedAt      DateTime   @default(now())
+  id              String    @id @default(cuid())
+  diagnosisId     String
+  previous        Json?
+  next            Json?
+  changedAt       DateTime  @default(now())
   changedByUserId String?
-  reason         String?
+  reason          String?
+  diagnosis       Diagnosis @relation(fields: [diagnosisId], references: [id])
 
   @@index([diagnosisId, changedAt])
   @@map("diagnosis_revisions")
+}
+
+model AIInteraction {
+  id         String        @id @default(cuid())
+  type       AIRequestType
+  prompt     String
+  response   String
+  confidence Float?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+
+  @@map("ai_interactions")
+}
+
+model AIAnalysis {
+  id              String        @id @default(cuid())
+  analysisType    String
+  input           String
+  result          String
+  confidence      Float
+  suggestions     String[]
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  @@map("ai_analysis")
+}
+
+model AIQuotaUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  date      DateTime
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, type, date])
+  @@index([type, date])
+  @@map("ai_quota_usage")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String
+  userEmail    String
+  userRole     String
+  action       String
+  resourceId   String
+  ipAddress    String?
+  userAgent    String?
+  success      Boolean  @default(true)
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  changes      Json?
+  metadata     Json?
+  resourceType String   @default("MEDICAL_RECORD")
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([resourceId, createdAt])
+  @@index([resourceType, createdAt])
+  @@index([success, createdAt])
+  @@map("audit_logs")
+}
+
+model RateLimitLog {
+  id        String    @id @default(cuid())
+  userId    String
+  operation String
+  timestamp DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@index([userId, operation, timestamp])
+  @@index([expiresAt])
+  @@map("rate_limit_logs")
+}
+
+model ExternalSourceUpdate {
+  id            String             @id @default(cuid())
+  sourceType    ExternalSourceType
+  versionTag    String?
+  status        String
+  startedAt     DateTime           @default(now())
+  finishedAt    DateTime?
+  fetchedCount  Int                @default(0)
+  insertedCount Int                @default(0)
+  updatedCount  Int                @default(0)
+  skippedCount  Int                @default(0)
+  checksum      String?
+  errorMessage  String?
+  meta          String?
+  retiredCount  Int                @default(0)
+
+  @@index([sourceType, startedAt])
+  @@map("external_source_updates")
+}
+
+model CBOGroup {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  level       Int
+  parentId    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  parent      CBOGroup?    @relation("CBOGroupHierarchy", fields: [parentId], references: [id])
+  children    CBOGroup[]   @relation("CBOGroupHierarchy")
+  occupations Occupation[]
+
+  @@index([level])
+  @@map("cbo_groups")
+}
+
+model Occupation {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  title       String
+  description String?
+  groupId     String?
+  synonyms    String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  roles       JobRole[]
+  group       CBOGroup? @relation(fields: [groupId], references: [id])
+
+  @@index([groupId])
+  @@map("occupations")
+}
+
+model JobRole {
+  id                 String                 @id @default(cuid())
+  title              String
+  occupationId       String?
+  requiredMinStratum StratumLevel
+  requiredMaxStratum StratumLevel?
+  description        String?
+  tasks              String?
+  capabilitiesJson   String?
+  active             Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  evaluations        CapabilityEvaluation[]
+  occupation         Occupation?            @relation(fields: [occupationId], references: [id])
+  userAssignments    UserJobRole[]
+
+  @@index([occupationId])
+  @@map("job_roles")
+}
+
+model UserJobRole {
+  id         String   @id @default(cuid())
+  userId     String
+  jobRoleId  String
+  assignedAt DateTime @default(now())
+  active     Boolean  @default(true)
+  jobRole    JobRole  @relation(fields: [jobRoleId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, jobRoleId])
+  @@index([jobRoleId])
+  @@map("user_job_roles")
+}
+
+model CapabilityEvaluation {
+  id               String        @id @default(cuid())
+  subjectUserId    String
+  evaluatorUserId  String
+  jobRoleId        String?
+  stratumAssessed  StratumLevel
+  potentialStratum StratumLevel?
+  timeSpanMonths   Int?
+  evidence         String?
+  gaps             String?
+  recommendations  String?
+  createdAt        DateTime      @default(now())
+  capabilityScores String?
+  evaluatorUser    User          @relation("EvaluatorUser", fields: [evaluatorUserId], references: [id])
+  jobRole          JobRole?      @relation(fields: [jobRoleId], references: [id])
+  subjectUser      User          @relation(fields: [subjectUserId], references: [id])
+
+  @@index([subjectUserId, createdAt])
+  @@index([evaluatorUserId, createdAt])
+  @@index([jobRoleId])
+  @@map("capability_evaluations")
+}
+
+model FinancialTransaction {
+  id             String            @id @default(cuid())
+  type           TransactionType
+  amount         Decimal           @db.Decimal(10, 2)
+  description    String
+  category       String
+  status         TransactionStatus @default(PENDING)
+  dueDate        DateTime
+  paidDate       DateTime?
+  paymentMethod  String?
+  patientId      String?
+  consultationId String?           @unique
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  consultation   Consultation?     @relation(fields: [consultationId], references: [id])
+  patient        Patient?          @relation(fields: [patientId], references: [id])
+
+  @@map("financial_transactions")
+}
+
+model DoctorSchedule {
+  id           String   @id @default(cuid())
+  doctorId     String
+  dayOfWeek    Int
+  startTime    String
+  endTime      String
+  slotDuration Int      @default(30)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  doctor       User     @relation(fields: [doctorId], references: [id])
+
+  @@unique([doctorId, dayOfWeek])
+  @@map("doctor_schedules")
+}
+
+model ScheduleException {
+  id          String   @id @default(cuid())
+  doctorId    String
+  date        DateTime
+  isAvailable Boolean  @default(false)
+  reason      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  doctor      User     @relation(fields: [doctorId], references: [id])
+
+  @@map("schedule_exceptions")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  priority  String    @default("low")
+  title     String
+  message   String
+  read      Boolean   @default(false)
+  metadata  Json?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model CIAP2 {
+  code        String  @id
+  description String
+  chapter     String
+  gender      String?
+  active      Boolean @default(true)
+
+  @@map("ciap2")
 }
 
 enum DocumentFileType {
@@ -577,106 +788,6 @@ enum DocumentType {
   OUTROS
 }
 
-model AIInteraction {
-  id         String        @id @default(cuid())
-  type       AIRequestType
-  prompt     String
-  response   String
-  confidence Float?
-  metadata   Json?
-  createdAt  DateTime      @default(now())
-
-  // Relacionamentos
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
-
-  @@map("ai_interactions")
-}
-
-model AIAnalysis {
-  id           String   @id @default(cuid())
-  analysisType String
-  input        String
-  result       String
-  confidence   Float
-  suggestions  String[]
-  metadata     Json?
-  createdAt    DateTime @default(now())
-
-  // Relacionamentos
-  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
-  medicalRecordId String
-
-  @@map("ai_analysis")
-}
-
-// Uso agregado diário de quotas de IA para evitar COUNT caro em tempo real
-model AIQuotaUsage {
-  id        String   @id @default(cuid())
-  userId    String
-  type      String
-  date      DateTime
-  count     Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, type, date])
-  @@index([type, date])
-  @@map("ai_quota_usage")
-}
-
-// Logs de auditoria persistentes
-model AuditLog {
-  id            String   @id @default(cuid())
-  
-  // Core tracking
-  action        String   // CREATE, READ, UPDATE, DELETE, ERROR
-  resourceType  String   @default("MEDICAL_RECORD")
-  resourceId    String
-  
-  // User attribution
-  userId        String
-  userEmail     String
-  userRole      String
-  
-  // Operation details
-  success       Boolean   @default(true)
-  errorMessage  String?   @db.Text
-  
-  // Change tracking (Phase 2: before/after snapshots)
-  changes       Json?    // Array of { field, before, after } objects
-  metadata      Json?    // { ipAddress, userAgent, reason, ... }
-  
-  // Request context
-  ipAddress     String?
-  userAgent     String?
-  
-  createdAt     DateTime  @default(now())
-
-  @@index([userId, createdAt])
-  @@index([action, createdAt])
-  @@index([resourceId, createdAt])
-  @@index([resourceType, createdAt])
-  @@index([success, createdAt]) // For error tracking
-  @@map("audit_logs")
-}
-
-// Phase 2: Rate Limiting tracking for distributed systems (Phase 3 Redis migration)
-model RateLimitLog {
-  id        String   @id @default(cuid())
-  userId    String
-  operation String   // CREATE, READ, UPDATE, DELETE
-  timestamp DateTime @default(now())
-  
-  // Expires after 1 day for daily limits, 1 hour for hourly, 1 minute for per-minute
-  expiresAt DateTime? // Used for automatic cleanup
-  
-  @@index([userId, operation, timestamp])
-  @@index([expiresAt]) // For cleanup queries
-  @@map("rate_limit_logs")
-}
-
-// Enums
 enum Role {
   ADMIN
   DOCTOR
@@ -772,7 +883,6 @@ enum AIRequestType {
   RISK_ASSESSMENT
 }
 
-// Enum para distinguir sistemas de codificação suportados
 enum CodeSystemKind {
   CID10
   CID11
@@ -794,7 +904,6 @@ enum DiagnosisCertainty {
   RULED_OUT
 }
 
-// Log de atualizações externas (CID/ICD/CIAP/CBO)
 enum ExternalSourceType {
   ICD10
   ICD11
@@ -802,28 +911,6 @@ enum ExternalSourceType {
   NURSING
   CBO
 }
-
-model ExternalSourceUpdate {
-  id            String            @id @default(cuid())
-  sourceType    ExternalSourceType
-  versionTag    String?
-  status        String            // RUNNING | SUCCESS | ERROR
-  startedAt     DateTime          @default(now())
-  finishedAt    DateTime?
-  fetchedCount  Int               @default(0)
-  insertedCount Int               @default(0)
-  updatedCount  Int               @default(0)
-  skippedCount  Int               @default(0)
-  retiredCount  Int               @default(0)
-  checksum      String?           // hash do arquivo bruto
-  errorMessage  String?           @db.Text
-  meta          String?           @db.Text // JSON extra
-
-  @@index([sourceType, startedAt])
-  @@map("external_source_updates")
-}
-
-// --------- Elliott Jaques / CBO Occupation & Capability System ---------
 
 enum StratumLevel {
   S1
@@ -836,126 +923,6 @@ enum StratumLevel {
   S8
 }
 
-// Grupos hierárquicos do CBO (grande grupo, subgrupo, família etc.)
-model CBOGroup {
-  id        String     @id @default(cuid())
-  code      String     @unique
-  name      String
-  level     Int        // 1=Grande Grupo, 2=Subgrupo Principal, 3=Subgrupo, 4=Família
-  parentId  String?
-  parent    CBOGroup?  @relation("CBOGroupHierarchy", fields: [parentId], references: [id])
-  children  CBOGroup[] @relation("CBOGroupHierarchy")
-  occupations Occupation[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  @@index([level])
-  @@map("cbo_groups")
-}
-
-model Occupation {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  title       String
-  description String?   @db.Text
-  groupId     String?
-  group       CBOGroup? @relation(fields: [groupId], references: [id])
-  synonyms    String?   @db.Text // JSON array
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  roles       JobRole[]
-
-  @@index([groupId])
-  @@map("occupations")
-}
-
-// Papel / Cargo específico associado a uma ocupação (pode refinar requisitos)
-model JobRole {
-  id                 String      @id @default(cuid())
-  title              String
-  occupationId       String?
-  occupation         Occupation? @relation(fields: [occupationId], references: [id])
-  requiredMinStratum StratumLevel
-  requiredMaxStratum StratumLevel?
-  description        String?     @db.Text
-  tasks              String?     @db.Text // lista ou markdown
-  capabilitiesJson   String?     @db.Text // JSON com pesos por dimensão
-  active             Boolean     @default(true)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  evaluations        CapabilityEvaluation[]
-  userAssignments    UserJobRole[]
-
-  @@index([occupationId])
-  @@map("job_roles")
-}
-
-// Atribuição de usuário a um papel/cargo
-model UserJobRole {
-  id        String   @id @default(cuid())
-  userId    String
-  jobRoleId String
-  assignedAt DateTime @default(now())
-  active    Boolean  @default(true)
-
-  user    User    @relation(fields: [userId], references: [id])
-  jobRole JobRole @relation(fields: [jobRoleId], references: [id])
-
-  @@unique([userId, jobRoleId])
-  @@index([jobRoleId])
-  @@map("user_job_roles")
-}
-
-// Avaliação de capacidade segundo Estratos de Elliott Jaques
-model CapabilityEvaluation {
-  id              String       @id @default(cuid())
-  subjectUserId   String
-  subjectUser     User         @relation(fields: [subjectUserId], references: [id])
-  evaluatorUserId String
-  evaluatorUser   User         @relation("EvaluatorUser", fields: [evaluatorUserId], references: [id])
-  jobRoleId       String?
-  jobRole         JobRole?     @relation(fields: [jobRoleId], references: [id])
-  stratumAssessed StratumLevel
-  potentialStratum StratumLevel?
-  timeSpanMonths  Int?         // Estimativa de alcance temporal de decisão
-  evidence        String?      @db.Text // Observações qualitativas
-  gaps            String?      @db.Text // JSON com lacunas por dimensão
-  recommendations String?      @db.Text // Ações sugeridas
-  capabilityScores String?     @db.Text // JSON com pontuação calculada por dimensão
-  createdAt       DateTime     @default(now())
-
-  @@index([subjectUserId, createdAt])
-  @@index([evaluatorUserId, createdAt])
-  @@index([jobRoleId])
-  @@map("capability_evaluations")
-}
-
-// --- FINANCEIRO ---
-
-model FinancialTransaction {
-  id          String   @id @default(cuid())
-  type        TransactionType // INCOME, EXPENSE
-  amount      Decimal  @db.Decimal(10, 2)
-  description String
-  category    String   // Ex: "Consulta", "Aluguel", "Equipamento"
-  status      TransactionStatus @default(PENDING)
-  dueDate     DateTime
-  paidDate    DateTime?
-  paymentMethod String? // PIX, CREDIT_CARD, CASH, BOLETO
-
-  // Relacionamentos
-  patient     Patient? @relation(fields: [patientId], references: [id])
-  patientId   String?
-  consultation Consultation? @relation(fields: [consultationId], references: [id])
-  consultationId String? @unique
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("financial_transactions")
-}
-
 enum TransactionType {
   INCOME
   EXPENSE
@@ -966,66 +933,4 @@ enum TransactionStatus {
   PAID
   CANCELLED
   OVERDUE
-}
-
-// --- AGENDA AVANÇADA ---
-
-model DoctorSchedule {
-  id        String   @id @default(cuid())
-  doctor    User     @relation(fields: [doctorId], references: [id])
-  doctorId  String
-  dayOfWeek Int      // 0=Sunday, 1=Monday, ...
-  startTime String   // "08:00"
-  endTime   String   // "18:00"
-  slotDuration Int   @default(30) // minutos
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([doctorId, dayOfWeek])
-  @@map("doctor_schedules")
-}
-
-model ScheduleException {
-  id        String   @id @default(cuid())
-  doctor    User     @relation(fields: [doctorId], references: [id])
-  doctorId  String
-  date      DateTime
-  isAvailable Boolean @default(false) // Se false, é bloqueio. Se true, é exceção de disponibilidade extra.
-  reason    String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("schedule_exceptions")
-}
-
-// --- NOTIFICAÇÕES (Persistência) ---
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  type      String   // 'appointment_reminder', 'system', etc.
-  priority  String   @default("low") // low, medium, high, critical
-  title     String
-  message   String
-  read      Boolean  @default(false)
-  metadata  Json?
-  expiresAt DateTime?
-  
-  createdAt DateTime @default(now())
-
-  @@index([userId, read])
-  @@map("notifications")
-}
-
-model CIAP2 {
-  code        String   @id
-  description String
-  chapter     String   // A, B, D...
-  gender      String?  // M, F, A (Ambos)
-  active      Boolean  @default(true)
-
-  @@map("ciap2")
 }

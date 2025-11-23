@@ -201,17 +201,12 @@ export function Sidebar() {
     return pathname === href || (href !== '/' && pathname.startsWith(href))
   }
 
-  const inactiveItemClasses = isDark
-    ? 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+  const inactiveItemClasses = 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
 
   return (
     <div
       className={cn(
-        'fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] border-r overflow-y-auto transition-colors duration-300 shadow-sm supports-[backdrop-filter]:backdrop-blur-lg',
-        isDark
-          ? 'bg-slate-950/90 border-slate-800/70 text-slate-100'
-          : 'bg-white/90 border-slate-200 text-slate-700'
+        'fixed left-0 top-32 w-64 h-[calc(100vh-8rem)] border-r overflow-y-auto transition-colors duration-300 shadow-sm supports-[backdrop-filter]:backdrop-blur-xl bg-background/60 border-border/40 text-foreground'
       )}
     >
       <nav className="p-4 space-y-2">
@@ -235,8 +230,6 @@ export function Sidebar() {
                       'h-5 w-5',
                       isActive(item.href)
                         ? 'text-primary-foreground'
-                        : isDark
-                        ? 'text-slate-400 group-hover:text-slate-100'
                         : 'text-muted-foreground group-hover:text-foreground'
                     )}
                   />
@@ -265,8 +258,6 @@ export function Sidebar() {
                       'h-5 w-5 mr-3',
                       isActive(item.href)
                         ? 'text-primary-foreground'
-                        : isDark
-                        ? 'text-slate-400 group-hover:text-slate-100'
                         : 'text-muted-foreground group-hover:text-foreground'
                     )}
                   />
@@ -288,8 +279,7 @@ export function Sidebar() {
             {item.submenu && expandedItems.includes(item.title) && (
               <div
                 className={cn(
-                  'ml-4 mt-2 space-y-1 border-l-2 pl-2',
-                  isDark ? 'border-slate-800' : 'border-border'
+                  'ml-4 mt-2 space-y-1 border-l-2 pl-2 border-border'
                 )}
                 id={`submenu-${item.title}`}
                 role="region"
@@ -303,9 +293,7 @@ export function Sidebar() {
                       'w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors',
                       isActive(subItem.href)
                         ? 'bg-accent/90 text-accent-foreground font-medium'
-                        : isDark
-                        ? 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
                     aria-current={isActive(subItem.href) ? 'page' : undefined}
                   >

@@ -13,7 +13,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
-      <div className="flex pt-16">
+      <div className="flex pt-32"> {/* Increased padding-top to account for Header + QuickNav */}
         <Sidebar />
         <main className="flex-1 ml-64 p-6">
           <div className="mb-8">

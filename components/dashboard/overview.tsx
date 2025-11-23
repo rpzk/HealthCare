@@ -164,7 +164,7 @@ export function DashboardOverview() {
       {/* Estatísticas principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="card-hover border-none shadow-md overflow-hidden relative group">
+          <Card key={stat.title} className="card-hover shadow-md overflow-hidden relative group">
             <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`} />
             <CardContent className="p-6 relative z-10">
               <div className="flex items-start justify-between">
@@ -178,8 +178,8 @@ export function DashboardOverview() {
                   <div className="flex items-center mt-2">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       stat.changeType === 'positive' 
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' 
+                        : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
                     }`}>
                       {stat.change}
                     </span>
@@ -199,10 +199,10 @@ export function DashboardOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Próximas consultas */}
-        <Card className="border-none shadow-md">
+        <Card className="shadow-md">
           <CardHeader className="border-b border-border/50 pb-4">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
                 <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <span>Próximas Consultas</span>
@@ -228,7 +228,7 @@ export function DashboardOverview() {
                     }}
                   >
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold">
                         {appointment.patient.charAt(0)}
                       </div>
                       <div>
@@ -265,10 +265,10 @@ export function DashboardOverview() {
         </Card>
 
         {/* Pacientes recentes */}
-        <Card className="border-none shadow-md">
+        <Card className="shadow-md">
           <CardHeader className="border-b border-border/50 pb-4">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
                 <UserCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <span>Pacientes Recentes</span>
@@ -300,8 +300,8 @@ export function DashboardOverview() {
                   <div className="flex items-center space-x-2">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                       patient.priority === 'high' 
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
-                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' 
+                        : 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
                     }`}>
                       {patient.status}
                     </span>

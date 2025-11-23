@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { X, Save, UserPlus } from 'lucide-react'
+import { X, Save, UserPlus, MapPin, Check } from 'lucide-react'
 
 interface PatientFormProps {
   patient?: any
@@ -36,13 +36,81 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [coordinates, setCoordinates] = useState<{lat: string, lon: string} | null>(null)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const formatCPF = (value: string) => {
+    const numbers = value.replace(/\D/g, '')
+    return numbers
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1')
+  }
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '')
+    
+    if (numbers.length > 10) {
+      return numbers
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/^(\(\d{2}\) \d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1')
+    } else {
+      return numbers
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/^(\(\d{2}\) \d{4})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1')
+    }
+  }
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    
+    let formattedValue = value
+
+    // Máscara de CPF
+    if (name === 'cpf') {
+      formattedValue = formatCPF(value)
+    }
+
+    // Máscara de Telefone
+    if (name === 'phone') {
+      formattedValue = formatPhone(value)
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: formattedValue
     }))
+
+    // Busca de CEP
+    if (name === 'zipCode') {
+      const cep = value.replace(/\D/g, '')
+      if (cep.length === 8) {
+        setLoading(true)
+        try {
+          const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+          const data = await response.json()
+          
+          if (!data.erro) {
+            setFormData(prev => ({
+              ...prev,
+              address: data.logradouro,
+              city: data.localidade,
+              state: data.uf,
+              // Mantém o CEP formatado se desejar
+            }))
+            
+            // Tentar buscar coordenadas
+            fetchCoordinates(`${data.logradouro}, ${data.localidade}, ${data.uf}`)
+          }
+        } catch (error) {
+          console.error('Erro ao buscar CEP:', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
     
     // Limpar erro quando o usuário começar a digitar
     if (errors[name]) {
@@ -50,6 +118,21 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
         ...prev,
         [name]: ''
       }))
+    }
+  }
+
+  const fetchCoordinates = async (address: string) => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+      const data = await response.json()
+      if (data && data.length > 0) {
+        setCoordinates({ lat: data[0].lat, lon: data[0].lon })
+      } else {
+        setCoordinates(null)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar coordenadas:', error)
+      setCoordinates(null)
     }
   }
 
@@ -96,8 +179,16 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
 
     setLoading(true)
     try {
+      // Concatenar endereço completo
+      const fullAddress = [
+        formData.address,
+        formData.city ? `${formData.city}/${formData.state}` : '',
+        formData.zipCode ? `CEP: ${formData.zipCode}` : ''
+      ].filter(Boolean).join(' - ')
+
       const submitData = {
         ...formData,
+        address: fullAddress || formData.address, // Usa o concatenado ou o original
         birthDate: new Date(formData.birthDate),
         allergies: formData.allergies.split(',').map((a: string) => a.trim()).filter((a: string) => a),
         chronicDiseases: formData.chronicDiseases.split(',').map((d: string) => d.trim()).filter((d: string) => d),
@@ -274,7 +365,15 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
 
             {/* Endereço */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Endereço</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium">Endereço</h3>
+                {coordinates && (
+                  <div className="flex items-center text-green-600 text-sm bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    <span>Geolocalização encontrada</span>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
