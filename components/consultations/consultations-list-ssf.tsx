@@ -81,8 +81,8 @@ export function ConsultationsList() {
         ...(typeFilter !== 'all' && { type: typeFilter })
       })
 
-      const urlPatientId = searchParams.get('patientId')
-      const urlDate = searchParams.get('date')
+  const urlPatientId = searchParams?.get('patientId') || undefined
+  const urlDate = searchParams?.get('date') || undefined
       if (urlPatientId) params.set('patientId', urlPatientId)
       if (urlDate) {
         const d = new Date(urlDate)

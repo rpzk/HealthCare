@@ -26,6 +26,24 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  stt:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: healthcare-stt
+    environment:
+      # Configure model and performance; change as needed
+      ASR_MODEL: ${STT_MODEL:-medium}
+      ASR_ENGINE: faster_whisper
+      ASR_BEAM_SIZE: 1
+      ASR_COMPUTE_TYPE: ${STT_COMPUTE_TYPE:-int8}
+      ASR_LANGUAGE: ${STT_LANGUAGE:-pt}
+    networks:
+      - healthcare-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
       
   ollama:
     image: ollama/ollama:latest
@@ -59,8 +77,13 @@ services:
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
       REDIS_HOST: redis
+      STT_URL: ${STT_URL:-http://stt:9000/asr}
+      STT_PROVIDER: ${STT_PROVIDER:-faster-whisper}
+      STT_LANGUAGE: ${STT_LANGUAGE:-pt}
+      # ICE servers for WebRTC (format: url,username,credential;url2,username2,credential2)
+      NEXT_PUBLIC_ICE: ${NEXT_PUBLIC_ICE:-turn:turn:3478,teleuser,telepass;stun:stun.l.google.com:19302,,}
       NODE_ENV: production
-      ALLOW_TEST_BYPASS: "true"
+      SEED_AUTH: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,20 +91,53 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+      stt:
+        condition: service_started
     networks:
       - healthcare-network
     ports:
       - "3000:3000"
+    volumes:
+      - uploads_data:/app/uploads
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 15
 
+  turn:
+    image: coturn/coturn:latest
+    container_name: healthcare-turn
+    command: >-
+      --log-file=stdout
+      --realm=healthcare.local
+      --no-auth
+      --lt-cred-mech
+      --user=teleuser:telepass
+      --fingerprint
+      --no-tls
+      --listening-port=3478
+    networks:
+      - healthcare-network
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+    healthcheck:
+      test: ["CMD-SHELL", "turnadmin -l | grep -q 'Total : ' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   ollama_data:
+  uploads_data:
 
 networks:
   healthcare-network:
     driver: bridge
+
+  
+  
+  
+  

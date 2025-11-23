@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
-import { ReferralsService } from '../../../lib/referrals-service-mock'
+import { ReferralsService } from '@/lib/referrals-service'
 
 // GET - Buscar encaminhamentos
 export const GET = withAuth(async (request, { user: _user }) => {

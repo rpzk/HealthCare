@@ -64,6 +64,13 @@ export function DashboardOverview() {
       setLoading(true)
       const response = await fetch('/api/dashboard?section=all')
       
+      if (response.status === 401) {
+        // Não autenticado: redireciona para login com retorno ao dashboard
+        const callback = typeof window !== 'undefined' ? window.location.href : '/'
+        router.push(`/auth/signin?callbackUrl=${encodeURIComponent(callback)}`)
+        return
+      }
+
       if (!response.ok) {
         throw new Error('Falha ao carregar dados do dashboard')
       }

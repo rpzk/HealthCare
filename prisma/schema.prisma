@@ -30,11 +30,15 @@ model User {
   prescriptions  Prescription[]
   examRequests   ExamRequest[]
   medicalRecords MedicalRecord[]
+  referrals      Referral[]
   aiInteractions AIInteraction[]
   // Ocupações / Capability
   evaluationsAsSubject  CapabilityEvaluation[]
   evaluationsAsEvaluator CapabilityEvaluation[] @relation("EvaluatorUser")
   jobRoles UserJobRole[]
+  notifications Notification[]
+  doctorSchedules DoctorSchedule[]
+  scheduleExceptions ScheduleException[]
 
   @@map("users")
 }
@@ -71,8 +75,29 @@ model Patient {
   User           User?             @relation(fields: [userId], references: [id])
   userId         String?
   ExamRequest    ExamRequest[]
+  referrals      Referral[]
+  financialTransactions FinancialTransaction[]
 
   @@map("patients")
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  patientId   String
+  doctorId    String
+  specialty   String
+  description String
+  priority    String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  status      String   @default("PENDING") // PENDING, SCHEDULED, COMPLETED, CANCELLED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  User    @relation(fields: [doctorId], references: [id])
+
+  @@map("referrals")
 }
 
 model MedicalRecord {
@@ -125,6 +150,8 @@ model Consultation {
   assessment     String?
   plan           String?
   notes          String?
+  videoUrl       String?            // URL da gravação da teleconsulta
+  meetingLink    String?            // Link para a sala de teleconsulta
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -137,6 +164,7 @@ model Consultation {
   examRequests  ExamRequest[]
   vitalSigns    VitalSigns[]
   diagnoses     Diagnosis[]
+  financialTransaction FinancialTransaction?
 
   @@map("consultations")
 }
@@ -151,6 +179,7 @@ model Prescription {
   status       PrescriptionStatus @default(ACTIVE)
   startDate    DateTime           @default(now())
   endDate      DateTime?
+  digitalSignature String?        // Assinatura digital (hash ou token)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
@@ -859,4 +888,93 @@ model CapabilityEvaluation {
   @@index([evaluatorUserId, createdAt])
   @@index([jobRoleId])
   @@map("capability_evaluations")
+}
+
+// --- FINANCEIRO ---
+
+model FinancialTransaction {
+  id          String   @id @default(cuid())
+  type        TransactionType // INCOME, EXPENSE
+  amount      Decimal  @db.Decimal(10, 2)
+  description String
+  category    String   // Ex: "Consulta", "Aluguel", "Equipamento"
+  status      TransactionStatus @default(PENDING)
+  dueDate     DateTime
+  paidDate    DateTime?
+  paymentMethod String? // PIX, CREDIT_CARD, CASH, BOLETO
+
+  // Relacionamentos
+  patient     Patient? @relation(fields: [patientId], references: [id])
+  patientId   String?
+  consultation Consultation? @relation(fields: [consultationId], references: [id])
+  consultationId String? @unique
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("financial_transactions")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  CANCELLED
+  OVERDUE
+}
+
+// --- AGENDA AVANÇADA ---
+
+model DoctorSchedule {
+  id        String   @id @default(cuid())
+  doctor    User     @relation(fields: [doctorId], references: [id])
+  doctorId  String
+  dayOfWeek Int      // 0=Sunday, 1=Monday, ...
+  startTime String   // "08:00"
+  endTime   String   // "18:00"
+  slotDuration Int   @default(30) // minutos
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([doctorId, dayOfWeek])
+  @@map("doctor_schedules")
+}
+
+model ScheduleException {
+  id        String   @id @default(cuid())
+  doctor    User     @relation(fields: [doctorId], references: [id])
+  doctorId  String
+  date      DateTime
+  isAvailable Boolean @default(false) // Se false, é bloqueio. Se true, é exceção de disponibilidade extra.
+  reason    String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("schedule_exceptions")
+}
+
+// --- NOTIFICAÇÕES (Persistência) ---
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // 'appointment_reminder', 'system', etc.
+  priority  String   @default("low") // low, medium, high, critical
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  metadata  Json?
+  expiresAt DateTime?
+  
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
 }

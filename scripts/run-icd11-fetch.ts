@@ -10,8 +10,10 @@ async function main() {
     console.log('Fetched items:', Array.isArray(items) ? items.length : 'unknown')
     if (Array.isArray(items) && items.length > 0) {
       console.log('Sample (first 10):')
-      for (const it of items.slice(0, 10)) {
-        console.log('-', (it.code || it.notation || it.id) , '-', (it.title || it.display || it.prefLabel))
+      for (const it of (items as any[]).slice(0, 10)) {
+        const code = (it && (it.code || it.notation || it.id)) ?? 'N/A'
+        const title = (it && (it.title || it.display || it.prefLabel)) ?? 'N/A'
+        console.log('-', code, '-', title)
       }
     }
   } catch (err: any) {

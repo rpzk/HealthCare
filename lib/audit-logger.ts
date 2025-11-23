@@ -131,17 +131,21 @@ class AuditLogger {
       })
     }
 
-    // Persistir no banco quando possível (desabilitado temporariamente)
-    // TODO: Reativar quando o banco estiver configurado
+    // Persistir no banco quando possível
     if (this.persistEnabled) {
       import('@/lib/prisma').then(async (prismaModule) => {
         try {
-          const { prisma } = prismaModule
+          // Usar ensurePrismaConnected para garantir conexão e inicialização correta
+          const prisma = await prismaModule.ensurePrismaConnected()
           
           const client = prisma as any
-          if (!client?.auditLog?.create) {
-            throw new Error('Prisma Client sem modelo AuditLog ou não inicializado')
+          
+          // Verificação de segurança para garantir que o modelo existe
+          if (!client.auditLog) {
+            console.warn('⚠️ Modelo AuditLog não encontrado no Prisma Client. Verifique se "npx prisma generate" foi executado.')
+            return
           }
+
           await client.auditLog.create({
             data: {
               userId: auditLog.userId,

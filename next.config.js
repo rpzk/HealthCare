@@ -12,6 +12,9 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  experimental: {
+    instrumentationHook: true,
+  },
 }
 
 module.exports = nextConfig

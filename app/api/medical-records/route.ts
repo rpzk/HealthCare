@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
-import { MedicalRecordsService } from '@/lib/medical-records-service-mock'
+import { MedicalRecordsService } from '@/lib/medical-records-service'
 import { medicalRecordsAuditService } from '@/lib/medical-records-audit-service'
 import { fieldMaskingService } from '@/lib/medical-records-masking-service'
 import { rateLimitingService } from '@/lib/medical-records-rate-limiting-service'

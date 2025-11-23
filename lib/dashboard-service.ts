@@ -2,10 +2,10 @@ import * as prismaLib from '@/lib/prisma'
 const prisma = prismaLib.prisma
 
 export class DashboardService {
-  // Buscar estatísticas principais do dashboard (com fallback seguro)
+  // Buscar estatísticas principais do dashboard
   static async getStats() {
     try {
-  await prismaLib.ensurePrismaConnected()
+      await prismaLib.ensurePrismaConnected()
 
       const now = new Date()
       const startOfDay = new Date(now)
@@ -42,25 +42,17 @@ export class DashboardService {
         completionRate,
       }
     } catch (err) {
-      console.warn('[dashboard] fallback para dados mock em getStats()', err)
-      return this.getMockStats()
+      console.error('[dashboard] erro em getStats()', err)
+      throw err
     }
   }
 
-  // Dados mock para quando o banco não estiver disponível
-  private static getMockStats() {
-    return {
-      totalPatients: 156,
-      consultationsToday: 8,
-      updatedRecords: 23,
-      completionRate: 87,
-    }
-  }
+
 
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
     try {
-  await prismaLib.ensurePrismaConnected()
+      await prismaLib.ensurePrismaConnected()
 
       const now = new Date()
       const upcoming = await prisma.consultation.findMany({
@@ -90,15 +82,15 @@ export class DashboardService {
         date: new Date(c.scheduledDate).toISOString(),
       }))
     } catch (err) {
-      console.warn('[dashboard] fallback para dados mock em getUpcomingAppointments()', err)
-      return this.getMockAppointments(limit)
+      console.error('[dashboard] erro em getUpcomingAppointments()', err)
+      throw err
     }
   }
 
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
     try {
-  await prismaLib.ensurePrismaConnected()
+      await prismaLib.ensurePrismaConnected()
 
       const patients = await prisma.patient.findMany({
         orderBy: { updatedAt: 'desc' },
@@ -121,8 +113,8 @@ export class DashboardService {
         }
       })
     } catch (err) {
-      console.warn('[dashboard] fallback para dados mock em getRecentPatients()', err)
-      return this.getMockPatients(limit)
+      console.error('[dashboard] erro em getRecentPatients()', err)
+      throw err
     }
   }
 
@@ -177,63 +169,5 @@ export class DashboardService {
     return highRiskLevels.includes(level) ? 'high' : 'normal'
   }
 
-  // Métodos mock para quando o banco não estiver disponível
-  private static getMockAppointments(limit: number) {
-    const mockAppointments = [
-      {
-        id: '1',
-        patient: 'Maria Silva',
-        time: '09:00',
-        type: 'Consulta inicial',
-        duration: '30 min'
-      },
-      {
-        id: '2',
-        patient: 'João Santos',
-        time: '10:30',
-        type: 'Retorno',
-        duration: '20 min'
-      },
-      {
-        id: '3',
-        patient: 'Ana Costa',
-        time: '14:00',
-        type: 'Emergência',
-        duration: '45 min'
-      }
-    ]
-    
-    return mockAppointments.slice(0, limit)
-  }
 
-  private static getMockPatients(limit: number) {
-    const mockPatients = [
-      {
-        id: '1',
-        name: 'Maria Silva',
-        age: 45,
-        lastVisit: '15/09/2025',
-        status: 'Última consulta concluída',
-        priority: 'normal' as const
-      },
-      {
-        id: '2',
-        name: 'João Santos',
-        age: 32,
-        lastVisit: '14/09/2025',
-        status: 'Consulta agendada',
-        priority: 'high' as const
-      },
-      {
-        id: '3',
-        name: 'Ana Costa',
-        age: 28,
-        lastVisit: '13/09/2025',
-        status: 'Em acompanhamento',
-        priority: 'normal' as const
-      }
-    ]
-    
-    return mockPatients.slice(0, limit)
-  }
 }

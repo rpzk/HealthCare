@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
-import { ConsultationService } from '@/lib/consultation-service-mock'
+import { ConsultationService } from '@/lib/consultation-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 

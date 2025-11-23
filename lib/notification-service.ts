@@ -1,5 +1,18 @@
 import { prisma } from '@/lib/prisma'
 
+export interface Notification {
+  id: string
+  userId: string
+  type: string
+  priority: string
+  title: string
+  message: string
+  read: boolean
+  metadata: any
+  expiresAt: Date | null
+  createdAt: Date
+}
+
 export type NotificationType = 
   | 'ai_analysis_complete'
   | 'critical_alert'
@@ -10,37 +23,32 @@ export type NotificationType =
 
 export type NotificationPriority = 'low' | 'medium' | 'high' | 'critical'
 
-export interface Notification {
-  id?: string
+export interface NotificationCreateData {
   type: NotificationType
   priority: NotificationPriority
   title: string
   message: string
   userId: string
-  patientId?: string
-  consultationId?: string
   metadata?: Record<string, any>
-  read: boolean
-  createdAt: Date
   expiresAt?: Date
 }
 
 export class NotificationService {
-  // Criar nova notificação
-  static async createNotification(data: Omit<Notification, 'id' | 'read' | 'createdAt'>) {
+  static async createNotification(data: NotificationCreateData) {
     try {
-      // Em produção, salvaria no banco de dados
-      const notification: Notification = {
-        id: this.generateId(),
-        read: false,
-        createdAt: new Date(),
-        ...data
-      }
+      const notification = await (prisma as any).notification.create({
+        data: {
+          userId: data.userId,
+          type: data.type,
+          priority: data.priority,
+          title: data.title,
+          message: data.message,
+          metadata: data.metadata || {},
+          expiresAt: data.expiresAt
+        }
+      })
 
-      // Log para desenvolvimento
-      console.log('📢 Nova notificação:', notification)
-
-      // Em produção: salvar no banco e enviar via WebSocket/SSE
+      // TODO: Integrate with WebSocket/SSE for real-time delivery
       return notification
     } catch (error) {
       console.error('Erro ao criar notificação:', error)
@@ -48,124 +56,38 @@ export class NotificationService {
     }
   }
 
-  // Buscar notificações do usuário
-  static async getUserNotifications(
-    userId: string, 
-    options: {
-      unreadOnly?: boolean
-      limit?: number
-      priority?: NotificationPriority
-      type?: NotificationType
-    } = {}
-  ): Promise<Notification[]> {
-    try {
-      // Mock data para desenvolvimento
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'ai_analysis_complete',
-          priority: 'medium',
-          title: 'Análise de IA Concluída',
-          message: 'Análise de sintomas do paciente João Silva foi concluída com recomendações',
-          userId,
-          patientId: 'patient-1',
-          metadata: { analysisId: 'analysis-123', accuracy: 94.5 },
-          read: false,
-          createdAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutos atrás
-        },
-        {
-          id: '2',
-          type: 'critical_alert',
-          priority: 'critical',
-          title: 'Alerta Crítico',
-          message: 'Possível interação medicamentosa severa detectada para Maria Santos',
-          userId,
-          patientId: 'patient-2',
-          metadata: { drugs: ['Warfarin', 'Aspirina'], severity: 'severe' },
-          read: false,
-          createdAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutos atrás
-        },
-        {
-          id: '3',
-          type: 'system_status',
-          priority: 'low',
-          title: 'Sistema Atualizado',
-          message: 'Nova versão do sistema de IA médica foi implantada com melhorias',
-          userId,
-          metadata: { version: '2.1.0' },
-          read: true,
-          createdAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hora atrás
-        },
-        {
-          id: '4',
-          type: 'appointment_reminder',
-          priority: 'medium',
-          title: 'Consulta em 30 minutos',
-          message: 'Consulta com Dr. Carlos Oliveira às 14:30',
-          userId,
-          consultationId: 'consultation-1',
-          read: false,
-          createdAt: new Date(Date.now() - 2 * 60 * 1000), // 2 minutos atrás
-        }
-      ]
+  static async getUserNotifications(userId: string, filters: { unreadOnly?: boolean, limit?: number, priority?: string, type?: string } | boolean = {}): Promise<Notification[]> {
+    const options = typeof filters === 'boolean' ? { unreadOnly: filters } : filters
+    const where: any = { userId }
+    if (options.unreadOnly) where.read = false
+    if (options.priority) where.priority = options.priority
+    if (options.type) where.type = options.type
 
-      let filtered = mockNotifications
-
-      if (options.unreadOnly) {
-        filtered = filtered.filter(n => !n.read)
-      }
-
-      if (options.priority) {
-        filtered = filtered.filter(n => n.priority === options.priority)
-      }
-
-      if (options.type) {
-        filtered = filtered.filter(n => n.type === options.type)
-      }
-
-      if (options.limit) {
-        filtered = filtered.slice(0, options.limit)
-      }
-
-      return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    } catch (error) {
-      console.error('Erro ao buscar notificações:', error)
-      return []
-    }
+    return (prisma as any).notification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: options.limit || 50
+    })
   }
 
-  // Marcar notificação como lida
-  static async markAsRead(notificationId: string, userId: string) {
-    try {
-      // Em produção, atualizaria no banco
-      console.log(`Notificação ${notificationId} marcada como lida para usuário ${userId}`)
-      return true
-    } catch (error) {
-      console.error('Erro ao marcar notificação como lida:', error)
-      return false
-    }
+  static async deleteNotification(id: string) {
+    return (prisma as any).notification.delete({
+      where: { id }
+    })
   }
 
-  // Marcar todas as notificações como lidas
+  static async markAsRead(id: string) {
+    return (prisma as any).notification.update({
+      where: { id },
+      data: { read: true }
+    })
+  }
+
   static async markAllAsRead(userId: string) {
-    try {
-      console.log(`Todas as notificações do usuário ${userId} marcadas como lidas`)
-      return true
-    } catch (error) {
-      console.error('Erro ao marcar todas as notificações como lidas:', error)
-      return false
-    }
-  }
-
-  // Excluir notificação
-  static async deleteNotification(notificationId: string, userId: string) {
-    try {
-      console.log(`Notificação ${notificationId} excluída para usuário ${userId}`)
-      return true
-    } catch (error) {
-      console.error('Erro ao excluir notificação:', error)
-      return false
-    }
+    return (prisma as any).notification.updateMany({
+      where: { userId, read: false },
+      data: { read: true }
+    })
   }
 
   // Notificações automáticas para IA
@@ -207,18 +129,75 @@ export class NotificationService {
     drugs: string[],
     severity: string
   ) {
-    const priority: NotificationPriority = 
-      severity === 'severe' ? 'critical' : 
-      severity === 'moderate' ? 'high' : 'medium'
-
     await this.createNotification({
       type: 'drug_interaction_warning',
-      priority,
-      title: `Interação Medicamentosa ${severity}`,
-      message: `Interação ${severity.toLowerCase()} detectada em ${patientName}: ${drugs.join(' + ')}`,
+      priority: 'high',
+      title: 'Interação Medicamentosa',
+      message: `Interação ${severity} detectada entre: ${drugs.join(', ')}`,
       userId,
       metadata: { drugs, severity }
     })
+  }
+
+  // Integração WhatsApp
+  static async sendWhatsApp(phone: string, message: string) {
+    const provider = process.env.WHATSAPP_PROVIDER || 'console' // 'console', 'twilio', 'webhook'
+    
+    try {
+      if (provider === 'console') {
+        console.log(`📱 [WhatsApp Mock] Para: ${phone} | Msg: "${message}"`)
+        await new Promise(resolve => setTimeout(resolve, 500))
+        return true
+      }
+
+      if (provider === 'webhook') {
+        // Integração genérica (ex: Evolution API, WPPConnect, Z-API)
+        const webhookUrl = process.env.WHATSAPP_WEBHOOK_URL
+        const apiKey = process.env.WHATSAPP_API_KEY
+        
+        if (!webhookUrl) throw new Error('WHATSAPP_WEBHOOK_URL não configurada')
+
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {})
+          },
+          body: JSON.stringify({
+            number: phone.replace(/\D/g, ''), // Remove formatação
+            message: message
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Erro API WhatsApp: ${response.statusText}`)
+        }
+        return true
+      }
+
+      // TODO: Adicionar Twilio/Zenvia aqui
+      console.warn(`⚠️ Provedor WhatsApp '${provider}' não implementado.`)
+      return false
+
+    } catch (error) {
+      console.error('❌ [WhatsApp] Falha no envio:', error)
+      // Não lançar erro para não quebrar o fluxo principal
+      return false
+    }
+  }
+
+  static async sendAppointmentReminder(patientName: string, phone: string, date: Date) {
+    const formattedDate = date.toLocaleString('pt-BR', { 
+      weekday: 'long', 
+      day: '2-digit', 
+      month: 'long', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+    
+    const message = `Olá ${patientName}, lembrete de sua consulta na HealthCare para ${formattedDate}. Responda SIM para confirmar.`
+    
+    return this.sendWhatsApp(phone, message)
   }
 
   // Estatísticas de notificações

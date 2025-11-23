@@ -9,7 +9,7 @@ import Link from 'next/link'
 
 function AuthErrorInner() {
   const searchParams = useSearchParams()
-  const error = searchParams.get('error')
+  const error = searchParams?.get('error') ?? null
 
   const getErrorMessage = (error: string | null) => {
     switch (error) {

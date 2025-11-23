@@ -38,6 +38,11 @@
 				"$eslint-stylish"
 			],
 			"group": "build"
+		},
+		{
+			"label": "type-check",
+			"type": "shell",
+			"command": "npm run -s type-check"
 		}
 	]
 }

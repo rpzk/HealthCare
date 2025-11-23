@@ -50,9 +50,9 @@ export function MedicalRecordsList({
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        pageSize: pageSize.toString(),
+        limit: pageSize.toString(),
         ...(searchTerm && { search: searchTerm }),
-        ...(filterType && { recordType: filterType }),
+        ...(filterType && { type: filterType }),
         ...(filterPriority && { priority: filterPriority }),
       })
 
