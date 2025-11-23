@@ -4,6 +4,11 @@ export class DashboardService {
   // Buscar estatísticas principais do dashboard
   static async getStats() {
     try {
+      if (!prisma) {
+        console.error('[DashboardService] CRITICAL: prisma instance is undefined in getStats');
+        throw new Error('Prisma client is not initialized');
+      }
+      
       // Ensure connection (lazy)
       // await prisma.$connect(); 
 
@@ -53,6 +58,11 @@ export class DashboardService {
   static async getUpcomingAppointments(limit = 3) {
     console.log('[DashboardService] getUpcomingAppointments started');
     try {
+      if (!prisma) {
+        console.error('[DashboardService] CRITICAL: prisma instance is undefined in getUpcomingAppointments');
+        return [];
+      }
+
       const now = new Date()
       const upcoming = await prisma.consultation.findMany({
         where: {
@@ -101,6 +111,11 @@ export class DashboardService {
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
     try {
+      if (!prisma) {
+        console.error('[DashboardService] CRITICAL: prisma instance is undefined in getRecentPatients');
+        return [];
+      }
+
       const patients = await prisma.patient.findMany({
         orderBy: { updatedAt: 'desc' },
         take: limit,

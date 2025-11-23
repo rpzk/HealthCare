@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
+console.log('[lib/prisma] Initializing Prisma Client module...');
+
 interface GlobalWithPrisma {
   prisma: PrismaClient | undefined
   prismaConnectPromise: Promise<void> | undefined
@@ -7,17 +9,38 @@ interface GlobalWithPrisma {
 
 const globalForPrisma = globalThis as unknown as GlobalWithPrisma
 
-export const prisma: PrismaClient = globalForPrisma.prisma ?? new PrismaClient()
-globalForPrisma.prisma = prisma // agora sempre cacheia (também em produção) para evitar múltiplas instâncias
+let prismaInstance: PrismaClient;
+
+try {
+  if (globalForPrisma.prisma) {
+    console.log('[lib/prisma] Using existing global Prisma instance');
+    prismaInstance = globalForPrisma.prisma;
+  } else {
+    console.log('[lib/prisma] Creating NEW Prisma Client instance');
+    prismaInstance = new PrismaClient({
+      log: ['error', 'warn'], // Reduce noise, keep errors
+    });
+    globalForPrisma.prisma = prismaInstance;
+  }
+} catch (error) {
+  console.error('[lib/prisma] FAILED to initialize Prisma Client:', error);
+  // Fallback to prevent crash on import, though usage will fail
+  prismaInstance = new PrismaClient(); 
+}
+
+export const prisma = prismaInstance;
 
 async function internalConnect() {
   try {
+    console.log('[lib/prisma] Connecting to database...');
     await prisma.$connect()
+    console.log('[lib/prisma] Connected successfully');
   } catch (e:any) {
     console.error('[prisma] falha ao conectar:', e?.message)
     throw e
   }
 }
+
 
 export async function ensurePrismaConnected() {
   if (!globalForPrisma.prismaConnectPromise) {
