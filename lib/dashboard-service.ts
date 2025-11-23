@@ -51,6 +51,7 @@ export class DashboardService {
 
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
+    console.log('[DashboardService] getUpcomingAppointments started');
     try {
       const now = new Date()
       const upcoming = await prisma.consultation.findMany({
@@ -68,8 +69,14 @@ export class DashboardService {
           patient: { select: { id: true, name: true } },
         },
       })
+      
+      console.log(`[DashboardService] Found ${upcoming.length} appointments`);
 
-      return upcoming.map((c) => {
+      return upcoming.map((c, index) => {
+        if (!c) {
+          console.error(`[DashboardService] Appointment at index ${index} is undefined/null`);
+          return null;
+        }
         // Safety check for patient relation
         const patientName = c.patient ? c.patient.name : 'Paciente';
         const patientId = c.patient ? c.patient.id : undefined;
@@ -84,10 +91,9 @@ export class DashboardService {
           duration: c.duration ? `${c.duration} min` : '—',
           date: new Date(c.scheduledDate).toISOString(),
         };
-      })
+      }).filter(Boolean);
     } catch (err) {
       console.error('[dashboard] erro em getUpcomingAppointments()', err)
-      // Return empty array instead of throwing to prevent dashboard crash
       return []
     }
   }

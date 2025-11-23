@@ -34,11 +34,13 @@ export const GET = withAuth(async (request, { user }) => {
     default:
       actionDescription = 'Dashboard completo'
       try {
+        console.log('[API] Fetching dashboard data...');
         const [allStats, allAppointments, allPatients] = await Promise.all([
           DashboardService.getStats(),
           DashboardService.getUpcomingAppointments(),
           DashboardService.getRecentPatients()
         ])
+        console.log('[API] Dashboard data fetched successfully');
 
         data = {
           stats: allStats,
@@ -46,7 +48,7 @@ export const GET = withAuth(async (request, { user }) => {
           patients: allPatients
         }
       } catch (error: any) {
-        console.error('[API] Dashboard error:', error);
+        console.error('[API] Dashboard error FULL STACK:', error);
         return NextResponse.json(
           { success: false, error: error.message || 'Internal Server Error', details: error.stack },
           { status: 500 }
