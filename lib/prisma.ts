@@ -1,51 +1,18 @@
 import { PrismaClient } from '@prisma/client'
 
-console.log('[lib/prisma] Initializing Prisma Client module...');
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
-interface GlobalWithPrisma {
-  prisma: PrismaClient | undefined
-  prismaConnectPromise: Promise<void> | undefined
-}
+export const prisma = globalForPrisma.prisma || new PrismaClient()
 
-const globalForPrisma = globalThis as unknown as GlobalWithPrisma
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-let prismaInstance: PrismaClient;
-
-try {
-  if (globalForPrisma.prisma) {
-    console.log('[lib/prisma] Using existing global Prisma instance');
-    prismaInstance = globalForPrisma.prisma;
-  } else {
-    console.log('[lib/prisma] Creating NEW Prisma Client instance');
-    prismaInstance = new PrismaClient({
-      log: ['error', 'warn'], // Reduce noise, keep errors
-    });
-    globalForPrisma.prisma = prismaInstance;
-  }
-} catch (error) {
-  console.error('[lib/prisma] FAILED to initialize Prisma Client:', error);
-  // Fallback to prevent crash on import, though usage will fail
-  prismaInstance = new PrismaClient(); 
-}
-
-export const prisma = prismaInstance;
-
-/**
- * Helper seguro para garantir acesso ao Prisma mesmo se a inicialização do módulo falhar
- * devido a dependências circulares ou ordem de importação.
- */
 export function getPrisma(): PrismaClient {
-  if (!prismaInstance) {
-    console.warn('[lib/prisma] getPrisma() called but prismaInstance is undefined. Creating fallback instance.');
-    try {
-      prismaInstance = new PrismaClient();
-      if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prismaInstance;
-    } catch (e) {
-      console.error('[lib/prisma] Failed to create fallback instance:', e);
-      throw e;
-    }
-  }
-  return prismaInstance;
+  return prisma;
+}
+
+export async function ensurePrismaConnected() {
+  // No-op for compatibility
+  return prisma;
 }
 
 async function internalConnect() {
