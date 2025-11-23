@@ -9,6 +9,14 @@ import { QuickNav } from '@/components/navigation/quick-nav'
 import { GlobalSearch } from '@/components/search/global-search'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { signOut } from 'next-auth/react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function Header() {
   const router = useRouter()
