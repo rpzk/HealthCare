@@ -102,6 +102,17 @@ export class RedisRateLimiter {
       });
     }
 
+    // Prevent unhandled error events from crashing the process
+    this.redis.on('error', (err) => {
+      // Suppress connection refused errors during build/test if needed
+      if (err.code === 'ECONNREFUSED') {
+        // console.warn('Redis connection refused (expected during build/test)');
+        return;
+      }
+      console.error('Redis Client Error:', err);
+    });
+
+
     if (process.env.DISABLE_REDIS === '1') {
       console.log('🔕 Redis desativado via DISABLE_REDIS=1 (usando apenas fallback em memória)')
     } else {
