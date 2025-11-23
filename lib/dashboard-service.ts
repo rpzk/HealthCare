@@ -1,9 +1,8 @@
-import { getPrisma } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 export class DashboardService {
   // Buscar estatísticas principais do dashboard
   static async getStats() {
-    const prisma = getPrisma();
     try {
       const now = new Date()
       const startOfDay = new Date(now)
@@ -50,7 +49,6 @@ export class DashboardService {
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
     console.log('[DashboardService] getUpcomingAppointments started');
-    const prisma = getPrisma();
     try {
       const now = new Date()
       const upcoming = await prisma.consultation.findMany({
@@ -99,7 +97,6 @@ export class DashboardService {
 
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
-    const prisma = getPrisma();
     try {
       const patients = await prisma.patient.findMany({
         orderBy: { updatedAt: 'desc' },
