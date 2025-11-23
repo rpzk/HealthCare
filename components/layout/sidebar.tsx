@@ -17,7 +17,8 @@ import {
   BarChart3,
   Settings,
   Brain,
-  DollarSign
+  DollarSign,
+  Building
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -97,6 +98,21 @@ const menuItems: MenuItem[] = [
       { title: 'Resumos Médicos', href: '/ai-medical?tab=summary' },
       { title: 'Dashboard Analytics', href: '/ai-analytics' },
     ]
+  },
+  {
+    title: 'Saúde da Família',
+    icon: Building,
+    href: '/psf',
+    submenu: [
+      { title: 'Famílias', href: '/psf/families' },
+      { title: 'Visitas', href: '/psf/visits' },
+    ]
+  },
+  {
+    title: 'Gestão & BI',
+    icon: BarChart3,
+    href: '/admin/bi',
+    allowedRoles: ['ADMIN'],
   },
   {
     title: 'Financeiro',

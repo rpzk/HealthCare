@@ -43,6 +43,19 @@ model User {
   @@map("users")
 }
 
+model SystemModule {
+  id          String   @id @default(cuid())
+  key         String   @unique // ex: "psf", "integrative", "bi_analytics"
+  name        String
+  description String?
+  isEnabled   Boolean  @default(false)
+  features    Json?    // Lista de features específicas ativas dentro do módulo
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_modules")
+}
+
 model Patient {
   id                 String    @id @default(cuid())
   name               String
@@ -77,8 +90,36 @@ model Patient {
   ExamRequest    ExamRequest[]
   referrals      Referral[]
   financialTransactions FinancialTransaction[]
+  
+  // PSF / Saúde da Família
+  household      Household? @relation(fields: [householdId], references: [id])
+  householdId    String?
+  isHeadOfHousehold Boolean @default(false)
 
   @@map("patients")
+}
+
+model Household {
+  id          String   @id @default(cuid())
+  name        String   // ex: "Família Silva"
+  address     String
+  number      String?
+  complement  String?
+  neighborhood String?
+  city        String?
+  state       String?
+  zipCode     String?
+  
+  // PSF Info
+  microArea   String?
+  familyType  String?  // Nuclear, Estendida, Unipessoal
+  
+  members     Patient[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("households")
 }
 
 model Referral {
@@ -977,4 +1018,14 @@ model Notification {
 
   @@index([userId, read])
   @@map("notifications")
+}
+
+model CIAP2 {
+  code        String   @id
+  description String
+  chapter     String   // A, B, D...
+  gender      String?  // M, F, A (Ambos)
+  active      Boolean  @default(true)
+
+  @@map("ciap2")
 }

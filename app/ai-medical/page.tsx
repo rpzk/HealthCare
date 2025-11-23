@@ -14,11 +14,12 @@ import {
   Stethoscope, 
   TrendingUp,
   Shield,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react'
 
 export default function AImedicalPage() {
-  const [activeTab, setActiveTab] = useState<'symptoms' | 'interactions' | 'overview'>('overview')
+  const [activeTab, setActiveTab] = useState<'symptoms' | 'interactions' | 'overview' | 'integrative'>('overview')
 
   const TabButton = ({ 
     id, 
@@ -35,7 +36,7 @@ export default function AImedicalPage() {
   }) => (
     <Button
       variant={isActive ? "default" : "ghost"}
-      className={`flex items-center gap-2 ${isActive ? '' : 'text-gray-600'}`}
+      className={`flex items-center gap-2 ${isActive ? '' : 'text-muted-foreground'}`}
       onClick={onClick}
     >
       {icon}
@@ -115,6 +116,13 @@ export default function AImedicalPage() {
               isActive={activeTab === 'interactions'}
               onClick={() => setActiveTab('interactions')}
             />
+            <TabButton
+              id="integrative"
+              label="Medicina Integrativa"
+              icon={<Sparkles className="w-4 h-4" />}
+              isActive={activeTab === 'integrative'}
+              onClick={() => setActiveTab('integrative')}
+            />
           </div>
 
           {/* Conteúdo das Tabs */}
@@ -147,73 +155,43 @@ export default function AImedicalPage() {
                 </Card>
               </div>
 
-              {/* Funcionalidades Principais */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <OverviewCard
                   title="Análise de Sintomas"
-                  description="Sistema avançado de IA para análise de sintomas e sugestão de diagnósticos baseado em dados clínicos e histórico médico."
+                  description="Descreva os sintomas do paciente para receber sugestões de diagnóstico baseadas em IA."
                   icon={<Stethoscope className="w-6 h-6 text-blue-600" />}
                   onClick={() => setActiveTab('symptoms')}
                 />
-                
                 <OverviewCard
-                  title="Verificação de Interações"
-                  description="Detector inteligente de interações medicamentosas com base em conhecimento farmacológico atualizado."
-                  icon={<Pill className="w-6 h-6 text-orange-600" />}
+                  title="Interações Medicamentosas"
+                  description="Verifique a segurança da combinação de medicamentos prescritos."
+                  icon={<Pill className="w-6 h-6 text-blue-600" />}
                   onClick={() => setActiveTab('interactions')}
                 />
+                <OverviewCard
+                  title="Medicina Integrativa"
+                  description="Ferramentas de Astrologia Médica, Homeopatia e Acupuntura."
+                  icon={<Sparkles className="w-6 h-6 text-purple-600" />}
+                  onClick={() => setActiveTab('integrative')}
+                  bgColor="bg-purple-50 dark:bg-purple-900/20"
+                />
               </div>
-
-              {/* Recursos Adicionais */}
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Recursos Disponíveis</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Análise de sinais vitais</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Sugestões de exames complementares</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span>Identificação de sinais de alerta</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <span>Recomendações de tratamento</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <span>Contraindicações medicamentosas</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
-                    <span>Resumos médicos automatizados</span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Aviso Legal */}
-              <Card className="p-4 bg-yellow-50 border-yellow-200">
-                <div className="flex items-start gap-2">
-                  <Shield className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-yellow-800">Aviso Importante</h3>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      Este sistema é uma ferramenta de apoio ao diagnóstico médico. 
-                      Não substitui a avaliação clínica de um profissional de saúde qualificado. 
-                      Sempre consulte um médico para diagnósticos definitivos e decisões terapêuticas.
-                    </p>
-                  </div>
-                </div>
-              </Card>
             </div>
           )}
 
           {activeTab === 'symptoms' && <SymptomAnalyzer />}
           {activeTab === 'interactions' && <DrugInteractionChecker />}
+          {activeTab === 'integrative' && (
+            <div className="text-center py-12">
+              <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Módulo Integrativo</h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Este módulo conecta conhecimentos ancestrais (Astrologia, MTC) com a prática clínica moderna.
+                <br/><br/>
+                <em>Funcionalidade em desenvolvimento: Portando código do sistema legado.</em>
+              </p>
+            </div>
+          )}
         </main>
       </div>
     </div>
