@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useTheme } from 'next-themes'
 import { 
   Calendar, 
   FileText, 
@@ -160,6 +161,7 @@ export function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { theme } = useTheme()
   const userRole = (session as any)?.user?.role as 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | undefined
 
   const visibleMenuItems = useMemo(() => {
