@@ -1,9 +1,12 @@
-import { prisma } from '@/lib/prisma'
+import { ensurePrismaConnected, getPrisma } from '@/lib/prisma'
+
+const prisma = getPrisma()
 
 export class DashboardService {
   // Buscar estatísticas principais do dashboard
   static async getStats() {
     try {
+      await ensurePrismaConnected()
       const now = new Date()
       const startOfDay = new Date(now)
       startOfDay.setHours(0, 0, 0, 0)
@@ -50,6 +53,7 @@ export class DashboardService {
   static async getUpcomingAppointments(limit = 3) {
     console.log('[DashboardService] getUpcomingAppointments started');
     try {
+      await ensurePrismaConnected()
       const now = new Date()
       const upcoming = await prisma.consultation.findMany({
         where: {
@@ -98,6 +102,7 @@ export class DashboardService {
   // Buscar pacientes recentes
   static async getRecentPatients(limit = 3) {
     try {
+      await ensurePrismaConnected()
       const patients = await prisma.patient.findMany({
         orderBy: { updatedAt: 'desc' },
         take: limit,
