@@ -38,7 +38,7 @@ export function PageHeader({
   }
 
   return (
-    <div className="space-y-4 bg-gradient-to-r from-background to-muted/20 p-6 -mx-6 -mt-6 mb-6 border-b border-border/50">
+    <div className="space-y-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-6 -mx-6 -mt-6 mb-6 border-b border-blue-100 dark:border-blue-900/50 shadow-sm">
       {/* Breadcrumb Navigation */}
       {breadcrumbs.length > 0 && (
         <Breadcrumb>
@@ -119,9 +119,9 @@ export function PageHeader({
           <div className="flex items-center gap-3">
             {icon}
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+              <h1 className="text-3xl font-bold text-blue-950 dark:text-blue-50">{title}</h1>
               {description && (
-                <p className="text-gray-600 mt-1">{description}</p>
+                <p className="text-blue-600/80 dark:text-blue-200/70 mt-1">{description}</p>
               )}
             </div>
           </div>
