@@ -30,6 +30,15 @@ async function createUser() {
     
     const hashedPassword = await bcrypt.hash(password, 12)
     
+    // 1. Create Person first (simplificado para este script)
+    const person = await prisma.person.create({
+      data: {
+        name,
+        email,
+        // CPF não é fornecido neste script, então criamos sem
+      }
+    })
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -41,9 +50,27 @@ async function createUser() {
         licenseNumber: licenseNumber === 'null' ? undefined : licenseNumber,
         licenseType: licenseType === 'null' ? undefined : licenseType,
         speciality: speciality === 'null' ? undefined : speciality,
-        isActive: true
+        isActive: true,
       }
     })
+
+    // Link Person to User
+    await prisma.person.update({
+      where: { id: person.id },
+      data: { userId: user.id }
+    })
+
+    // Se for um profissional de saúde, criar registro Professional
+    if (['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'DENTIST', 'NUTRITIONIST'].includes(role.toUpperCase())) {
+       await prisma.professional.create({
+         data: {
+           personId: person.id,
+           registryNumber: licenseNumber === 'null' ? undefined : licenseNumber,
+           councilType: licenseType === 'null' ? undefined : licenseType,
+         }
+       })
+       console.log('✅ Professional record created.')
+    }
 
     console.log('✅ User created successfully!')
     console.log(`👤 Name: ${user.name}`)

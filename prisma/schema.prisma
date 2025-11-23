@@ -38,8 +38,77 @@ model User {
   referrals              Referral[]
   scheduleExceptions     ScheduleException[]
   jobRoles               UserJobRole[]
+  person                 Person?
+  termAcceptances        TermAcceptance[]
 
   @@map("users")
+}
+
+model Person {
+  id             String        @id @default(cuid())
+  name           String
+  socialName     String?
+  cpf            String?       @unique
+  birthDate      DateTime?
+  gender         Gender?
+  motherName     String?
+  fatherName     String?
+  
+  // Contact
+  email          String?
+  phone          String?
+  
+  // Demographics
+  ethnicity      String?       // IBGE
+  educationLevel String?
+  occupation     String?
+  nationality    String?
+  
+  // System Links
+  userId         String?       @unique
+  user           User?         @relation(fields: [userId], references: [id])
+  
+  // Roles
+  patient        Patient?
+  professional   Professional?
+  
+  // Address
+  addresses      PersonAddress[]
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("people")
+}
+
+model PersonAddress {
+  id        String   @id @default(cuid())
+  personId  String
+  addressId String
+  type      String   @default("RESIDENTIAL") // RESIDENTIAL, COMMERCIAL
+  isPrimary Boolean  @default(false)
+  person    Person   @relation(fields: [personId], references: [id])
+  address   Address  @relation(fields: [addressId], references: [id])
+
+  @@unique([personId, addressId])
+  @@map("person_addresses")
+}
+
+model Professional {
+  id             String   @id @default(cuid())
+  personId       String   @unique
+  person         Person   @relation(fields: [personId], references: [id])
+  
+  registryNumber String?  // CNS/CNES
+  councilNumber  String?  // CRM, COREN
+  councilType    String?  // CRM, COREN, CRP, etc.
+  councilState   String?
+  cbo            String?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("professionals")
 }
 
 model SystemModule {
@@ -90,6 +159,8 @@ model Patient {
   medicalRecords        MedicalRecord[]
   household             Household?             @relation(fields: [householdId], references: [id])
   User                  User?                  @relation(fields: [userId], references: [id])
+  personId              String?                @unique
+  person                Person?                @relation(fields: [personId], references: [id])
   prescriptions         Prescription[]
   referrals             Referral[]
   vitalSigns            VitalSigns[]
@@ -350,6 +421,7 @@ model Address {
   microAreaId  String?
   microArea    MicroArea? @relation(fields: [microAreaId], references: [id])
   patient      Patient?   @relation(fields: [patientId], references: [id])
+  residents    PersonAddress[]
   Place        Place[]
 
   @@index([patientId])
@@ -784,10 +856,15 @@ model Territory {
   centerLat   Float?
   centerLng   Float?
   
+  // Hierarchy
+  level       Int?     // 1=Municipality, 2=District, 3=Subprefecture, 4=Area, 5=MicroArea
+  
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([type])
+  @@index([parentId])
   @@map("territories")
 }
 
@@ -832,7 +909,59 @@ enum Role {
   NUTRITIONIST
   SOCIAL_WORKER
   OTHER
+  PATIENT
 }
+
+model RegistrationInvite {
+  id        String   @id @default(cuid())
+  email     String
+  role      Role
+  token     String   @unique
+  expiresAt DateTime
+  status    InviteStatus @default(PENDING)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("registration_invites")
+}
+
+enum InviteStatus {
+  PENDING
+  USED
+  EXPIRED
+}
+
+model Term {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  content     String   @db.Text
+  version     String
+  isActive    Boolean  @default(true)
+  
+  acceptances TermAcceptance[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("terms")
+}
+
+model TermAcceptance {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  termId    String
+  term      Term     @relation(fields: [termId], references: [id])
+  
+  acceptedAt DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  @@map("term_acceptances")
+}
+
 
 enum Gender {
   MALE

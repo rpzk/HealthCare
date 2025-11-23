@@ -6,6 +6,8 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { X, Save, UserPlus, MapPin, Check } from 'lucide-react'
+import { AddressAutocomplete, AddressSuggestion } from '../addresses/address-autocomplete'
+import { AddressMapPicker } from '../addresses/address-map-picker'
 
 interface PatientFormProps {
   patient?: any
@@ -32,11 +34,24 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     bloodType: patient?.bloodType || '',
     allergies: patient?.allergies?.join(', ') || '',
     chronicDiseases: patient?.chronicDiseases?.join(', ') || '',
+    latitude: patient?.latitude || null,
+    longitude: patient?.longitude || null,
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
-  const [coordinates, setCoordinates] = useState<{lat: string, lon: string} | null>(null)
+
+  const handleAddressSelect = (suggestion: AddressSuggestion) => {
+    setFormData(prev => ({
+      ...prev,
+      address: `${suggestion.street || ''}${suggestion.number ? ', ' + suggestion.number : ''}${suggestion.neighborhood ? ' - ' + suggestion.neighborhood : ''}`,
+      city: suggestion.city || prev.city,
+      state: suggestion.state || prev.state,
+      zipCode: suggestion.zipCode || prev.zipCode,
+      latitude: suggestion.lat,
+      longitude: suggestion.lng
+    }))
+  }
 
   const formatCPF = (value: string) => {
     const numbers = value.replace(/\D/g, '')
@@ -126,13 +141,14 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
       const data = await response.json()
       if (data && data.length > 0) {
-        setCoordinates({ lat: data[0].lat, lon: data[0].lon })
-      } else {
-        setCoordinates(null)
+        setFormData(prev => ({
+          ...prev,
+          latitude: parseFloat(data[0].lat),
+          longitude: parseFloat(data[0].lon)
+        }))
       }
     } catch (error) {
       console.error('Erro ao buscar coordenadas:', error)
-      setCoordinates(null)
     }
   }
 
@@ -194,8 +210,8 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
         chronicDiseases: formData.chronicDiseases.split(',').map((d: string) => d.trim()).filter((d: string) => d),
         bloodType: formData.bloodType || null,
         doctorId: session.user.id, // Usar ID do usuário logado
-        latitude: coordinates ? parseFloat(coordinates.lat) : null,
-        longitude: coordinates ? parseFloat(coordinates.lon) : null
+        latitude: formData.latitude,
+        longitude: formData.longitude
       }
 
       await onSubmit(submitData)
@@ -369,62 +385,87 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium">Endereço</h3>
-                {coordinates && (
+                {formData.latitude && formData.longitude && (
                   <div className="flex items-center text-green-600 text-sm bg-green-50 px-2 py-1 rounded-full border border-green-200">
                     <MapPin className="h-3 w-3 mr-1" />
                     <span>Geolocalização encontrada</span>
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Endereço
-                  </label>
-                  <Input
-                    name="address"
+              
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-md border border-blue-100 mb-4">
+                  <p className="text-sm text-blue-800 mb-2">
+                    Busque o endereço para preenchimento automático e geolocalização:
+                  </p>
+                  <AddressAutocomplete 
+                    onSelect={handleAddressSelect}
                     value={formData.address}
-                    onChange={handleChange}
-                    disabled={loading}
                   />
+                  
+                  <div className="mt-2">
+                    <p className="text-sm text-blue-800 mb-2">
+                      Ou selecione o local no mapa:
+                    </p>
+                    <AddressMapPicker 
+                      onAddressSelect={handleAddressSelect}
+                      initialLat={formData.latitude || undefined}
+                      initialLng={formData.longitude || undefined}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CEP
-                  </label>
-                  <Input
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleChange}
-                    placeholder="12345-678"
-                    disabled={loading}
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Logradouro
+                    </label>
+                    <Input
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      disabled={loading}
+                      placeholder="Rua, Número, Bairro"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cidade
-                  </label>
-                  <Input
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CEP
+                    </label>
+                    <Input
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleChange}
+                      placeholder="12345-678"
+                      disabled={loading}
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Estado
-                  </label>
-                  <Input
-                    name="state"
-                    value={formData.state}
-                    onChange={handleChange}
-                    placeholder="SP"
-                    disabled={loading}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cidade
+                    </label>
+                    <Input
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estado
+                    </label>
+                    <Input
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      placeholder="SP"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
