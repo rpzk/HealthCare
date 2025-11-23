@@ -183,7 +183,7 @@ export function Sidebar() {
   }
 
   return (
-    <div className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 overflow-y-auto">
+    <div className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-background border-r border-border overflow-y-auto transition-colors duration-300">
       <nav className="p-4 space-y-2">
         {visibleMenuItems.map((item) => (
           <div key={item.title}>
@@ -193,8 +193,8 @@ export function Sidebar() {
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   isActive(item.href)
-                    ? "bg-medical-primary text-white" 
-                    : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
                 aria-expanded={expandedItems.includes(item.title)}
                 aria-controls={`submenu-${item.title}`}
@@ -216,8 +216,8 @@ export function Sidebar() {
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   isActive(item.href)
-                    ? "bg-medical-primary text-white" 
-                    : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <div className="flex items-center">
@@ -241,8 +241,8 @@ export function Sidebar() {
                     className={cn(
                       "w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors",
                       isActive(subItem.href)
-                        ? "bg-medical-light text-medical-primary font-medium"
-                        : "text-gray-600 hover:bg-gray-50"
+                        ? "bg-secondary text-primary font-medium"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     aria-current={isActive(subItem.href) ? 'page' : undefined}
                   >

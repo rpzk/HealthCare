@@ -7,14 +7,7 @@ import { AIAssistantButton } from '@/components/ai/assistant-button'
 import { NotificationCenter } from '@/components/ui/notification-center'
 import { QuickNav } from '@/components/navigation/quick-nav'
 import { GlobalSearch } from '@/components/search/global-search'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { signOut } from 'next-auth/react'
 
 export function Header() {
@@ -34,7 +27,7 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 fixed w-full top-0 z-50">
+      <header className="bg-background border-b border-border fixed w-full top-0 z-50 transition-colors duration-300">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -42,10 +35,10 @@ export function Header() {
                 className="flex items-center space-x-2 cursor-pointer"
                 onClick={() => router.push('/')}
               >
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">H</span>
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">H</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xl font-bold text-foreground">
                   HealthCare
                 </span>
               </div>
@@ -59,6 +52,8 @@ export function Header() {
               <AIAssistantButton />
               
               <NotificationCenter />
+
+              <ThemeToggle />
               
               <Button 
                 variant="ghost" 
