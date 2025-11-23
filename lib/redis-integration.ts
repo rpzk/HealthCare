@@ -135,6 +135,10 @@ export class RedisRateLimiter {
     });
 
     this.redis.on('error', (error) => {
+      if ((error as any).code === 'ECONNREFUSED') {
+        this.isRedisConnected = false;
+        return;
+      }
       rateLimiterLogThrottler.logError('❌ Erro no Redis rate limiter:', error);
       this.isRedisConnected = false;
     });
@@ -524,6 +528,10 @@ export class RedisCache {
     });
 
     this.redis.on('error', (error) => {
+      if ((error as any).code === 'ECONNREFUSED') {
+        this.isRedisConnected = false;
+        return;
+      }
       cacheLogThrottler.logError('❌ Erro no Redis Cache:', error);
       this.isRedisConnected = false;
     });
