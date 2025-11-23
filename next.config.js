@@ -14,6 +14,13 @@ const nextConfig = {
   },
   experimental: {
     instrumentationHook: true,
+    serverComponentsExternalPackages: ['@prisma/client', '@prisma/engines'],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('@prisma/client', '@prisma/engines')
+    }
+    return config
   },
 }
 
