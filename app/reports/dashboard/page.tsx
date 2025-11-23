@@ -119,8 +119,8 @@ export default function DashboardReportsPage() {
       change: `+${dashboardData.newPatientsThisMonth} este mês`,
       changeType: 'positive',
       icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-100 dark:bg-blue-900/20'
     },
     {
       title: 'Consultas Realizadas',
@@ -128,8 +128,8 @@ export default function DashboardReportsPage() {
       change: `${dashboardData.consultationsThisMonth} este mês`,
       changeType: 'neutral',
       icon: Stethoscope,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-100 dark:bg-purple-900/20'
     },
     {
       title: 'Exames Solicitados',
@@ -137,8 +137,8 @@ export default function DashboardReportsPage() {
       change: `${dashboardData.examsThisMonth} este mês`,
       changeType: 'neutral',
       icon: TestTube,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-100 dark:bg-green-900/20'
     },
     {
       title: 'Registros Médicos',
@@ -146,8 +146,8 @@ export default function DashboardReportsPage() {
       change: `${dashboardData.recordsThisMonth} este mês`,
       changeType: 'neutral',
       icon: FileText,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100'
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-100 dark:bg-orange-900/20'
     }
   ]
 
@@ -157,28 +157,28 @@ export default function DashboardReportsPage() {
       value: dashboardData.averageConsultationsPerDay.toFixed(1),
       unit: 'consultas',
       icon: TrendingUp,
-      color: 'text-green-600'
+      color: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Taxa de Crescimento',
       value: dashboardData.patientGrowthRate.toFixed(1),
       unit: '% ao mês',
       icon: TrendingUp,
-      color: 'text-green-600'
+      color: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Receita Mensal',
       value: `R$ ${dashboardData.monthlyRevenue.toLocaleString()}`,
       unit: '',
       icon: TrendingUp,
-      color: 'text-emerald-600'
+      color: 'text-emerald-600 dark:text-emerald-400'
     },
     {
       title: 'Exames Pendentes',
       value: dashboardData.pendingExams,
       unit: 'exames',
       icon: AlertCircle,
-      color: 'text-yellow-600'
+      color: 'text-yellow-600 dark:text-yellow-400'
     }
   ]
 
@@ -202,12 +202,12 @@ export default function DashboardReportsPage() {
           <span>Voltar</span>
         </Button>
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <BarChart3 className="h-6 w-6 text-indigo-600" />
+          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
+            <BarChart3 className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard Médico</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-foreground">Dashboard Médico</h1>
+            <p className="text-sm text-muted-foreground">
               Visão geral das métricas e indicadores de performance
             </p>
           </div>
@@ -221,10 +221,10 @@ export default function DashboardReportsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{kpi.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{kpi.title}</p>
+                  <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
                   <p className={`text-xs mt-1 ${
-                    kpi.changeType === 'positive' ? 'text-green-600' : 'text-gray-500'
+                    kpi.changeType === 'positive' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                   }`}>
                     {kpi.change}
                   </p>
@@ -249,13 +249,13 @@ export default function DashboardReportsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {performanceMetrics.map((metric, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
+              <div key={index} className="bg-muted rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-600">{metric.title}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
                   <metric.icon className={`h-4 w-4 ${metric.color}`} />
                 </div>
-                <p className="text-xl font-bold text-gray-900">
-                  {metric.value} {metric.unit && <span className="text-sm font-normal text-gray-500">{metric.unit}</span>}
+                <p className="text-xl font-bold text-foreground">
+                  {metric.value} {metric.unit && <span className="text-sm font-normal text-muted-foreground">{metric.unit}</span>}
                 </p>
               </div>
             ))}
@@ -276,17 +276,17 @@ export default function DashboardReportsPage() {
               {dashboardData.popularSpecialties.map((specialty, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-purple-600">{index + 1}</span>
+                    <div className="w-6 h-6 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{index + 1}</span>
                     </div>
-                    <span className="font-medium text-gray-900">{specialty.name}</span>
+                    <span className="font-medium text-foreground">{specialty.name}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-20 h-2 bg-gray-200 rounded-full">
+                    <div className="w-20 h-2 bg-muted rounded-full">
                       <div 
-                        className="h-2 bg-purple-600 rounded-full"
+                        className="h-2 bg-purple-600 dark:bg-purple-400 rounded-full"
                         style={{ 
-                          width: `${(specialty.count / Math.max(...dashboardData.popularSpecialties.map(s => s.count))) * 100}%` 
+                          width: `${(specialty.count / Math.max(...dashboardData.popularSpecialties.map(s => s.count))) * 100}%`
                         }}
                       ></div>
                     </div>
@@ -309,15 +309,15 @@ export default function DashboardReportsPage() {
               {dashboardData.ageDistribution.map((age, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-gray-900">{age.range} anos</span>
+                    <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-foreground">{age.range} anos</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-20 h-2 bg-gray-200 rounded-full">
+                    <div className="w-20 h-2 bg-muted rounded-full">
                       <div 
-                        className="h-2 bg-blue-600 rounded-full"
+                        className="h-2 bg-blue-600 dark:bg-blue-400 rounded-full"
                         style={{ 
-                          width: `${(age.count / Math.max(...dashboardData.ageDistribution.map(a => a.count))) * 100}%` 
+                          width: `${(age.count / Math.max(...dashboardData.ageDistribution.map(a => a.count))) * 100}%`
                         }}
                       ></div>
                     </div>
@@ -328,9 +328,7 @@ export default function DashboardReportsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Distribuição por Gênero */}
+      </div>      {/* Distribuição por Gênero */}
       <Card>
         <CardHeader>
           <CardTitle>Distribuição por Gênero</CardTitle>
@@ -339,13 +337,13 @@ export default function DashboardReportsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {dashboardData.genderDistribution.map((gender, index) => (
-              <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
+              <div key={index} className="text-center p-4 bg-muted rounded-lg">
                 <div className="flex items-center justify-center mb-2">
-                  <Users className={`h-8 w-8 ${index === 0 ? 'text-pink-600' : 'text-blue-600'}`} />
+                  <Users className={`h-8 w-8 ${index === 0 ? 'text-pink-600 dark:text-pink-400' : 'text-blue-600 dark:text-blue-400'}`} />
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{gender.count}</p>
-                <p className="text-sm text-gray-600">{gender.gender}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-2xl font-bold text-foreground">{gender.count}</p>
+                <p className="text-sm text-muted-foreground">{gender.gender}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   {((gender.count / dashboardData.totalPatients) * 100).toFixed(1)}%
                 </p>
               </div>
@@ -358,43 +356,43 @@ export default function DashboardReportsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             <span>Alertas e Lembretes</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
               <div>
-                <p className="font-medium text-yellow-900">
+                <p className="font-medium text-yellow-900 dark:text-yellow-300">
                   {dashboardData.pendingExams} exames pendentes
                 </p>
-                <p className="text-sm text-yellow-700">
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   Há exames aguardando agendamento ou resultados
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+            <div className="flex items-start space-x-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
               <div>
-                <p className="font-medium text-red-900">
+                <p className="font-medium text-red-900 dark:text-red-300">
                   {dashboardData.cancelledConsultations} consultas canceladas este mês
                 </p>
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-red-700 dark:text-red-300">
                   Monitor de cancelamentos para otimizar agenda
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
               <div>
-                <p className="font-medium text-blue-900">
+                <p className="font-medium text-blue-900 dark:text-blue-300">
                   Próxima revisão mensal em 5 dias
                 </p>
-                <p className="text-sm text-blue-700">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
                   Prepare os relatórios mensais para a reunião gerencial
                 </p>
               </div>
@@ -411,9 +409,9 @@ export default function DashboardReportsPage() {
           className="h-auto p-4 text-left"
         >
           <div>
-            <BarChart3 className="h-6 w-6 text-indigo-600 mb-2" />
+            <BarChart3 className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mb-2" />
             <p className="font-medium">Estatísticas Detalhadas</p>
-            <p className="text-xs text-gray-500">Ver análises avançadas</p>
+            <p className="text-xs text-muted-foreground">Ver análises avançadas</p>
           </div>
         </Button>
 
@@ -423,9 +421,9 @@ export default function DashboardReportsPage() {
           className="h-auto p-4 text-left"
         >
           <div>
-            <FileText className="h-6 w-6 text-green-600 mb-2" />
+            <FileText className="h-6 w-6 text-green-600 dark:text-green-400 mb-2" />
             <p className="font-medium">Exportar Dados</p>
-            <p className="text-xs text-gray-500">Gerar relatórios personalizados</p>
+            <p className="text-xs text-muted-foreground">Gerar relatórios personalizados</p>
           </div>
         </Button>
 
@@ -435,9 +433,9 @@ export default function DashboardReportsPage() {
           className="h-auto p-4 text-left"
         >
           <div>
-            <Stethoscope className="h-6 w-6 text-purple-600 mb-2" />
+            <Stethoscope className="h-6 w-6 text-purple-600 dark:text-purple-400 mb-2" />
             <p className="font-medium">Gerenciar Consultas</p>
-            <p className="text-xs text-gray-500">Visualizar agenda completa</p>
+            <p className="text-xs text-muted-foreground">Visualizar agenda completa</p>
           </div>
         </Button>
       </div>

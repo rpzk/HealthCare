@@ -178,22 +178,22 @@ export function ConsultationForm({
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <span className="text-red-700">{error}</span>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center space-x-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <span className="text-destructive">{error}</span>
               </div>
             )}
 
             {/* Seleção do Paciente */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-foreground">
                 <User className="inline h-4 w-4 mr-1" />
                 Paciente *
               </label>
               {patient ? (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="font-medium">{patient.name}</div>
-                  <div className="text-sm text-gray-600">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="font-medium text-foreground">{patient.name}</div>
+                  <div className="text-sm text-muted-foreground">
                     {patient.age} anos • {patient.phone} • {patient.email}
                   </div>
                 </div>
@@ -201,7 +201,7 @@ export function ConsultationForm({
                 <select
                   value={formData.patientId}
                   onChange={(e) => setFormData(prev => ({ ...prev, patientId: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medical-primary focus:border-transparent"
+                  className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 >
                   <option value="">Selecione um paciente</option>
@@ -216,11 +216,11 @@ export function ConsultationForm({
 
             {/* Seleção do Médico */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Médico *</label>
+              <label className="text-sm font-medium text-foreground">Médico *</label>
               <select
                 value={formData.doctorId}
                 onChange={(e) => setFormData(prev => ({ ...prev, doctorId: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medical-primary focus:border-transparent"
+                className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 required
               >
                 <option value="">Selecione um médico</option>
@@ -234,7 +234,7 @@ export function ConsultationForm({
 
             {/* Data da Consulta */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-foreground">
                 <Calendar className="inline h-4 w-4 mr-1" />
                 Data da Consulta *
               </label>
@@ -251,12 +251,12 @@ export function ConsultationForm({
             {/* Horário da Consulta */}
             {formData.scheduledDate && formData.doctorId && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-foreground">
                   <Clock className="inline h-4 w-4 mr-1" />
                   Horário *
                 </label>
                 {loadingSlots ? (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-muted-foreground">
                     Carregando horários disponíveis...
                   </div>
                 ) : availableSlots.length > 0 ? (
@@ -277,8 +277,8 @@ export function ConsultationForm({
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })
-                            ? 'bg-medical-primary text-white border-medical-primary'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-muted'
                         }`}
                       >
                         {slot.displayTime}
@@ -286,7 +286,7 @@ export function ConsultationForm({
                     ))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-muted-foreground">
                     Nenhum horário disponível nesta data
                   </div>
                 )}
@@ -295,11 +295,11 @@ export function ConsultationForm({
 
             {/* Tipo de Consulta */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Tipo de Consulta *</label>
+              <label className="text-sm font-medium text-foreground">Tipo de Consulta *</label>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medical-primary focus:border-transparent"
+                className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 required
               >
                 {consultationTypes.map(type => (
@@ -312,11 +312,11 @@ export function ConsultationForm({
 
             {/* Duração */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Duração</label>
+              <label className="text-sm font-medium text-foreground">Duração</label>
               <select
                 value={formData.duration}
                 onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medical-primary focus:border-transparent"
+                className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 {durations.map(duration => (
                   <option key={duration.value} value={duration.value}>
@@ -328,7 +328,7 @@ export function ConsultationForm({
 
             {/* Descrição */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-foreground">
                 <FileText className="inline h-4 w-4 mr-1" />
                 Descrição
               </label>
@@ -342,13 +342,13 @@ export function ConsultationForm({
 
             {/* Observações */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Observações</label>
+              <label className="text-sm font-medium text-foreground">Observações</label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="Observações adicionais..."
                 rows={3}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-medical-primary focus:border-transparent resize-none"
+                className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               />
             </div>
 

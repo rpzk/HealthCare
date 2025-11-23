@@ -10,13 +10,13 @@ export const metadata: Metadata = {
 
 export default function SchedulePage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
         <main className="flex-1 ml-64 p-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Configuração de Agenda</h1>
+            <h1 className="text-2xl font-bold mb-6 text-foreground">Configuração de Agenda</h1>
             <ScheduleConfig />
           </div>
         </main>

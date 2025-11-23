@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -125,12 +125,12 @@ export default function ConsultationHistoryPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'SCHEDULED': 'bg-blue-100 text-blue-800',
-      'COMPLETED': 'bg-green-100 text-green-800',
-      'CANCELLED': 'bg-red-100 text-red-800',
-      'IN_PROGRESS': 'bg-yellow-100 text-yellow-800'
+      'SCHEDULED': 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+      'COMPLETED': 'bg-green-500/20 text-green-600 dark:text-green-400',
+      'CANCELLED': 'bg-red-500/20 text-red-600 dark:text-red-400',
+      'IN_PROGRESS': 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[status as keyof typeof colors] || 'bg-muted text-muted-foreground'
   }
 
   const getStatusLabel = (status: string) => {
@@ -156,7 +156,7 @@ export default function ConsultationHistoryPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -173,12 +173,12 @@ export default function ConsultationHistoryPage() {
           <span>Voltar</span>
         </Button>
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Stethoscope className="h-6 w-6 text-purple-600" />
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Stethoscope className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Histórico de Consultas</h1>
-            <p className="text-sm text-gray-500">Visualizar todas as consultas realizadas</p>
+            <h1 className="text-2xl font-bold text-foreground">Histórico de Consultas</h1>
+            <p className="text-sm text-muted-foreground">Visualizar todas as consultas realizadas</p>
           </div>
         </div>
       </div>
@@ -194,11 +194,11 @@ export default function ConsultationHistoryPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Buscar
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -209,13 +209,13 @@ export default function ConsultationHistoryPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todos os status</option>
                 <option value="COMPLETED">Concluída</option>
@@ -226,13 +226,13 @@ export default function ConsultationHistoryPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Tipo
               </label>
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todos os tipos</option>
                 <option value="ROUTINE">Rotina</option>
@@ -243,13 +243,13 @@ export default function ConsultationHistoryPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Período
               </label>
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Todos os períodos</option>
                 <option value="7days">Últimos 7 dias</option>
@@ -268,10 +268,10 @@ export default function ConsultationHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total</p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold">{filteredConsultations.length}</p>
               </div>
-              <Stethoscope className="h-8 w-8 text-purple-600" />
+              <Stethoscope className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -280,13 +280,13 @@ export default function ConsultationHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Concluídas</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm font-medium text-muted-foreground">Concluídas</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {filteredConsultations.filter(c => c.status === 'COMPLETED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-green-600"></div>
+              <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-400"></div>
               </div>
             </div>
           </CardContent>
@@ -296,12 +296,12 @@ export default function ConsultationHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Agendadas</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-sm font-medium text-muted-foreground">Agendadas</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {filteredConsultations.filter(c => c.status === 'SCHEDULED').length}
                 </p>
               </div>
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </CardContent>
         </Card>
@@ -310,13 +310,13 @@ export default function ConsultationHistoryPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Canceladas</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className="text-sm font-medium text-muted-foreground">Canceladas</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {filteredConsultations.filter(c => c.status === 'CANCELLED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-red-600"></div>
+              <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-red-600 dark:bg-red-400"></div>
               </div>
             </div>
           </CardContent>
@@ -333,19 +333,19 @@ export default function ConsultationHistoryPage() {
             {filteredConsultations.map((consultation) => (
               <div
                 key={consultation.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <User className="h-4 w-4 text-purple-600" />
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <User className="h-4 w-4 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-foreground">
                           {consultation.patient.name}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           Dr(a). {consultation.doctor_name} • {consultation.specialty}
                         </p>
                       </div>
@@ -361,18 +361,18 @@ export default function ConsultationHistoryPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span>{formatDate(consultation.consultation_date)}</span>
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
+                        <Clock className="h-4 w-4 text-muted-foreground" />
                         <span>ID: {consultation.id}</span>
                       </div>
                     </div>
 
-                    <div className="text-sm text-gray-600">
-                      <strong>Motivo:</strong> {consultation.reason}
+                    <div className="text-sm text-muted-foreground">
+                      <strong className="text-foreground">Motivo:</strong> {consultation.reason}
                     </div>
                   </div>
                 </div>
@@ -381,8 +381,8 @@ export default function ConsultationHistoryPage() {
 
             {filteredConsultations.length === 0 && (
               <div className="text-center py-8">
-                <Stethoscope className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhuma consulta encontrada com os filtros aplicados</p>
+                <Stethoscope className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhuma consulta encontrada com os filtros aplicados</p>
               </div>
             )}
           </div>

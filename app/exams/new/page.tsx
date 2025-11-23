@@ -8,7 +8,7 @@ const NewExamRequestForm = dynamic(() => import('@/components/exams/new-exam-req
 
 export default function NewExamPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -24,7 +24,7 @@ export default function NewExamPage() {
             actions={<RefreshButton />}
           />
 
-          <div className="mt-6 p-6 border rounded-lg bg-white">
+          <div className="mt-6 p-6 border rounded-lg bg-card">
             <NewExamRequestForm />
           </div>
         </main>

@@ -140,7 +140,7 @@ export default function ProfilePage() {
   const currentProfile = editMode ? editedProfile! : profile
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -200,7 +200,7 @@ export default function ProfilePage() {
               {/* Avatar e Informações Básicas */}
               <div className="flex items-center space-x-6">
                 <div className="relative">
-                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                  <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center overflow-hidden">
                     {currentProfile.avatar ? (
                       <picture>
                         <source 
@@ -216,13 +216,13 @@ export default function ProfilePage() {
                         />
                       </picture>
                     ) : (
-                      <User className="h-12 w-12 text-gray-400" />
+                      <User className="h-12 w-12 text-muted-foreground" />
                     )}
                   </div>
                   {editMode && (
                     <button
                       onClick={handleAvatarUpload}
-                      className="absolute bottom-0 right-0 p-1 bg-blue-600 rounded-full text-white hover:bg-blue-700"
+                      className="absolute bottom-0 right-0 p-1 bg-primary rounded-full text-primary-foreground hover:bg-primary/90"
                     >
                       <Camera className="h-3 w-3" />
                     </button>
@@ -233,14 +233,14 @@ export default function ProfilePage() {
                   <div className="flex items-center space-x-3">
                     <Badge className={
                       currentProfile.status === 'active' 
-                        ? 'bg-green-100 text-green-800 border-green-200'
-                        : 'bg-red-100 text-red-800 border-red-200'
+                        ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                        : 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
                     }>
                       {currentProfile.status === 'active' ? 'Ativo' : 'Inativo'}
                     </Badge>
                     <Badge variant="outline">{currentProfile.role}</Badge>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Membro desde {new Date(currentProfile.joinDate).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
@@ -249,7 +249,7 @@ export default function ProfilePage() {
               {/* Campos Editáveis */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Nome Completo
                   </label>
                   {editMode ? (
@@ -258,12 +258,12 @@ export default function ProfilePage() {
                       onChange={(e) => handleInputChange('name', e.target.value)}
                     />
                   ) : (
-                    <p className="p-2 text-gray-900">{currentProfile.name}</p>
+                    <p className="p-2 text-foreground">{currentProfile.name}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Especialidade
                   </label>
                   {editMode ? (
@@ -272,12 +272,12 @@ export default function ProfilePage() {
                       onChange={(e) => handleInputChange('specialty', e.target.value)}
                     />
                   ) : (
-                    <p className="p-2 text-gray-900">{currentProfile.specialty}</p>
+                    <p className="p-2 text-foreground">{currentProfile.specialty}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Email
                   </label>
                   {editMode ? (
@@ -287,15 +287,15 @@ export default function ProfilePage() {
                       onChange={(e) => handleInputChange('email', e.target.value)}
                     />
                   ) : (
-                    <p className="p-2 text-gray-900 flex items-center space-x-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
+                    <p className="p-2 text-foreground flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       <span>{currentProfile.email}</span>
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Telefone
                   </label>
                   {editMode ? (
@@ -304,15 +304,15 @@ export default function ProfilePage() {
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                     />
                   ) : (
-                    <p className="p-2 text-gray-900 flex items-center space-x-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
+                    <p className="p-2 text-foreground flex items-center space-x-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
                       <span>{currentProfile.phone}</span>
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     CRM
                   </label>
                   {editMode ? (
@@ -321,15 +321,15 @@ export default function ProfilePage() {
                       onChange={(e) => handleInputChange('crm', e.target.value)}
                     />
                   ) : (
-                    <p className="p-2 text-gray-900 flex items-center space-x-2">
-                      <Shield className="h-4 w-4 text-gray-400" />
+                    <p className="p-2 text-foreground flex items-center space-x-2">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
                       <span>{currentProfile.crm}</span>
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Localização
                   </label>
                   {editMode ? (
@@ -338,8 +338,8 @@ export default function ProfilePage() {
                       onChange={(e) => handleInputChange('address', e.target.value)}
                     />
                   ) : (
-                    <p className="p-2 text-gray-900 flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-400" />
+                    <p className="p-2 text-foreground flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>{currentProfile.address}</span>
                     </p>
                   )}
@@ -347,7 +347,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Biografia
                 </label>
                 {editMode ? (
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                     placeholder="Conte um pouco sobre sua experiência profissional..."
                   />
                 ) : (
-                  <p className="p-2 text-gray-900 leading-relaxed">{currentProfile.bio}</p>
+                  <p className="p-2 text-foreground leading-relaxed">{currentProfile.bio}</p>
                 )}
               </div>
             </CardContent>
@@ -375,9 +375,9 @@ export default function ProfilePage() {
             <CardContent>
               <div className="space-y-2">
                 {currentProfile.certifications.map((cert, index) => (
-                  <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
                     <Award className="h-4 w-4 text-yellow-600" />
-                    <span className="text-gray-900">{cert}</span>
+                    <span className="text-foreground">{cert}</span>
                   </div>
                 ))}
               </div>
@@ -397,44 +397,44 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center mb-1">
-                    <Users className="h-4 w-4 text-blue-600" />
+                    <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div className="text-xl font-bold text-blue-900">
+                  <div className="text-xl font-bold text-blue-900 dark:text-blue-100">
                     {currentProfile.stats.totalPatients.toLocaleString()}
                   </div>
-                  <p className="text-xs text-blue-700">Pacientes</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">Pacientes</p>
                 </div>
 
-                <div className="bg-green-50 rounded-lg p-3 text-center">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center mb-1">
-                    <Calendar className="h-4 w-4 text-green-600" />
+                    <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
-                  <div className="text-xl font-bold text-green-900">
+                  <div className="text-xl font-bold text-green-900 dark:text-green-100">
                     {currentProfile.stats.totalConsultations.toLocaleString()}
                   </div>
-                  <p className="text-xs text-green-700">Consultas</p>
+                  <p className="text-xs text-green-700 dark:text-green-300">Consultas</p>
                 </div>
 
-                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center mb-1">
-                    <FileText className="h-4 w-4 text-purple-600" />
+                    <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <div className="text-xl font-bold text-purple-900">
+                  <div className="text-xl font-bold text-purple-900 dark:text-purple-100">
                     {currentProfile.stats.totalExams.toLocaleString()}
                   </div>
-                  <p className="text-xs text-purple-700">Exames</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-300">Exames</p>
                 </div>
 
-                <div className="bg-orange-50 rounded-lg p-3 text-center">
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center mb-1">
-                    <Clock className="h-4 w-4 text-orange-600" />
+                    <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                   </div>
-                  <div className="text-xl font-bold text-orange-900">
+                  <div className="text-xl font-bold text-orange-900 dark:text-orange-100">
                     {currentProfile.stats.workingHours.toLocaleString()}h
                   </div>
-                  <p className="text-xs text-orange-700">Trabalhadas</p>
+                  <p className="text-xs text-orange-700 dark:text-orange-300">Trabalhadas</p>
                 </div>
               </div>
             </CardContent>
@@ -450,7 +450,7 @@ export default function ProfilePage() {
                 {currentProfile.languages.map((language, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <span className="text-gray-900">{language}</span>
+                    <span className="text-foreground">{language}</span>
                   </div>
                 ))}
               </div>

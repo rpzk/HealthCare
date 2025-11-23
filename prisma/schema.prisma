@@ -15,7 +15,12 @@ model User {
   role                   Role                   @default(DOCTOR)
   speciality             String?
   crmNumber              String?                @unique
+  licenseNumber          String?                // Generic for CRM, COREN, CRP, etc.
+  licenseType            String?                // 'CRM', 'COREN', 'CRP', 'OAB', etc.
+  licenseState           String?                // 'SP', 'RJ', etc.
   phone                  String?
+  patientId              String?                @unique
+  patient                Patient?               @relation("UserPatient", fields: [patientId], references: [id])
   isActive               Boolean                @default(true)
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
@@ -68,9 +73,12 @@ model Patient {
   medicalHistory        String?
   riskLevel             RiskLevel              @default(BAIXO)
   userId                String?
+  latitude              Float?
+  longitude             Float?
   cpfHash               String?                @unique
   householdId           String?
   isHeadOfHousehold     Boolean                @default(false)
+  userAccount           User?                  @relation("UserPatient")
   addresses             Address[]
   attachments           Attachment[]
   consultations         Consultation[]
@@ -761,6 +769,28 @@ model CIAP2 {
   @@map("ciap2")
 }
 
+model Territory {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // 'MUNICIPALITY', 'DISTRICT', 'UNIT', 'TEAM_AREA', 'MICRO_AREA'
+  parentId    String?
+  parent      Territory? @relation("TerritoryHierarchy", fields: [parentId], references: [id])
+  children    Territory[] @relation("TerritoryHierarchy")
+  
+  // GeoJSON geometry stored as JSON
+  geometry    Json?
+  
+  // Center point for quick lookup
+  centerLat   Float?
+  centerLng   Float?
+  
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("territories")
+}
+
 enum DocumentFileType {
   DOCX
   DOC
@@ -793,6 +823,15 @@ enum Role {
   DOCTOR
   NURSE
   RECEPTIONIST
+  PHYSIOTHERAPIST
+  PSYCHOLOGIST
+  HEALTH_AGENT
+  TECHNICIAN
+  PHARMACIST
+  DENTIST
+  NUTRITIONIST
+  SOCIAL_WORKER
+  OTHER
 }
 
 enum Gender {

@@ -96,6 +96,8 @@ export const POST = withPatientAuth(async (req, { user }) => {
       currentMedications: Array.isArray((data as any).currentMedications) ? (data as any).currentMedications.join(', ') : undefined,
       riskLevel: (data as any).riskLevel,
       insuranceNumber: (data as any).insuranceNumber,
+      latitude: (data as any).latitude,
+      longitude: (data as any).longitude,
       // Não vincula automaticamente a um médico durante testes/bypass para evitar falha de FK
       // userId: user.id
     }))

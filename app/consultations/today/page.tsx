@@ -69,12 +69,12 @@ export default function TodayConsultationsPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'SCHEDULED': 'bg-blue-100 text-blue-800',
-      'COMPLETED': 'bg-green-100 text-green-800',
-      'CANCELLED': 'bg-red-100 text-red-800',
-      'IN_PROGRESS': 'bg-yellow-100 text-yellow-800'
+      'SCHEDULED': 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+      'COMPLETED': 'bg-green-500/20 text-green-600 dark:text-green-400',
+      'CANCELLED': 'bg-red-500/20 text-red-600 dark:text-red-400',
+      'IN_PROGRESS': 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[status as keyof typeof colors] || 'bg-muted text-muted-foreground'
   }
 
   const getStatusLabel = (status: string) => {
@@ -126,7 +126,7 @@ export default function TodayConsultationsPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -143,12 +143,12 @@ export default function TodayConsultationsPage() {
           <span>Voltar</span>
         </Button>
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Calendar className="h-6 w-6 text-purple-600" />
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Calendar className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Consultas de Hoje</h1>
-            <p className="text-sm text-gray-500">{todayString}</p>
+            <h1 className="text-2xl font-bold text-foreground">Consultas de Hoje</h1>
+            <p className="text-sm text-muted-foreground">{todayString}</p>
           </div>
         </div>
       </div>
@@ -159,10 +159,10 @@ export default function TodayConsultationsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total</p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold">{consultations.length}</p>
               </div>
-              <Calendar className="h-8 w-8 text-purple-600" />
+              <Calendar className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -171,13 +171,13 @@ export default function TodayConsultationsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Agendadas</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-sm font-medium text-muted-foreground">Agendadas</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {consultations.filter(c => c.status === 'SCHEDULED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-blue-600" />
+              <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>
@@ -187,13 +187,13 @@ export default function TodayConsultationsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Em Andamento</p>
-                <p className="text-2xl font-bold text-yellow-600">
+                <p className="text-sm font-medium text-muted-foreground">Em Andamento</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                   {consultations.filter(c => c.status === 'IN_PROGRESS').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-yellow-600"></div>
+              <div className="h-8 w-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-yellow-600 dark:bg-yellow-400"></div>
               </div>
             </div>
           </CardContent>
@@ -203,13 +203,13 @@ export default function TodayConsultationsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Concluídas</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm font-medium text-muted-foreground">Concluídas</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {consultations.filter(c => c.status === 'COMPLETED').length}
                 </p>
               </div>
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <div className="h-4 w-4 rounded-full bg-green-600"></div>
+              <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-400"></div>
               </div>
             </div>
           </CardContent>
@@ -229,18 +229,18 @@ export default function TodayConsultationsPage() {
             {consultations.map((consultation) => (
               <div
                 key={consultation.id}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-purple-100 rounded-lg">
-                        <Clock className="h-5 w-5 text-purple-600" />
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <Clock className="h-5 w-5 text-primary" />
                       </div>
                       
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-xl font-bold text-gray-900">
+                          <h3 className="text-xl font-bold text-foreground">
                             {formatTime(consultation.consultation_date)}
                           </h3>
                           <Badge className={getStatusColor(consultation.status)}>
@@ -253,29 +253,29 @@ export default function TodayConsultationsPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <p className="font-semibold text-gray-900 flex items-center">
+                            <p className="font-semibold text-foreground flex items-center">
                               <User className="h-4 w-4 mr-2" />
                               {consultation.patient.name}
                             </p>
-                            <p className="text-sm text-gray-500 flex items-center mt-1">
+                            <p className="text-sm text-muted-foreground flex items-center mt-1">
                               <Phone className="h-4 w-4 mr-2" />
                               {consultation.patient.phone}
                             </p>
                           </div>
                           
                           <div>
-                            <p className="font-semibold text-gray-900 flex items-center">
+                            <p className="font-semibold text-foreground flex items-center">
                               <Stethoscope className="h-4 w-4 mr-2" />
                               Dr(a). {consultation.doctor_name}
                             </p>
-                            <p className="text-sm text-gray-500 flex items-center mt-1">
+                            <p className="text-sm text-muted-foreground flex items-center mt-1">
                               <MapPin className="h-4 w-4 mr-2" />
                               {consultation.specialty}
                             </p>
                           </div>
                         </div>
                         
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                           <p className="text-sm"><strong>Motivo:</strong> {consultation.reason}</p>
                         </div>
                       </div>
@@ -288,7 +288,7 @@ export default function TodayConsultationsPage() {
                           <Button
                             size="sm"
                             onClick={() => updateConsultationStatus(consultation.id, 'IN_PROGRESS')}
-                            className="bg-yellow-600 hover:bg-yellow-700"
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white"
                           >
                             Iniciar Consulta
                           </Button>
@@ -296,7 +296,7 @@ export default function TodayConsultationsPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => updateConsultationStatus(consultation.id, 'CANCELLED')}
-                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            className="text-destructive border-destructive hover:bg-destructive/10"
                           >
                             Cancelar
                           </Button>
@@ -307,7 +307,7 @@ export default function TodayConsultationsPage() {
                         <Button
                           size="sm"
                           onClick={() => updateConsultationStatus(consultation.id, 'COMPLETED')}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 text-white"
                         >
                           Finalizar Consulta
                         </Button>
@@ -327,9 +327,9 @@ export default function TodayConsultationsPage() {
 
             {consultations.length === 0 && (
               <div className="text-center py-12">
-                <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-xl text-gray-500 mb-2">Nenhuma consulta agendada para hoje</p>
-                <p className="text-sm text-gray-400 mb-4">Que tal aproveitar para colocar a agenda em dia?</p>
+                <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-xl text-muted-foreground mb-2">Nenhuma consulta agendada para hoje</p>
+                <p className="text-sm text-muted-foreground mb-4">Que tal aproveitar para colocar a agenda em dia?</p>
                 <Button 
                   onClick={() => router.push('/consultations/new')}
                   className="flex items-center space-x-2"
@@ -356,9 +356,9 @@ export default function TodayConsultationsPage() {
               onClick={() => router.push('/consultations/new')}
             >
               <div className="text-center">
-                <Calendar className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                <Calendar className="h-8 w-8 mx-auto mb-2 text-primary" />
                 <p className="font-medium">Agendar Consulta</p>
-                <p className="text-xs text-gray-500">Criar novo agendamento</p>
+                <p className="text-xs text-muted-foreground">Criar novo agendamento</p>
               </div>
             </Button>
             
@@ -368,9 +368,9 @@ export default function TodayConsultationsPage() {
               onClick={() => router.push('/patients')}
             >
               <div className="text-center">
-                <User className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                <User className="h-8 w-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
                 <p className="font-medium">Ver Pacientes</p>
-                <p className="text-xs text-gray-500">Lista completa</p>
+                <p className="text-xs text-muted-foreground">Lista completa</p>
               </div>
             </Button>
             
@@ -380,9 +380,9 @@ export default function TodayConsultationsPage() {
               onClick={() => router.push('/consultations/history')}
             >
               <div className="text-center">
-                <Stethoscope className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                <Stethoscope className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
                 <p className="font-medium">Histórico</p>
-                <p className="text-xs text-gray-500">Consultas anteriores</p>
+                <p className="text-xs text-muted-foreground">Consultas anteriores</p>
               </div>
             </Button>
           </div>

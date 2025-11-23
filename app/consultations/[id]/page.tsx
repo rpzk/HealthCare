@@ -11,13 +11,13 @@ export const metadata: Metadata = {
 
 export default function ConsultationWorkspacePage({ params }: { params: { id: string } }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
         <main className="flex-1 ml-64">
-          <div className="ssf-header">
-            <h1>Sistema de Saúde da Família - Consulta Integrada</h1>
+          <div className="p-6 bg-card border-b border-border">
+            <h1 className="text-2xl font-bold text-foreground">Sistema de Saúde da Família - Consulta Integrada</h1>
           </div>
           <SSFConsultationWorkspace consultationId={params.id} />
         </main>

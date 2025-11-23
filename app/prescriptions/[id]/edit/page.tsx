@@ -12,7 +12,7 @@ const EditPrescriptionForm = dynamic<{ id: string }>(
 export default function EditPrescriptionPage({ params }: { params: { id: string } }) {
   const { id } = params
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
@@ -29,7 +29,7 @@ export default function EditPrescriptionPage({ params }: { params: { id: string 
             actions={<RefreshButton />}
           />
 
-          <div className="mt-6 p-6 border rounded-lg bg-white">
+          <div className="mt-6 p-6 border rounded-lg bg-card">
             <EditPrescriptionForm id={id} />
           </div>
         </main>
