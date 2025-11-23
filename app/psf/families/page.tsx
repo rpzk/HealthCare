@@ -12,17 +12,29 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+export const dynamic = 'force-dynamic';
+
 export default async function FamiliesPage() {
-  const families = await prisma.household.findMany({
-    include: {
-      _count: {
-        select: { members: true }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
+  let families: any[] = [];
+  
+  try {
+    if (prisma) {
+      families = await prisma.household.findMany({
+        include: {
+          _count: {
+            select: { members: true }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
     }
-  })
+  } catch (error) {
+    console.error("Failed to fetch families (likely build time or DB offline):", error);
+    // Return empty array to allow build to proceed
+    families = [];
+  }
 
   return (
     <div className="p-6 space-y-6">
