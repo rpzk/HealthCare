@@ -103,9 +103,9 @@ export class RedisRateLimiter {
     }
 
     // Prevent unhandled error events from crashing the process
-    this.redis.on('error', (err) => {
+    this.redis.on('error', (err: NodeJS.ErrnoException) => {
       // Suppress connection refused errors during build/test if needed
-      if (err.code === 'ECONNREFUSED') {
+      if (err?.code === 'ECONNREFUSED') {
         // console.warn('Redis connection refused (expected during build/test)');
         return;
       }

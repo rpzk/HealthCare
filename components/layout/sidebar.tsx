@@ -161,7 +161,8 @@ export function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const pathname = usePathname()
   const { data: session } = useSession()
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const userRole = (session as any)?.user?.role as 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | undefined
 
   const visibleMenuItems = useMemo(() => {
@@ -200,8 +201,19 @@ export function Sidebar() {
     return pathname === href || (href !== '/' && pathname.startsWith(href))
   }
 
+  const inactiveItemClasses = isDark
+    ? 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+
   return (
-    <div className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-card border-r border-border overflow-y-auto transition-colors duration-300 shadow-sm">
+    <div
+      className={cn(
+        'fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] border-r overflow-y-auto transition-colors duration-300 shadow-sm supports-[backdrop-filter]:backdrop-blur-lg',
+        isDark
+          ? 'bg-slate-950/90 border-slate-800/70 text-slate-100'
+          : 'bg-white/90 border-slate-200 text-slate-700'
+      )}
+    >
       <nav className="p-4 space-y-2">
         {visibleMenuItems.map((item) => (
           <div key={item.title}>
@@ -209,16 +221,25 @@ export function Sidebar() {
               <button
                 onClick={() => toggleExpanded(item.title)}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                   isActive(item.href)
-                    ? "bg-primary text-primary-foreground shadow-md" 
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? 'bg-primary/90 text-primary-foreground shadow-md ring-1 ring-primary/40'
+                    : inactiveItemClasses
                 )}
                 aria-expanded={expandedItems.includes(item.title)}
                 aria-controls={`submenu-${item.title}`}
               >
                 <div className="flex items-center space-x-3">
-                  <item.icon className={cn("h-5 w-5", isActive(item.href) ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                  <item.icon
+                    className={cn(
+                      'h-5 w-5',
+                      isActive(item.href)
+                        ? 'text-primary-foreground'
+                        : isDark
+                        ? 'text-slate-400 group-hover:text-slate-100'
+                        : 'text-muted-foreground group-hover:text-foreground'
+                    )}
+                  />
                   <span>{item.title}</span>
                 </div>
                 <ChevronDown 
@@ -232,18 +253,32 @@ export function Sidebar() {
               <Link
                 href={item.href}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                   isActive(item.href)
-                    ? "bg-primary text-primary-foreground shadow-md" 
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? 'bg-primary/90 text-primary-foreground shadow-md ring-1 ring-primary/40'
+                    : inactiveItemClasses
                 )}
               >
                 <div className="flex items-center">
-                  <item.icon className={cn("h-5 w-5 mr-3", isActive(item.href) ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                  <item.icon
+                    className={cn(
+                      'h-5 w-5 mr-3',
+                      isActive(item.href)
+                        ? 'text-primary-foreground'
+                        : isDark
+                        ? 'text-slate-400 group-hover:text-slate-100'
+                        : 'text-muted-foreground group-hover:text-foreground'
+                    )}
+                  />
                   <span>{item.title}</span>
                 </div>
                 {item.badge && (!item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))) && (
-                  <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded">
+                  <span
+                    className={cn(
+                      'px-2 py-1 text-xs font-bold rounded',
+                      isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-800'
+                    )}
+                  >
                     {item.badge}
                   </span>
                 )}
@@ -251,16 +286,26 @@ export function Sidebar() {
             )}
             
             {item.submenu && expandedItems.includes(item.title) && (
-              <div className="ml-4 mt-2 space-y-1 border-l-2 border-border pl-2" id={`submenu-${item.title}`} role="region" aria-label={`Submenu ${item.title}`}>
+              <div
+                className={cn(
+                  'ml-4 mt-2 space-y-1 border-l-2 pl-2',
+                  isDark ? 'border-slate-800' : 'border-border'
+                )}
+                id={`submenu-${item.title}`}
+                role="region"
+                aria-label={`Submenu ${item.title}`}
+              >
                 {item.submenu.map((subItem) => (
                   <Link
                     key={subItem.title}
                     href={subItem.href}
                     className={cn(
-                      "w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors",
+                      'w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors',
                       isActive(subItem.href)
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? 'bg-accent/90 text-accent-foreground font-medium'
+                        : isDark
+                        ? 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                     aria-current={isActive(subItem.href) ? 'page' : undefined}
                   >

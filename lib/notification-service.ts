@@ -1,4 +1,6 @@
-import { prisma } from '@/lib/prisma'
+import { ensurePrismaConnected, getPrisma } from '@/lib/prisma'
+
+const prisma = getPrisma()
 
 export interface Notification {
   id: string
@@ -36,6 +38,7 @@ export interface NotificationCreateData {
 export class NotificationService {
   static async createNotification(data: NotificationCreateData) {
     try {
+      await ensurePrismaConnected()
       const notification = await (prisma as any).notification.create({
         data: {
           userId: data.userId,
@@ -63,6 +66,7 @@ export class NotificationService {
     if (options.priority) where.priority = options.priority
     if (options.type) where.type = options.type
 
+    await ensurePrismaConnected()
     return (prisma as any).notification.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -71,12 +75,14 @@ export class NotificationService {
   }
 
   static async deleteNotification(id: string) {
+    await ensurePrismaConnected()
     return (prisma as any).notification.delete({
       where: { id }
     })
   }
 
   static async markAsRead(id: string) {
+    await ensurePrismaConnected()
     return (prisma as any).notification.update({
       where: { id },
       data: { read: true }
@@ -84,6 +90,7 @@ export class NotificationService {
   }
 
   static async markAllAsRead(userId: string) {
+    await ensurePrismaConnected()
     return (prisma as any).notification.updateMany({
       where: { userId, read: false },
       data: { read: true }
