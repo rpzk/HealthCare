@@ -29,7 +29,7 @@ export function QuickNav() {
   }
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-3 fixed w-full top-16 z-40">
+    <div className="bg-background border-b border-border px-6 py-3 fixed w-full top-16 z-40 transition-colors duration-300">
       <div className="flex items-center gap-2 overflow-x-auto">
         {quickNavItems.map((item) => {
           const Icon = item.icon
@@ -42,8 +42,8 @@ export function QuickNav() {
               onClick={() => router.push(item.href)}
               className={`flex items-center gap-2 whitespace-nowrap ${
                 active 
-                  ? 'bg-blue-100 text-blue-600 border-blue-200' 
-                  : 'hover:bg-blue-50 hover:text-blue-600'
+                  ? 'bg-primary/10 text-primary' 
+                  : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
               }`}
             >
               <Icon className="h-4 w-4" />

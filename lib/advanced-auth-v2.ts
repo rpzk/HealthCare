@@ -75,8 +75,9 @@ export function withRateLimitedAuth(
       // 1. Autenticação
       const authResult = await authMiddleware(request)
       
-      if ('status' in authResult) {
-        statusCode = (authResult as any).status || 401
+      if (!authResult.success) {
+        const response = authResult.response
+        statusCode = response?.status || 401
         
         // 📊 Log evento de segurança para AI
         await aiAnomalyDetector.analyzeSecurityEvent({
@@ -89,7 +90,7 @@ export function withRateLimitedAuth(
           statusCode
         })
         
-        return (authResult as any).response || NextResponse.json({ error: 'Authentication failed' }, { status: statusCode })
+        return response || NextResponse.json({ error: 'Authentication failed' }, { status: statusCode })
       }
 
       const { user } = authResult as any

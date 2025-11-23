@@ -14,7 +14,8 @@ async function createAdmin() {
       where: { email: 'admin@healthcare.com' },
       update: {
         name: 'Dr. Admin Sistema',
-  role: 'ADMIN'
+        role: 'ADMIN',
+        password: hashedPassword
       },
       create: {
         email: 'admin@healthcare.com',
