@@ -8,7 +8,7 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding Territories from legacy fixtures...')
 
-  const fixturesDir = path.join(process.cwd(), 'ssf', 'fixtures')
+  const fixturesDir = path.join(process.cwd(), 'scripts', 'fixtures')
 
   // 1. Países
   console.log('Importing Countries...')
