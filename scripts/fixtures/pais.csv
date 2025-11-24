@@ -1,0 +1,244 @@
+4;Afeganistão;AF;;0
+8;Albânia;AL;;0
+10;Antárctida;AQ;;0
+12;Argélia;DZ;;0
+16;Samoa Americana;AS;;0
+20;Andorra;AD;;0
+24;Angola;AO;;0
+28;Antigua e Barbuda;AG;;0
+31;Azerbeijão;AZ;;0
+32;Argentina;AR;;0
+36;Austrália;AU;;0
+40;Áustria;AT;;0
+44;Bahamas;BS;;0
+48;Bahrain;BH;;0
+50;Bangladesh;BD;;0
+51;Arménia;AM;;0
+52;Barbados;BB;;0
+56;Bélgica;BE;;0
+60;Bermuda;BM;;0
+64;Butão;BT;;0
+68;Bolívia;BO;;0
+70;Bósnia-Herzegovina;BA;;0
+72;Botswana;BW;;0
+74;Bouvet, Ilha;BV;;0
+76;Brasil;BR;;0
+84;Belize;BZ;;0
+86;Território Britânico do Oceano Índico;IO;;0
+90;Salomão, Ilhas;SB;;0
+92;Virgens Britânicas, Ilhas;VG;;0
+96;Brunei;BN;;0
+100;Bulgária;BG;;0
+104;Myanmar (antiga Birmânia);MM;;0
+108;Burundi;BI;;0
+112;Bielo-Rússia;BY;;0
+116;Cambodja;KH;;0
+120;Camarões;CM;;0
+124;Canadá;CA;;0
+132;Cabo Verde;CV;;0
+136;Cayman, Ilhas;KY;;0
+140;Centro-africana, República;CF;;0
+144;Sri Lanka;LK;;0
+148;Chade;TD;;0
+152;Chile;CL;;0
+156;China;CN;;0
+158;Taiwan;TW;;0
+162;Christmas, Ilha;CX;;0
+166;Cocos, Ilhas;CC;;0
+170;Colômbia;CO;;0
+174;Comores;KM;;0
+175;Mayotte;YT;;0
+178;Congo, República do;CG;;0
+180;Congo, República Democrática do (antigo Zaire);CD;;0
+184;Cook, Ilhas;CK;;0
+188;Costa Rica;CR;;0
+191;Croácia;HR;;0
+192;Cuba;CU;;0
+196;Chipre;CY;;0
+203;Checa, República;CZ;;0
+204;Benin;BJ;;0
+208;Dinamarca;DK;;0
+212;Dominica;DM;;0
+214;Dominicana, República;DO;;0
+218;Equador;EC;;0
+222;El Salvador;SV;;0
+226;Guiné Equatorial;GQ;;0
+231;Etiópia;ET;;0
+232;Eritreia;ER;;0
+233;Estónia;EE;;0
+234;Faroe, Ilhas;FO;;0
+238;Malvinas, Ilhas (Falkland);FK;;0
+239;Geórgia do Sul e Sandwich do Sul, Ilhas;GS;;0
+242;Fiji;FJ;;0
+246;Finlândia;FI;;0
+248;Åland, Ilhas;AX;;0
+250;França;FR;;0
+254;Guiana Francesa;GF;;0
+258;Polinésia Francesa;PF;;0
+260;Terras Austrais e Antárticas Francesas (TAAF);TF;;0
+262;Djibouti;DJ;;0
+266;Gabão;GA;;0
+268;Geórgia;GE;;0
+270;Gâmbia;GM;;0
+275;Palestina;PS;;0
+276;Alemanha;DE;;0
+288;Gana;GH;;0
+292;Gibraltar;GI;;0
+296;Kiribati;KI;;0
+300;Grécia;GR;;0
+304;Gronelândia;GL;;0
+308;Grenada;GD;;0
+312;Guadeloupe;GP;;0
+316;Guam;GU;;0
+320;Guatemala;GT;;0
+324;Guiné-Conacri;GN;;0
+328;Guiana;GY;;0
+332;Haiti;HT;;0
+334;Heard e Ilhas McDonald, Ilha;HM;;0
+336;Vaticano;VA;;0
+340;Honduras;HN;;0
+344;Hong Kong;HK;;0
+348;Hungria;HU;;0
+352;Islândia;IS;;0
+356;Índia;IN;;0
+360;Indonésia;ID;;0
+364;Irão;IR;;0
+368;Iraque;IQ;;0
+372;Irlanda;IE;;0
+376;Israel;IL;;0
+380;Itália;IT;;0
+384;Costa do Marfim;CI;;0
+388;Jamaica;JM;;0
+392;Japão;JP;;0
+398;Cazaquistão;KZ;;0
+400;Jordânia;JO;;0
+404;Quénia;KE;;0
+408;Coreia, República Democrática da (Coreia do Norte);KP;;0
+410;Coreia do Sul;KR;;0
+414;Kuwait;KW;;0
+417;Quirguistão;KG;;0
+418;Laos;LA;;0
+422;Líbano;LB;;0
+426;Lesoto;LS;;0
+428;Letónia;LV;;0
+430;Libéria;LR;;0
+434;Líbia;LY;;0
+438;Liechtenstein;LI;;0
+440;Lituânia;LT;;0
+442;Luxemburgo;LU;;0
+446;Macau;MO;;0
+450;Madagáscar;MG;;0
+454;Malawi;MW;;0
+458;Malásia;MY;;0
+462;Maldivas;MV;;0
+466;Mali;ML;;0
+470;Malta;MT;;0
+474;Martinica;MQ;;0
+478;Mauritânia;MR;;0
+480;Maurícia;MU;;0
+484;México;MX;;0
+492;Mónaco;MC;;0
+496;Mongólia;MN;;0
+498;Moldávia;MD;;0
+499;Montenegro;ME;;0
+500;Montserrat;MS;;0
+504;Marrocos;MA;;0
+508;Moçambique;MZ;;0
+512;Oman;OM;;0
+516;Namíbia;NA;;0
+520;Nauru;NR;;0
+524;Nepal;NP;;0
+528;Países Baixos (Holanda);NL;;0
+530;Antilhas Holandesas;AN;;0
+533;Aruba;AW;;0
+540;Nova Caledónia;NC;;0
+548;Vanuatu;VU;;0
+554;Nova Zelândia (Aotearoa);NZ;;0
+558;Nicarágua;NI;;0
+562;Níger;NE;;0
+566;Nigéria;NG;;0
+570;Niue;NU;;0
+574;Norfolk, Ilha;NF;;0
+578;Noruega;NO;;0
+580;Marianas Setentrionais;MP;;0
+581;Menores Distantes dos Estados Unidos, Ilhas;UM;;0
+583;Micronésia, Estados Federados da;FM;;0
+584;Marshall, Ilhas;MH;;0
+585;Palau;PW;;0
+586;Paquistão;PK;;0
+591;Panamá;PA;;0
+598;Papua-Nova Guiné;PG;;0
+600;Paraguai;PY;;0
+604;Peru;PE;;0
+608;Filipinas;PH;;0
+612;Pitcairn;PN;;0
+616;Polónia;PL;;0
+620;Portugal;PT;;0
+624;Guiné-Bissau;GW;;0
+626;Timor-Leste;TL;;0
+630;Porto Rico;PR;;0
+634;Qatar;QA;;0
+638;Reunião;RE;;0
+642;Roménia;RO;;0
+643;Rússia;RU;;0
+646;Ruanda;RW;;0
+654;Santa Helena;SH;;0
+659;São Cristóvão e Névis (Saint Kitts e Nevis);KN;;0
+660;Anguilla;AI;;0
+662;Santa Lúcia;LC;;0
+666;Saint Pierre et Miquelon;PM;;0
+670;São Vicente e Granadinas;VC;;0
+674;San Marino;SM;;0
+678;São Tomé e Príncipe;ST;;0
+682;Arábia Saudita;SA;;0
+686;Senegal;SN;;0
+688;Sérvia;RS;;0
+690;Seychelles;SC;;0
+694;Serra Leoa;SL;;0
+702;Singapura;SG;;0
+703;Eslováquia;SK;;0
+704;Vietname;VN;;0
+705;Eslovénia;SI;;0
+706;Somália;SO;;0
+710;África do Sul;ZA;;0
+716;Zimbabwe;ZW;;0
+724;Espanha;ES;;0
+732;Saara Ocidental;EH;;0
+736;Sudão;SD;;0
+740;Suriname;SR;;0
+744;Svalbard e Jan Mayen;SJ;;0
+748;Suazilândia;SZ;;0
+752;Suécia;SE;;0
+756;Suíça;CH;;0
+760;Síria;SY;;0
+762;Tajiquistão;TJ;;0
+764;Tailândia;TH;;0
+768;Togo;TG;;0
+772;Toquelau;TK;;0
+776;Tonga;TO;;0
+780;Trindade e Tobago;TT;;0
+784;Emiratos Árabes Unidos;AE;;0
+788;Tunísia;TN;;0
+792;Turquia;TR;;0
+795;Turquemenistão;TM;;0
+796;Turks e Caicos;TC;;0
+798;Tuvalu;TV;;0
+800;Uganda;UG;;0
+804;Ucrânia;UA;;0
+807;Macedónia, República da;MK;;0
+818;Egipto;EG;;0
+826;Reino Unido da Grã-Bretanha e Irlanda do Norte;GB;;0
+831;Guernsey;GG;;0
+832;Jersey;JE;;0
+833;Man, Ilha de;IM;;0
+834;Tanzânia;TZ;;0
+840;Estados Unidos da América;US;;0
+850;Virgens Americanas, Ilhas;VI;;0
+854;Burkina Faso;BF;;0
+858;Uruguai;UY;;0
+860;Usbequistão;UZ;;0
+862;Venezuela;VE;;0
+876;Wallis e Futuna;WF;;0
+882;Samoa (Samoa Ocidental);WS;;0
+887;Iémen;YE;;0
+894;Zâmbia;ZM;;0
