@@ -59,7 +59,7 @@ export default async function SecurityMonitoringDashboard() {
   const auditErrors = String(overview?.audit.errors ?? 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
       <div className="flex pt-32">
         <Sidebar />
