@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BarChart3, ArrowLeft, Users, Stethoscope, TestTube, FileText, TrendingUp, Calendar, AlertCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 
 interface SpecialtyStat { name: string; count: number }
 interface AgeGroup { range: string; count: number }
@@ -182,39 +185,26 @@ export default function DashboardReportsPage() {
     }
   ]
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="outline" 
-          onClick={() => router.back()}
-          className="flex items-center space-x-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar</span>
-        </Button>
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
-            <BarChart3 className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboard Médico</h1>
-            <p className="text-sm text-muted-foreground">
-              Visão geral das métricas e indicadores de performance
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      <Header />
+      <div className="flex pt-32">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 space-y-6">
+          <PageHeader
+            title="Dashboard Médico"
+            description="Visão geral das métricas e indicadores de performance"
+            breadcrumbs={[{ label: 'Relatórios' }, { label: 'Dashboard' }]}
+            showBackButton={false}
+          />
 
-      {/* Indicadores Principais */}
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <>
+              {/* Indicadores Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => (
           <Card key={index}>
@@ -438,6 +428,10 @@ export default function DashboardReportsPage() {
             <p className="text-xs text-muted-foreground">Visualizar agenda completa</p>
           </div>
         </Button>
+      </div>
+            </>
+          )}
+        </main>
       </div>
     </div>
   )
