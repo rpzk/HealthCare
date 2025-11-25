@@ -1,4 +1,5 @@
 #!/bin/bash
+# Script de deploy automatizado para Umbrel
 echo "Iniciando deploy no Umbrel..."
 
 # Garante que estamos na branch correta e atualizados
