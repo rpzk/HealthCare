@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function ConsultationsPage() {
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
       <div className="flex pt-32">
         <Sidebar />

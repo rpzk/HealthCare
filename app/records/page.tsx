@@ -112,7 +112,7 @@ export default function MedicalRecordsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
       <div className="flex pt-32">
         <Sidebar />
