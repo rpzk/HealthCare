@@ -134,11 +134,11 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted/40">
+      <div className="min-h-screen bg-background transition-colors duration-300">
         <Header />
-        <div className="flex pt-16">
+        <div className="flex pt-32">
           <Sidebar />
-          <main className="flex-1 ml-64 p-6 pt-24">
+          <main className="flex-1 ml-64 p-6">
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             </div>
@@ -149,11 +149,11 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
-      <div className="flex pt-16">
+      <div className="flex pt-32">
         <Sidebar />
-        <main className="flex-1 ml-64 p-6 pt-24">
+        <main className="flex-1 ml-64 p-6">
           <PageHeader
             title="Relatórios e Analytics"
             description="Geração e análise de relatórios do sistema"

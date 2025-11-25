@@ -21,13 +21,16 @@ import {
   Search,
   Minus
 } from 'lucide-react'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 
-type MetricStatus = 'good' | 'warning' | 'critical'
-type ServiceStatus = 'online' | 'offline' | 'maintenance'
-type LogLevel = 'info' | 'warning' | 'error' | 'critical'
-type LogLevelFilter = 'all' | LogLevel
-type ServiceFilter = 'all' | 'API' | 'Database' | 'Cache' | 'Storage' | 'Email'
-const AUTO_REFRESH_INTERVAL_MS = 30_000
+type MetricStatus = 'good' | 'warning' | 'critical' | 'offline' | 'maintenance'
+type ServiceStatus = 'online' | 'offline' | 'degraded' | 'maintenance'
+type LogLevel = 'info' | 'warning' | 'error' | 'critical' | 'success'
+type LogLevelFilter = LogLevel | 'all'
+type ServiceFilter = string
+const AUTO_REFRESH_INTERVAL_MS = 5000
 
 interface SystemMetrics {
   cpu: {
@@ -331,39 +334,36 @@ export default function SystemMonitorPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <Activity className="h-6 w-6 text-green-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Monitor do Sistema</h1>
-            <p className="text-sm text-gray-500">
-              Monitoramento em tempo real da infraestrutura
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-background transition-colors duration-300">
+      <Header />
+      <div className="flex pt-32">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 space-y-6">
+          <PageHeader
+            title="Monitor do Sistema"
+            description="Monitoramento em tempo real da infraestrutura"
+            breadcrumbs={[{ label: 'Sistema' }, { label: 'Monitor' }]}
+            showBackButton={false}
+            actions={
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setAutoRefresh((prev) => !prev)}
+                  className={`flex items-center space-x-2 ${
+                    autoRefresh ? 'bg-green-50 border-green-200' : ''
+                  }`}
+                >
+                  <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
+                  <span>{autoRefresh ? 'Auto: ON' : 'Auto: OFF'}</span>
+                </Button>
 
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setAutoRefresh((prev) => !prev)}
-            className={`flex items-center space-x-2 ${
-              autoRefresh ? 'bg-green-50 border-green-200' : ''
-            }`}
-          >
-            <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-            <span>{autoRefresh ? 'Auto-Refresh: ON' : 'Auto-Refresh: OFF'}</span>
-          </Button>
-
-          <Button onClick={() => fetchSystemData()}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Atualizar
-          </Button>
-        </div>
-      </div>
+                <Button onClick={() => fetchSystemData()}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Atualizar
+                </Button>
+              </div>
+            }
+          />
 
       {/* Status dos Serviços */}
       <Card>
@@ -412,7 +412,7 @@ export default function SystemMonitorPage() {
                   <span>Uso</span>
                   <span>{metrics.cpu.usage.toFixed(1)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-secondary rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.cpu.status === 'critical' ? 'bg-red-500' :
@@ -450,7 +450,7 @@ export default function SystemMonitorPage() {
                   <span>Uso</span>
                   <span>{metrics.memory.percentage.toFixed(1)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-secondary rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.memory.status === 'critical' ? 'bg-red-500' :
@@ -487,7 +487,7 @@ export default function SystemMonitorPage() {
                   <span>Uso</span>
                   <span>{metrics.storage.percentage.toFixed(1)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-secondary rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full ${
                       metrics.storage.status === 'critical' ? 'bg-red-500' :
@@ -521,7 +521,7 @@ export default function SystemMonitorPage() {
             <div className="space-y-2 text-xs text-gray-500">
               <p>Conexões: {metrics.database.connections}/{metrics.database.maxConnections}</p>
               <p>Query time: {metrics.database.queryTime.toFixed(1)}ms</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-secondary rounded-full h-2">
                 <div 
                   className="h-2 bg-green-500 rounded-full"
                   style={{ width: `${(metrics.database.connections / metrics.database.maxConnections) * 100}%` }}
@@ -604,7 +604,7 @@ export default function SystemMonitorPage() {
               </div>
             ) : (
               filteredLogs.map(log => (
-                <div key={log.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div key={log.id} className="border rounded-lg p-4 hover:bg-muted">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
@@ -641,6 +641,8 @@ export default function SystemMonitorPage() {
           </div>
         </CardContent>
       </Card>
+        </main>
+      </div>
     </div>
   )
 }

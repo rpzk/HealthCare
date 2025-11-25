@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input'
 import { FileText, Search, Calendar, User, ArrowLeft, Filter, Eye } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PageHeader } from '@/components/navigation/page-header'
 
 interface MedicalRecord {
   id: string
@@ -115,26 +118,17 @@ export default function RecordsSearchPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="outline" 
-          onClick={() => router.back()}
-          className="flex items-center space-x-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar</span>
-        </Button>
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Search className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Buscar Prontuários</h1>
-            <p className="text-sm text-gray-500">Pesquisa avançada em registros médicos</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background transition-colors duration-300">
+      <Header />
+      <div className="flex pt-32">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 space-y-6">
+          <PageHeader
+            title="Buscar Prontuários"
+            description="Pesquisa avançada em registros médicos"
+            breadcrumbs={[{ label: 'Prontuários', href: '/records' }, { label: 'Busca' }]}
+            showBackButton={true}
+          />
 
       {/* Formulário de Busca */}
       <Card>
@@ -396,6 +390,8 @@ export default function RecordsSearchPage() {
           </CardContent>
         </Card>
       )}
+        </main>
+      </div>
     </div>
   )
 }
