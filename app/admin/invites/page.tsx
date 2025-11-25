@@ -92,6 +92,10 @@ export default function InvitesPage() {
           <CardTitle>Novo Convite</CardTitle>
           <CardDescription>
             Preencha o email e o tipo de usuário para gerar um link único.
+            <br />
+            <span className="text-yellow-600 font-medium">
+              Nota: O sistema gera o link, mas você deve enviá-lo manualmente para o usuário.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,8 +153,8 @@ export default function InvitesPage() {
             <Check className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-800">Convite Gerado com Sucesso!</AlertTitle>
             <AlertDescription className="mt-2">
-              <p className="text-green-700 mb-2">
-                Envie o link abaixo para o usuário completar o cadastro:
+              <p className="text-green-700 mb-2 font-medium">
+                Copie e envie o link abaixo para o usuário (via WhatsApp, Email, etc):
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <code className="relative rounded bg-white px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold border border-green-200 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">

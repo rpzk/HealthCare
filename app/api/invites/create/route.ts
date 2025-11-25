@@ -31,11 +31,13 @@ export async function POST(req: Request) {
       }
     })
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
     if (existingInvite) {
       return NextResponse.json({
         inviteId: existingInvite.id,
         token: existingInvite.token,
-        link: `${process.env.NEXT_PUBLIC_APP_URL}/register/${existingInvite.token}`
+        link: `${baseUrl}/register/${existingInvite.token}`
       })
     }
 
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       inviteId: invite.id,
       token: invite.token,
-      link: `${process.env.NEXT_PUBLIC_APP_URL}/register/${invite.token}`
+      link: `${baseUrl}/register/${invite.token}`
     })
 
   } catch (error) {
