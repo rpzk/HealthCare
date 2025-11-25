@@ -13,7 +13,7 @@ export default function ConsultationsPage() {
   return (
     <div className="min-h-screen bg-muted/40">
       <Header />
-      <div className="flex">
+      <div className="flex pt-32">
         <Sidebar />
         <main className="flex-1 ml-64 p-8">
           <div className="max-w-7xl mx-auto">
