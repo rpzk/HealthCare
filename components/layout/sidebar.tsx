@@ -19,7 +19,8 @@ import {
   Settings,
   Brain,
   DollarSign,
-  Building
+  Building,
+  Mail
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -145,6 +146,13 @@ const menuItems: MenuItem[] = [
     title: 'Monitoramento de Segurança',
     icon: Activity,
     href: '/security-monitoring',
+    badge: 'ADMIN',
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    title: 'Convites',
+    icon: Mail,
+    href: '/admin/invites',
     badge: 'ADMIN',
     allowedRoles: ['ADMIN'],
   },

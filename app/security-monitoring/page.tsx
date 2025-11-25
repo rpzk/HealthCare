@@ -21,10 +21,8 @@ interface FetchResult<T> {
 }
 
 async function fetchSecurityOverview(): Promise<FetchResult<SecurityOverviewResponse>> {
-  const hdrs = headers()
-  const host = hdrs.get('host') || 'localhost:3000'
-  const proto = hdrs.get('x-forwarded-proto') || 'http'
-  const base = `${proto}://${host}`
+  // Use localhost internally to ensure Docker container can resolve itself
+  const base = 'http://localhost:3000'
   const url = `${base}/api/admin/security?action=security-overview`
   try {
     const cookieHeader = cookies().toString()
@@ -63,7 +61,7 @@ export default async function SecurityMonitoringDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="flex pt-16">
+      <div className="flex pt-32">
         <Sidebar />
         <main className="flex-1 ml-64 p-6">
           <PageHeader
