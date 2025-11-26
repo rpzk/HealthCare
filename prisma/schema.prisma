@@ -1102,3 +1102,15 @@ enum TransactionStatus {
   CANCELLED
   OVERDUE
 }
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  category    String   @default("GENERAL") // EMAIL, SECURITY, SYSTEM
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
