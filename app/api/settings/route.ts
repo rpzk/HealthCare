@@ -36,8 +36,17 @@ export async function POST(req: Request) {
 
     await settings.set(key, value, category, description)
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving setting:', error)
+    const message = error.message || 'Internal Server Error'
+    
+    if (message.includes('Database not ready')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'O banco de dados precisa ser atualizado. Por favor, execute o script de deploy novamente.' 
+      }, { status: 503 })
+    }
+
     return new NextResponse('Internal Server Error', { status: 500 })
   }
 }
