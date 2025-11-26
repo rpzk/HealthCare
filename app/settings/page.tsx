@@ -13,6 +13,7 @@ import { User, Shield, Bell, Database, Save, Eye, EyeOff } from 'lucide-react'
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
   
   const [profileData, setProfileData] = useState({
     name: 'Admin Healthcare',
@@ -99,6 +100,38 @@ export default function SettingsPage() {
     } catch (error) {
       console.error(error)
       alert('Erro ao salvar configurações')
+    }
+  }
+
+  const handleTestEmail = async () => {
+    if (!emailConfig.EMAIL_ENABLED || emailConfig.EMAIL_ENABLED === 'false') {
+      alert('Habilite o envio de e-mails primeiro.')
+      return
+    }
+
+    const testAddress = prompt('Digite o e-mail para receber o teste:', emailConfig.SMTP_USER || '')
+    if (!testAddress) return
+
+    setTestingEmail(true)
+    try {
+      const response = await fetch('/api/settings/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: testAddress })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        alert('E-mail de teste enviado com sucesso! Verifique sua caixa de entrada.')
+      } else {
+        throw new Error(data.error || 'Falha no envio')
+      }
+    } catch (error) {
+      console.error(error)
+      alert(`Erro ao enviar e-mail de teste: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    } finally {
+      setTestingEmail(false)
     }
   }
 
@@ -602,7 +635,15 @@ export default function SettingsPage() {
                       </div>
                     )}
 
-                    <div className="flex justify-end">
+                    <div className="flex justify-end space-x-3">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleTestEmail}
+                        disabled={testingEmail}
+                      >
+                        {testingEmail ? 'Enviando...' : 'Testar Configuração'}
+                      </Button>
                       <Button type="submit" className="flex items-center space-x-2">
                         <Save className="h-4 w-4" />
                         <span>Salvar Configurações de E-mail</span>
