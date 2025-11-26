@@ -92,14 +92,20 @@ export default function SettingsPage() {
             category: 'EMAIL',
             description: 'Email Configuration'
           })
+        }).then(async res => {
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || `Erro ${res.status}`)
+          }
+          return res
         })
       )
       
       await Promise.all(promises)
       alert('Configurações de email salvas com sucesso!')
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert('Erro ao salvar configurações')
+      alert(`Erro ao salvar configurações: ${error.message || 'Erro desconhecido'}`)
     }
   }
 
