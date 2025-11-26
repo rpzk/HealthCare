@@ -22,7 +22,7 @@ export class EmailService {
     return EmailService.instance
   }
 
-  private async getConfig() {
+  public async getConfig() {
     // Carregar configurações do banco (com fallback para env vars)
     const dbSettings = await settings.getMany([
       'EMAIL_ENABLED', 'EMAIL_FROM', 'EMAIL_PROVIDER',
