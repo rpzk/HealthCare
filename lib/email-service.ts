@@ -1,5 +1,5 @@
-
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import nodemailer from 'nodemailer'
 
 export interface EmailOptions {
   to: string | string[]
@@ -11,15 +11,37 @@ export interface EmailOptions {
 
 export class EmailService {
   private static instance: EmailService
+  private transporter: nodemailer.Transporter | null = null
   
   // Configuração (pode vir de variáveis de ambiente)
   private config = {
     enabled: process.env.EMAIL_ENABLED === 'true',
     from: process.env.EMAIL_FROM || 'noreply@healthcare.system',
-    provider: process.env.EMAIL_PROVIDER || 'console' // 'console', 'smtp', 'resend', etc.
+    provider: process.env.EMAIL_PROVIDER || 'console', // 'console', 'smtp', 'resend', etc.
+    smtp: {
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    }
   }
 
-  private constructor() {}
+  private constructor() {
+    if (this.config.provider === 'smtp') {
+      this.transporter = nodemailer.createTransport({
+        host: this.config.smtp.host,
+        port: this.config.smtp.port,
+        secure: this.config.smtp.secure,
+        auth: {
+          user: this.config.smtp.auth.user,
+          pass: this.config.smtp.auth.pass
+        }
+      })
+    }
+  }
 
   public static getInstance(): EmailService {
     if (!EmailService.instance) {
@@ -52,10 +74,18 @@ export class EmailService {
           })
           break
         
-        // TODO: Adicionar implementações reais (SMTP, Resend, SendGrid)
-        // case 'smtp':
-        //   await this.sendSmtp(...)
-        //   break
+        case 'smtp':
+          if (!this.transporter) {
+            throw new Error('SMTP Transporter not initialized')
+          }
+          await this.transporter.sendMail({
+            from,
+            to,
+            subject,
+            html,
+            text
+          })
+          break
         
         default:
           console.warn(`⚠️ Provedor de e-mail desconhecido: ${this.config.provider}`)
@@ -133,6 +163,26 @@ export class EmailService {
         </div>
       `,
       text: `Recuperação de Senha: Acesse o link para redefinir: ${resetLink}`
+    })
+  }
+
+  /**
+   * Template: Convite de Registro
+   */
+  public async sendInviteEmail(to: string, inviteLink: string): Promise<boolean> {
+    return this.sendEmail({
+      to,
+      subject: 'Convite para HealthCare System',
+      html: `
+        <div style="font-family: sans-serif; color: #333;">
+          <h2>Você foi convidado!</h2>
+          <p>Você recebeu um convite para se cadastrar no <strong>HealthCare System</strong>.</p>
+          <p>Clique no botão abaixo para completar seu cadastro:</p>
+          <a href="${inviteLink}" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aceitar Convite</a>
+          <p><small>Este link expira em 7 dias.</small></p>
+        </div>
+      `,
+      text: `Você foi convidado para o HealthCare System. Acesse o link para se cadastrar: ${inviteLink}`
     })
   }
 }

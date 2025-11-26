@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { emailService } from '@/lib/email-service'
 import crypto from 'crypto'
 
 export async function POST(req: Request) {
@@ -58,10 +59,18 @@ export async function POST(req: Request) {
       }
     })
 
+    // Tentar enviar e-mail (não falha a requisição se o e-mail falhar)
+    const link = `${baseUrl}/register/${invite.token}`
+    try {
+      await emailService.sendInviteEmail(email, link)
+    } catch (emailError) {
+      console.error('Failed to send invite email:', emailError)
+    }
+
     return NextResponse.json({
       inviteId: invite.id,
       token: invite.token,
-      link: `${baseUrl}/register/${invite.token}`
+      link
     })
 
   } catch (error) {
