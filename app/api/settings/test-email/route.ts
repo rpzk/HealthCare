@@ -17,6 +17,14 @@ export async function POST(req: Request) {
       return new NextResponse('Email address is required', { status: 400 })
     }
 
+    const config = await emailService.getConfig()
+    if (!config.enabled) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'O envio de e-mails está desabilitado nas configurações do sistema. Salve as configurações com a opção "Habilitar envio de e-mails" marcada antes de testar.' 
+      }, { status: 400 })
+    }
+
     const success = await emailService.sendEmail({
       to,
       subject: 'Teste de Configuração de E-mail - HealthCare',

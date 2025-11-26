@@ -105,11 +105,11 @@ export default function SettingsPage() {
 
   const handleTestEmail = async () => {
     if (!emailConfig.EMAIL_ENABLED || emailConfig.EMAIL_ENABLED === 'false') {
-      alert('Habilite o envio de e-mails primeiro.')
+      alert('Habilite o envio de e-mails e SALVE as configurações antes de testar.')
       return
     }
 
-    const testAddress = prompt('Digite o e-mail para receber o teste:', emailConfig.SMTP_USER || '')
+    const testAddress = prompt('Digite o e-mail para receber o teste (certifique-se de ter SALVADO as configurações antes):', emailConfig.SMTP_USER || '')
     if (!testAddress) return
 
     setTestingEmail(true)
