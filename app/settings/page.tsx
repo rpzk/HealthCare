@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -35,6 +35,37 @@ export default function SettingsPage() {
     maintenanceMode: false
   })
 
+  const [emailConfig, setEmailConfig] = useState({
+    EMAIL_ENABLED: 'false',
+    EMAIL_PROVIDER: 'console',
+    SMTP_HOST: '',
+    SMTP_PORT: '587',
+    SMTP_USER: '',
+    SMTP_PASS: '',
+    SMTP_SECURE: 'false',
+    EMAIL_FROM: ''
+  })
+
+  useEffect(() => {
+    if (activeTab === 'system') {
+      fetch('/api/settings?category=EMAIL')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            const newConfig = { ...emailConfig }
+            data.forEach((setting: any) => {
+              if (Object.prototype.hasOwnProperty.call(newConfig, setting.key)) {
+                // @ts-ignore
+                newConfig[setting.key] = setting.value
+              }
+            })
+            setEmailConfig(newConfig)
+          }
+        })
+        .catch(err => console.error('Failed to load settings', err))
+    }
+  }, [activeTab])
+
   const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     // Simular salvamento
@@ -45,6 +76,30 @@ export default function SettingsPage() {
     event.preventDefault()
     // Simular salvamento
     alert('Configurações do sistema atualizadas!')
+  }
+
+  const handleEmailConfigSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const promises = Object.entries(emailConfig).map(([key, value]) => 
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key,
+            value,
+            category: 'EMAIL',
+            description: 'Email Configuration'
+          })
+        })
+      )
+      
+      await Promise.all(promises)
+      alert('Configurações de email salvas com sucesso!')
+    } catch (error) {
+      console.error(error)
+      alert('Erro ao salvar configurações')
+    }
   }
 
   const tabs = [
@@ -446,6 +501,119 @@ export default function SettingsPage() {
 
               <Card>
                 <CardHeader>
+                  <CardTitle>Configuração de E-mail (SMTP)</CardTitle>
+                  <CardDescription>Configure o servidor de e-mail para envio de convites e notificações</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleEmailConfigSave} className="space-y-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <input
+                        type="checkbox"
+                        id="emailEnabled"
+                        checked={emailConfig.EMAIL_ENABLED === 'true'}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, EMAIL_ENABLED: e.target.checked ? 'true' : 'false' })}
+                        className="rounded border-gray-300"
+                      />
+                      <label htmlFor="emailEnabled" className="text-sm font-medium">Habilitar envio de e-mails</label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Provedor</label>
+                        <select
+                          value={emailConfig.EMAIL_PROVIDER}
+                          onChange={(e) => setEmailConfig({ ...emailConfig, EMAIL_PROVIDER: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-md bg-background"
+                        >
+                          <option value="console">Console (Log apenas)</option>
+                          <option value="smtp">SMTP (Gmail, Outlook, etc)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Remetente (From)</label>
+                        <Input
+                          value={emailConfig.EMAIL_FROM}
+                          onChange={(e) => setEmailConfig({ ...emailConfig, EMAIL_FROM: e.target.value })}
+                          placeholder="noreply@healthcare.com"
+                        />
+                      </div>
+                    </div>
+
+                    {emailConfig.EMAIL_PROVIDER === 'smtp' && (
+                      <div className="space-y-4 border-t pt-4 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Host SMTP</label>
+                            <Input
+                              value={emailConfig.SMTP_HOST}
+                              onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_HOST: e.target.value })}
+                              placeholder="smtp.gmail.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Porta</label>
+                            <Input
+                              value={emailConfig.SMTP_PORT}
+                              onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_PORT: e.target.value })}
+                              placeholder="587"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Usuário</label>
+                            <Input
+                              value={emailConfig.SMTP_USER}
+                              onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_USER: e.target.value })}
+                              placeholder="seu-email@gmail.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Senha</label>
+                            <div className="relative">
+                              <Input
+                                type={showPassword ? "text" : "password"}
+                                value={emailConfig.SMTP_PASS}
+                                onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_PASS: e.target.value })}
+                                placeholder="Senha de app"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                              >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="smtpSecure"
+                            checked={emailConfig.SMTP_SECURE === 'true'}
+                            onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_SECURE: e.target.checked ? 'true' : 'false' })}
+                            className="rounded border-gray-300"
+                          />
+                          <label htmlFor="smtpSecure" className="text-sm font-medium">Usar SSL/TLS (Secure)</label>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end">
+                      <Button type="submit" className="flex items-center space-x-2">
+                        <Save className="h-4 w-4" />
+                        <span>Salvar Configurações de E-mail</span>
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
                   <CardTitle>Informações do Sistema</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -461,6 +629,141 @@ export default function SettingsPage() {
                       <p><strong>Uptime:</strong> 15 dias</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Configurações de Email */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurações de Email</CardTitle>
+                  <CardDescription>
+                    Configure como o sistema envia emails
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleEmailConfigSave} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                          Habilitar Email
+                        </label>
+                        <select
+                          value={emailConfig.EMAIL_ENABLED}
+                          onChange={(e) => setEmailConfig(prev => ({ 
+                            ...prev, 
+                            EMAIL_ENABLED: e.target.value 
+                          }))}
+                          className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                        >
+                          <option value="true">Sim</option>
+                          <option value="false">Não</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                          Provedor de Email
+                        </label>
+                        <select
+                          value={emailConfig.EMAIL_PROVIDER}
+                          onChange={(e) => setEmailConfig(prev => ({ 
+                            ...prev, 
+                            EMAIL_PROVIDER: e.target.value 
+                          }))}
+                          className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                        >
+                          <option value="console">Console</option>
+                          <option value="smtp">SMTP</option>
+                        </select>
+                      </div>
+
+                      {emailConfig.EMAIL_PROVIDER === 'smtp' && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">
+                              Host SMTP
+                            </label>
+                            <Input
+                              value={emailConfig.SMTP_HOST}
+                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_HOST: e.target.value }))}
+                              placeholder="smtp.seudominio.com"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">
+                              Porta SMTP
+                            </label>
+                            <Input
+                              type="number"
+                              value={emailConfig.SMTP_PORT}
+                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_PORT: e.target.value }))}
+                              min="1"
+                              max="65535"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">
+                              Usuário SMTP
+                            </label>
+                            <Input
+                              value={emailConfig.SMTP_USER}
+                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_USER: e.target.value }))}
+                              placeholder="seu-usuario"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">
+                              Senha SMTP
+                            </label>
+                            <Input
+                              type="password"
+                              value={emailConfig.SMTP_PASS}
+                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_PASS: e.target.value }))}
+                              placeholder="sua-senha"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">
+                              Segurança SMTP
+                            </label>
+                            <select
+                              value={emailConfig.SMTP_SECURE}
+                              onChange={(e) => setEmailConfig(prev => ({ 
+                                ...prev, 
+                                SMTP_SECURE: e.target.value 
+                              }))}
+                              className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                            >
+                              <option value="true">SSL/TLS</option>
+                              <option value="false">Nenhuma</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                          Email Remetente
+                        </label>
+                        <Input
+                          value={emailConfig.EMAIL_FROM}
+                          onChange={(e) => setEmailConfig(prev => ({ ...prev, EMAIL_FROM: e.target.value }))}
+                          placeholder="noreply@seudominio.com"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button type="submit" className="flex items-center space-x-2">
+                        <Save className="h-4 w-4" />
+                        <span>Salvar Configurações de Email</span>
+                      </Button>
+                    </div>
+                  </form>
                 </CardContent>
               </Card>
             </div>

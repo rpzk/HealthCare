@@ -1,5 +1,6 @@
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import nodemailer from 'nodemailer'
+import { settings } from '@/lib/settings'
 
 export interface EmailOptions {
   to: string | string[]
@@ -11,37 +12,8 @@ export interface EmailOptions {
 
 export class EmailService {
   private static instance: EmailService
-  private transporter: nodemailer.Transporter | null = null
   
-  // Configuração (pode vir de variáveis de ambiente)
-  private config = {
-    enabled: process.env.EMAIL_ENABLED === 'true',
-    from: process.env.EMAIL_FROM || 'noreply@healthcare.system',
-    provider: process.env.EMAIL_PROVIDER || 'console', // 'console', 'smtp', 'resend', etc.
-    smtp: {
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    }
-  }
-
-  private constructor() {
-    if (this.config.provider === 'smtp') {
-      this.transporter = nodemailer.createTransport({
-        host: this.config.smtp.host,
-        port: this.config.smtp.port,
-        secure: this.config.smtp.secure,
-        auth: {
-          user: this.config.smtp.auth.user,
-          pass: this.config.smtp.auth.pass
-        }
-      })
-    }
-  }
+  private constructor() {}
 
   public static getInstance(): EmailService {
     if (!EmailService.instance) {
@@ -50,21 +22,60 @@ export class EmailService {
     return EmailService.instance
   }
 
+  private async getConfig() {
+    // Carregar configurações do banco (com fallback para env vars)
+    const dbSettings = await settings.getMany([
+      'EMAIL_ENABLED', 'EMAIL_FROM', 'EMAIL_PROVIDER',
+      'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS'
+    ])
+
+    return {
+      enabled: dbSettings.EMAIL_ENABLED ? dbSettings.EMAIL_ENABLED === 'true' : process.env.EMAIL_ENABLED === 'true',
+      from: dbSettings.EMAIL_FROM || process.env.EMAIL_FROM || 'noreply@healthcare.system',
+      provider: dbSettings.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || 'console',
+      smtp: {
+        host: dbSettings.SMTP_HOST || process.env.SMTP_HOST,
+        port: parseInt(dbSettings.SMTP_PORT || process.env.SMTP_PORT || '587'),
+        secure: dbSettings.SMTP_SECURE ? dbSettings.SMTP_SECURE === 'true' : process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: dbSettings.SMTP_USER || process.env.SMTP_USER,
+          pass: dbSettings.SMTP_PASS || process.env.SMTP_PASS
+        }
+      }
+    }
+  }
+
+  private async getTransporter(config: any) {
+    if (config.provider === 'smtp') {
+      return nodemailer.createTransport({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        secure: config.smtp.secure,
+        auth: {
+          user: config.smtp.auth.user,
+          pass: config.smtp.auth.pass
+        }
+      })
+    }
+    return null
+  }
+
   /**
    * Envia um e-mail
    */
   public async sendEmail(options: EmailOptions): Promise<boolean> {
+    const config = await this.getConfig()
     const { to, subject, html, text } = options
-    const from = options.from || this.config.from
+    const from = options.from || config.from
 
     try {
-      if (!this.config.enabled) {
+      if (!config.enabled) {
         console.log('📧 EMAIL (DISABLED):', { to, subject })
         return true
       }
 
       // Implementação baseada no provedor
-      switch (this.config.provider) {
+      switch (config.provider) {
         case 'console':
           console.log('📧 EMAIL SENT (CONSOLE):', {
             from,
@@ -75,10 +86,11 @@ export class EmailService {
           break
         
         case 'smtp':
-          if (!this.transporter) {
+          const transporter = await this.getTransporter(config)
+          if (!transporter) {
             throw new Error('SMTP Transporter not initialized')
           }
-          await this.transporter.sendMail({
+          await transporter.sendMail({
             from,
             to,
             subject,
@@ -88,7 +100,7 @@ export class EmailService {
           break
         
         default:
-          console.warn(`⚠️ Provedor de e-mail desconhecido: ${this.config.provider}`)
+          console.warn(`⚠️ Provedor de e-mail desconhecido: ${config.provider}`)
           return false
       }
 
@@ -100,7 +112,7 @@ export class EmailService {
         AuditAction.SYSTEM_CONFIG_CHANGE, // Usando uma ação genérica por enquanto
         'email',
         {
-          details: { to, subject, provider: this.config.provider },
+          details: { to, subject, provider: config.provider },
           success: true
         }
       )
