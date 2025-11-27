@@ -53,9 +53,13 @@ export async function transcribeFile(filePath: string): Promise<{ text: string; 
       const txt = await res.text().catch(() => '')
       throw new Error(`STT server error: ${res.status} ${txt}`)
     }
-    const data: any = await res.json().catch(() => ({}))
+    interface STTResponse {
+      text?: string
+      segments?: Array<{ text: string }>
+    }
+    const data: STTResponse = await res.json().catch(() => ({}))
     const text = (typeof data.text === 'string' && data.text.trim())
-      || (Array.isArray(data.segments) ? data.segments.map((s: any) => s.text).join(' ').trim() : '')
+      || (Array.isArray(data.segments) ? data.segments.map((s) => s.text).join(' ').trim() : '')
     if (!text) throw new Error('Resposta STT sem texto')
     return { text, provider: providerName }
   } catch (e) {
