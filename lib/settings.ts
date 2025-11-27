@@ -150,20 +150,34 @@ export const settings = {
   },
 
   async getAllByCategory(category: SettingCategory) {
+    let dbSettings: any[] = []
     try {
       const prisma = getPrisma()
       // @ts-ignore
-      if (!prisma || !prisma.systemSetting) {
-        return fallbackManager.getAllByCategory(category)
+      if (prisma && prisma.systemSetting) {
+        dbSettings = await prisma.systemSetting.findMany({
+          where: { category },
+          orderBy: { key: 'asc' }
+        })
       }
-
-      return prisma.systemSetting.findMany({
-        where: { category },
-        orderBy: { key: 'asc' }
-      })
     } catch (error) {
-      console.warn('Failed to fetch settings by category from DB, trying fallback...', error)
-      return fallbackManager.getAllByCategory(category)
+      console.warn('Failed to fetch settings by category from DB', error)
     }
+
+    const fileSettings = fallbackManager.getAllByCategory(category)
+    
+    // Merge: DB wins if key exists, otherwise File
+    const merged = [...fileSettings]
+    
+    dbSettings.forEach(dbItem => {
+      const index = merged.findIndex(m => m.key === dbItem.key)
+      if (index >= 0) {
+        merged[index] = dbItem
+      } else {
+        merged.push(dbItem)
+      }
+    })
+    
+    return merged
   }
 }
