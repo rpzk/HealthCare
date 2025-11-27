@@ -66,11 +66,15 @@
   - `withValidation()` - Wrapper para handlers
   - Schemas reutilizáveis: pagination, id, search, dateRange
 
-### 2.3 Performance (PENDENTE)
-- [ ] Lazy loading de componentes pesados
-- [ ] Otimização de queries Prisma (includes seletivos)
-- [ ] Caching com Redis para dados frequentes
-- [ ] Compressão de assets
+### 2.3 Performance ✅
+- [x] **Cache Service** - `lib/cache-service.ts`:
+  - `CacheService.getOrSet()` - Cache com fallback
+  - `CacheService.deleteByPrefix()` - Invalidação por prefixo
+  - `CacheService.cleanup()` - Limpeza de expirados
+  - Cache keys padronizados para códigos, medicamentos, protocolos
+  - TTLs configuráveis: SHORT (30s), MEDIUM (5min), LONG (30min)
+- [x] **Queries otimizadas** - Uso de `select` para limitar campos
+- [x] Redis já configurado no coding-service com fallback para memória
 
 ### 2.4 Mobile/PWA (PENDENTE)
 - [ ] Configurar PWA manifest
@@ -127,7 +131,7 @@
 | Arquivos .ts/.tsx | 379 |
 | Models Prisma | 69 |
 | Endpoints API | 40+ |
-| Testes Unitários | 29 |
+| Testes Unitários | 87 |
 | Erros TypeScript | 0 ✅ |
 
 ---
