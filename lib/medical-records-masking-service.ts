@@ -16,8 +16,10 @@ export interface MaskingRules {
   roles?: string[] // roles that can see unmasked value
 }
 
+// Generic record type for masking operations - values can be primitives, objects, arrays or dates
+export type MaskedValue = string | number | boolean | Date | null | undefined | MaskedRecord | MaskedValue[]
 export interface MaskedRecord {
-  [key: string]: any
+  [key: string]: MaskedValue
 }
 
 class FieldMaskingService {
@@ -62,7 +64,7 @@ class FieldMaskingService {
   /**
    * Apply masking rules to a record based on user role
    */
-  maskRecord(record: any, userRole: string, rules?: MaskingRules[]): MaskedRecord {
+  maskRecord(record: MaskedRecord, userRole: string, rules?: MaskingRules[]): MaskedRecord {
     const applicableRules = rules || this.defaultRules
     const masked = { ...record }
 
@@ -85,7 +87,7 @@ class FieldMaskingService {
   /**
    * Apply specific masking to a value
    */
-  private applyMask(value: any, rule: MaskingRules): any {
+  private applyMask(value: MaskedValue, rule: MaskingRules): MaskedValue {
     if (value === null || value === undefined) {
       return value
     }
@@ -157,7 +159,7 @@ class FieldMaskingService {
    * Apply custom rules to a record
    */
   maskRecordWithCustomRules(
-    record: any,
+    record: MaskedRecord,
     userRole: string,
     customRules: MaskingRules[]
   ): MaskedRecord {
@@ -202,14 +204,14 @@ class FieldMaskingService {
   /**
    * Apply masking to array of records
    */
-  maskRecords(records: any[], userRole: string, rules?: MaskingRules[]): MaskedRecord[] {
+  maskRecords(records: MaskedRecord[], userRole: string, rules?: MaskingRules[]): MaskedRecord[] {
     return records.map(record => this.maskRecord(record, userRole, rules))
   }
 
   /**
    * LGPD Compliance: Get user's own data unmasked
    */
-  maskRecordForPatient(record: any, requestingUserId: string, recordPatientId: string): MaskedRecord {
+  maskRecordForPatient(record: MaskedRecord, requestingUserId: string, recordPatientId: string): MaskedRecord {
     // If patient is requesting their own record, show unmasked
     if (requestingUserId === recordPatientId) {
       return record
@@ -222,7 +224,7 @@ class FieldMaskingService {
   /**
    * LGPD Compliance: Prepare record for export (unmasked for patient)
    */
-  prepareForLgpdExport(record: any): MaskedRecord {
+  prepareForLgpdExport(record: MaskedRecord): MaskedRecord {
     // For LGPD export, show all fields unmasked to patient
     return record
   }
@@ -230,7 +232,7 @@ class FieldMaskingService {
   /**
    * LGPD Compliance: Prepare record for anonymization
    */
-  prepareForAnonymization(record: any): MaskedRecord {
+  prepareForAnonymization(record: MaskedRecord): MaskedRecord {
     const anonymized = { ...record }
 
     // Remove/mask all identifying information
