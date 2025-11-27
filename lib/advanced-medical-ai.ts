@@ -4,7 +4,55 @@ import { startSpan } from './tracing'
 import { checkAndConsumeAIQuota } from './ai-quota'
 
 if (!process.env.OLLAMA_URL) {
-  console.warn('URL do Ollama ausente. Verifique se o serviço Ollama está em execução.')
+  // Silenced in production - Ollama is optional
+}
+
+// Tipos para dados de paciente
+export interface PatientDataForAI {
+  id?: string
+  name?: string
+  age?: number
+  gender?: string
+  cpf?: string
+  email?: string
+  medicalHistory?: string[]
+  currentMedications?: string[]
+  allergies?: string[]
+  consultations?: Array<{ date: string; diagnosis?: string; notes?: string }>
+  prescriptions?: Array<{ medication: string; dosage?: string }>
+  [key: string]: unknown
+}
+
+// Tipos para sinais vitais
+export interface VitalSignsForAI {
+  temperature?: number
+  bloodPressure?: string
+  systolicBP?: number
+  diastolicBP?: number
+  heartRate?: number
+  respiratoryRate?: number
+  oxygenSaturation?: number
+  weight?: number
+  height?: number
+  [key: string]: unknown
+}
+
+// Tipos para resultado de análise
+export interface VitalSignsAnalysisResult {
+  status: 'normal' | 'attention' | 'critical'
+  findings: string[]
+  recommendations: string[]
+  riskScore?: number
+  [key: string]: unknown
+}
+
+export interface TreatmentPlanResult {
+  pharmacological: Array<{ medication: string; dosage: string; frequency: string }>
+  nonPharmacological: string[]
+  followUp: { interval: string; tests?: string[] }
+  patientGuidelines: string[]
+  warningSign: string[]
+  [key: string]: unknown
 }
 
 // Tipos específicos para análise médica
@@ -216,12 +264,12 @@ Responda em formato JSON:
   }
 
   // Geração de resumo médico inteligente
-  async generateMedicalSummary(patientData: any, userId?: string): Promise<MedicalSummary> {
+  async generateMedicalSummary(patientData: PatientDataForAI, userId?: string): Promise<MedicalSummary> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
     if (userId) await checkAndConsumeAIQuota(userId, 'medical_summary')
-    const redacted = { ...patientData }
+    const redacted: PatientDataForAI = { ...patientData }
     if (redacted.cpf) redacted.cpf = '[REDACTED]'
     if (redacted.email) redacted.email = '[REDACTED]'
     const prompt = `
@@ -273,7 +321,7 @@ Responda em formato JSON:
   }
 
   // Análise de sinais vitais com IA
-  async analyzeVitalSigns(vitalSigns: any, patientAge: number, userId?: string): Promise<any> {
+  async analyzeVitalSigns(vitalSigns: VitalSignsForAI, patientAge: number, userId?: string): Promise<VitalSignsAnalysisResult> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
@@ -320,12 +368,12 @@ Responda em formato JSON estruturado com sua análise.
   }
 
   // Sugestão de plano de tratamento
-  async suggestTreatmentPlan(diagnosis: string, patientData: any, userId?: string): Promise<any> {
+  async suggestTreatmentPlan(diagnosis: string, patientData: PatientDataForAI, userId?: string): Promise<TreatmentPlanResult> {
     if (!process.env.GOOGLE_AI_API_KEY) {
       throw new Error('Serviço de IA não configurado')
     }
     if (userId) await checkAndConsumeAIQuota(userId, 'treatment_plan')
-    const redacted = { ...patientData }
+    const redacted: PatientDataForAI = { ...patientData }
     if (redacted.cpf) redacted.cpf = '[REDACTED]'
     if (redacted.email) redacted.email = '[REDACTED]'
     const prompt = `

@@ -6,8 +6,8 @@ class LogThrottler {
   private lastTime = 0;
   private suppressed = 0;
   constructor(private intervalMs: number = 5000) {}
-  logError(prefix: string, err: any) {
-    const msg = err?.message || String(err);
+  logError(prefix: string, err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     const now = Date.now();
     if (this.lastMsg === msg && (now - this.lastTime) < this.intervalMs) {
       this.suppressed++;
@@ -45,6 +45,15 @@ interface RateLimitData {
   resetTime: number;
   isBlocked: boolean;
   blockUntil?: number;
+}
+
+interface RateLimitResult {
+  allowed: boolean;
+  limit: number;
+  remaining: number;
+  resetTime: number;
+  isBlocked: boolean;
+  retryAfter?: number;
 }
 
 interface CacheItem<T> {
@@ -159,11 +168,11 @@ export class RedisRateLimiter {
   private async initializeConnection(): Promise<void> {
     try {
       await this.redis.connect();
-    } catch (error: any) {
+    } catch (error) {
       rateLimiterLogThrottler.logError('❌ Falha na conexão inicial do Redis:', error);
       this.isRedisConnected = false;
       // Fallback rápido: se host padrão "redis" e falhou DNS ou timeout, tenta localhost 1x
-      const hostTried = (this.redis as any).options?.host;
+      const hostTried = (this.redis as { options?: { host?: string } }).options?.host;
       if (hostTried === 'redis' || hostTried === 'redis-cache') {
         try {
           console.log('🔁 Tentando fallback para localhost:6379 (rate limiter)');
@@ -314,7 +323,7 @@ export class RedisRateLimiter {
     windowMs: number,
     blockDurationMs: number,
     now: number
-  ): any {
+  ): RateLimitResult {
     let data = this.fallbackMemory.get(key);
 
     // Verificar se está bloqueado
@@ -540,10 +549,10 @@ export class RedisCache {
   private async initializeConnection(): Promise<void> {
     try {
       await this.redis.connect();
-    } catch (error: any) {
+    } catch (error) {
       cacheLogThrottler.logError('❌ Falha na conexão Redis Cache:', error);
       this.isRedisConnected = false;
-      const hostTried = (this.redis as any).options?.host;
+      const hostTried = (this.redis as { options?: { host?: string } }).options?.host;
       if (hostTried === 'redis' || hostTried === 'redis-cache') {
         try {
           console.log('🔁 Tentando fallback para localhost:6379 (cache)');

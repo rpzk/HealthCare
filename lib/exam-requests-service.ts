@@ -59,6 +59,7 @@ export class ExamRequestsService {
   ) {
     try {
       const { search, patientId, doctorId, status, type, dateFrom, dateTo } = filters;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = {};
       if (patientId) where.patientId = patientId;
       if (doctorId) where.doctorId = doctorId;

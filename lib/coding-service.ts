@@ -22,12 +22,12 @@ function getRedis(): Redis | null {
   return _redis
 }
 
-interface CacheEntry { value: any; exp: number }
+interface CacheEntry { value: unknown; exp: number }
 const memoryCache = new Map<string, CacheEntry>()
 function cacheGet(key:string) {
   const e = memoryCache.get(key); if (!e) return undefined; if (Date.now()>e.exp){ memoryCache.delete(key); return undefined } return e.value
 }
-function cacheSet(key:string, value:any, ttlMs:number) {
+function cacheSet(key:string, value: unknown, ttlMs:number) {
   memoryCache.set(key, { value, exp: Date.now()+ttlMs })
 }
 
@@ -115,7 +115,7 @@ export const CodingService = {
     if (redis) {
       try { const r = await redis.get(cacheKey); if (r) { const parsed = JSON.parse(r); cacheSet(cacheKey, parsed, 30_000); return parsed } } catch {}
     }
-    let results: any[] = []
+    let results: { id: string; code: string; display: string }[] = []
     if (opts.fts && q.length > 2) {
       await ensureFtsIndex()
       try {
@@ -128,7 +128,7 @@ export const CodingService = {
     }
     if (!results.length) {
       const lo = q.toLowerCase()
-      const additionalFilters: any[] = []
+      const additionalFilters: Record<string, unknown>[] = []
       if (opts.chapter) additionalFilters.push({ chapter: opts.chapter })
       if (opts.sexRestriction) additionalFilters.push({ OR: [{ sexRestriction: opts.sexRestriction }, { sexRestriction: null }] })
       if (opts.categoriesOnly) additionalFilters.push({ isCategory: true })
@@ -160,7 +160,7 @@ export const CodingService = {
       || await (prisma as any).medicalCode.findFirst({ where: { code: idOrCode }, include: { parent: true } })
     if (!code) return null
     // ascend hierarchy up to 5 levels
-    const path: any[] = []
+    const path: { id: string; code: string; display: string }[] = []
     let current = code.parent
     let depth = 0
     while (current && depth < 5) {
@@ -208,7 +208,7 @@ export const CodingService = {
   async updateDiagnosis(id: string, data: Partial<{ status: typeof DiagnosisStatus[keyof typeof DiagnosisStatus]; resolvedDate: Date; notes: string; certainty: typeof DiagnosisCertainty[keyof typeof DiagnosisCertainty]; secondaryCodeIds: string[] }>) {
     return prisma.$transaction(async (tx) => {
       const current = await (tx as any).diagnosis.findUnique({ where: { id }, include: { secondaryCodes: true } })
-      const updateData: any = {}
+      const updateData: Record<string, unknown> = {}
       if (data.status) updateData.status = data.status
       if (data.resolvedDate) updateData.resolvedDate = data.resolvedDate
       if (data.notes !== undefined) updateData.notes = data.notes
@@ -222,8 +222,8 @@ export const CodingService = {
       }
       await (tx as any).diagnosisRevision.create({ data: {
         diagnosisId: id,
-        previous: current ? { status: current.status, certainty: current.certainty, notes: current.notes, secondary: current.secondaryCodes.map((s:any)=>s.codeId) } : null,
-        next: { status: diag.status, certainty: diag.certainty, notes: diag.notes, secondary: data.secondaryCodeIds || (current?.secondaryCodes||[]).map((s:any)=>s.codeId) }
+        previous: current ? { status: current.status, certainty: current.certainty, notes: current.notes, secondary: current.secondaryCodes.map((s: { codeId: string })=>s.codeId) } : null,
+        next: { status: diag.status, certainty: diag.certainty, notes: diag.notes, secondary: data.secondaryCodeIds || (current?.secondaryCodes||[]).map((s: { codeId: string })=>s.codeId) }
       } })
       return diag
     })

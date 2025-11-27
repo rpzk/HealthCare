@@ -61,7 +61,14 @@ class MicroAreaLocator {
 }
 
 // Utilitário para derivar bounding box de um polygon GeoJSON (Polygon ou MultiPolygon)
-function deriveGeoComputed(polygonGeo?: string | null): { bboxFields: any } {
+interface BboxFields {
+  minLat?: number
+  minLng?: number
+  maxLat?: number
+  maxLng?: number
+}
+
+function deriveGeoComputed(polygonGeo?: string | null): { bboxFields: BboxFields } {
   if (!polygonGeo) return { bboxFields: {} }
   try {
     const parsed = JSON.parse(polygonGeo)

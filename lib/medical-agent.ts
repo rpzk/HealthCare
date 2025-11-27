@@ -267,12 +267,12 @@ Identifique:
     return age
   }
 
-  private static parseAnalysisResponse(analysisText: string, patientData: any): PatientHistoryAnalysis {
+  private static parseAnalysisResponse(analysisText: string, patientData: { medicalHistory?: string | null; prescriptions?: { medication?: string }[]; allergies?: string | null }): PatientHistoryAnalysis {
     // Parsing básico da resposta da IA
     return {
       clinicalSummary: analysisText.substring(0, 500) + '...',
   chronicConditions: patientData.medicalHistory ? [patientData.medicalHistory] : [],
-      medicationHistory: patientData.prescriptions?.map((p: any) => p.medication) || [],
+      medicationHistory: patientData.prescriptions?.map((p) => p.medication).filter(Boolean) as string[] || [],
   allergyWarnings: patientData.allergies ? [patientData.allergies] : [],
       vitalTrends: 'Tendências analisadas pela IA',
       diagnosticPattern: 'Padrão identificado pela IA',

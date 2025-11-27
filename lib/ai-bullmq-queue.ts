@@ -89,7 +89,7 @@ events.on('failed', ({ jobId, failedReason }) => {
 
 export async function enqueueAI(
   type: 'symptom_analysis' | 'transcribe_and_generate_soap' | 'transcribe_and_generate_soap_draft',
-  payload: any,
+  payload: Record<string, unknown>,
   opts: JobsOptions = {}
 ) {
   incCounter('ai_queue_jobs_total', { type })

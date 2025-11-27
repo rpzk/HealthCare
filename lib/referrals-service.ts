@@ -45,7 +45,9 @@ export class ReferralsService {
   ) {
     try {
       const { search, patientId, doctorId, status, specialty, dateFrom, dateTo } = filters
-      const where: any = {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {}
 
       if (patientId) where.patientId = patientId
       if (doctorId) where.doctorId = doctorId

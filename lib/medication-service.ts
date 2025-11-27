@@ -84,6 +84,8 @@ export class MedicationService {
 
     // Using any for dynamic Prisma query building (OR conditions require mutable array)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       active: true  // Campo correto no schema
     }
@@ -185,6 +187,8 @@ export class MedicationService {
     const { patientAge, patientSex, availabilityFilter = 'all' } = options
     const searchTerm = query.toLowerCase()
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       active: true,
       OR: [
@@ -456,6 +460,8 @@ export class MedicationService {
    * Busca medicamentos da farmácia básica para UBS
    */
   static async getBasicPharmacyMedications(query?: string): Promise<any[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       active: true,
       basicPharmacy: true
@@ -479,6 +485,8 @@ export class MedicationService {
    * Busca medicamentos disponíveis na Farmácia Popular
    */
   static async getPopularPharmacyMedications(query?: string): Promise<any[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       active: true,
       popularPharmacy: true
@@ -501,9 +509,9 @@ export class MedicationService {
   /**
    * Calcula dose baseada no peso do paciente
    */
-  static calculateDoseByWeight(medication: any, weightKg: number): string | null {
+  static calculateDoseByWeight(medication: { dosePerKg?: number | null; strength?: string | null; unit?: string | null }, weightKg: number): string | null {
     if (!medication.dosePerKg || !weightKg) {
-      return medication.strength
+      return medication.strength ?? null
     }
 
     const calculatedDose = medication.dosePerKg * weightKg

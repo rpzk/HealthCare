@@ -62,7 +62,7 @@ export const OccupationCapabilityService = {
       if (m <= 3) stratum = 'S1'; else if (m <= 12) stratum = 'S2'; else if (m <= 24) stratum = 'S3'; else if (m <= 48) stratum = 'S4'; else if (m <= 84) stratum = 'S5'; else if (m <= 120) stratum = 'S6'; else if (m <= 180) stratum = 'S7'; else stratum = 'S8'
     }
     // Calcular capabilityScores cruzando gaps vs capabilities do jobRole (se houver)
-    let capabilityScores: any = null
+    let capabilityScores: Record<string, number> | null = null
     if (input.jobRoleId) {
       const jr = await (prisma as any).jobRole.findFirst({ where: { id: input.jobRoleId } })
       if (jr?.capabilitiesJson) {
@@ -125,9 +125,9 @@ export const OccupationCapabilityService = {
   }
   ,async groupTree(depth=3) {
     const groups = await (prisma as any).cBOGroup.findMany({ orderBy: { level: 'asc' } })
-    const byParent: Record<string, any[]> = {}
+    const byParent: Record<string, { id: string; code: string; name: string; level: number; parentId: string | null }[]> = {}
     for (const g of groups) { const p = g.parentId || 'root'; (byParent[p] ||= []).push(g) }
-    function build(parentId:string|null, d:number): any[] { if (d===0) return [];
+    function build(parentId:string|null, d:number): { id: string; code: string; name: string; level: number; children: unknown[] }[] { if (d===0) return [];
       return (byParent[parentId||'root']||[]).map(g=> ({ id:g.id, code:g.code, name:g.name, level:g.level, children: build(g.id, d-1) })) }
     return build(null, depth)
   }

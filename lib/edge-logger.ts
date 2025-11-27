@@ -26,7 +26,7 @@ export const logger = {
 }
 
 export function createRequestId(): string {
-  const g: any = globalThis as any
+  const g = globalThis as { crypto?: { randomUUID?: () => string } }
   try {
     if (g.crypto && typeof g.crypto.randomUUID === 'function') {
       return g.crypto.randomUUID()

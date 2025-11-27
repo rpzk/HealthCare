@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  speciality?: string
+  crmNumber?: string
+}
+
 export interface AuthenticatedRequest extends NextRequest {
-  user: {
-    id: string
-    email: string
-    name: string
-    role: string
-    speciality?: string
-    crmNumber?: string
-  }
+  user: AuthUser
 }
 
 /**
@@ -19,7 +21,7 @@ export interface AuthenticatedRequest extends NextRequest {
 export async function authMiddleware(
   request: NextRequest,
   options: { requireRole?: string[] } = {}
-): Promise<{ success: boolean; user?: any; error?: string; response?: NextResponse }> {
+): Promise<{ success: boolean; user?: AuthUser; error?: string; response?: NextResponse }> {
   try {
     // DEV/TEST bypass: allow injecting a fake user via header when enabled explicitly
     if (process.env.ALLOW_TEST_BYPASS === 'true') {

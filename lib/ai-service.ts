@@ -2,14 +2,30 @@ import ollamaClient from './ollama-client'
 
 const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'qwen2.5:3b' })
 
+export interface VitalSignsData {
+  temperature?: number
+  bloodPressure?: string
+  heartRate?: number
+  respiratoryRate?: number
+  oxygenSaturation?: number
+  [key: string]: unknown
+}
+
+export interface LabResultsData {
+  hemoglobin?: number
+  glucose?: number
+  creatinine?: number
+  [key: string]: unknown
+}
+
 export interface AIAnalysisRequest {
   type: 'diagnosis' | 'treatment' | 'drug_interaction' | 'symptom_analysis'
   data: {
     symptoms?: string[]
     patientHistory?: string
     medications?: string[]
-    vitalSigns?: any
-    labResults?: any
+    vitalSigns?: VitalSignsData
+    labResults?: LabResultsData
   }
   context?: string
 }
@@ -114,8 +130,8 @@ Forneça uma análise detalhada baseada em farmacologia clínica.
   }
 
   static async generateMedicalSummary(
-    patientData: any,
-    consultations: any[]
+    patientData: Record<string, unknown>,
+    consultations: unknown[]
   ): Promise<string> {
     try {
       const prompt = `
