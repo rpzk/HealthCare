@@ -144,7 +144,7 @@ export class RedisRateLimiter {
     });
 
     this.redis.on('error', (error) => {
-      if ((error as any).code === 'ECONNREFUSED') {
+      if ((error as NodeJS.ErrnoException).code === 'ECONNREFUSED') {
         this.isRedisConnected = false;
         return;
       }
@@ -537,7 +537,7 @@ export class RedisCache {
     });
 
     this.redis.on('error', (error) => {
-      if ((error as any).code === 'ECONNREFUSED') {
+      if ((error as NodeJS.ErrnoException).code === 'ECONNREFUSED') {
         this.isRedisConnected = false;
         return;
       }
@@ -670,8 +670,10 @@ export function getRedisCache(): RedisCache {
 // Helper para expor estatísticas do cache Redis (uso interno no dashboard)
 export async function getRedisCacheStats() {
   const cache = _redisCache || null;
-  const isConnected = !!(cache && (cache as any).isRedisConnected);
-  const memoryFallbackEntries = cache && (cache as any).fallbackMemory ? (cache as any).fallbackMemory.size : 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cacheAny = cache as any;
+  const isConnected = !!(cache && cacheAny?.isRedisConnected);
+  const memoryFallbackEntries = cache && cacheAny?.fallbackMemory ? cacheAny.fallbackMemory.size : 0;
   return {
     redisConnected: isConnected,
     memoryFallbackEntries
@@ -688,8 +690,9 @@ export async function getRedisCombinedStats() {
 function startBackgroundCleanupIfNeeded() {
   if (_redisRateLimiter || _redisCache) {
     // If already started, don't create another interval (simple guard)
-    if ((global as any).__healthcare_redis_cleanup_started) return;
-    (global as any).__healthcare_redis_cleanup_started = true;
+    const globalWithCleanup = global as typeof globalThis & { __healthcare_redis_cleanup_started?: boolean };
+    if (globalWithCleanup.__healthcare_redis_cleanup_started) return;
+    globalWithCleanup.__healthcare_redis_cleanup_started = true;
     setInterval(() => {
       try {
         _redisRateLimiter?.cleanup();

@@ -1,10 +1,12 @@
 // Captura erros globais para diagnosticar quedas inesperadas no CI
-if (!(global as any).__errorHooksInstalled) {
-  (global as any).__errorHooksInstalled = true
-  process.on('unhandledRejection', (reason:any) => {
-    console.error('[global] UnhandledRejection:', reason?.message || reason, reason?.stack)
+const globalWithHooks = global as typeof globalThis & { __errorHooksInstalled?: boolean }
+if (!globalWithHooks.__errorHooksInstalled) {
+  globalWithHooks.__errorHooksInstalled = true
+  process.on('unhandledRejection', (reason: unknown) => {
+    const err = reason as Error | undefined
+    console.error('[global] UnhandledRejection:', err?.message || reason, err?.stack)
   })
-  process.on('uncaughtException', (err:any) => {
+  process.on('uncaughtException', (err: Error) => {
     console.error('[global] UncaughtException:', err.message, err.stack)
   })
   process.on('exit', (code) => {

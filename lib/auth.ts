@@ -41,7 +41,9 @@ export const authOptions: NextAuthOptions = {
           // Extra: log de diagnóstico do DATABASE_URL (seguro, sem expor senha)
           // Only logged when DEBUG_AUTH=true, via logger.debug
 
-          const ip = (req as any)?.headers?.get?.('x-forwarded-for') || (req as any)?.headers?.get?.('x-real-ip')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ipRaw = (req as { headers?: { get?: (name: string) => string | null } })?.headers?.get?.('x-forwarded-for') || (req as { headers?: { get?: (name: string) => string | null } })?.headers?.get?.('x-real-ip')
+          const ip = ipRaw ?? undefined
           const key = getLoginKey(credentials.email, ip)
           const attempt = loginAttempts.get(key) || { count: 0 }
           const now = Date.now()

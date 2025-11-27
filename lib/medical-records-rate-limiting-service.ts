@@ -73,7 +73,7 @@ class RateLimitingService {
     operation: string,
     resourceId?: string
   ): RateLimitStatus {
-    const config = this.getConfig(operation as any)
+    const config = this.getConfig(operation)
     if (!config) {
       // No limit config, allow by default
       return {
@@ -269,7 +269,8 @@ class RateLimitingService {
    * Update rate limit configuration
    */
   updateConfig(operation: string, config: Partial<RateLimitConfig>): void {
-    const index = this.defaultConfigs.findIndex(cfg => cfg.operation === operation as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const index = this.defaultConfigs.findIndex(cfg => cfg.operation === operation)
     if (index >= 0) {
       this.defaultConfigs[index] = {
         ...this.defaultConfigs[index],

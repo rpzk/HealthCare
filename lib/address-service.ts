@@ -181,7 +181,8 @@ export class AddressService {
     const created = await prisma.$transaction(async (tx) => {
       const micro = await tx.microArea.create({ data: { ...data, ...bboxFields } })
       if (data.polygonGeo) {
-  await (tx as any).microAreaRevision.create({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (tx as unknown as { microAreaRevision: { create: (args: unknown) => Promise<unknown> } }).microAreaRevision.create({
           data: {
             microAreaId: micro.id,
             previousGeo: null,
@@ -211,13 +212,14 @@ export class AddressService {
     const updated = await prisma.$transaction(async (tx) => {
       const micro = await tx.microArea.update({ where: { id }, data: { ...data, ...(polygonChanged ? bboxFields : {}) } })
       if (polygonChanged) {
-  await (tx as any).microAreaRevision.create({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (tx as unknown as { microAreaRevision: { create: (args: unknown) => Promise<unknown> } }).microAreaRevision.create({
           data: {
             microAreaId: micro.id,
             previousGeo: current.polygonGeo,
             newGeo: data.polygonGeo || null,
-            changedByUser: (data as any).changedByUser,
-            reason: (data as any).reason || 'update'
+            changedByUser: (data as { changedByUser?: string }).changedByUser,
+            reason: (data as { reason?: string }).reason || 'update'
           }
         })
       }

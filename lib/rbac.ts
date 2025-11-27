@@ -4,10 +4,11 @@ import { authOptions } from '@/lib/auth'
 export type UserSession = { id:string; email?:string|null; role:string }
 
 export async function requireSession(roles?: string[]) {
-  const session = await getServerSession(authOptions as any) as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const session = await getServerSession(authOptions as any) as { user?: UserSession } | null
   if(!session?.user) throw new Error('not_authenticated')
   if(roles && roles.length && !roles.includes(session.user.role)) throw new Error('forbidden')
-  return session.user as UserSession
+  return session.user
 }
 
 export function canEvaluate(role:string){ return ['ADMIN','DOCTOR'].includes(role) }

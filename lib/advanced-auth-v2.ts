@@ -94,7 +94,7 @@ export function withRateLimitedAuth(
         return response || NextResponse.json({ error: 'Authentication failed' }, { status: statusCode })
       }
 
-      const { user } = authResult as any
+      const { user } = authResult as { user: { id: string; email: string; name: string; role: string } }
       userId = user.id
 
       // 2. 🧠 AI-Powered Rate Limiting com Redis

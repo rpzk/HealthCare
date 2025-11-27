@@ -314,10 +314,10 @@ export class PatientService {
 
       return {
         ...patient,
-        cpf: decrypt(patient.cpf as any),
-        medicalHistory: decrypt(patient.medicalHistory as any),
-        allergies: decrypt(patient.allergies as any),
-        currentMedications: decrypt(patient.currentMedications as any)
+        cpf: decrypt(patient.cpf as string | null),
+        medicalHistory: decrypt(patient.medicalHistory as string | null),
+        allergies: decrypt(patient.allergies as string | null),
+        currentMedications: decrypt(patient.currentMedications as string | null)
       }
     } catch (error) {
       console.error('Erro ao criar paciente:', error)
@@ -355,10 +355,10 @@ export class PatientService {
 
       return {
         ...patient,
-        cpf: decrypt(patient.cpf as any),
-        medicalHistory: decrypt(patient.medicalHistory as any),
-        allergies: decrypt(patient.allergies as any),
-        currentMedications: decrypt(patient.currentMedications as any)
+        cpf: decrypt(patient.cpf as string | null),
+        medicalHistory: decrypt(patient.medicalHistory as string | null),
+        allergies: decrypt(patient.allergies as string | null),
+        currentMedications: decrypt(patient.currentMedications as string | null)
       }
     } catch (error) {
       console.error('Erro ao atualizar paciente:', error)
