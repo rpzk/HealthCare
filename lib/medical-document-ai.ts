@@ -57,7 +57,7 @@ export interface DocumentAnalysis {
   suggestedActions: Array<{
     action: 'CREATE_CONSULTATION' | 'ADD_EXAM_RESULT' | 'CREATE_PRESCRIPTION' | 'UPDATE_PATIENT' | 'CREATE_MEDICAL_RECORD';
     confidence: number;
-    data: any;
+    data: Record<string, unknown>;
   }>;
 }
 

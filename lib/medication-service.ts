@@ -12,6 +12,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import type { Medication, Prisma } from '@prisma/client'
 
 export interface MedicationSearchOptions {
   query?: string
@@ -42,7 +43,7 @@ export interface MedicationSearchOptions {
 }
 
 export interface MedicationSearchResult {
-  items: any[]
+  items: Medication[]
   total: number
   page: number
   limit: number
@@ -81,6 +82,8 @@ export class MedicationService {
       orderDir = 'asc'
     } = options
 
+    // Using any for dynamic Prisma query building (OR conditions require mutable array)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       active: true  // Campo correto no schema
     }

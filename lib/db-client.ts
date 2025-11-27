@@ -33,7 +33,7 @@ async function internalConnect() {
     dbLogger.debug('Connecting to database...')
     await getPrisma().$connect()
     dbLogger.debug('Connected successfully')
-  } catch (e: any) {
+  } catch (e) {
     dbLogger.error({ err: e }, 'Failed to connect to database')
     throw e
   }
