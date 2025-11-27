@@ -11,13 +11,31 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { to } = body
+    const { to, config: configFromRequest } = body
 
     if (!to) {
       return new NextResponse('Email address is required', { status: 400 })
     }
 
-    const config = await emailService.getConfig()
+    let overrideConfig = undefined
+    if (configFromRequest) {
+      overrideConfig = {
+        enabled: configFromRequest.EMAIL_ENABLED === 'true',
+        from: configFromRequest.EMAIL_FROM,
+        provider: configFromRequest.EMAIL_PROVIDER,
+        smtp: {
+          host: configFromRequest.SMTP_HOST,
+          port: parseInt(configFromRequest.SMTP_PORT || '587'),
+          secure: configFromRequest.SMTP_SECURE === 'true',
+          auth: {
+            user: configFromRequest.SMTP_USER,
+            pass: configFromRequest.SMTP_PASS
+          }
+        }
+      }
+    }
+
+    const config = overrideConfig || await emailService.getConfig()
     if (!config.enabled) {
       return NextResponse.json({ 
         success: false, 
@@ -36,11 +54,12 @@ export async function POST(req: Request) {
           <ul>
             <li>Data: ${new Date().toLocaleString()}</li>
             <li>Enviado por: ${session.user.email}</li>
+            <li>Provedor: ${config.provider}</li>
           </ul>
         </div>
       `,
       text: 'Teste de E-mail: Sua configuração SMTP está funcionando corretamente!'
-    })
+    }, overrideConfig)
 
     if (success) {
       return NextResponse.json({ success: true })

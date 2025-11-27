@@ -123,7 +123,10 @@ export default function SettingsPage() {
       const response = await fetch('/api/settings/test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: testAddress })
+        body: JSON.stringify({ 
+          to: testAddress,
+          config: emailConfig
+        })
       })
 
       const data = await response.json()

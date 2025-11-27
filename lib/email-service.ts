@@ -10,6 +10,21 @@ export interface EmailOptions {
   from?: string
 }
 
+export interface EmailConfig {
+  enabled: boolean
+  from: string
+  provider: string
+  smtp: {
+    host?: string
+    port: number
+    secure: boolean
+    auth: {
+      user?: string
+      pass?: string
+    }
+  }
+}
+
 export class EmailService {
   private static instance: EmailService
   
@@ -22,7 +37,7 @@ export class EmailService {
     return EmailService.instance
   }
 
-  public async getConfig() {
+  public async getConfig(): Promise<EmailConfig> {
     // Carregar configurações do banco (com fallback para env vars)
     const dbSettings = await settings.getMany([
       'EMAIL_ENABLED', 'EMAIL_FROM', 'EMAIL_PROVIDER',
@@ -45,7 +60,7 @@ export class EmailService {
     }
   }
 
-  private async getTransporter(config: any) {
+  private async getTransporter(config: EmailConfig) {
     if (config.provider === 'smtp') {
       return nodemailer.createTransport({
         host: config.smtp.host,
@@ -63,8 +78,8 @@ export class EmailService {
   /**
    * Envia um e-mail
    */
-  public async sendEmail(options: EmailOptions): Promise<boolean> {
-    const config = await this.getConfig()
+  public async sendEmail(options: EmailOptions, overrideConfig?: EmailConfig): Promise<boolean> {
+    const config = overrideConfig || await this.getConfig()
     const { to, subject, html, text } = options
     const from = options.from || config.from
 
