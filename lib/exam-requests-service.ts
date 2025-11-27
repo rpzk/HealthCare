@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import type { Urgency } from '@prisma/client'
 
 export interface ExamRequestFilters {
@@ -91,7 +92,7 @@ export class ExamRequestsService {
       ]);
       return { total, examRequests };
     } catch (error) {
-      console.error('[ExamRequestsService] Error fetching exam requests:', error)
+      logger.error({ error }, '[ExamRequestsService] Error fetching exam requests')
       throw error
     }
   }

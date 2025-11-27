@@ -1,5 +1,6 @@
 ﻿import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, RecordType } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export interface MedicalRecordFilters {
   search?: string
@@ -17,7 +18,7 @@ export interface MedicalRecordCreateData {
   description: string
   diagnosis?: string
   treatment?: string
-  recordType: any // Using any to match Prisma enum or string
+  recordType: RecordType | string
   priority: string
   notes?: string
 }
@@ -27,7 +28,7 @@ export interface MedicalRecordUpdateData {
   description?: string
   diagnosis?: string
   treatment?: string
-  recordType?: any
+  recordType?: RecordType | string
   priority?: string
   notes?: string
 }
@@ -49,7 +50,7 @@ export class MedicalRecordsService {
       if (doctorId) where.doctorId = doctorId;
       
       if (type && type !== 'ALL') {
-        where.recordType = type as any;
+        where.recordType = type as RecordType;
       }
 
       if (dateFrom || dateTo) {
@@ -112,7 +113,7 @@ export class MedicalRecordsService {
         }
       };
     } catch (error) {
-      console.error('[MedicalRecordsService] Error fetching medical records:', error)
+      logger.error({ error }, '[MedicalRecordsService] Error fetching medical records')
       throw error
     }
   }
@@ -125,7 +126,7 @@ export class MedicalRecordsService {
       return await prisma.medicalRecord.create({
         data: {
           ...data,
-          recordType: data.recordType as any, // Ensure enum match
+          recordType: data.recordType as RecordType,
         },
         include: {
           patient: {
@@ -143,7 +144,7 @@ export class MedicalRecordsService {
         }
       });
     } catch (error) {
-      console.error('[MedicalRecordsService] Error creating medical record:', error)
+      logger.error({ error }, '[MedicalRecordsService] Error creating medical record')
       throw error
     }
   }
@@ -166,7 +167,7 @@ export class MedicalRecordsService {
         }
       });
     } catch (error) {
-      console.error('[MedicalRecordsService] Error fetching medical record by ID:', error)
+      logger.error({ error }, '[MedicalRecordsService] Error fetching medical record by ID')
       throw error
     }
   }
@@ -176,15 +177,20 @@ export class MedicalRecordsService {
    */
   static async updateMedicalRecord(id: string, data: MedicalRecordUpdateData) {
     try {
+      const { recordType, ...rest } = data
+      const updateData: Prisma.MedicalRecordUpdateInput = {
+        ...rest,
+        version: { increment: 1 }, // Optimistic locking support
+      }
+      if (recordType) {
+        updateData.recordType = recordType as RecordType
+      }
       return await prisma.medicalRecord.update({
         where: { id },
-        data: {
-          ...data,
-          version: { increment: 1 } // Optimistic locking support
-        }
+        data: updateData,
       });
     } catch (error) {
-      console.error('[MedicalRecordsService] Error updating medical record:', error)
+      logger.error({ error }, '[MedicalRecordsService] Error updating medical record')
       throw error
     }
   }
@@ -201,7 +207,7 @@ export class MedicalRecordsService {
         }
       });
     } catch (error) {
-      console.error('[MedicalRecordsService] Error deleting medical record:', error)
+      logger.error({ error }, '[MedicalRecordsService] Error deleting medical record')
       throw error
     }
   }

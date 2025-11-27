@@ -1,5 +1,6 @@
-import { Consultation, ConsultationStatus, ConsultationType } from '@prisma/client'
+import { Consultation, ConsultationStatus, ConsultationType, Prisma } from '@prisma/client'
 import { prisma, ensurePrismaConnected } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface ConsultationFilters {
   patientId?: string
@@ -53,12 +54,14 @@ export class ConsultationService {
     try {
       await ensurePrismaConnected()
     } catch (e) {
-      console.error('[ConsultationService] Falha ao conectar Prisma:', e)
+      logger.error({ error: e }, '[ConsultationService] Falha ao conectar Prisma')
       throw new Error('Erro de conexão com banco de dados')
     }
 
     const skip = (page - 1) * limit
     
+    // Using any here due to complex Prisma dynamic query building
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
 
     // Filtros básicos
