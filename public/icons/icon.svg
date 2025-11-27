@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Cross symbol -->
+  <rect x="224" y="128" width="64" height="256" rx="16" fill="white"/>
+  <rect x="128" y="224" width="256" height="64" rx="16" fill="white"/>
+  <!-- Heart accent -->
+  <path d="M256 420 C200 370, 140 310, 140 250 C140 200, 180 170, 220 170 C240 170, 256 185, 256 185 C256 185, 272 170, 292 170 C332 170, 372 200, 372 250 C372 310, 312 370, 256 420" fill="rgba(255,255,255,0.15)" transform="translate(0, -40) scale(0.4) translate(320, 600)"/>
+</svg>
