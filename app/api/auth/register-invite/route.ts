@@ -1,9 +1,24 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+
+// Instância própria do Prisma para evitar problemas de bundling
+const globalForRegister = globalThis as typeof globalThis & {
+  registerPrisma?: PrismaClient
+}
+
+function getRegisterPrisma(): PrismaClient {
+  if (!globalForRegister.registerPrisma) {
+    globalForRegister.registerPrisma = new PrismaClient({
+      log: ['error']
+    })
+  }
+  return globalForRegister.registerPrisma
+}
 
 export async function POST(req: Request) {
   try {
+    const prisma = getRegisterPrisma()
     const body = await req.json()
     const { token, name, cpf, phone, birthDate, gender, password, acceptedTerms } = body
 
@@ -49,7 +64,7 @@ export async function POST(req: Request) {
               email: invite.email,
               name,
               password: hashedPassword,
-              role: invite.role === 'PATIENT' ? 'OTHER' : invite.role, // Map PATIENT to OTHER or handle properly if Role enum updated
+              role: invite.role === 'PATIENT' ? 'OTHER' : invite.role,
               isActive: true,
             }
           }

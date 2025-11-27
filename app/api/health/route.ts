@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server'
 import { incCounter } from '@/lib/metrics'
 import { createRedisRateLimiter } from '@/lib/redis-integration'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Direct PrismaClient instantiation to avoid bundling issues
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+
+function getPrismaClient() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient()
+  }
+  return globalForPrisma.prisma
+}
+
+const prisma = getPrismaClient()
 import pkg from '../../../package.json'
 
 // Garantir runtime Node.js para acesso ao Redis, e execução dinâmica

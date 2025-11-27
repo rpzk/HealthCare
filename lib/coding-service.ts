@@ -101,14 +101,14 @@ export const CodingService = {
   const codes = await (prisma as any).medicalCode.findMany({ where: { systemId } })
     for (const c of codes) {
       const synonyms: string[] = c.synonyms ? JSON.parse(c.synonyms) : []
-      const text = [c.code, c.display, c.description, ...synonyms].filter(Boolean).join(' ').toLowerCase()
+      const text = [c.code, c.display, c.description, c.shortDescription, ...synonyms].filter(Boolean).join(' ').toLowerCase()
   await (prisma as any).medicalCode.update({ where: { id: c.id }, data: { searchableText: text } })
     }
     return { rebuilt: codes.length }
   },
-  async searchCodes(query: string, systemKind?: typeof CodeSystemKind[keyof typeof CodeSystemKind], limit = 25, opts: { fts?: boolean } = {}) {
+  async searchCodes(query: string, systemKind?: typeof CodeSystemKind[keyof typeof CodeSystemKind], limit = 25, opts: { fts?: boolean; chapter?: string; sexRestriction?: string; categoriesOnly?: boolean } = {}) {
     const q = query.trim()
-    const cacheKey = `codeSearch:${systemKind||'ANY'}:${opts.fts?'1':'0'}:${limit}:${q.toLowerCase()}`
+    const cacheKey = `codeSearch:${systemKind||'ANY'}:${opts.fts?'1':'0'}:${opts.chapter||''}:${opts.sexRestriction||''}:${opts.categoriesOnly?'1':'0'}:${limit}:${q.toLowerCase()}`
     const cached = cacheGet(cacheKey)
     if (cached) return cached
     const redis = getRedis()
@@ -120,19 +120,29 @@ export const CodingService = {
       await ensureFtsIndex()
       try {
         const systemFilter = systemKind ? `AND cs.kind = '${systemKind}'` : ''
-        results = await prisma.$queryRawUnsafe(`SELECT mc.* FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE to_tsvector('simple', coalesce(mc.code,'')||' '||coalesce(mc.display,'')||' '||coalesce(mc.description,'')) @@ plainto_tsquery('simple', $1) ${systemFilter} ORDER BY mc.code LIMIT ${limit}`, q)
+        const chapterFilter = opts.chapter ? `AND mc.chapter = '${opts.chapter}'` : ''
+        const sexFilter = opts.sexRestriction ? `AND (mc."sexRestriction" = '${opts.sexRestriction}' OR mc."sexRestriction" IS NULL)` : ''
+        const categoryFilter = opts.categoriesOnly ? `AND mc."isCategory" = true` : ''
+        results = await prisma.$queryRawUnsafe(`SELECT mc.* FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE to_tsvector('simple', coalesce(mc.code,'')||' '||coalesce(mc.display,'')||' '||coalesce(mc.description,'')) @@ plainto_tsquery('simple', $1) ${systemFilter} ${chapterFilter} ${sexFilter} ${categoryFilter} ORDER BY mc.code LIMIT ${limit}`, q)
       } catch { /* fallback below */ }
     }
     if (!results.length) {
       const lo = q.toLowerCase()
+      const additionalFilters: any[] = []
+      if (opts.chapter) additionalFilters.push({ chapter: opts.chapter })
+      if (opts.sexRestriction) additionalFilters.push({ OR: [{ sexRestriction: opts.sexRestriction }, { sexRestriction: null }] })
+      if (opts.categoriesOnly) additionalFilters.push({ isCategory: true })
+      
       results = await (prisma as any).medicalCode.findMany({
         where: {
           active: true,
           AND: [
             systemKind ? { system: { kind: systemKind } } : {},
+            ...additionalFilters,
             { OR: [
               { code: { contains: lo, mode: 'insensitive' } },
               { display: { contains: lo, mode: 'insensitive' } },
+              { shortDescription: { contains: lo, mode: 'insensitive' } },
               { searchableText: { contains: lo, mode: 'insensitive' } }
             ] }
           ]
@@ -278,5 +288,83 @@ export const CodingService = {
       } catch { /* silencioso */ }
     }
     return scored
+  }
+  ,async listChapters(systemKind?: string) {
+    // Lista capítulos únicos disponíveis no sistema
+    const chapters = await prisma.$queryRawUnsafe(`
+      SELECT DISTINCT mc.chapter, COUNT(*) as count
+      FROM medical_codes mc
+      JOIN code_systems cs ON mc."systemId" = cs.id
+      WHERE mc.chapter IS NOT NULL
+      ${systemKind ? `AND cs.kind = '${systemKind}'` : ''}
+      GROUP BY mc.chapter
+      ORDER BY mc.chapter
+    `)
+    
+    // Mapeamento de capítulos CID-10 para nomes
+    const chapterNames: Record<string, string> = {
+      'I': 'Doenças infecciosas e parasitárias',
+      'II': 'Neoplasias',
+      'III': 'Doenças do sangue e órgãos hematopoéticos',
+      'IV': 'Doenças endócrinas, nutricionais e metabólicas',
+      'V': 'Transtornos mentais e comportamentais',
+      'VI': 'Doenças do sistema nervoso',
+      'VII': 'Doenças do olho e anexos',
+      'VIII': 'Doenças do ouvido e da apófise mastoide',
+      'IX': 'Doenças do aparelho circulatório',
+      'X': 'Doenças do aparelho respiratório',
+      'XI': 'Doenças do aparelho digestivo',
+      'XII': 'Doenças da pele e do tecido subcutâneo',
+      'XIII': 'Doenças do sistema osteomuscular',
+      'XIV': 'Doenças do aparelho geniturinário',
+      'XV': 'Gravidez, parto e puerpério',
+      'XVI': 'Afecções originadas no período perinatal',
+      'XVII': 'Malformações congênitas',
+      'XVIII': 'Sintomas, sinais e achados anormais',
+      'XIX': 'Lesões, envenenamentos e causas externas',
+      'XX': 'Causas externas de morbidade e mortalidade',
+      'XXI': 'Fatores que influenciam o estado de saúde',
+      'XXII': 'Códigos para propósitos especiais'
+    }
+    
+    return (chapters as any[]).map(c => ({
+      code: c.chapter,
+      name: chapterNames[c.chapter] || `Capítulo ${c.chapter}`,
+      count: Number(c.count)
+    }))
+  }
+  ,async getCodesByChapter(chapter: string, systemKind?: string, limit = 100) {
+    return (prisma as any).medicalCode.findMany({
+      where: {
+        chapter,
+        active: true,
+        ...(systemKind ? { system: { kind: systemKind } } : {})
+      },
+      orderBy: { code: 'asc' },
+      take: limit
+    })
+  }
+  ,async getCodeStats(systemKind?: string) {
+    const systemFilter = systemKind ? `AND cs.kind = '${systemKind}'` : ''
+    
+    const [total, categories, withSexRestriction, etiologies, manifestations] = await Promise.all([
+      prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE 1=1 ${systemFilter}`),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE mc."isCategory" = true ${systemFilter}`),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE mc."sexRestriction" IS NOT NULL ${systemFilter}`),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE mc."crossAsterisk" = 'ETIOLOGY' ${systemFilter}`),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE mc."crossAsterisk" = 'MANIFESTATION' ${systemFilter}`)
+    ])
+    
+    return {
+      total: Number((total as any)[0]?.count || 0),
+      categories: Number((categories as any)[0]?.count || 0),
+      withSexRestriction: Number((withSexRestriction as any)[0]?.count || 0),
+      etiologyCodes: Number((etiologies as any)[0]?.count || 0),
+      manifestationCodes: Number((manifestations as any)[0]?.count || 0)
+    }
+  }
+  ,async searchCodesForGender(query: string, gender: 'M' | 'F', systemKind?: string, limit = 25) {
+    // Busca códigos válidos para o gênero do paciente
+    return this.searchCodes(query, systemKind as any, limit, { sexRestriction: gender })
   }
 }

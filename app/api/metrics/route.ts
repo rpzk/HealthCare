@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server'
 import { renderPrometheus } from '@/lib/metrics'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Direct PrismaClient instantiation to avoid bundling issues
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+
+function getPrismaClient() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient()
+  }
+  return globalForPrisma.prisma
+}
+
+const prisma = getPrismaClient()
 
 export async function GET() {
   const body = await renderPrometheus(prisma)

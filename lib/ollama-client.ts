@@ -8,7 +8,7 @@ import axios from 'axios'
 // URL do serviço Ollama, configurável via variável de ambiente
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
 // Modelo padrão a ser usado, configurável via variável de ambiente
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'phi3'
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b'
 
 /**
  * Cliente para interagir com a API do Ollama
@@ -19,7 +19,7 @@ export class OllamaClient {
 
   constructor(baseUrl = OLLAMA_URL, defaultModel = DEFAULT_MODEL) {
     // Forçar localhost se estiver usando 'ollama'
-    this.baseUrl = baseUrl.includes('ollama') ? 'http://localhost:11434' : baseUrl
+    this.baseUrl = baseUrl
     this.defaultModel = defaultModel
   }
 

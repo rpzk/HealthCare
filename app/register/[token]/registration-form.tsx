@@ -116,7 +116,7 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
       }
 
       // Success
-      router.push('/login?registered=true')
+      router.push('/auth/signin?registered=true')
     } catch (err: any) {
       setError(err.message)
     } finally {

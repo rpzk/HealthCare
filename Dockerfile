@@ -4,7 +4,7 @@ FROM node:20-slim AS base
 # Install dependencies only when needed
 FROM base AS deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	ca-certificates openssl && rm -rf /var/lib/apt/lists/*
+        ca-certificates openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
@@ -32,7 +32,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	ca-certificates openssl bash curl && rm -rf /var/lib/apt/lists/*
+        ca-certificates openssl bash curl && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
@@ -40,6 +40,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+
+# Create data and uploads directories with correct permissions
+RUN mkdir -p /app/data /app/uploads && chown -R nextjs:nodejs /app/data /app/uploads
 
 RUN chmod +x ./scripts/docker-entrypoint.sh
 

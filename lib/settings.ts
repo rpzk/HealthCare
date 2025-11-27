@@ -1,4 +1,4 @@
-import { getPrisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
 
@@ -12,7 +12,21 @@ export interface SystemSetting {
   isPublic: boolean
 }
 
-const FALLBACK_FILE_PATH = path.join(process.cwd(), 'uploads', 'settings.json')
+// Criar instância própria do Prisma para settings (evita problemas de bundling)
+const globalForSettings = globalThis as typeof globalThis & {
+  settingsPrisma?: PrismaClient
+}
+
+function getSettingsPrisma(): PrismaClient {
+  if (!globalForSettings.settingsPrisma) {
+    globalForSettings.settingsPrisma = new PrismaClient({
+      log: ['error']
+    })
+  }
+  return globalForSettings.settingsPrisma
+}
+
+const FALLBACK_FILE_PATH = path.join(process.cwd(), 'data', 'settings.json')
 
 // Helper para gerenciar arquivo de fallback
 const fallbackManager = {
@@ -37,6 +51,7 @@ const fallbackManager = {
     try {
       this.ensureDirectory()
       fs.writeFileSync(FALLBACK_FILE_PATH, JSON.stringify(data, null, 2))
+      console.log('[settings] Fallback file written successfully')
     } catch (e) {
       console.error('Failed to write fallback settings file:', e)
     }
@@ -69,42 +84,37 @@ const fallbackManager = {
 export const settings = {
   async get(key: string, defaultValue: string = ''): Promise<string> {
     try {
-      const prisma = getPrisma()
-      // @ts-ignore
-      if (!prisma || !prisma.systemSetting) {
-        const fallback = fallbackManager.get(key)
-        return fallback ?? defaultValue
-      }
-
+      const prisma = getSettingsPrisma()
       const setting = await prisma.systemSetting.findUnique({
         where: { key }
       })
-      return setting?.value ?? defaultValue
+      if (setting) {
+        return setting.value
+      }
+      // Se não encontrou no banco, tenta fallback
+      const fallback = fallbackManager.get(key)
+      return fallback ?? defaultValue
     } catch (error) {
-      console.warn(`Failed to fetch setting ${key} from DB, trying fallback...`)
+      console.warn(`[settings] Failed to fetch setting ${key} from DB, trying fallback...`, error)
       const fallback = fallbackManager.get(key)
       return fallback ?? defaultValue
     }
   },
 
   async set(key: string, value: string, category: SettingCategory = 'GENERAL', description?: string): Promise<void> {
+    // Sempre salva no fallback primeiro (garantia)
+    fallbackManager.set(key, value, category, description)
+    
     try {
-      const prisma = getPrisma()
-      // @ts-ignore
-      if (!prisma || !prisma.systemSetting) {
-        console.warn('Database not ready, saving to fallback file...')
-        fallbackManager.set(key, value, category, description)
-        return
-      }
-
+      const prisma = getSettingsPrisma()
       await prisma.systemSetting.upsert({
         where: { key },
         update: { value, category, description },
-        create: { key, value, category, description }
+        create: { key, value, category, description: description || null, isPublic: false }
       })
+      console.log(`[settings] Setting ${key} saved to database`)
     } catch (error) {
-      console.error('Database error, saving to fallback file:', error)
-      fallbackManager.set(key, value, category, description)
+      console.error(`[settings] Database error saving ${key}, fallback was used:`, error)
     }
   },
 
@@ -112,21 +122,12 @@ export const settings = {
     const result: Record<string, string> = {}
     
     try {
-      const prisma = getPrisma()
-      // @ts-ignore
-      if (!prisma || !prisma.systemSetting) {
-        keys.forEach(key => {
-          const val = fallbackManager.get(key)
-          if (val !== null) result[key] = val
-        })
-        return result
-      }
-
-      const settings = await prisma.systemSetting.findMany({
+      const prisma = getSettingsPrisma()
+      const dbSettings = await prisma.systemSetting.findMany({
         where: { key: { in: keys } }
       })
       
-      settings.forEach(s => {
+      dbSettings.forEach(s => {
         result[s.key] = s.value
       })
       
@@ -140,7 +141,7 @@ export const settings = {
 
       return result
     } catch (error) {
-      console.warn('Failed to fetch settings from DB, trying fallback...', error)
+      console.warn('[settings] Failed to fetch settings from DB, trying fallback...', error)
       keys.forEach(key => {
         const val = fallbackManager.get(key)
         if (val !== null) result[key] = val
@@ -152,16 +153,13 @@ export const settings = {
   async getAllByCategory(category: SettingCategory) {
     let dbSettings: any[] = []
     try {
-      const prisma = getPrisma()
-      // @ts-ignore
-      if (prisma && prisma.systemSetting) {
-        dbSettings = await prisma.systemSetting.findMany({
-          where: { category },
-          orderBy: { key: 'asc' }
-        })
-      }
+      const prisma = getSettingsPrisma()
+      dbSettings = await prisma.systemSetting.findMany({
+        where: { category },
+        orderBy: { key: 'asc' }
+      })
     } catch (error) {
-      console.warn('Failed to fetch settings by category from DB', error)
+      console.warn('[settings] Failed to fetch settings by category from DB', error)
     }
 
     const fileSettings = fallbackManager.getAllByCategory(category)

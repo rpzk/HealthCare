@@ -1,6 +1,6 @@
 import ollamaClient from './ollama-client'
 
-const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'llama3' })
+const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'qwen2.5:3b' })
 
 export interface AIAnalysisRequest {
   type: 'diagnosis' | 'treatment' | 'drug_interaction' | 'symptom_analysis'

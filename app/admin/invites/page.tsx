@@ -153,18 +153,22 @@ export default function InvitesPage() {
             <Check className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-800">Convite Gerado com Sucesso!</AlertTitle>
             <AlertDescription className="mt-2">
-              <p className="text-green-700 mb-2 font-medium">
+              <p className="text-green-700 mb-3 font-medium">
                 Copie e envie o link abaixo para o usuário (via WhatsApp, Email, etc):
               </p>
-              <div className="flex items-center gap-2 mt-2">
-                <code className="relative rounded bg-white px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold border border-green-200 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                  {generatedLink}
-                </code>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={generatedLink}
+                  className="bg-white border-green-200 text-sm font-mono text-gray-900"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
                 <Button
                   size="icon"
                   variant="outline"
-                  className="h-8 w-8 shrink-0 bg-white hover:bg-green-100 border-green-200"
+                  className="h-10 w-10 shrink-0 bg-white hover:bg-green-100 border-green-200"
                   onClick={copyToClipboard}
+                  type="button"
                 >
                   {copied ? (
                     <Check className="h-4 w-4 text-green-600" />

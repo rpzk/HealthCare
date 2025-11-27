@@ -2,7 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 import { DigitalSignatureService } from '@/lib/digital-signature-service'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Direct PrismaClient instantiation to avoid bundling issues
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+
+function getPrismaClient() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient()
+  }
+  return globalForPrisma.prisma
+}
+
+const prisma = getPrismaClient()
 
 export const POST = withAuth(async (request: NextRequest, { user, params }) => {
   try {

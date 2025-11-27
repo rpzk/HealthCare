@@ -54,7 +54,7 @@ export interface MedicalSummary {
 }
 
 export class AdvancedMedicalAI {
-  private model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || "llama3" })
+  private model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || "qwen2.5:3b" })
   private failures = 0
   private OPEN = false
   private nextRetry = 0
@@ -79,7 +79,7 @@ export class AdvancedMedicalAI {
       this.OPEN = true
       this.nextRetry = Date.now() + this.COOLDOWN_MS
     }
-  setGauge('ai_circuit_open', this.OPEN ? 1 : 0, { model: process.env.OLLAMA_MODEL || 'llama3' })
+  setGauge('ai_circuit_open', this.OPEN ? 1 : 0, { model: process.env.OLLAMA_MODEL || 'qwen2.5:3b' })
   }
 
   // Análise avançada de sintomas com IA

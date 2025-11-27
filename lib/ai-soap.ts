@@ -80,7 +80,7 @@ Modelo JSON alvo:
     "education": string[]?,
     "followUp": string?
   },
-  "metadata": { "model": "${process.env.OLLAMA_MODEL || 'llama3'}", "warnings": string[]? }
+  "metadata": { "model": "${process.env.OLLAMA_MODEL || 'qwen2.5:3b'}", "warnings": string[]? }
 }`
 }
 
@@ -88,7 +88,7 @@ export async function generateSoapFromTranscript(params: { transcript: string; l
   const transcript = (params.transcript || '').slice(0, 20000)
   const locale = params.locale || 'pt-BR'
   const speciality = params.speciality
-  const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'llama3' })
+  const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'qwen2.5:3b' })
   const prompt = buildPrompt(transcript, locale, speciality)
 
   const result = await startSpan('ai.soap.generate', async () => model.generateContent(prompt))

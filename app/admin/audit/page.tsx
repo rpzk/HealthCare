@@ -1,7 +1,19 @@
 import React from 'react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Direct PrismaClient instantiation to avoid bundling issues
+const globalForPrisma = globalThis as unknown as { auditPrisma: PrismaClient }
+
+function getAuditPrisma() {
+  if (!globalForPrisma.auditPrisma) {
+    globalForPrisma.auditPrisma = new PrismaClient()
+  }
+  return globalForPrisma.auditPrisma
+}
+
+const prisma = getAuditPrisma()
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'

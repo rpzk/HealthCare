@@ -1,7 +1,21 @@
 import { notFound } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import { RegistrationForm } from './registration-form'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+
+// Instância própria do Prisma para evitar problemas de bundling em Server Components
+const globalForRegisterPage = globalThis as typeof globalThis & {
+  registerPagePrisma?: PrismaClient
+}
+
+function getRegisterPagePrisma(): PrismaClient {
+  if (!globalForRegisterPage.registerPagePrisma) {
+    globalForRegisterPage.registerPagePrisma = new PrismaClient({
+      log: ['error']
+    })
+  }
+  return globalForRegisterPage.registerPagePrisma
+}
 
 interface RegisterPageProps {
   params: {
@@ -11,6 +25,7 @@ interface RegisterPageProps {
 
 export default async function RegisterPage({ params }: RegisterPageProps) {
   const { token } = params
+  const prisma = getRegisterPagePrisma()
 
   const invite = await prisma.registrationInvite.findUnique({
     where: { token }

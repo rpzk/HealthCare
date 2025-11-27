@@ -5,6 +5,8 @@ import crypto from 'crypto'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { ExternalFetchAdapter, ExternalUpdatesService } from '@/lib/external-updates-service'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 const SUPPORTED_SOURCES = ['ICD10', 'ICD11', 'CIAP2', 'NURSING', 'CBO'] as const
 type SupportedSource = (typeof SUPPORTED_SOURCES)[number]
@@ -67,7 +69,13 @@ function isNormalizedRow(row: UploadedRowCandidate): row is UploadedNormalizedRo
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+    // Verificar autenticação e permissão de admin
+  const session = await getServerSession(req, res, authOptions as any) as { user?: { role?: string } } | null
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores' })
+  }
+
+if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
     const { source, filename, contentBase64, dryRun, retireMissing, preview } = req.body || {}
     if (!filename || typeof filename !== 'string') return res.status(400).json({ error: 'missing filename' })

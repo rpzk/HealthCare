@@ -5,9 +5,17 @@ import { icd11WhoAdapter } from '@/lib/adapters/icd11-who'
 import { ciap2Adapter } from '@/lib/adapters/ciap2'
 import { nursingClassificationAdapter } from '@/lib/adapters/nursing'
 import { cboOfficialAdapter } from '@/lib/adapters/cbo-official'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+    // Verificar autenticação e permissão de admin
+  const session = await getServerSession(req, res, authOptions as any) as { user?: { role?: string } } | null
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores' })
+  }
+
+if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   const { dryRun, source, retireMissing, preview } = req.body || {}
   let adapter: ExternalFetchAdapter<unknown>
   switch (source) {
