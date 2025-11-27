@@ -39,7 +39,7 @@ export default function SettingsPage() {
   const [emailConfig, setEmailConfig] = useState({
     EMAIL_ENABLED: 'false',
     EMAIL_PROVIDER: 'console',
-    SMTP_HOST: '',
+    SMTP_HOST: 'smtp.gmail.com',
     SMTP_PORT: '587',
     SMTP_USER: '',
     SMTP_PASS: '',
@@ -117,6 +117,11 @@ export default function SettingsPage() {
 
     const testAddress = prompt('Digite o e-mail para receber o teste (certifique-se de ter SALVADO as configurações antes):', emailConfig.SMTP_USER || '')
     if (!testAddress) return
+
+    if (emailConfig.EMAIL_PROVIDER === 'smtp' && !emailConfig.SMTP_HOST) {
+      alert('O campo Host SMTP é obrigatório.')
+      return
+    }
 
     setTestingEmail(true)
     try {

@@ -4,7 +4,9 @@ echo "Iniciando deploy no Umbrel..."
 
 # Garante que estamos na branch correta e atualizados
 echo "Atualizando código..."
+git stash
 git pull
+git stash pop || echo "Nada para restaurar ou conflito ignorado"
 
 # Executa o Docker Compose com sudo
 echo "Reconstruindo containers..."
