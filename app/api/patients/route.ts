@@ -5,18 +5,20 @@ import { withPatientAuth } from '@/lib/advanced-auth-v2'
 import { startSpan } from '@/lib/tracing'
 import { validatePatient } from '../../../lib/validation-schemas'
 import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'
+import { sanitizeSearchQuery, sanitizeName, sanitizeEmail, sanitizeCpf } from '@/lib/sanitization'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
 export const GET = withPatientAuth(async (req, { user: _user }) => {
   try {
     const { searchParams } = new URL(req.url)
     
-    // Parâmetros de paginação
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    // Parâmetros de paginação com limites
+    const page = Math.max(1, Math.min(1000, parseInt(searchParams.get('page') || '1')))
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10')))
     
-    // Filtros
-    const search = searchParams.get('search') || undefined
+    // Filtros com sanitização
+    const rawSearch = searchParams.get('search')
+    const search = rawSearch ? sanitizeSearchQuery(rawSearch) : undefined
     const gender = searchParams.get('gender') || undefined
     const riskLevel = searchParams.get('riskLevel') || undefined
     
@@ -83,10 +85,10 @@ export const POST = withPatientAuth(async (req, { user }) => {
     }
 
     const patient = await startSpan('patients.create', () => PatientService.createPatient({
-      name: data.name,
-      email: data.email!,
+      name: sanitizeName(data.name),
+      email: sanitizeEmail(data.email!),
       phone: data.phone,
-      cpf: data.cpf,
+      cpf: data.cpf ? sanitizeCpf(data.cpf) : undefined,
       birthDate,
       gender: data.gender as any,
       emergencyContact: data.emergencyContact,
