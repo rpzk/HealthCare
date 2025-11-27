@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface AIAnalytics {
   totalAnalyses: number
@@ -66,7 +67,7 @@ export class AIAnalyticsService {
 
       return mockAnalytics
     } catch (error) {
-      console.error('Erro ao buscar analytics de IA:', error)
+      logger.error({ error }, 'Erro ao buscar analytics de IA')
       throw new Error('Erro ao buscar estatísticas de IA')
     }
   }
@@ -77,22 +78,22 @@ export class AIAnalyticsService {
     patientId?: string,
     doctorId?: string,
     responseTime?: number,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ) {
     try {
       // Em uma implementação real, salvaríamos em uma tabela ai_logs
-      console.log('AI Usage logged:', {
+      logger.debug({
         type,
         patientId,
         doctorId,
         responseTime,
         timestamp: new Date(),
         metadata
-      })
+      }, 'AI Usage logged')
       
       return true
     } catch (error) {
-      console.error('Erro ao registrar uso da IA:', error)
+      logger.error({ error }, 'Erro ao registrar uso da IA')
       return false
     }
   }
@@ -115,7 +116,7 @@ export class AIAnalyticsService {
         ]
       }
     } catch (error) {
-      console.error('Erro ao buscar stats do médico:', error)
+      logger.error({ error, doctorId }, 'Erro ao buscar stats do médico')
       throw error
     }
   }

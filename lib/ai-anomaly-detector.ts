@@ -306,9 +306,9 @@ export class AIAnomalyDetector {
   private async loadUserProfiles(): Promise<void> {
     try {
       // Implementação futura: carregar perfis existentes do banco
-      console.log('🧠 AI Anomaly Detector inicializado');
-    } catch (error) {
-      console.error('Erro ao carregar perfis de usuários:', error);
+      // Silenciado em produção
+    } catch (_error) {
+      // Erros de carregamento inicial não devem travar a aplicação
     }
   }
 
