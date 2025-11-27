@@ -47,12 +47,24 @@
 - [x] Removidos ~2800 linhas de código duplicado
 - [x] Criados componentes UI faltantes (`scroll-area`, `collapsible`)
 
-### 2.2 Security Hardening (PENDENTE)
-- [ ] Implementar CSP mais restritiva (remover `unsafe-inline`)
-- [ ] Adicionar rate limiting global em middleware
-- [ ] Implementar validação Zod em todas as APIs
-- [ ] Configurar CORS adequadamente
-- [ ] Adicionar headers de segurança (HSTS em produção)
+### 2.2 Security Hardening ✅
+- [x] **Rate Limiting Global** - Middleware com 300 req/min por IP
+- [x] **CSP Melhorada** - Headers de segurança aprimorados
+- [x] **HSTS** - Habilitado em produção
+- [x] **Sanitização de Entrada** - `lib/sanitization.ts` com funções:
+  - `sanitizeHtml()` - Previne XSS
+  - `sanitizeSqlLike()` - Escapa wildcards LIKE
+  - `sanitizeText()` - Remove caracteres de controle
+  - `sanitizeName()` - Sanitiza nomes de pessoas
+  - `sanitizeEmail()` - Sanitiza emails
+  - `sanitizePhone()` / `sanitizeCpf()` - Sanitiza dados pessoais
+  - `sanitizeSearchQuery()` - Sanitiza termos de busca
+  - `containsInjectionAttempt()` - Detecta tentativas de injeção
+- [x] **Validação de API** - `lib/api-validation.ts` com helpers:
+  - `validateRequestBody()` - Valida body com Zod
+  - `validateQueryParams()` - Valida query params
+  - `withValidation()` - Wrapper para handlers
+  - Schemas reutilizáveis: pagination, id, search, dateRange
 
 ### 2.3 Performance (PENDENTE)
 - [ ] Lazy loading de componentes pesados
