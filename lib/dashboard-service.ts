@@ -118,8 +118,8 @@ export class DashboardService {
           name: p.name,
           age: this.calculateAge(p.birthDate as unknown as Date),
           lastVisit: new Date(lastVisitDate).toLocaleDateString('pt-BR'),
-          status: this.getPatientStatus(p as any, lastConsultation as any),
-          priority: this.getPatientPriority(p as any),
+          status: this.getPatientStatus(p, lastConsultation),
+          priority: this.getPatientPriority(p),
         }
       }).filter(Boolean); // Remove nulls
     } catch (err) {
@@ -154,7 +154,7 @@ export class DashboardService {
     return typeLabels[type] || type
   }
 
-  private static getPatientStatus(patient: any, lastConsultation: any): string {
+  private static getPatientStatus(patient: { riskLevel?: string | null }, lastConsultation: { status?: string } | null): string {
     if (!lastConsultation) return 'Novo paciente'
     
     switch (lastConsultation.status) {
@@ -173,7 +173,7 @@ export class DashboardService {
     }
   }
 
-  private static getPatientPriority(patient: any): 'normal' | 'high' {
+  private static getPatientPriority(patient: { riskLevel?: string | null }): 'normal' | 'high' {
     // Deriva prioridade do nível de risco do paciente
     const highRiskLevels = ['ALTO', 'CRITICO']
     const level = String(patient?.riskLevel || '').toUpperCase()

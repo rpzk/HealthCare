@@ -78,7 +78,7 @@ export class EmailService {
   /**
    * Envia um e-mail
    */
-  public async sendEmail(options: EmailOptions, overrideConfig?: EmailConfig): Promise<{ success: boolean, error?: any }> {
+  public async sendEmail(options: EmailOptions, overrideConfig?: EmailConfig): Promise<{ success: boolean, error?: unknown }> {
     const config = overrideConfig || await this.getConfig()
     const { to, subject, html, text } = options
     const from = options.from || config.from

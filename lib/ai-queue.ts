@@ -1,7 +1,7 @@
-import { medicalAI } from './advanced-medical-ai'
+import { medicalAI, SymptomAnalysisRequest } from './advanced-medical-ai'
 import { incCounter } from './metrics'
 
-interface Job { id: string; type: string; payload: any; resolve: (v:any)=>void; reject:(e:any)=>void }
+interface Job { id: string; type: string; payload: SymptomAnalysisRequest; resolve: (v: unknown) => void; reject: (e: unknown) => void }
 
 const queue: Job[] = []
 let running = 0
@@ -30,7 +30,7 @@ async function process(job: Job){
   }
 }
 
-export function enqueue(type: string, payload: any){
+export function enqueue(type: string, payload: SymptomAnalysisRequest){
   return new Promise((resolve,reject)=>{
     queue.push({ id: Date.now()+':'+Math.random(), type, payload, resolve, reject })
     incCounter('ai_queue_jobs_total', { type })

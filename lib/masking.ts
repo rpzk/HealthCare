@@ -7,6 +7,17 @@ export interface MaskOptions {
   partialEmail?: boolean
 }
 
+interface PatientData {
+  cpf?: string | null
+  email?: string | null
+  phone?: string | null
+  emergencyContact?: string | null
+  medicalHistory?: unknown
+  allergies?: unknown
+  currentMedications?: unknown
+  [key: string]: unknown
+}
+
 export function maskCPF(cpf?: string | null) {
   if (!cpf) return null
   const digits = cpf.replace(/\D/g,'')
@@ -21,7 +32,7 @@ export function maskEmail(email?: string | null) {
   return user[0] + '***@' + domain
 }
 
-export function applyPatientMasking(patient: any, opts: MaskOptions = {}) {
+export function applyPatientMasking(patient: PatientData, opts: MaskOptions = {}) {
   if (!patient) return patient
   const { maskCpf = true, maskContact = true, partialEmail = true } = opts
   return {
@@ -36,6 +47,6 @@ export function applyPatientMasking(patient: any, opts: MaskOptions = {}) {
   }
 }
 
-export function applyPatientsCollectionMasking(list: any[]) {
+export function applyPatientsCollectionMasking(list: PatientData[]) {
   return list.map(p => applyPatientMasking(p))
 }

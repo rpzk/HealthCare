@@ -233,7 +233,7 @@ class PatientRegistrationAI {
    * 🏥 Cria ou atualiza paciente com dados cadastrais completos
    */
   async createOrUpdatePatientFromRegistration(registrationData: PatientRegistrationData): Promise<{
-    patient: any
+    patient: { id: string; name: string; cpf: string | null; email: string; phone: string | null; birthDate: Date | null; gender: string | null }
     action: 'created' | 'updated'
     confidence: number
   }> {

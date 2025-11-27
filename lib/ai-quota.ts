@@ -19,18 +19,19 @@ export async function checkAndConsumeAIQuota(userId: string, type: string) {
   // Tenta usar tabela agregada
   try {
     // Upsert manual (funciona após migration)
-    const row: any = await prisma.$queryRawUnsafe(`
+    const row = await prisma.$queryRawUnsafe<{ count: number }[]>(`
       INSERT INTO ai_quota_usage ("userId", type, date, count, "createdAt", "updatedAt")
       VALUES ($1, $2, $3, 1, now(), now())
       ON CONFLICT ("userId", type, date) DO UPDATE SET count = ai_quota_usage.count + 1, "updatedAt" = now()
       RETURNING count;`, userId, type, date)
-    const current = Array.isArray(row) ? row[0]?.count : row?.count
+    const current = Array.isArray(row) ? row[0]?.count : undefined
     if (current && current > limit) {
       incCounter('ai_quota_exceeded_total', { type })
       throw new Error('Limite diário de uso de IA atingido')
     }
   } catch (e) {
     // Fallback: incrementar criando um registro sintético em AIInteraction e então contar
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const enumType = type.toUpperCase().replace(/-/g,'_') as any
     await prisma.aIInteraction.create({
       data: {

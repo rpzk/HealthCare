@@ -1,12 +1,13 @@
-import { Gender, RiskLevel } from '@prisma/client'
+import { Gender, RiskLevel, Prisma, PrismaClient } from '@prisma/client'
+
 // Lazy Prisma to avoid bundling/runtime issues
-let __prisma: any | undefined
-async function getPrisma() {
+let __prisma: PrismaClient | undefined
+async function getPrisma(): Promise<PrismaClient> {
   if (!__prisma) {
     const { PrismaClient } = await import('@prisma/client')
     __prisma = new PrismaClient()
   }
-  return __prisma as any
+  return __prisma
 }
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
 
@@ -48,7 +49,9 @@ export class PatientService {
       const { search, riskLevel, gender, ageRange } = filters
       
       // Construir filtros do Prisma
-      const where: any = {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {}
       
       if (search) {
         where.OR = [
@@ -118,20 +121,20 @@ export class PatientService {
       ])
 
       return {
-        patients: patients.map((patient: any) => ({
+        patients: patients.map((patient) => ({
           id: patient.id,
           name: patient.name,
           email: patient.email,
           phone: patient.phone,
-          cpf: decrypt(patient.cpf as any),
+          cpf: decrypt(patient.cpf as string | null),
           age: this.calculateAge(patient.birthDate),
           gender: patient.gender,
           riskLevel: patient.riskLevel,
           emergencyContact: patient.emergencyContact,
           address: patient.address,
-          medicalHistory: decrypt(patient.medicalHistory as any),
-          allergies: decrypt(patient.allergies as any),
-          currentMedications: decrypt(patient.currentMedications as any),
+          medicalHistory: decrypt(patient.medicalHistory as string | null),
+          allergies: decrypt(patient.allergies as string | null),
+          currentMedications: decrypt(patient.currentMedications as string | null),
           insuranceNumber: patient.insuranceNumber,
           doctor: patient.User ? {
             name: patient.User.name,
@@ -329,7 +332,7 @@ export class PatientService {
       const prisma = await getPrisma()
       // console.log('[patient-service] updatePatient called')
       // Preparar campos criptografados
-      const updateData: any = { ...data }
+      const updateData: Record<string, unknown> = { ...data }
       if (data.cpf) {
         updateData.cpf = encrypt(data.cpf)
   updateData.cpfHash = hashCPF(data.cpf)
@@ -397,13 +400,13 @@ export class PatientService {
         })
       ])
 
-      const genderDistribution = (genderStats as any[]).reduce((acc: Record<string, number>, item: any) => {
-        acc[item.gender] = item._count
+      const genderDistribution = genderStats.reduce((acc: Record<string, number>, item) => {
+        if (item.gender) acc[item.gender] = item._count
         return acc
       }, {} as Record<string, number>)
 
-      const riskDistribution = (riskLevelStats as any[]).reduce((acc: Record<string, number>, item: any) => {
-        acc[item.riskLevel] = item._count
+      const riskDistribution = riskLevelStats.reduce((acc: Record<string, number>, item) => {
+        if (item.riskLevel) acc[item.riskLevel] = item._count
         return acc
       }, {} as Record<string, number>)
 

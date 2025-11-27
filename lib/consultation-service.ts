@@ -62,6 +62,8 @@ export class ConsultationService {
     
     // Using any here due to complex Prisma dynamic query building
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
 
     // Filtros básicos
@@ -481,6 +483,8 @@ export class ConsultationService {
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       scheduledDate: {
         gte: startOfDay,
@@ -520,6 +524,8 @@ export class ConsultationService {
   static async getUpcomingConsultations(doctorId?: string, limit = 5) {
     const now = new Date()
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       scheduledDate: {
         gte: now

@@ -57,7 +57,7 @@ export function recordRequest(path: string, method: string, status: number, dura
   observeHistogram('api_request_duration_ms', durationMs, { path: normPath, method: method.toUpperCase() })
 }
 
-export async function renderPrometheus(prisma?: any) {
+export async function renderPrometheus(prisma?: { auditLog?: { count: () => Promise<number> } }) {
   const out: string[] = []
   out.push('# HELP api_request_total Total de requisições API por path/método/status')
   out.push('# TYPE api_request_total counter')

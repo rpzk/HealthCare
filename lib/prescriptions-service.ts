@@ -25,7 +25,25 @@ export interface PrescriptionCreateData {
 }
 
 export class PrescriptionsServiceDb {
-  static toApiShape(db: any) {
+  static toApiShape(db: {
+    id: string
+    patientId: string
+    doctorId: string
+    medication: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions?: string | null
+    notes?: string | null
+    status: string
+    startDate: Date | null
+    endDate: Date | null
+    createdAt: Date
+    updatedAt: Date
+    digitalSignature?: string | null
+    patient?: { id: string; name: string; email: string | null; phone: string | null } | null
+    doctor?: { id: string; name: string; email: string; speciality: string | null } | null
+  }) {
     const meds = [
       {
         name: db.medication,
@@ -40,7 +58,7 @@ export class PrescriptionsServiceDb {
       patientId: db.patientId,
       doctorId: db.doctorId,
       medications: meds,
-      notes: (db as any).notes || undefined,
+      notes: db.notes || undefined,
       status: db.status,
       startDate: db.startDate,
       endDate: db.endDate,
@@ -65,6 +83,8 @@ export class PrescriptionsServiceDb {
   }
 
   static async list(filters: PrescriptionFilters = {}, page = 1, limit = 10) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
     if (filters.status) where.status = filters.status
     if (filters.patientId) where.patientId = filters.patientId
@@ -95,12 +115,13 @@ export class PrescriptionsServiceDb {
         prescriptions: rows.map(this.toApiShape),
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string; meta?: unknown }
       console.error('Prisma error in PrescriptionsServiceDb.list', {
-        message: err?.message,
-        code: err?.code,
-        meta: err?.meta,
-        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+        stack: error?.stack?.split('\n').slice(0,5).join(' | ')
       })
       throw err
     }
@@ -116,12 +137,13 @@ export class PrescriptionsServiceDb {
         },
       })
       return row ? this.toApiShape(row) : null
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string; meta?: unknown }
       console.error('Prisma error in PrescriptionsServiceDb.getById', {
-        message: err?.message,
-        code: err?.code,
-        meta: err?.meta,
-        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+        stack: error?.stack?.split('\n').slice(0,5).join(' | ')
       })
       throw err
     }
@@ -138,10 +160,11 @@ export class PrescriptionsServiceDb {
       })
       if (!prescription) return null
       return this.toApiShape(prescription)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string }
       console.error('Prisma error in PrescriptionsServiceDb.getPrescriptionById', {
-        message: err?.message,
-        code: err?.code,
+        message: error?.message,
+        code: error?.code,
       })
       throw err
     }
@@ -179,7 +202,8 @@ export class PrescriptionsServiceDb {
           patientId: data.patientId,
           doctorId: doctorId,
             consultationId: data.consultationId || null,
-          status: (data.status as any) || 'ACTIVE',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          status: (data.status || 'ACTIVE') as any,
           ...med,
         },
         include: {
@@ -188,12 +212,13 @@ export class PrescriptionsServiceDb {
         },
       })
       return this.toApiShape(created)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string; meta?: unknown }
       console.error('Prisma error in PrescriptionsServiceDb.create', {
-        message: err?.message,
-        code: err?.code,
-        meta: err?.meta,
-        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+        stack: error?.stack?.split('\n').slice(0,5).join(' | ')
       })
       throw err
     }
@@ -203,11 +228,12 @@ export class PrescriptionsServiceDb {
 
   static async update(id: string, payload: Partial<PrescriptionCreateData>) {
     try {
-      const data: any = {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: Record<string, unknown> = {}
       if (payload.medications && payload.medications.length > 0) {
         Object.assign(data, this.fromApiToDb({ medications: payload.medications }))
       }
-      if (payload.status) data.status = payload.status as any
+      if (payload.status) data.status = payload.status
       if (payload.consultationId !== undefined) data.consultationId = payload.consultationId
 
       const updated = await prisma.prescription.update({
@@ -219,12 +245,13 @@ export class PrescriptionsServiceDb {
         },
       })
       return this.toApiShape(updated)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string; meta?: unknown }
       console.error('Prisma error in PrescriptionsServiceDb.update', {
-        message: err?.message,
-        code: err?.code,
-        meta: err?.meta,
-        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+        stack: error?.stack?.split('\n').slice(0,5).join(' | ')
       })
       throw err
     }
@@ -234,12 +261,13 @@ export class PrescriptionsServiceDb {
     try {
       await prisma.prescription.delete({ where: { id } })
       return { success: true }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string; meta?: unknown }
       console.error('Prisma error in PrescriptionsServiceDb.remove', {
-        message: err?.message,
-        code: err?.code,
-        meta: err?.meta,
-        stack: err?.stack?.split('\n').slice(0,5).join(' | ')
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+        stack: error?.stack?.split('\n').slice(0,5).join(' | ')
       })
       throw err
     }

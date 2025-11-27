@@ -22,13 +22,13 @@ export interface AuditLog {
   userAgent?: string
   changes?: {
     field: string
-    before: any
-    after: any
+    before: unknown
+    after: unknown
   }[]
   metadata?: {
     reason?: string
     notes?: string
-    [key: string]: any
+    [key: string]: unknown
   }
   success: boolean
   error?: string
@@ -101,10 +101,10 @@ class MedicalRecordsAuditService {
    */
   async logCreate(
     recordId: string,
-    data: any,
+    data: Record<string, unknown>,
     userId: string,
     userRole: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
       action: 'CREATE',
@@ -129,7 +129,7 @@ class MedicalRecordsAuditService {
     recordId: string,
     userId: string,
     userRole: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
       action: 'READ',
@@ -147,14 +147,14 @@ class MedicalRecordsAuditService {
    */
   async logUpdate(
     recordId: string,
-    before: any,
-    after: any,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
     userId: string,
     userRole: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     // Calculate changes
-    const changes: { field: string; before: any; after: any }[] = []
+    const changes: { field: string; before: unknown; after: unknown }[] = []
     
     for (const key in after) {
       if (before[key] !== after[key]) {
@@ -183,10 +183,10 @@ class MedicalRecordsAuditService {
    */
   async logDelete(
     recordId: string,
-    data: any,
+    data: Record<string, unknown>,
     userId: string,
     userRole: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
       action: 'DELETE',
@@ -210,8 +210,8 @@ class MedicalRecordsAuditService {
   async logList(
     userId: string,
     userRole: string,
-    filters?: any,
-    metadata?: any
+    filters?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
       action: 'LIST',
@@ -236,7 +236,7 @@ class MedicalRecordsAuditService {
     userId: string,
     userRole: string,
     error: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
       action,

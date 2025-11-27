@@ -12,6 +12,13 @@ export interface SystemSetting {
   isPublic: boolean
 }
 
+interface SettingEntry {
+  value: string
+  category: string
+  description?: string
+  updatedAt?: string
+}
+
 // Criar instância própria do Prisma para settings (evita problemas de bundling)
 const globalForSettings = globalThis as typeof globalThis & {
   settingsPrisma?: PrismaClient
@@ -37,7 +44,7 @@ const fallbackManager = {
     }
   },
   
-  read(): Record<string, any> {
+  read(): Record<string, SettingEntry> {
     try {
       if (!fs.existsSync(FALLBACK_FILE_PATH)) return {}
       return JSON.parse(fs.readFileSync(FALLBACK_FILE_PATH, 'utf-8'))
@@ -47,7 +54,7 @@ const fallbackManager = {
     }
   },
 
-  write(data: Record<string, any>) {
+  write(data: Record<string, SettingEntry>) {
     try {
       this.ensureDirectory()
       fs.writeFileSync(FALLBACK_FILE_PATH, JSON.stringify(data, null, 2))
@@ -70,8 +77,8 @@ const fallbackManager = {
   getAllByCategory(category: string) {
     const data = this.read()
     return Object.entries(data)
-      .filter(([_, val]: [string, any]) => val.category === category)
-      .map(([key, val]: [string, any]) => ({
+      .filter(([_, val]: [string, SettingEntry]) => val.category === category)
+      .map(([key, val]: [string, SettingEntry]) => ({
         key,
         value: val.value,
         category: val.category,
@@ -149,7 +156,7 @@ export const settings = {
   },
 
   async getAllByCategory(category: SettingCategory) {
-    let dbSettings: any[] = []
+    let dbSettings: { key: string; value: string; category: string; description?: string | null }[] = []
     try {
       const prisma = getSettingsPrisma()
       dbSettings = await prisma.systemSetting.findMany({
@@ -163,14 +170,14 @@ export const settings = {
     const fileSettings = fallbackManager.getAllByCategory(category)
     
     // Merge: DB wins if key exists, otherwise File
-    const merged = [...fileSettings]
+    const merged: { key: string; value: string; category: string; description?: string | null }[] = [...fileSettings]
     
     dbSettings.forEach(dbItem => {
       const index = merged.findIndex(m => m.key === dbItem.key)
       if (index >= 0) {
-        merged[index] = dbItem
+        merged[index] = { key: dbItem.key, value: dbItem.value, category: dbItem.category, description: dbItem.description }
       } else {
-        merged.push(dbItem)
+        merged.push({ key: dbItem.key, value: dbItem.value, category: dbItem.category, description: dbItem.description })
       }
     })
     

@@ -18,7 +18,7 @@ export interface Notification {
   title: string
   message: string
   read: boolean
-  metadata: any
+  metadata: Record<string, unknown> | null
   expiresAt: Date | null
   createdAt: Date
 }
@@ -44,7 +44,7 @@ export interface NotificationCreateData {
   title: string
   message: string
   userId: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   expiresAt?: Date
 }
 
@@ -59,7 +59,8 @@ export class NotificationService {
           priority: data.priority,
           title: data.title,
           message: data.message,
-          metadata: data.metadata || {},
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          metadata: (data.metadata || {}) as any,
           expiresAt: data.expiresAt
         }
       })
@@ -73,7 +74,8 @@ export class NotificationService {
   static async getUserNotifications(userId: string, filters: { unreadOnly?: boolean, limit?: number, priority?: string, type?: string } | boolean = {}): Promise<Notification[]> {
     const prisma = getNotificationPrisma()
     const options = typeof filters === 'boolean' ? { unreadOnly: filters } : filters
-    const where: any = { userId }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, unknown> = { userId }
     if (options.unreadOnly) where.read = false
     if (options.priority) where.priority = options.priority
     if (options.type) where.type = options.type
