@@ -78,7 +78,7 @@ export class EmailService {
   /**
    * Envia um e-mail
    */
-  public async sendEmail(options: EmailOptions, overrideConfig?: EmailConfig): Promise<boolean> {
+  public async sendEmail(options: EmailOptions, overrideConfig?: EmailConfig): Promise<{ success: boolean, error?: any }> {
     const config = overrideConfig || await this.getConfig()
     const { to, subject, html, text } = options
     const from = options.from || config.from
@@ -86,7 +86,7 @@ export class EmailService {
     try {
       if (!config.enabled) {
         console.log('📧 EMAIL (DISABLED):', { to, subject })
-        return true
+        return { success: true }
       }
 
       // Implementação baseada no provedor
@@ -116,7 +116,7 @@ export class EmailService {
         
         default:
           console.warn(`⚠️ Provedor de e-mail desconhecido: ${config.provider}`)
-          return false
+          return { success: false, error: `Provedor desconhecido: ${config.provider}` }
       }
 
       // Log de auditoria
@@ -132,7 +132,7 @@ export class EmailService {
         }
       )
 
-      return true
+      return { success: true }
 
     } catch (error) {
       console.error('❌ Erro ao enviar e-mail:', error)
@@ -149,7 +149,7 @@ export class EmailService {
         }
       )
       
-      return false
+      return { success: false, error }
     }
   }
 
@@ -157,7 +157,7 @@ export class EmailService {
    * Template: Boas-vindas
    */
   public async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
-    return this.sendEmail({
+    const result = await this.sendEmail({
       to,
       subject: 'Bem-vindo ao HealthCare System',
       html: `
@@ -171,13 +171,14 @@ export class EmailService {
       `,
       text: `Olá ${name}, bem-vindo ao HealthCare System! Sua conta foi criada com sucesso.`
     })
+    return result.success
   }
 
   /**
    * Template: Recuperação de Senha
    */
   public async sendPasswordResetEmail(to: string, resetLink: string): Promise<boolean> {
-    return this.sendEmail({
+    const result = await this.sendEmail({
       to,
       subject: 'Recuperação de Senha - HealthCare',
       html: `
@@ -191,13 +192,14 @@ export class EmailService {
       `,
       text: `Recuperação de Senha: Acesse o link para redefinir: ${resetLink}`
     })
+    return result.success
   }
 
   /**
    * Template: Convite de Registro
    */
   public async sendInviteEmail(to: string, inviteLink: string): Promise<boolean> {
-    return this.sendEmail({
+    const result = await this.sendEmail({
       to,
       subject: 'Convite para HealthCare System',
       html: `
@@ -211,6 +213,7 @@ export class EmailService {
       `,
       text: `Você foi convidado para o HealthCare System. Acesse o link para se cadastrar: ${inviteLink}`
     })
+    return result.success
   }
 }
 

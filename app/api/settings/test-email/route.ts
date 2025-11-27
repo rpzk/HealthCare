@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       }, { status: 400 })
     }
 
-    const success = await emailService.sendEmail({
+    const result = await emailService.sendEmail({
       to,
       subject: 'Teste de Configuração de E-mail - HealthCare',
       html: `
@@ -61,10 +61,14 @@ export async function POST(req: Request) {
       text: 'Teste de E-mail: Sua configuração SMTP está funcionando corretamente!'
     }, overrideConfig)
 
-    if (success) {
+    if (result.success) {
       return NextResponse.json({ success: true })
     } else {
-      return NextResponse.json({ success: false, error: 'Falha ao enviar e-mail. Verifique os logs do servidor.' }, { status: 500 })
+      const errorMessage = result.error instanceof Error ? result.error.message : String(result.error)
+      return NextResponse.json({ 
+        success: false, 
+        error: `Falha no envio: ${errorMessage}` 
+      }, { status: 500 })
     }
   } catch (error) {
     console.error('Error sending test email:', error)
