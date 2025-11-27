@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Note: This file uses dynamic Prisma model access for optional models
 import { prisma } from '@/lib/prisma'
 // Usar import amplo para contornar cache de tipos em hot-reload
 import * as PrismaNS from '@prisma/client'

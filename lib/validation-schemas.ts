@@ -222,6 +222,7 @@ export function validateMicroArea(data:any){ const r = microAreaSchema.safeParse
 
 // ---------------- Clinical Coding (CID10, CID11, CIAP2, NURSING) ----------------
 import * as PrismaNS from '@prisma/client'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { CodeSystemKind, DiagnosisStatus, DiagnosisCertainty } = PrismaNS as any
 
 export const codeSystemUpsertSchema = z.object({
@@ -270,6 +271,7 @@ export function validateDiagnosisUpdate(data:any){ const r = diagnosisUpdateSche
 
 // ---------------- Occupations / Capability (CBO + Elliott Jaques) ----------------
 import * as PrismaAll from '@prisma/client'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { StratumLevel } = PrismaAll as any
 
 export const cboGroupUpsertSchema = z.object({

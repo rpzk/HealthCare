@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Note: This file uses dynamic Prisma model access for optional models
 import { prisma } from '@/lib/prisma'
 import * as PrismaNS from '@prisma/client'
 const { StratumLevel } = PrismaNS as any

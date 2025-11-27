@@ -17,7 +17,7 @@ export function initTracing(){
     initialized = true
     console.log('[Tracing] OpenTelemetry inicializado')
   } catch(e){
-    console.warn('[Tracing] Falha ao inicializar', (e as any).message)
+    console.warn('[Tracing] Falha ao inicializar', (e as Error).message)
   }
 }
 
@@ -26,5 +26,5 @@ export function startSpan(name: string, fn: () => Promise<any>) {
   const span = tracer.startSpan(name)
   return Promise.resolve(fn())
     .then(res => { span.end(); return res })
-    .catch(err => { span.recordException(err as any); span.end(); throw err })
+    .catch(err => { span.recordException(err as Error); span.end(); throw err })
 }

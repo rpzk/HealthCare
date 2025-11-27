@@ -130,7 +130,8 @@ class AuditLogger {
           // Tentar conectar se necessário (opcional, o prisma gerencia isso)
           // await prismaModule.ensurePrismaConnected()
           
-          const client = prisma as any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const client = prisma as { auditLog?: { create: (data: unknown) => Promise<unknown> } }
           
           // Verificação de segurança para garantir que o modelo existe
           if (!client.auditLog) {

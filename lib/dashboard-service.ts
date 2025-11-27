@@ -57,6 +57,7 @@ export class DashboardService {
       const upcoming = await prisma.consultation.findMany({
         where: {
           scheduledDate: { gte: now },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           status: { in: ['SCHEDULED', 'IN_PROGRESS'] as any },
         },
         orderBy: { scheduledDate: 'asc' },

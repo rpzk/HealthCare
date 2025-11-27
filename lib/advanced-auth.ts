@@ -75,7 +75,8 @@ export function withRateLimitedAuth(
       const authResult = await authMiddleware(request)
       
       if ('status' in authResult) {
-        statusCode = (authResult as any).status || 401
+        const authError = authResult as { status?: number; response?: NextResponse }
+        statusCode = authError.status || 401
         
         // 📊 Log evento de segurança para AI
         await aiAnomalyDetector.analyzeSecurityEvent({
@@ -88,10 +89,10 @@ export function withRateLimitedAuth(
           statusCode
         })
         
-        return (authResult as any).response || NextResponse.json({ error: 'Authentication failed' }, { status: statusCode })
+        return authError.response || NextResponse.json({ error: 'Authentication failed' }, { status: statusCode })
       }
 
-      const { user } = authResult as any
+      const { user } = authResult as { user: { id: string; email: string; name: string; role: string } }
       userId = user.id
 
       // 2. 🧠 AI-Powered Rate Limiting com Redis
