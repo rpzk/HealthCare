@@ -81,53 +81,47 @@ export const aiInteractionSchema = z.object({
   }),
   patientId: z.string().cuid('ID do paciente inválido').optional(),
   input: z.string().min(1, 'Input é obrigatório').max(5000, 'Input muito longo'),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 })
 
+// Helper type for validation results
+interface ValidationResult<T> {
+  success: boolean
+  data?: T
+  errors?: string[]
+}
+
+// Generic validation helper
+function createValidator<T>(schema: z.ZodSchema<T>) {
+  return (data: unknown): ValidationResult<T> => {
+    const result = schema.safeParse(data)
+    return {
+      success: result.success,
+      data: result.success ? result.data : undefined,
+      errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+    }
+  }
+}
+
 // Helpers para validação
-export function validatePatient(data: any) {
-  const result = patientSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validatePatient(data: unknown) {
+  return createValidator(patientSchema)(data)
 }
 
-export function validateConsultation(data: any) {
-  const result = consultationSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validateConsultation(data: unknown) {
+  return createValidator(consultationSchema)(data)
 }
 
-export function validatePrescription(data: any) {
-  const result = prescriptionSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validatePrescription(data: unknown) {
+  return createValidator(prescriptionSchema)(data)
 }
 
-export function validateMedicalRecord(data: any) {
-  const result = medicalRecordSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validateMedicalRecord(data: unknown) {
+  return createValidator(medicalRecordSchema)(data)
 }
 
-export function validateAiInteraction(data: any) {
-  const result = aiInteractionSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validateAiInteraction(data: unknown) {
+  return createValidator(aiInteractionSchema)(data)
 }
 
 // Schema para notificações
@@ -142,16 +136,11 @@ const notificationSchema = z.object({
   message: z.string().min(1, 'Mensagem é obrigatória').max(2000, 'Mensagem muito longa'),
   patientId: z.string().optional(),
   consultationId: z.string().optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.unknown()).optional()
 })
 
-export function validateNotification(data: any) {
-  const result = notificationSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validateNotification(data: unknown) {
+  return createValidator(notificationSchema)(data)
 }
 
 // Schema para análise de sintomas com IA
@@ -172,13 +161,8 @@ const symptomAnalysisSchema = z.object({
   patientId: z.string().optional()
 })
 
-export function validateSymptomAnalysis(data: any) {
-  const result = symptomAnalysisSchema.safeParse(data)
-  return {
-    success: result.success,
-    data: result.success ? result.data : undefined,
-    errors: result.success ? undefined : result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-  }
+export function validateSymptomAnalysis(data: unknown) {
+  return createValidator(symptomAnalysisSchema)(data)
 }
 
 // ---------------- Geospatial & Structured Entities ----------------

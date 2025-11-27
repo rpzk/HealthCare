@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authMiddleware } from './auth-middleware'
 
+export interface AuthenticatedUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  speciality?: string
+  crmNumber?: string
+}
+
+// Using Record<string, string> for params - Next.js dynamic route params
+// In practice, these are always strings for single dynamic segments like [id]
 export interface AuthenticatedApiHandler {
   (request: NextRequest, context: { 
-    params: any,
-    user: {
-      id: string
-      email: string
-      name: string
-      role: string
-      speciality?: string
-      crmNumber?: string
-    }
+    params: Record<string, string>,
+    user: AuthenticatedUser
   }): Promise<NextResponse> | NextResponse | Promise<NextResponse | undefined>
 }
 
@@ -40,7 +44,7 @@ export function withAuth(
   handler: AuthenticatedApiHandler,
   options: { requireRole?: string[] } = {}
 ) {
-  return async (request: NextRequest, context: { params?: any } = {}) => {
+  return async (request: NextRequest, context: { params?: Record<string, string> } = {}) => {
     try {
       // Executar middleware de autenticação
       const authResult = await authMiddleware(request, options)
@@ -106,7 +110,7 @@ export function withAdminAuth(handler: AuthenticatedApiHandler) {
  */
 export async function validateRequestBody<T>(
   request: NextRequest,
-  validator: (data: any) => { success: boolean; data?: T; errors?: string[] }
+  validator: (data: unknown) => { success: boolean; data?: T; errors?: string[] }
 ): Promise<{ success: boolean; data?: T; errors?: string[]; response?: NextResponse }> {
   try {
     const body = await request.json()
