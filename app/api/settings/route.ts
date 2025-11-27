@@ -38,15 +38,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Error saving setting:', error)
-    const message = error.message || 'Internal Server Error'
+    const message = error.message || 'Unknown error'
     
-    if (message.includes('Database not ready')) {
+    // Erro específico de tabela inexistente (Postgres)
+    if (message.includes('relation') && message.includes('does not exist')) {
       return NextResponse.json({ 
         success: false, 
-        error: 'O banco de dados precisa ser atualizado. Por favor, execute o script de deploy novamente.' 
+        error: 'A tabela de configurações não foi encontrada no banco de dados. É necessário executar as migrações (deploy).' 
       }, { status: 503 })
     }
 
-    return new NextResponse('Internal Server Error', { status: 500 })
+    if (message.includes('Database not ready')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'O cliente do banco de dados está desatualizado. É necessário reiniciar a aplicação (deploy).' 
+      }, { status: 503 })
+    }
+
+    return NextResponse.json({ 
+      success: false, 
+      error: `Erro interno: ${message}` 
+    }, { status: 500 })
   }
 }
