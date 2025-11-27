@@ -13,7 +13,8 @@ import { recordRequest } from './metrics'
 
 export interface AdvancedAuthenticatedApiHandler {
   (request: NextRequest, context: { 
-    params: any,
+    // Next.js dynamic route params - can be string or string[] depending on route structure
+    params: Record<string, string | string[]>,
     user: {
       id: string
       email: string
@@ -62,7 +63,7 @@ export function withRateLimitedAuth(
     skipRateLimit?: boolean
   } = {}
 ) {
-  return async (request: NextRequest, context: { params: any }) => {
+  return async (request: NextRequest, context: { params: Record<string, string | string[]> }) => {
     const startTime = Date.now()
     const ip = request.headers.get('x-forwarded-for') || 
                request.headers.get('x-real-ip') || 
