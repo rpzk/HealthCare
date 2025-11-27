@@ -64,8 +64,6 @@ export class FinancialService {
     startDate?: Date
     endDate?: Date
   }) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
     if (filters.status) where.status = filters.status
     if (filters.type) where.type = filters.type
