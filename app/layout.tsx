@@ -37,7 +37,7 @@ export default function RootLayout({
         />
         <Providers>
           <ClientErrorLogger />
-          <DebugOverlay />
+          {/* <DebugOverlay /> - Desabilitado em produção */}
           {children}
         </Providers>
       </body>

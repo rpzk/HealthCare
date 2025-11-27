@@ -1,25 +1,21 @@
 import { Metadata } from 'next'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
-import { PageHeader } from '@/components/navigation/page-header'
-import { SSFConsultationWorkspace } from '../../../components/consultations/ssf-consultation-workspace-simple'
+import { ConsultationWorkspace } from '@/components/consultations'
 
 export const metadata: Metadata = {
-  title: 'Consulta SSF - Workspace Integrado',
-  description: 'Atenda a consulta em uma única tela com prescrições, exames e encaminhamentos no estilo SSF',
+  title: 'Consulta - Sistema de Prontuário',
+  description: 'Workspace de atendimento integrado',
 }
 
-export default function ConsultationWorkspacePage({ params }: { params: { id: string } }) {
+export default function ConsultationPage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen bg-muted/40">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
         <main className="flex-1 ml-64">
-          <div className="p-6 bg-card border-b border-border">
-            <h1 className="text-2xl font-bold text-foreground">Sistema de Saúde da Família - Consulta Integrada</h1>
-          </div>
-          <SSFConsultationWorkspace consultationId={params.id} />
+          <ConsultationWorkspace consultationId={params.id} />
         </main>
       </div>
     </div>

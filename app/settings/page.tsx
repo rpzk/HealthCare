@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import type { FormEvent } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -9,8 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/navigation/page-header'
 import { User, Shield, Bell, Database, Save, Eye, EyeOff } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
 
 export default function SettingsPage() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'ADMIN'
+  
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
@@ -67,16 +72,28 @@ export default function SettingsPage() {
     }
   }, [activeTab])
 
-  const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    // Simular salvamento
-    alert('Perfil atualizado com sucesso!')
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profileData.name,
+          phone: profileData.phone,
+          specialty: profileData.specialty
+        })
+      })
+      if (!response.ok) throw new Error('Falha ao salvar')
+      toast({ title: 'Sucesso', description: 'Perfil atualizado com sucesso!' })
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Não foi possível atualizar o perfil', variant: 'destructive' })
+    }
   }
 
   const handleSystemSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    // Simular salvamento
-    alert('Configurações do sistema atualizadas!')
+    toast({ title: 'Sucesso', description: 'Configurações do sistema atualizadas!' })
   }
 
   const handleEmailConfigSave = async (e: React.FormEvent) => {
@@ -102,16 +119,16 @@ export default function SettingsPage() {
       )
       
       await Promise.all(promises)
-      alert('Configurações de email salvas com sucesso!')
+      toast({ title: 'Sucesso', description: 'Configurações de email salvas com sucesso!' })
     } catch (error: any) {
       console.error(error)
-      alert(`Erro ao salvar configurações: ${error.message || 'Erro desconhecido'}`)
+      toast({ title: 'Erro', description: `Erro ao salvar: ${error.message || 'Erro desconhecido'}`, variant: 'destructive' })
     }
   }
 
   const handleTestEmail = async () => {
     if (!emailConfig.EMAIL_ENABLED || emailConfig.EMAIL_ENABLED === 'false') {
-      alert('Habilite o envio de e-mails e SALVE as configurações antes de testar.')
+      toast({ title: 'Atenção', description: 'Habilite o envio de e-mails e SALVE as configurações antes de testar.', variant: 'destructive' })
       return
     }
 
@@ -119,7 +136,7 @@ export default function SettingsPage() {
     if (!testAddress) return
 
     if (emailConfig.EMAIL_PROVIDER === 'smtp' && !emailConfig.SMTP_HOST) {
-      alert('O campo Host SMTP é obrigatório.')
+      toast({ title: 'Erro', description: 'O campo Host SMTP é obrigatório.', variant: 'destructive' })
       return
     }
 
@@ -137,24 +154,30 @@ export default function SettingsPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        alert('E-mail de teste enviado com sucesso! Verifique sua caixa de entrada.')
+        toast({ title: 'Sucesso', description: 'E-mail de teste enviado! Verifique sua caixa de entrada.' })
       } else {
         throw new Error(data.error || 'Falha no envio')
       }
     } catch (error) {
       console.error(error)
-      alert(`Erro ao enviar e-mail de teste: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+      toast({ title: 'Erro', description: `Erro ao enviar e-mail de teste: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, variant: 'destructive' })
     } finally {
       setTestingEmail(false)
     }
   }
 
-  const tabs = [
-    { id: 'profile', label: 'Perfil', icon: User },
-    { id: 'security', label: 'Segurança', icon: Shield },
-    { id: 'notifications', label: 'Notificações', icon: Bell },
-    { id: 'system', label: 'Sistema', icon: Database }
-  ]
+  const tabs = useMemo(() => {
+    const baseTabs = [
+      { id: 'profile', label: 'Perfil', icon: User },
+      { id: 'security', label: 'Segurança', icon: Shield },
+      { id: 'notifications', label: 'Notificações', icon: Bell },
+    ]
+    // Apenas administradores veem a aba Sistema
+    if (isAdmin) {
+      baseTabs.push({ id: 'system', label: 'Sistema', icon: Database })
+    }
+    return baseTabs
+  }, [isAdmin])
 
   return (
     <div className="min-h-screen bg-background">

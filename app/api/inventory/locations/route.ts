@@ -1,0 +1,77 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/with-auth'
+import { rateLimiters } from '@/lib/rate-limiter'
+
+// Direct Prisma client to avoid bundling issues
+const { PrismaClient } = require('@prisma/client')
+const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
+const prisma = globalForPrisma.prisma ?? new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// GET - List storage locations
+export const GET = withAuth(async (req: NextRequest) => {
+  const rl = rateLimiters.default(req)
+  if (rl instanceof NextResponse) return rl
+
+  try {
+    const url = new URL(req.url)
+    const active = url.searchParams.get('active')
+
+    const where: any = {}
+    if (active !== null) {
+      where.isActive = active === 'true'
+    }
+
+    const locations = await prisma.storageLocation.findMany({
+      where,
+      include: {
+        _count: {
+          select: { inventory: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    })
+
+    return NextResponse.json(locations)
+  } catch (error: any) {
+    console.error('Error fetching locations:', error)
+    return NextResponse.json(
+      { error: 'Erro ao buscar localizações', details: error.message },
+      { status: 500 }
+    )
+  }
+})
+
+// POST - Create storage location
+export const POST = withAuth(async (req: NextRequest, { user }) => {
+  const rl = rateLimiters.default(req)
+  if (rl instanceof NextResponse) return rl
+
+  if (!['ADMIN', 'MANAGER'].includes(user.role)) {
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json()
+    const { name, description } = body
+
+    if (!name) {
+      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
+    }
+
+    const location = await prisma.storageLocation.create({
+      data: { name, description }
+    })
+
+    return NextResponse.json(location, { status: 201 })
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return NextResponse.json({ error: 'Nome já existe' }, { status: 400 })
+    }
+    console.error('Error creating location:', error)
+    return NextResponse.json(
+      { error: 'Erro ao criar localização', details: error.message },
+      { status: 500 }
+    )
+  }
+})

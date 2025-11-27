@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import { emailService } from '@/lib/email-service'
 import crypto from 'crypto'
+
+// Instância própria do Prisma para evitar problemas de bundling
+const globalForInvites = globalThis as typeof globalThis & {
+  invitesPrisma?: PrismaClient
+}
+
+function getInvitesPrisma(): PrismaClient {
+  if (!globalForInvites.invitesPrisma) {
+    globalForInvites.invitesPrisma = new PrismaClient({
+      log: ['error']
+    })
+  }
+  return globalForInvites.invitesPrisma
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -16,6 +30,7 @@ export async function POST(req: Request) {
   // if (session.user.role !== 'ADMIN' && session.user.role !== 'RECEPTIONIST') ...
 
   try {
+    const prisma = getInvitesPrisma()
     const body = await req.json()
     const { email, role } = body
 
@@ -62,9 +77,10 @@ export async function POST(req: Request) {
     // Tentar enviar e-mail (não falha a requisição se o e-mail falhar)
     const link = `${baseUrl}/register/${invite.token}`
     try {
-      await emailService.sendInviteEmail(email, link)
+      const emailSent = await emailService.sendInviteEmail(email, link)
+      console.log(`[invites] Invite created for ${email}, email sent: ${emailSent}`)
     } catch (emailError) {
-      console.error('Failed to send invite email:', emailError)
+      console.error('[invites] Failed to send invite email:', emailError)
     }
 
     return NextResponse.json({

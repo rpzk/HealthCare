@@ -1,0 +1,247 @@
+"use client"
+
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Pill, AlertTriangle, Check, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+interface MedicationSuggestion {
+  id: string
+  code: string
+  name: string
+  displayName: string
+  synonyms: string
+  prescriptionType: string
+  prescriptionTypeLabel: string
+  route: string
+  routeLabel: string
+  form: string
+  defaultDosage: string
+  defaultFrequency: string
+  defaultDuration: number
+  defaultQuantity: number
+  unit: string
+  availability: string[]
+  hasRestrictions: boolean
+  restrictions: string[]
+}
+
+interface MedicationAutocompleteProps {
+  value: string
+  onChange: (value: string) => void
+  onSelect: (medication: MedicationSuggestion) => void
+  patientAge?: number
+  patientSex?: 'M' | 'F'
+  availabilityFilter?: 'basic' | 'popular' | 'hospital' | 'all'
+  placeholder?: string
+  disabled?: boolean
+  className?: string
+}
+
+export function MedicationAutocomplete({
+  value,
+  onChange,
+  onSelect,
+  patientAge,
+  patientSex,
+  availabilityFilter = 'all',
+  placeholder = 'Digite o nome do medicamento...',
+  disabled = false,
+  className
+}: MedicationAutocompleteProps) {
+  const [suggestions, setSuggestions] = useState<MedicationSuggestion[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [highlightIndex, setHighlightIndex] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const debounceRef = useRef<NodeJS.Timeout>()
+
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSuggestions([])
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams({ q: query })
+      if (patientAge) params.set('patientAge', String(patientAge))
+      if (patientSex) params.set('patientSex', patientSex)
+      if (availabilityFilter !== 'all') params.set('availability', availabilityFilter)
+
+      const res = await fetch(`/api/medications/autocomplete?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSuggestions(data)
+        setHighlightIndex(0)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar medicamentos:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [patientAge, patientSex, availabilityFilter])
+
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchSuggestions(value)
+    }, 250)
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
+  }, [value, fetchSuggestions])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) return
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        )
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightIndex(prev => prev > 0 ? prev - 1 : prev)
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (suggestions[highlightIndex]) {
+          handleSelect(suggestions[highlightIndex])
+        }
+        break
+      case 'Escape':
+        setIsOpen(false)
+        break
+    }
+  }
+
+  const handleSelect = (medication: MedicationSuggestion) => {
+    onChange(medication.displayName)
+    onSelect(medication)
+    setIsOpen(false)
+    setSuggestions([])
+  }
+
+  const getPrescriptionTypeBadge = (type: string) => {
+    const colors: Record<string, string> = {
+      'SYMPTOMATIC': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'CONTINUOUS': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'CONTROLLED': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'BLUE_B': 'bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100',
+      'YELLOW_A': 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
+    }
+    return colors[type] || 'bg-gray-100 text-gray-800'
+  }
+
+  return (
+    <div ref={containerRef} className={cn('relative', className)}>
+      <div className="relative">
+        <Pill className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value)
+            setIsOpen(true)
+          }}
+          onFocus={() => {
+            if (value.length >= 2) setIsOpen(true)
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="pl-10"
+        />
+        {isLoading && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-80 overflow-auto">
+          {suggestions.map((med, index) => (
+            <div
+              key={med.id}
+              className={cn(
+                'px-3 py-2 cursor-pointer border-b border-border last:border-0',
+                index === highlightIndex ? 'bg-accent' : 'hover:bg-muted/50'
+              )}
+              onClick={() => handleSelect(med)}
+              onMouseEnter={() => setHighlightIndex(index)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-foreground truncate">
+                    {med.displayName}
+                  </div>
+                  {med.synonyms && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {med.synonyms}
+                    </div>
+                  )}
+                </div>
+                <Badge className={cn('text-xs whitespace-nowrap', getPrescriptionTypeBadge(med.prescriptionType))}>
+                  {med.prescriptionTypeLabel}
+                </Badge>
+              </div>
+              
+              <div className="flex flex-wrap gap-1 mt-1">
+                {med.routeLabel && (
+                  <Badge variant="outline" className="text-xs">
+                    {med.routeLabel}
+                  </Badge>
+                )}
+                {med.availability.map((avail, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    <Check className="h-3 w-3 mr-1" />
+                    {avail}
+                  </Badge>
+                ))}
+                {med.hasRestrictions && (
+                  <Badge variant="destructive" className="text-xs">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Restrições
+                  </Badge>
+                )}
+              </div>
+
+              {med.defaultDosage && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Sugestão: {med.defaultDosage} {med.defaultFrequency && `- ${med.defaultFrequency}`}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isOpen && value.length >= 2 && suggestions.length === 0 && !isLoading && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg p-3 text-center text-muted-foreground">
+          Nenhum medicamento encontrado
+        </div>
+      )}
+    </div>
+  )
+}

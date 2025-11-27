@@ -155,7 +155,7 @@ class AuditLogger {
               userEmail: auditLog.userEmail,
               userRole: auditLog.userRole,
               action: auditLog.action,
-              resource: auditLog.resource,
+              resourceType: auditLog.resource,
               resourceId: auditLog.resourceId || null,
               details: auditLog.details ? JSON.stringify(auditLog.details).slice(0, 15000) : null,
               ipAddress: auditLog.ipAddress || null,

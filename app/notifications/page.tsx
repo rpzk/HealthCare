@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { toast } from '@/hooks/use-toast'
 import { 
   Bell, 
   Settings,
@@ -19,19 +20,19 @@ import {
   User,
   FileText,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Inbox
 } from 'lucide-react'
 
 interface Notification {
   id: string
-  type: 'appointment' | 'exam' | 'alert' | 'system' | 'patient'
+  type: string
   title: string
   message: string
-  timestamp: string
+  createdAt: string
   read: boolean
-  priority: 'low' | 'medium' | 'high'
-  actionUrl?: string
-  relatedId?: string
+  priority: string
+  metadata?: any
 }
 
 export default function NotificationsPage() {
@@ -48,7 +49,6 @@ export default function NotificationsPage() {
   const filterNotifications = useCallback(() => {
     let filtered = notifications
 
-    // Filtrar por tipo
     if (filter !== 'all') {
       if (filter === 'unread') {
         filtered = filtered.filter(n => !n.read)
@@ -57,7 +57,6 @@ export default function NotificationsPage() {
       }
     }
 
-    // Filtrar por termo de busca
     if (searchTerm) {
       filtered = filtered.filter(n => 
         n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -74,389 +73,253 @@ export default function NotificationsPage() {
 
   const fetchNotifications = async () => {
     setLoading(true)
-    // Simular carregamento de notificações
-    setTimeout(() => {
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'appointment',
-          title: 'Consulta Agendada',
-          message: 'Consulta com Dr. Silva agendada para hoje às 14:30',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min atrás
-          read: false,
-          priority: 'high',
-          actionUrl: '/consultations/today',
-          relatedId: 'cons_123'
-        },
-        {
-          id: '2',
-          type: 'exam',
-          title: 'Resultado de Exame Disponível',
-          message: 'Resultado do exame de sangue de Maria Santos já está disponível',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2h atrás
-          read: false,
-          priority: 'medium',
-          actionUrl: '/exams/results',
-          relatedId: 'exam_456'
-        },
-        {
-          id: '3',
-          type: 'alert',
-          title: 'Paciente com Alergia',
-          message: 'ATENÇÃO: João Silva possui alergia a penicilina',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4h atrás
-          read: true,
-          priority: 'high',
-          relatedId: 'patient_789'
-        },
-        {
-          id: '4',
-          type: 'system',
-          title: 'Backup Concluído',
-          message: 'Backup automático do sistema realizado com sucesso',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(), // 12h atrás
-          read: true,
-          priority: 'low'
-        },
-        {
-          id: '5',
-          type: 'appointment',
-          title: 'Consulta Cancelada',
-          message: 'Paciente Ana Costa cancelou a consulta de amanhã',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 dia atrás
-          read: false,
-          priority: 'medium',
-          actionUrl: '/consultations',
-          relatedId: 'cons_321'
-        },
-        {
-          id: '6',
-          type: 'patient',
-          title: 'Novo Cadastro',
-          message: 'Novo paciente cadastrado: Roberto Santos',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 dias atrás
-          read: true,
-          priority: 'low',
-          actionUrl: '/patients',
-          relatedId: 'patient_654'
-        },
-        {
-          id: '7',
-          type: 'exam',
-          title: 'Exame Urgente',
-          message: 'Solicitação de exame urgente para Paulo Lima',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 dias atrás
-          read: true,
-          priority: 'high',
-          actionUrl: '/exams/new',
-          relatedId: 'exam_987'
-        },
-        {
-          id: '8',
-          type: 'system',
-          title: 'Atualização Disponível',
-          message: 'Nova versão do sistema disponível para instalação',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 dias atrás
-          read: false,
-          priority: 'medium'
-        }
-      ]
-      
-      setNotifications(mockNotifications)
+    try {
+      const response = await fetch('/api/notifications')
+      if (!response.ok) throw new Error('Falha ao carregar')
+      const data = await response.json()
+      setNotifications(data)
+      setFilteredNotifications(data)
+    } catch (error) {
+      console.error('Erro ao carregar notificações:', error)
+      toast({ title: 'Erro', description: 'Não foi possível carregar as notificações', variant: 'destructive' })
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
-  
-
-  const markAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ read: true })
+      })
+      if (!response.ok) throw new Error('Falha ao marcar')
+      
+      setNotifications(prev => 
+        prev.map(n => n.id === id ? { ...n, read: true } : n)
       )
-    )
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Não foi possível marcar como lida', variant: 'destructive' })
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    )
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications/mark-all-read', { method: 'POST' })
+      if (!response.ok) throw new Error('Falha')
+      
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      toast({ title: 'Sucesso', description: 'Todas as notificações foram marcadas como lidas' })
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Não foi possível marcar todas como lidas', variant: 'destructive' })
+    }
   }
 
-  const deleteNotification = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.filter(n => n.id !== notificationId)
-    )
+  const deleteNotification = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Falha ao excluir')
+      
+      setNotifications(prev => prev.filter(n => n.id !== id))
+      toast({ title: 'Sucesso', description: 'Notificação excluída' })
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Não foi possível excluir', variant: 'destructive' })
+    }
   }
 
-  const getTypeIcon = (type: string) => {
+  const getIcon = (type: string) => {
     switch (type) {
       case 'appointment':
-        return <Calendar className="h-5 w-5 text-blue-600" />
+      case 'appointment_reminder':
+        return <Calendar className="h-5 w-5 text-blue-500" />
       case 'exam':
-        return <FileText className="h-5 w-5 text-green-600" />
+        return <FileText className="h-5 w-5 text-purple-500" />
       case 'alert':
-        return <AlertCircle className="h-5 w-5 text-red-600" />
+      case 'critical_alert':
+        return <AlertCircle className="h-5 w-5 text-red-500" />
       case 'system':
-        return <Settings className="h-5 w-5 text-gray-600" />
+      case 'system_status':
+        return <Settings className="h-5 w-5 text-gray-500" />
       case 'patient':
-        return <User className="h-5 w-5 text-purple-600" />
+      case 'patient_update':
+        return <User className="h-5 w-5 text-green-500" />
       default:
-        return <Bell className="h-5 w-5 text-gray-600" />
+        return <Bell className="h-5 w-5 text-blue-500" />
     }
-  }
-
-  const getTypeBadge = (type: string) => {
-    const typeMap = {
-      appointment: { label: 'Consulta', color: 'bg-blue-100 text-blue-800' },
-      exam: { label: 'Exame', color: 'bg-green-100 text-green-800' },
-      alert: { label: 'Alerta', color: 'bg-red-100 text-red-800' },
-      system: { label: 'Sistema', color: 'bg-gray-100 text-gray-800' },
-      patient: { label: 'Paciente', color: 'bg-purple-100 text-purple-800' }
-    }
-    
-    const typeInfo = typeMap[type as keyof typeof typeMap] || { label: 'Outros', color: 'bg-gray-100 text-gray-800' }
-    
-    return (
-      <Badge className={`${typeInfo.color} border-0 text-xs`}>
-        {typeInfo.label}
-      </Badge>
-    )
   }
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'high':
-        return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">Alta</Badge>
+      case 'critical':
+        return <Badge variant="destructive">Alta</Badge>
       case 'medium':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs">Média</Badge>
-      case 'low':
-        return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">Baixa</Badge>
+        return <Badge variant="default">Média</Badge>
       default:
-        return null
+        return <Badge variant="secondary">Baixa</Badge>
     }
   }
 
-  const formatTimestamp = (timestamp: string) => {
+  const formatTime = (timestamp: string) => {
     const date = new Date(timestamp)
     const now = new Date()
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-    
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes}min atrás`
-    } else if (diffInMinutes < 1440) {
-      const hours = Math.floor(diffInMinutes / 60)
-      return `${hours}h atrás`
-    } else {
-      const days = Math.floor(diffInMinutes / 1440)
-      return `${days}d atrás`
-    }
+    const diff = now.getTime() - date.getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+
+    if (minutes < 60) return `${minutes}min atrás`
+    if (hours < 24) return `${hours}h atrás`
+    if (days < 7) return `${days}d atrás`
+    return date.toLocaleDateString('pt-BR')
   }
 
   const unreadCount = notifications.filter(n => !n.read).length
-  const filterOptions = [
-    { value: 'all', label: 'Todas', count: notifications.length },
-    { value: 'unread', label: 'Não Lidas', count: unreadCount },
-    { value: 'appointment', label: 'Consultas', count: notifications.filter(n => n.type === 'appointment').length },
-    { value: 'exam', label: 'Exames', count: notifications.filter(n => n.type === 'exam').length },
-    { value: 'alert', label: 'Alertas', count: notifications.filter(n => n.type === 'alert').length },
-    { value: 'system', label: 'Sistema', count: notifications.filter(n => n.type === 'system').length },
-    { value: 'patient', label: 'Pacientes', count: notifications.filter(n => n.type === 'patient').length }
+
+  const filters = [
+    { id: 'all', label: 'Todas' },
+    { id: 'unread', label: 'Não lidas' },
+    { id: 'appointment', label: 'Consultas' },
+    { id: 'exam', label: 'Exames' },
+    { id: 'alert', label: 'Alertas' },
+    { id: 'system', label: 'Sistema' }
   ]
 
-  const handleNavigate = (url?: string) => {
-    if (!url) return
-    window.location.href = url
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex pt-16">
-          <Sidebar />
-          <main className="flex-1 ml-64 p-6 pt-24">
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            </div>
-          </main>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
       <div className="flex pt-16">
         <Sidebar />
-        <main className="flex-1 ml-64 p-6 pt-24">
+        <main className="flex-1 ml-64 p-6 space-y-6">
           <PageHeader
             title="Notificações"
-            description={unreadCount > 0 ? `${unreadCount} não lida(s)` : 'Todas as notificações lidas'}
+            description={`Você tem ${unreadCount} notificação(ões) não lida(s)`}
             breadcrumbs={[
               { label: 'Dashboard', href: '/' },
-              { label: 'Notificações', href: '/notifications' }
+              { label: 'Notificações' }
             ]}
-            actions={(
-              <Button variant="outline" onClick={() => window.location.reload()} className="flex items-center gap-2">
-                <RefreshCw className="w-4 h-4" />
-                Atualizar
-              </Button>
-            )}
+            actions={
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={fetchNotifications}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Atualizar
+                </Button>
+                {unreadCount > 0 && (
+                  <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Marcar todas como lidas
+                  </Button>
+                )}
+              </div>
+            }
           />
 
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                {unreadCount > 0 && (
-            <Button
-              variant="outline"
-              onClick={markAllAsRead}
-              className="flex items-center space-x-2"
-            >
-              <CheckCircle className="h-4 w-4" />
-              <span>Marcar Todas como Lidas</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Controles de Filtro */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar notificações..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar notificações..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-
-            <div className="flex items-center space-x-2 overflow-x-auto">
-              {filterOptions.map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setFilter(option.value)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                    filter === option.value
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                  }`}
+            <div className="flex gap-2 flex-wrap">
+              {filters.map(f => (
+                <Button
+                  key={f.id}
+                  variant={filter === f.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter(f.id)}
                 >
-                  <span>{option.label}</span>
-                  {option.count > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {option.count}
-                    </Badge>
+                  {f.label}
+                  {f.id === 'unread' && unreadCount > 0 && (
+                    <Badge variant="secondary" className="ml-2">{unreadCount}</Badge>
                   )}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Lista de Notificações */}
-      <div className="space-y-3">
-        {filteredNotifications.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma notificação encontrada</h3>
-              <p className="text-gray-500">
-                {searchTerm 
-                  ? `Não há notificações que correspondam ao termo "${searchTerm}"`
-                  : 'Você não possui notificações neste momento.'
-                }
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredNotifications.map(notification => (
-            <Card 
-              key={notification.id} 
-              className={`transition-colors ${
-                !notification.read 
-                  ? 'border-blue-200 bg-blue-50/30' 
-                  : 'hover:bg-gray-50'
-              }`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className="mt-1">
-                      {getTypeIcon(notification.type)}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className={`font-medium ${
-                          !notification.read ? 'text-gray-900' : 'text-gray-700'
-                        }`}>
-                          {notification.title}
-                        </h3>
-                        {!notification.read && (
-                          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                        )}
+          {/* Lista de notificações */}
+          <div className="space-y-3">
+            {loading ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+                  <p className="mt-2 text-muted-foreground">Carregando...</p>
+                </CardContent>
+              </Card>
+            ) : filteredNotifications.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Inbox className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium">Nenhuma notificação</h3>
+                  <p className="text-muted-foreground">
+                    {filter === 'all' 
+                      ? 'Você não tem notificações no momento'
+                      : 'Nenhuma notificação corresponde ao filtro selecionado'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredNotifications.map(notification => (
+                <Card 
+                  key={notification.id} 
+                  className={`transition-colors ${!notification.read ? 'bg-primary/5 border-primary/20' : ''}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 mt-1">
+                        {getIcon(notification.type)}
                       </div>
-
-                      <p className={`text-sm mb-3 ${
-                        !notification.read ? 'text-gray-700' : 'text-gray-600'
-                      }`}>
-                        {notification.message}
-                      </p>
-
-                      <div className="flex items-center space-x-3">
-                        {getTypeBadge(notification.type)}
-                        {getPriorityBadge(notification.priority)}
-                        <span className="text-xs text-gray-500 flex items-center space-x-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className={`font-medium ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {notification.title}
+                          </h4>
+                          {getPriorityBadge(notification.priority)}
+                          {!notification.read && (
+                            <span className="h-2 w-2 bg-primary rounded-full" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          <span>{formatTimestamp(notification.timestamp)}</span>
-                        </span>
+                          {formatTime(notification.createdAt)}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {!notification.read && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => markAsRead(notification.id)}
+                            title="Marcar como lida"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => deleteNotification(notification.id)}
+                          title="Excluir"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2 ml-4">
-                    {notification.actionUrl && (
-                      <Button variant="outline" onClick={() => handleNavigate(notification.actionUrl)} className="h-7 px-2 text-xs">
-                        Abrir
-                      </Button>
-                    )}
-
-                    {!notification.read && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => markAsRead(notification.id)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => deleteNotification(notification.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
-        </div>
         </main>
       </div>
     </div>

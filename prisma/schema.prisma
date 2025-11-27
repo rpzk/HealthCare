@@ -40,6 +40,15 @@ model User {
   jobRoles               UserJobRole[]
   person                 Person?
   termAcceptances        TermAcceptance[]
+  protocols              Protocol[]             // Protocolos criados pelo médico
+  
+  // HR Management relations
+  leaveRequests          LeaveRequest[]        @relation("UserLeaveRequests")
+  approvedLeaveRequests  LeaveRequest[]        @relation("ApprovedLeaveRequests")
+  createdSchedules       WorkSchedule[]        @relation("CreatedSchedules")
+  scheduleEntries        ScheduleEntry[]       @relation("ScheduleEntries")
+  timeBank               TimeBank[]
+  vacationBalance        VacationBalance?
 
   @@map("users")
 }
@@ -254,6 +263,51 @@ model Consultation {
   doctorId             String
   meetingLink          String?
   videoUrl             String?
+  
+  // ============================================
+  // CAMPOS DE BI - TIPO DE ATENDIMENTO (SSF)
+  // ============================================
+  scheduledDemand      Boolean               @default(false)  // Demanda Agendada
+  immediateDemand      Boolean               @default(false)  // Demanda Imediata
+  orientationOnly      Boolean               @default(false)  // Atendimento para Orientação
+  urgencyWithObs       Boolean               @default(false)  // Urgência com Observação
+  continuedCare        Boolean               @default(false)  // Atendimento Continuado
+  prescriptionRenewal  Boolean               @default(false)  // Renovação de Receita
+  examEvaluation       Boolean               @default(false)  // Avaliação de Exame
+  homeVisit            Boolean               @default(false)  // Visita Domiciliar
+  
+  // ============================================
+  // CAMPOS DE BI - GRUPOS DE ATENDIMENTO (SSF)
+  // ============================================
+  mentalHealth         Boolean               @default(false)  // Saúde Mental
+  alcoholUser          Boolean               @default(false)  // Usuário de Álcool
+  drugUser             Boolean               @default(false)  // Usuário de Drogas
+  hypertension         Boolean               @default(false)  // Hipertensão
+  diabetes             Boolean               @default(false)  // Diabetes
+  leprosy              Boolean               @default(false)  // Hanseníase
+  tuberculosis         Boolean               @default(false)  // Tuberculose
+  prenatal             Boolean               @default(false)  // Pré-Natal
+  postpartum           Boolean               @default(false)  // Puerpério
+  stdAids              Boolean               @default(false)  // DST/AIDS
+  preventive           Boolean               @default(false)  // Preventivo
+  childCare            Boolean               @default(false)  // Puericultura
+  
+  // ============================================
+  // CAMPOS DE BI - CONDUTAS (SSF)
+  // ============================================
+  laboratory           Boolean               @default(false)  // Laboratório
+  radiology            Boolean               @default(false)  // Radiologia
+  ultrasound           Boolean               @default(false)  // Ecografia
+  obstetricUltrasound  Boolean               @default(false)  // Ecografia Obstétrica
+  mammography          Boolean               @default(false)  // Mamografia
+  ecg                  Boolean               @default(false)  // ECG
+  pathology            Boolean               @default(false)  // Patologia
+  physiotherapy        Boolean               @default(false)  // Fisioterapia
+  referralMade         Boolean               @default(false)  // Referência
+  
+  // ============================================
+  // RELAÇÕES
+  // ============================================
   doctor               User                  @relation(fields: [doctorId], references: [id])
   patient              Patient               @relation(fields: [patientId], references: [id])
   diagnoses            Diagnosis[]
@@ -284,6 +338,7 @@ model Prescription {
   consultation     Consultation?      @relation(fields: [consultationId], references: [id])
   doctor           User               @relation(fields: [doctorId], references: [id])
   patient          Patient            @relation(fields: [patientId], references: [id])
+  items            PrescriptionItem[]
 
   @@map("prescriptions")
 }
@@ -503,26 +558,35 @@ model CodeSystem {
 }
 
 model MedicalCode {
-  id             String                   @id @default(cuid())
-  systemId       String
-  code           String
-  display        String
-  description    String?
-  parentId       String?
-  synonyms       String?
-  searchableText String?
-  active         Boolean                  @default(true)
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  primaryIn      Diagnosis[]              @relation("PrimaryCode")
-  secondaryIn    DiagnosisSecondaryCode[]
-  parent         MedicalCode?             @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
-  children       MedicalCode[]            @relation("MedicalCodeHierarchy")
-  system         CodeSystem               @relation(fields: [systemId], references: [id])
+  id               String                   @id @default(cuid())
+  systemId         String
+  code             String
+  display          String
+  description      String?
+  parentId         String?
+  synonyms         String?
+  searchableText   String?
+  active           Boolean                  @default(true)
+  // Campos adicionais do sistema legado SSF
+  chapter          String?                  // Capítulo CID-10 (I-XXII)
+  isCategory       Boolean                  @default(false)  // Se é categoria principal
+  sexRestriction   String?                  // M=masculino, F=feminino, null=ambos
+  crossAsterisk    String?                  // ETIOLOGY (+) ou MANIFESTATION (*)
+  shortDescription String?                  // Descrição curta/abreviada
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  primaryIn        Diagnosis[]              @relation("PrimaryCode")
+  secondaryIn      DiagnosisSecondaryCode[]
+  parent           MedicalCode?             @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
+  children         MedicalCode[]            @relation("MedicalCodeHierarchy")
+  system           CodeSystem               @relation(fields: [systemId], references: [id])
+  protocolDiagnoses ProtocolDiagnosis[]
 
   @@unique([systemId, code])
   @@index([code])
   @@index([display])
+  @@index([chapter])
+  @@index([sexRestriction])
   @@map("medical_codes")
 }
 
@@ -1114,3 +1178,731 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+// ==================== HR MANAGEMENT ====================
+
+// Tipos de ausência
+enum LeaveType {
+  VACATION        // Férias
+  SICK_LEAVE      // Licença médica
+  MATERNITY       // Licença maternidade
+  PATERNITY       // Licença paternidade
+  BEREAVEMENT     // Luto
+  PERSONAL        // Particular
+  TRAINING        // Treinamento/Capacitação
+  COMPENSATORY    // Folga compensatória
+  OTHER           // Outro
+}
+
+// Status da solicitação de ausência
+enum LeaveStatus {
+  PENDING         // Aguardando aprovação
+  APPROVED        // Aprovado
+  REJECTED        // Rejeitado
+  CANCELLED       // Cancelado
+  IN_PROGRESS     // Em andamento
+  COMPLETED       // Finalizado
+}
+
+// Solicitação de férias/folgas/licenças
+model LeaveRequest {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation("UserLeaveRequests", fields: [userId], references: [id])
+  
+  type          LeaveType
+  startDate     DateTime
+  endDate       DateTime
+  reason        String?
+  
+  status        LeaveStatus @default(PENDING)
+  
+  // Aprovação
+  approvedBy    String?
+  approver      User?       @relation("ApprovedLeaveRequests", fields: [approvedBy], references: [id])
+  approvedAt    DateTime?
+  rejectionNote String?
+  
+  // Metadados
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@map("leave_requests")
+}
+
+// Tipo de turno
+enum ShiftType {
+  MORNING         // Manhã (6h-12h)
+  AFTERNOON       // Tarde (12h-18h)
+  EVENING         // Noite (18h-24h)
+  NIGHT           // Madrugada (0h-6h)
+  FULL_DAY        // Dia inteiro
+  ON_CALL         // Plantão/Sobreaviso
+  CUSTOM          // Personalizado
+}
+
+// Escala de trabalho
+model WorkSchedule {
+  id            String      @id @default(cuid())
+  name          String      // Ex: "Escala Médicos Janeiro 2025"
+  description   String?
+  
+  startDate     DateTime    // Período da escala
+  endDate       DateTime
+  
+  isActive      Boolean     @default(true)
+  createdBy     String
+  creator       User        @relation("CreatedSchedules", fields: [createdBy], references: [id])
+  
+  entries       ScheduleEntry[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@map("work_schedules")
+}
+
+// Entrada na escala (profissional + turno + data)
+model ScheduleEntry {
+  id            String      @id @default(cuid())
+  scheduleId    String
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User        @relation("ScheduleEntries", fields: [userId], references: [id])
+  
+  date          DateTime    // Data específica
+  shiftType     ShiftType
+  startTime     String?     // Horário personalizado (formato HH:mm)
+  endTime       String?
+  
+  notes         String?
+  isConfirmed   Boolean     @default(false)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@unique([scheduleId, userId, date])
+  @@map("schedule_entries")
+}
+
+// Banco de horas
+model TimeBank {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  
+  date          DateTime    // Data da movimentação
+  minutes       Int         // Positivo = crédito, Negativo = débito
+  description   String
+  
+  // Referência opcional a entrada de escala
+  scheduleEntryId String?
+  
+  createdAt     DateTime    @default(now())
+  
+  @@map("time_bank")
+}
+
+// Saldo de férias
+model VacationBalance {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  
+  totalDays       Int       @default(30) // Total de dias de férias por período
+  usedDays        Int       @default(0)  // Dias já utilizados
+  pendingDays     Int       @default(0)  // Dias em solicitações pendentes
+  
+  referenceYear   Int       // Ano de referência (período aquisitivo)
+  expiresAt       DateTime? // Data limite para uso
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("vacation_balances")
+}
+
+// ==================== INVENTORY MANAGEMENT ====================
+
+// Unidade de medida
+enum MeasureUnit {
+  UNIT          // Unidade
+  BOX           // Caixa
+  PACK          // Pacote
+  BOTTLE        // Frasco
+  AMPULE        // Ampola
+  TUBE          // Tubo
+  BAG           // Bolsa
+  KIT           // Kit
+  LITER         // Litro
+  ML            // Mililitro
+  GRAM          // Grama
+  KG            // Quilograma
+  METER         // Metro
+  CM            // Centímetro
+  ROLL          // Rolo
+  PAIR          // Par
+}
+
+// Categoria de produto
+model ProductCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  parentId    String?
+  parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    ProductCategory[] @relation("CategoryHierarchy")
+  products    Product[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("product_categories")
+}
+
+// Produto/Material
+model Product {
+  id              String          @id @default(cuid())
+  code            String          @unique    // Código interno
+  barcode         String?         @unique    // Código de barras
+  name            String
+  description     String?
+  
+  categoryId      String?
+  category        ProductCategory? @relation(fields: [categoryId], references: [id])
+  
+  unit            MeasureUnit     @default(UNIT)
+  minStock        Int             @default(0)    // Estoque mínimo
+  maxStock        Int?                           // Estoque máximo
+  reorderPoint    Int?                           // Ponto de reposição
+  
+  isActive        Boolean         @default(true)
+  isControlled    Boolean         @default(false) // Medicamento controlado
+  requiresLot     Boolean         @default(false) // Requer controle de lote
+  
+  // Pricing
+  costPrice       Float?          // Preço de custo
+  sellPrice       Float?          // Preço de venda (se aplicável)
+  
+  // Inventory relation
+  inventory       Inventory[]
+  movements       InventoryMovement[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@map("products")
+}
+
+// Tipo de movimentação
+enum MovementType {
+  ENTRY           // Entrada
+  EXIT            // Saída
+  ADJUSTMENT_IN   // Ajuste entrada
+  ADJUSTMENT_OUT  // Ajuste saída
+  TRANSFER_IN     // Transferência entrada
+  TRANSFER_OUT    // Transferência saída
+  LOSS            // Perda/Avaria
+  RETURN          // Devolução
+  CONSUMPTION     // Consumo (uso em atendimento)
+}
+
+// Localização/Almoxarifado
+model StorageLocation {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  isActive    Boolean     @default(true)
+  
+  inventory   Inventory[]
+  movementsFrom InventoryMovement[] @relation("MovementFrom")
+  movementsTo   InventoryMovement[] @relation("MovementTo")
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@map("storage_locations")
+}
+
+// Estoque (quantidade por localização)
+model Inventory {
+  id              String          @id @default(cuid())
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  
+  locationId      String
+  location        StorageLocation @relation(fields: [locationId], references: [id])
+  
+  quantity        Int             @default(0)
+  reservedQty     Int             @default(0)  // Quantidade reservada
+  
+  // Lote (se aplicável)
+  lotNumber       String?
+  expirationDate  DateTime?
+  
+  lastCountDate   DateTime?       // Última contagem física
+  lastCountQty    Int?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@unique([productId, locationId, lotNumber])
+  @@map("inventory")
+}
+
+// Movimentação de estoque
+model InventoryMovement {
+  id              String          @id @default(cuid())
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  
+  type            MovementType
+  quantity        Int
+  
+  // Localização origem (para saídas/transferências)
+  fromLocationId  String?
+  fromLocation    StorageLocation? @relation("MovementFrom", fields: [fromLocationId], references: [id])
+  
+  // Localização destino (para entradas/transferências)
+  toLocationId    String?
+  toLocation      StorageLocation? @relation("MovementTo", fields: [toLocationId], references: [id])
+  
+  // Lote
+  lotNumber       String?
+  expirationDate  DateTime?
+  
+  // Referência
+  referenceType   String?         // 'consultation', 'purchase', 'transfer', etc.
+  referenceId     String?
+  
+  // Custo
+  unitCost        Float?
+  totalCost       Float?
+  
+  notes           String?
+  
+  // Usuário que registrou
+  userId          String
+  
+  createdAt       DateTime        @default(now())
+  
+  @@map("inventory_movements")
+}
+
+// Fornecedor
+model Supplier {
+  id              String          @id @default(cuid())
+  name            String
+  tradeName       String?         // Nome fantasia
+  document        String?         @unique  // CNPJ
+  
+  // Contato
+  email           String?
+  phone           String?
+  website         String?
+  
+  // Endereço
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  
+  // Dados bancários
+  bankInfo        String?
+  
+  notes           String?
+  isActive        Boolean         @default(true)
+  
+  purchaseOrders  PurchaseOrder[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@map("suppliers")
+}
+
+// Status de pedido de compra
+enum PurchaseOrderStatus {
+  DRAFT           // Rascunho
+  PENDING         // Aguardando aprovação
+  APPROVED        // Aprovado
+  ORDERED         // Pedido feito
+  PARTIAL         // Recebido parcialmente
+  RECEIVED        // Recebido
+  CANCELLED       // Cancelado
+}
+
+// Pedido de compra
+model PurchaseOrder {
+  id              String              @id @default(cuid())
+  orderNumber     String              @unique
+  
+  supplierId      String
+  supplier        Supplier            @relation(fields: [supplierId], references: [id])
+  
+  status          PurchaseOrderStatus @default(DRAFT)
+  
+  // Datas
+  orderDate       DateTime?
+  expectedDate    DateTime?
+  receivedDate    DateTime?
+  
+  // Valores
+  subtotal        Float               @default(0)
+  discount        Float               @default(0)
+  shipping        Float               @default(0)
+  total           Float               @default(0)
+  
+  notes           String?
+  
+  // Usuários
+  createdBy       String
+  approvedBy      String?
+  
+  items           PurchaseOrderItem[]
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@map("purchase_orders")
+}
+
+// Item do pedido de compra
+model PurchaseOrderItem {
+  id              String          @id @default(cuid())
+  orderId         String
+  order           PurchaseOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  
+  quantity        Int
+  receivedQty     Int             @default(0)
+  unitPrice       Float
+  totalPrice      Float
+  
+  lotNumber       String?
+  expirationDate  DateTime?
+  
+  createdAt       DateTime        @default(now())
+  
+  @@map("purchase_order_items")
+}
+
+// =====================================================
+// SISTEMA DE MEDICAMENTOS (Importado do SSF)
+// =====================================================
+
+model Medication {
+  id                  String              @id @default(cuid())
+  name                String              // Nome do medicamento
+  synonym             String?             // Sinônimo / nome alternativo
+  tradeName           String?             // Nome comercial / fantasia
+  
+  // Classificação da receita
+  prescriptionType    PrescriptionType    @default(SYMPTOMATIC)
+  
+  // Disponibilidade nas farmácias
+  basicPharmacy       Boolean             @default(false)  // Farmácia da Unidade
+  municipalPharmacy   Boolean             @default(false)  // Farmácia Municipal
+  statePharmacy       Boolean             @default(false)  // Farmácia Estadual
+  homePharmacy        Boolean             @default(false)  // Internação Domiciliar
+  popularPharmacy     Boolean             @default(false)  // Farmácia Popular
+  hospitalPharmacy    Boolean             @default(false)  // Farmácia Hospitalar
+  commercialPharmacy  Boolean             @default(false)  // Farmácia Comercial
+  compoundPharmacy    Boolean             @default(false)  // Farmácia de Manipulação
+  
+  // Código SUS
+  susCode             String?
+  
+  // Informações de uso
+  instructions        String?             // Orientação de uso padrão
+  notes               String?             // Notas
+  description         String?             // Descrição
+  warnings            String?             // Advertências
+  interactions        String?             // Interações medicamentosas
+  observations        String?             // Observações
+  
+  // Restrições
+  minAge              Int?                // Idade mínima
+  maxAge              Int?                // Idade máxima
+  sexRestriction      String?             // M=masculino, F=feminino, null=ambos
+  validityDays        Int?                // Validade em dias
+  
+  // Informações da apresentação
+  route               String?             // Via de administração (Oral, IM, etc)
+  strength            String?             // Concentração (ex: 500mg)
+  unit                String?             // Unidade (mg, mL, etc)
+  form                String?             // Forma farmacêutica (comprimido, solução, etc)
+  packaging           String?             // Recipiente (cp, fr, amp, tb, etc)
+  packageSize         Int?                // Capacidade do recipiente
+  
+  // Dosagem padrão
+  dosePerKg           Float?              // Dose por kg
+  maxDailyDosePerKg   Float?              // Dose máxima diária por kg
+  defaultFrequency    Float?              // Frequência padrão
+  defaultDuration     Int?                // Duração padrão do tratamento
+  maxQuantity         Float?              // Quantidade máxima
+  
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  prescriptionItems   PrescriptionItem[]
+  protocolPrescriptions ProtocolPrescription[]
+  
+  @@index([name])
+  @@index([susCode])
+  @@map("medications")
+}
+
+enum PrescriptionType {
+  SYMPTOMATIC    // Sintomático
+  CONTINUOUS     // Contínuo
+  CONTROLLED     // Controlado
+  BLUE_B         // Tipo B - Azul
+  YELLOW_A       // Tipo A - Amarelo
+  PHYTOTHERAPIC  // Fitoterápico
+}
+
+model PrescriptionItem {
+  id              String      @id @default(cuid())
+  prescriptionId  String
+  medicationId    String?
+  
+  // Se não usar medicação do catálogo
+  customName      String?
+  
+  dosage          String
+  frequency       String
+  duration        String
+  quantity        Int?
+  instructions    String?
+  
+  prescription    Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication      Medication?  @relation(fields: [medicationId], references: [id])
+  
+  createdAt       DateTime    @default(now())
+  
+  @@map("prescription_items")
+}
+
+// =====================================================
+// SISTEMA DE PROCEDIMENTOS SIGTAP (Importado do SSF)
+// =====================================================
+
+model Procedure {
+  id              String    @id @default(cuid())
+  code            String    @unique  // Código SIGTAP (10 dígitos)
+  name            String
+  complexity      Int?      // Complexidade (0-3)
+  financing       String?   // Financiamento (N=Nacional, I=Municipal, F=Federal)
+  minAge          Int?      // Idade mínima (em meses)
+  maxAge          Int?      // Idade máxima (em meses)
+  sexRestriction  String?   // M=masculino, F=feminino, null=ambos
+  
+  // Agrupamentos
+  group           String?   // Grupo do procedimento
+  subgroup        String?   // Subgrupo
+  
+  // CBO relacionado
+  cboRequired     String?   // CBO necessário para realizar
+  
+  active          Boolean   @default(true)
+  validFrom       DateTime? // Data de vigência
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([code])
+  @@index([name])
+  @@map("procedures")
+}
+
+// =====================================================
+// CATÁLOGO DE EXAMES (Importado do SSF)
+// =====================================================
+
+model ExamCatalog {
+  id              String          @id @default(cuid())
+  name            String
+  abbreviation    String?         // Abreviação (ex: HMG, GLI)
+  description     String?
+  
+  // Tipo de exame
+  examCategory    ExamCategory
+  
+  // Restrições
+  minAge          Int?
+  maxAge          Int?
+  sexRestriction  String?         // M=masculino, F=feminino, null=ambos
+  
+  // Código SUS relacionado
+  susCode         String?
+  
+  // Preparação
+  preparation     String?         // Instruções de preparo
+  
+  active          Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  protocolExams   ProtocolExam[]
+  
+  @@index([name])
+  @@index([examCategory])
+  @@map("exam_catalog")
+}
+
+enum ExamCategory {
+  LABORATORY      // Laboratório
+  RADIOLOGY       // Radiografia
+  ECG             // Eletrocardiograma
+  PHYSIOTHERAPY   // Fisioterapia
+  APAC            // APAC
+  CYTOPATHOLOGY   // Citopatológico
+  MAMMOGRAPHY     // Mamografia
+  ULTRASOUND      // Ecografia/Ultrassonografia
+  LAB_ALTERNATIVE // Laboratório Alternativo
+  RAD_ALTERNATIVE // Radiografia Alternativa
+  OTHER_1         // Outros 1
+  OTHER_2         // Outros 2
+}
+
+// ============================================
+// PROTOCOLOS E PREFERÊNCIAS DO MÉDICO
+// ============================================
+
+model Protocol {
+  id              String              @id @default(cuid())
+  name            String              // Nome do protocolo (ex: "Hipertensão - Inicial")
+  description     String?             // Descrição do protocolo
+  category        ProtocolCategory    @default(CUSTOM)
+  
+  // Criador
+  doctorId        String
+  doctor          User                @relation(fields: [doctorId], references: [id])
+  
+  // Configurações
+  isPublic        Boolean             @default(false) // Compartilhado com outros médicos
+  isActive        Boolean             @default(true)
+  usageCount      Int                 @default(0)     // Quantas vezes foi usado
+  
+  // Items do protocolo
+  prescriptions   ProtocolPrescription[]
+  exams           ProtocolExam[]
+  referrals       ProtocolReferral[]
+  diagnoses       ProtocolDiagnosis[]
+  
+  // Metadados
+  tags            String[]            // Tags para busca
+  specialty       String?             // Especialidade relacionada
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@index([doctorId])
+  @@index([category])
+  @@index([name])
+  @@map("protocols")
+}
+
+model ProtocolPrescription {
+  id              String      @id @default(cuid())
+  protocolId      String
+  protocol        Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  
+  // Medicação do catálogo (opcional)
+  medicationId    String?
+  medication      Medication? @relation(fields: [medicationId], references: [id])
+  
+  // Dados da prescrição
+  medicationName  String      // Nome (pode ser diferente do catálogo)
+  dosage          String      // Dosagem
+  frequency       String      // Frequência
+  duration        String      // Duração
+  instructions    String?     // Orientações
+  quantity        Float?      // Quantidade
+  route           String?     // Via de administração
+  
+  // Ordem no protocolo
+  sortOrder       Int         @default(0)
+  
+  @@index([protocolId])
+  @@map("protocol_prescriptions")
+}
+
+model ProtocolExam {
+  id              String       @id @default(cuid())
+  protocolId      String
+  protocol        Protocol     @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  
+  // Exame do catálogo (opcional)
+  examCatalogId   String?
+  examCatalog     ExamCatalog? @relation(fields: [examCatalogId], references: [id])
+  
+  // Dados do exame
+  examName        String       // Nome do exame
+  description     String?      // Indicação/descrição
+  priority        Urgency      @default(ROUTINE)
+  notes           String?      // Observações
+  
+  // Ordem no protocolo
+  sortOrder       Int          @default(0)
+  
+  @@index([protocolId])
+  @@map("protocol_exams")
+}
+
+model ProtocolReferral {
+  id              String      @id @default(cuid())
+  protocolId      String
+  protocol        Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  
+  // Dados do encaminhamento
+  specialty       String      // Especialidade
+  description     String      // Motivo/indicação
+  priority        Urgency     @default(ROUTINE)
+  notes           String?     // Observações
+  
+  // Ordem no protocolo
+  sortOrder       Int         @default(0)
+  
+  @@index([protocolId])
+  @@map("protocol_referrals")
+}
+
+model ProtocolDiagnosis {
+  id              String      @id @default(cuid())
+  protocolId      String
+  protocol        Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  
+  // CID do catálogo
+  medicalCodeId   String?
+  medicalCode     MedicalCode? @relation(fields: [medicalCodeId], references: [id])
+  
+  // Dados do diagnóstico
+  cidCode         String      // Código CID
+  description     String      // Descrição
+  isPrimary       Boolean     @default(false) // Diagnóstico principal
+  
+  // Ordem no protocolo
+  sortOrder       Int         @default(0)
+  
+  @@index([protocolId])
+  @@map("protocol_diagnoses")
+}
+
+enum ProtocolCategory {
+  HYPERTENSION    // Hipertensão
+  DIABETES        // Diabetes
+  PRENATAL        // Pré-natal
+  CHILDCARE       // Puericultura
+  MENTAL_HEALTH   // Saúde Mental
+  RESPIRATORY     // Doenças Respiratórias
+  INFECTIOUS      // Doenças Infecciosas
+  CHRONIC         // Doenças Crônicas
+  PREVENTIVE      // Medicina Preventiva
+  EMERGENCY       // Urgência/Emergência
+  CUSTOM          // Personalizado
+}
+

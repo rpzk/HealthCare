@@ -47,6 +47,8 @@ jobs:
         run: npm run type-check
       - name: Lint (strict in CI)
         run: npm run lint
+      - name: Unit Tests
+        run: npm run test:unit
       - name: Build (strict in CI)
         run: npm run build
       - name: Basic DB test
