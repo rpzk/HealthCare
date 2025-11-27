@@ -3,11 +3,9 @@ import { Gender, RiskLevel } from '@prisma/client'
 let __prisma: any | undefined
 async function getPrisma() {
   if (!__prisma) {
-    console.log('[patient-service] initializing PrismaClient')
     const { PrismaClient } = await import('@prisma/client')
     __prisma = new PrismaClient()
   }
-  // console.log('[patient-service] prisma ready')
   return __prisma as any
 }
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'

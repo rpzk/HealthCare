@@ -51,7 +51,6 @@ export class DashboardService {
 
   // Buscar próximas consultas
   static async getUpcomingAppointments(limit = 3) {
-    console.log('[DashboardService] getUpcomingAppointments started');
     try {
       await ensurePrismaConnected()
       const now = new Date()
@@ -70,12 +69,9 @@ export class DashboardService {
           patient: { select: { id: true, name: true } },
         },
       })
-      
-      console.log(`[DashboardService] Found ${upcoming.length} appointments`);
 
       return upcoming.map((c, index) => {
         if (!c) {
-          console.error(`[DashboardService] Appointment at index ${index} is undefined/null`);
           return null;
         }
         // Safety check for patient relation

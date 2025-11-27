@@ -77,8 +77,7 @@ export async function POST(req: Request) {
     // Tentar enviar e-mail (não falha a requisição se o e-mail falhar)
     const link = `${baseUrl}/register/${invite.token}`
     try {
-      const emailSent = await emailService.sendInviteEmail(email, link)
-      console.log(`[invites] Invite created for ${email}, email sent: ${emailSent}`)
+      await emailService.sendInviteEmail(email, link)
     } catch (emailError) {
       console.error('[invites] Failed to send invite email:', emailError)
     }

@@ -8,7 +8,6 @@ export const POST = withRbac('patient.anonymize', async (req: NextRequest, { par
   try {
     await startSpan('patient.anonymize', () => {
       // Mock de anonimização - em produção real, isso seria persistido no banco
-      console.log(`Anonimizando paciente ${params.id}`)
       return Promise.resolve({
         id: params.id,
         name: 'ANONYMIZED',

@@ -51,8 +51,6 @@ export const GET = withPatientAuth(async (req, { user: _user }) => {
         pages: masked.totalPages
       }
     }
-
-    console.log('[PatientsAPI] Returning pagination', response.pagination)
     
     return NextResponse.json(response)
   } catch (error) {

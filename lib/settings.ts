@@ -51,7 +51,6 @@ const fallbackManager = {
     try {
       this.ensureDirectory()
       fs.writeFileSync(FALLBACK_FILE_PATH, JSON.stringify(data, null, 2))
-      console.log('[settings] Fallback file written successfully')
     } catch (e) {
       console.error('Failed to write fallback settings file:', e)
     }
@@ -112,7 +111,6 @@ export const settings = {
         update: { value, category, description },
         create: { key, value, category, description: description || null, isPublic: false }
       })
-      console.log(`[settings] Setting ${key} saved to database`)
     } catch (error) {
       console.error(`[settings] Database error saving ${key}, fallback was used:`, error)
     }

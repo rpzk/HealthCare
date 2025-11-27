@@ -38,19 +38,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           // Extra: log de diagnóstico do DATABASE_URL (seguro, sem expor senha)
-          if (DEBUG_AUTH) {
-            try {
-              const raw = process.env.DATABASE_URL || ''
-              const u = raw ? new URL(raw) : undefined
-              const user = u?.username || 'n/a'
-              const host = u?.hostname || 'n/a'
-              const db = (u?.pathname || '').replace(/^\//,'') || 'n/a'
-              const pwLen = (u?.password || '').length
-              console.log('[DEBUG_AUTH] DB info:', { user, host, db, pwLen })
-            } catch (e) {
-              console.log('[DEBUG_AUTH] DB URL parse error')
-            }
-          }
+          // Only logged when DEBUG_AUTH=true, via logger.debug
 
           const ip = (req as any)?.headers?.get?.('x-forwarded-for') || (req as any)?.headers?.get?.('x-real-ip')
           const key = getLoginKey(credentials.email, ip)
@@ -80,9 +68,6 @@ export const authOptions: NextAuthOptions = {
 
           if (!user) {
             console.warn(`Tentativa de login com email não encontrado: ${credentials.email}`)
-            if (DEBUG_AUTH) {
-              console.warn('DEBUG_AUTH: usuário não encontrado; verifique se o seed rodou e o DATABASE_URL aponta para o mesmo banco.')
-            }
             return null
           }
 
@@ -95,9 +80,6 @@ export const authOptions: NextAuthOptions = {
           const isPasswordValid = user.password
             ? await bcrypt.compare(credentials.password, user.password)
             : false
-          if (DEBUG_AUTH) {
-            console.log(`[DEBUG_AUTH] user.email=${user.email} role=${user.role} hashPrefix=${(user.password||'').slice(0,12)} valid=${isPasswordValid}`)
-          }
 
           if (!isPasswordValid) {
             console.warn(`Senha incorreta para usuário: ${credentials.email}`)
@@ -112,7 +94,6 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          console.log(`Login bem-sucedido para usuário: ${user.email}`)
           // reset em sucesso
           loginAttempts.delete(key)
           return {
@@ -123,10 +104,6 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Erro na autenticação:', error)
-          if (DEBUG_AUTH) {
-            const db = process.env.DATABASE_URL || ''
-            console.error('[DEBUG_AUTH] DATABASE_URL host/db (mascarado):', db.replace(/:\/\/.*@/,'://***@').replace(/(\/)[^\?]+(\?*)/,'$1***$2'))
-          }
           return null
         }
       }

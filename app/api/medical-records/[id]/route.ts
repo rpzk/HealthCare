@@ -37,10 +37,6 @@ export const GET = withAuth(async (request: NextRequest, { user: _user, params }
     const record = await MedicalRecordsService.getMedicalRecordById(id)
 
     if (!record) {
-      // Log read attempt on non-existent record
-      if (process.env.DEBUG_AUDIT === 'true') {
-        console.log(`[AUDIT] READ attempt on non-existent record: ${id} by user ${user.id}`)
-      }
       return NextResponse.json(
         { error: 'Prontuário não encontrado' },
         { status: 404 }
@@ -84,9 +80,6 @@ export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
     // Check rate limit for UPDATE operations
     const rateLimitCheck = rateLimitingService.checkRateLimit(user.id, 'UPDATE')
     if (!rateLimitCheck.allowed) {
-      if (process.env.DEBUG_AUDIT === 'true') {
-        console.log(`[RATE_LIMIT] UPDATE exceeded for user ${user.id}`)
-      }
       return NextResponse.json(
         { error: 'Taxa de requisições excedida. Tente novamente depois.' },
         { status: 429, headers: { 'Retry-After': String(rateLimitCheck.retryAfter) } }
@@ -190,9 +183,6 @@ export const DELETE = withAuth(async (request: NextRequest, { user, params }) =>
     // Check rate limit for DELETE operations
     const rateLimitCheck = rateLimitingService.checkRateLimit(user.id, 'DELETE')
     if (!rateLimitCheck.allowed) {
-      if (process.env.DEBUG_AUDIT === 'true') {
-        console.log(`[RATE_LIMIT] DELETE exceeded for user ${user.id}`)
-      }
       return NextResponse.json(
         { error: 'Taxa de requisições excedida. Tente novamente depois.' },
         { status: 429, headers: { 'Retry-After': String(rateLimitCheck.retryAfter) } }

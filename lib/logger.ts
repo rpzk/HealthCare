@@ -1,7 +1,8 @@
 import pino from 'pino'
 import { randomUUID } from 'crypto'
 
-const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug')
+// In production, only log warnings and errors unless LOG_LEVEL is explicitly set
+const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'warn' : 'debug')
 
 export const logger = pino({
   level,

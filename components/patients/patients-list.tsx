@@ -71,7 +71,6 @@ export function PatientsList() {
       const response = await fetch(`/api/patients?${params}`)
       if (!response.ok) throw new Error('Falha ao carregar pacientes')
       const raw = await response.json()
-      console.log('[PatientsList] Raw /api/patients response:', raw)
       let patientsData: Patient[] = []
       let pageMeta = { page: 1, limit: 10, total: 0, pages: 0 }
       if (raw && Array.isArray(raw.patients) && raw.pagination) {
@@ -90,10 +89,7 @@ export function PatientsList() {
           total: raw.total || raw.patients.length,
           pages: raw.totalPages || 0
         }
-      } else {
-        console.warn('[PatientsList] Formato inesperado de resposta /api/patients:', raw)
       }
-      console.log('[PatientsList] Normalized pagination meta:', pageMeta)
       setPatients(patientsData)
       setPagination(pageMeta)
     } catch (err) {
