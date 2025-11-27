@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { protocolQuerySchema, createProtocolSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,9 +19,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category')
-    const search = searchParams.get('search')
-    const includePublic = searchParams.get('includePublic') === 'true'
+    
+    // Validate query parameters
+    const queryResult = safeParseQueryParams(searchParams, protocolQuerySchema)
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'Parâmetros inválidos', details: queryResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+    
+    const { category, search, includePublic } = queryResult.data
 
     const where: any = {
       OR: [
@@ -88,25 +97,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const {
-      name,
-      description,
-      category = 'CUSTOM',
-      isPublic = false,
-      tags = [],
-      specialty,
-      prescriptions = [],
-      exams = [],
-      referrals = [],
-      diagnoses = []
-    } = body
-
-    if (!name) {
+    
+    // Validate request body
+    const parseResult = createProtocolSchema.safeParse(body)
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Nome do protocolo é obrigatório' },
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+    
+    const {
+      name,
+      description,
+      category,
+      isPublic,
+      tags,
+      specialty,
+      prescriptions,
+      exams,
+      referrals,
+      diagnoses
+    } = parseResult.data
 
     const protocol = await prisma.protocol.create({
       data: {

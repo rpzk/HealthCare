@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
+import { appointmentQuerySchema, createAppointmentSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
+import { z } from 'zod'
 
 // Direct Prisma client to avoid bundling issues
 const { PrismaClient } = require('@prisma/client')
@@ -15,12 +17,17 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
   try {
     const url = new URL(req.url)
-    const date = url.searchParams.get('date')
-    const doctorId = url.searchParams.get('doctorId')
-    const patientId = url.searchParams.get('patientId')
-    const status = url.searchParams.get('status')
-    const page = parseInt(url.searchParams.get('page') || '1')
-    const limit = parseInt(url.searchParams.get('limit') || '50')
+    
+    // Validate query parameters
+    const queryResult = safeParseQueryParams(url.searchParams, appointmentQuerySchema)
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'Parâmetros inválidos', details: queryResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+    
+    const { date, doctorId, patientId, status, page, limit } = queryResult.data
 
     const where: any = {}
 
@@ -112,15 +119,18 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   }
 
   try {
+    // Validate request body
     const body = await req.json()
-    const { patientId, doctorId, scheduledAt, type, notes } = body
-
-    if (!patientId || !doctorId || !scheduledAt) {
+    const parseResult = createAppointmentSchema.safeParse(body)
+    
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Paciente, médico e horário são obrigatórios' },
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+    
+    const { patientId, doctorId, scheduledAt, type, notes } = parseResult.data
 
     // Verify patient exists
     const patient = await prisma.patient.findUnique({ where: { id: patientId } })

@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { ReferralsService } from '@/lib/referrals-service'
+import { referralQuerySchema, createReferralSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 
 // GET - Buscar encaminhamentos
 export const GET = withAuth(async (request, { user: _user }) => {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
-    const specialty = searchParams.get('specialty') || ''
+    
+    // Validate query parameters
+    const queryResult = safeParseQueryParams(searchParams, referralQuerySchema)
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'Parâmetros inválidos', details: queryResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+    
+    const { page, limit, search, status, specialty } = queryResult.data
 
     const filters = {
       search: search || undefined,
@@ -34,21 +41,17 @@ export const GET = withAuth(async (request, { user: _user }) => {
 export const POST = withAuth(async (request, { user }) => {
   try {
     const body = await request.json()
-    const {
-      patientId,
-      specialty,
-      description,
-      priority = 'NORMAL',
-      notes
-    } = body
-
-    // Validações básicas
-    if (!patientId || !specialty || !description) {
+    
+    // Validate request body
+    const parseResult = createReferralSchema.safeParse(body)
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Paciente, especialidade e descrição são obrigatórios' },
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+    
+    const { patientId, specialty, description, priority, notes } = parseResult.data
 
     const referral = await ReferralsService.createReferral({
       patientId,
