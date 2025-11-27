@@ -19,9 +19,9 @@ export interface MedicalRecordFormProps {
   userRole?: string
 }
 
-const showToast = (title: string, description?: string) => {
-  const message = description ? title + ': ' + description : title
-  console.log(message)
+// Toast notification helper - in production, replace with a proper toast library
+const showToast = (_title: string, _description?: string) => {
+  // Silently handled - actual UI notification would be handled by a toast provider
 }
 
 export function MedicalRecordForm({

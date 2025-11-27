@@ -1,4 +1,7 @@
 import { PrismaClient } from '@prisma/client'
+import { logger } from './logger'
+
+const dbLogger = logger.child({ module: 'db-client' })
 
 type PrismaGlobal = typeof globalThis & {
   __prisma?: PrismaClient
@@ -27,22 +30,19 @@ export function getPrisma(): PrismaClient {
 
 async function internalConnect() {
   try {
-    console.log('[lib/db-client] Connecting to database...')
+    dbLogger.debug('Connecting to database...')
     await getPrisma().$connect()
-    console.log('[lib/db-client] Connected successfully')
+    dbLogger.debug('Connected successfully')
   } catch (e: any) {
-    console.error('[lib/db-client] falha ao conectar:', e?.message)
+    dbLogger.error({ err: e }, 'Failed to connect to database')
     throw e
   }
 }
 
 export async function ensurePrismaConnected() {
   if (!globalForPrisma.__prismaConnectPromise) {
-    console.log('[lib/db-client] iniciando conexão (nova promise)')
+    dbLogger.debug('Starting new connection promise')
     globalForPrisma.__prismaConnectPromise = internalConnect()
-  } else if (!(globalThis as any).__prismaReusingLogged) {
-    console.log('[lib/db-client] reutilizando promise de conexão existente')
-    ;(globalThis as any).__prismaReusingLogged = true
   }
 
   try {

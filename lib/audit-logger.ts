@@ -120,17 +120,6 @@ class AuditLogger {
       errorMessage: options.errorMessage
     }
 
-    // Em desenvolvimento, apenas log no console
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 AUDIT LOG:', {
-        user: `${userEmail} (${userRole})`,
-        action: action,
-        resource: resource,
-        success: auditLog.success,
-        timestamp: auditLog.timestamp.toISOString()
-      })
-    }
-
     // Persistir no banco quando possível
     if (this.persistEnabled) {
       import('@/lib/prisma').then(async (prismaModule) => {

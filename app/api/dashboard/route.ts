@@ -34,13 +34,11 @@ export const GET = withAuth(async (request, { user }) => {
     default:
       actionDescription = 'Dashboard completo'
       try {
-        console.log('[API] Fetching dashboard data...');
         const [allStats, allAppointments, allPatients] = await Promise.all([
           DashboardService.getStats(),
           DashboardService.getUpcomingAppointments(),
           DashboardService.getRecentPatients()
         ])
-        console.log('[API] Dashboard data fetched successfully');
 
         data = {
           stats: allStats,
