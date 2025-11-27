@@ -91,7 +91,7 @@
 
 ---
 
-## 🔄 Fase 3: Compliance (EM PROGRESSO)
+## ✅ Fase 3: Compliance (COMPLETO)
 
 ### 3.1 Documentação ✅
 - [x] **Guia do Desenvolvedor** - `docs/DEVELOPER_GUIDE.md`
@@ -127,9 +127,11 @@
   - Base legal por operação
   - Prazos de retenção
 
-### 3.3 Certificações (OPCIONAL)
-- [ ] Registro ANVISA Classe I (se aplicável)
-- [ ] Certificação ISO 27001 (se enterprise)
+### 3.3 Certificações (FUTURO - Quando houver recursos)
+- [ ] SBIS/CFM NGS1 (~R$ 20-40k)
+- [ ] ANVISA Classe I (~R$ 10-20k)
+- [ ] ISO 27001 (~R$ 50-100k) - para clientes enterprise
+- Documentação de referência: `docs/CERTIFICACOES_GUIA.pdf`
 
 ---
 
