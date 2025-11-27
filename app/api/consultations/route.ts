@@ -3,6 +3,7 @@ import { ConsultationService } from '@/lib/consultation-service'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { withConsultationAuth } from '@/lib/advanced-auth-v2'
 import { ConsultationType } from '@prisma/client'
+import { consultationQuerySchema, createConsultationSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 
 // GET - Listar consultas (protegido por autenticação)
 export const GET = withConsultationAuth(async (request, { user }) => {
@@ -11,24 +12,25 @@ export const GET = withConsultationAuth(async (request, { user }) => {
   try {
     const { searchParams } = new URL(request.url)
     
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '10')
-    const patientId = searchParams.get('patientId') || undefined
-    const doctorId = searchParams.get('doctorId') || undefined
-    const status = searchParams.get('status') as any
-    const type = searchParams.get('type') as ConsultationType
-    const search = searchParams.get('search') || undefined
-    const dateFrom = searchParams.get('dateFrom') ? new Date(searchParams.get('dateFrom')!) : undefined
-    const dateTo = searchParams.get('dateTo') ? new Date(searchParams.get('dateTo')!) : undefined
+    // Validate query parameters
+    const queryResult = safeParseQueryParams(searchParams, consultationQuerySchema)
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'Parâmetros inválidos', details: queryResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+    
+    const { page, limit, patientId, doctorId, status, type, search, dateFrom, dateTo } = queryResult.data
 
     const filters = {
       patientId,
       doctorId,
       status,
-      type,
+      type: type as ConsultationType,
       search,
-      dateFrom,
-      dateTo
+      dateFrom: dateFrom ? new Date(dateFrom) : undefined,
+      dateTo: dateTo ? new Date(dateTo) : undefined
     }
 
     const result = await ConsultationService.getConsultations(filters, page, limit)
@@ -54,38 +56,27 @@ export const POST = withConsultationAuth(async (request, { user }) => {
   try {
     const body = await request.json()
 
-    // Validação básica
-    const requiredFields = ['patientId', 'doctorId', 'scheduledDate', 'type']
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json(
-          { error: `Campo obrigatório: ${field}` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Permitir criar consulta imediata (sem exigir data futura)
-    const scheduledDate = new Date(body.scheduledDate)
-
-    // Validar tipo de consulta
-    const validTypes = ['ROUTINE', 'URGENT', 'EMERGENCY', 'FOLLOW_UP', 'PREVENTIVE']
-    if (!validTypes.includes(body.type)) {
+    // Validate request body with Zod
+    const parseResult = createConsultationSchema.safeParse(body)
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Tipo de consulta inválido' },
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
+    const validatedData = parseResult.data
+    const scheduledDate = new Date(validatedData.scheduledDate)
+
     const consultationData = {
-      patientId: body.patientId,
-      doctorId: body.doctorId,
+      patientId: validatedData.patientId,
+      doctorId: validatedData.doctorId,
       scheduledDate,
-      type: body.type,
-      description: body.description || '',
-      notes: body.notes || '',
-      duration: body.duration || 60,
-      status: body.status || 'SCHEDULED'
+      type: validatedData.type,
+      description: validatedData.description || '',
+      notes: validatedData.notes || '',
+      duration: validatedData.duration || 60,
+      status: validatedData.status || 'SCHEDULED'
     }
 
     const consultation = await ConsultationService.createConsultation(consultationData)

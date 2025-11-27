@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
+import { updateProfileSchema } from '@/lib/validation-schemas-api'
 
 // Direct PrismaClient instantiation to avoid bundling issues
 const globalForPrisma = globalThis as unknown as { profilePrisma: PrismaClient }
@@ -97,7 +98,17 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, phone, specialty, bio } = body
+    
+    // Validate request body
+    const parseResult = updateProfileSchema.safeParse(body)
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+    
+    const { name, phone, specialty } = parseResult.data
 
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email },

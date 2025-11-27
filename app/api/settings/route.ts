@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { settings, SettingCategory } from '@/lib/settings'
+import { settingsQuerySchema, createSettingSchema } from '@/lib/validation-schemas-api'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -10,14 +11,20 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url)
-  const category = searchParams.get('category') as SettingCategory
-
-  if (category) {
-    const data = await settings.getAllByCategory(category)
-    return NextResponse.json(data)
+  const params = Object.fromEntries(searchParams.entries())
+  
+  // Validate query parameters
+  const parseResult = settingsQuerySchema.safeParse(params)
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: 'Parâmetros inválidos', details: parseResult.error.flatten().fieldErrors },
+      { status: 400 }
+    )
   }
 
-  return new NextResponse('Category required', { status: 400 })
+  const { category } = parseResult.data
+  const data = await settings.getAllByCategory(category)
+  return NextResponse.json(data)
 }
 
 export async function POST(req: Request) {
@@ -28,11 +35,17 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { key, value, category, description } = body
-
-    if (!key || value === undefined) {
-      return new NextResponse('Key and value are required', { status: 400 })
+    
+    // Validate request body
+    const parseResult = createSettingSchema.safeParse(body)
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
+    
+    const { key, value, category, description } = parseResult.data
 
     await settings.set(key, value, category, description)
     return NextResponse.json({ success: true })

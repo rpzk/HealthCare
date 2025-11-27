@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { ExamRequestsService } from '@/lib/exam-requests-service'
+import { examRequestQuerySchema, createExamRequestSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 
 // GET - Buscar solicitações de exames
 export const GET = withAuth(async (request, { user: _user }) => {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
-    const type = searchParams.get('type') || ''
+    
+    // Validate query parameters
+    const queryResult = safeParseQueryParams(searchParams, examRequestQuerySchema)
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: 'Parâmetros inválidos', details: queryResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+    
+    const { page, limit, search, status, type } = queryResult.data
 
     const filters = {
       search: search || undefined,
@@ -34,22 +41,17 @@ export const GET = withAuth(async (request, { user: _user }) => {
 export const POST = withAuth(async (request, { user }) => {
   try {
     const body = await request.json()
-    const {
-      patientId,
-      examType,
-      description,
-      priority = 'NORMAL',
-      notes,
-      scheduledDate
-    } = body
-
-    // Validações básicas
-    if (!patientId || !examType || !description) {
+    
+    // Validate request body
+    const parseResult = createExamRequestSchema.safeParse(body)
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Paciente, tipo de exame e descrição são obrigatórios' },
+        { error: 'Dados inválidos', details: parseResult.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+    
+    const { patientId, examType, description, priority, notes, scheduledDate } = parseResult.data
 
     const examRequest = await ExamRequestsService.createExamRequest({
       patientId,
