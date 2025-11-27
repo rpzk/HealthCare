@@ -17,7 +17,27 @@ export const metadata: Metadata = {
   keywords: ['prontuário eletrônico', 'sistema médico', 'saúde', 'IA médica'],
   icons: {
     icon: ['/favicon.ico', '/favicon.svg'],
+    apple: '/icons/apple-touch-icon.png',
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'HealthCare',
+  },
+  formatDetection: {
+    telephone: true,
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#10b981' },
+    { media: '(prefers-color-scheme: dark)', color: '#059669' },
+  ],
 }
 
 export default function RootLayout({
@@ -27,7 +47,27 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="HealthCare" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+      </head>
       <body className={inter.className}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Register service worker
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(reg) { console.log('SW registered:', reg.scope); })
+                    .catch(function(err) { console.log('SW failed:', err); });
+                });
+              }
+            `
+          }}
+        />
         <script
           // Early guard script executed before React components hydrate
           dangerouslySetInnerHTML={{

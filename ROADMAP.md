@@ -40,7 +40,7 @@
 
 ---
 
-## 🔄 Fase 2: Produtização (EM PROGRESSO)
+## ✅ Fase 2: Produtização (COMPLETO)
 
 ### 2.1 Consolidação de Componentes ✅
 - [x] Unificado `ConsultationWorkspace` (de 3 para 1 componente)
@@ -76,10 +76,18 @@
 - [x] **Queries otimizadas** - Uso de `select` para limitar campos
 - [x] Redis já configurado no coding-service com fallback para memória
 
-### 2.4 Mobile/PWA (PENDENTE)
-- [ ] Configurar PWA manifest
-- [ ] Service worker para offline
-- [ ] Testes de responsividade
+### 2.4 Mobile/PWA ✅
+- [x] Configurar PWA manifest (`public/manifest.json`)
+- [x] Service worker para offline (`public/sw.js`)
+  - Cache-first para assets estáticos
+  - Network-first para navegação
+  - Offline fallback
+  - Suporte a push notifications
+- [x] Ícones PWA em múltiplos tamanhos (`public/icons/`)
+- [x] Meta tags para Apple Web App
+- [x] Shortcuts para acesso rápido (Nova Consulta, Pacientes, Recepção)
+
+**Resultado:** 87 testes passando | Build ✅ | App instalável como PWA
 
 ---
 
