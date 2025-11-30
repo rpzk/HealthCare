@@ -42,6 +42,8 @@ model User {
   termAcceptances        TermAcceptance[]
   protocols              Protocol[] // Protocolos criados pelo médico
   stratumAssessments     StratumAssessment[]    @relation("UserStratumAssessments")
+  strengthAssessments    StrengthAssessment[]   @relation("UserStrengthAssessments")
+  developmentPlans       DevelopmentPlan[]      @relation("UserDevelopmentPlans")
 
   // HR Management relations
   leaveRequests         LeaveRequest[]   @relation("UserLeaveRequests")
@@ -174,6 +176,8 @@ model Patient {
   prescriptions         Prescription[]
   referrals             Referral[]
   vitalSigns            VitalSigns[]
+  strengthAssessments   StrengthAssessment[]   @relation("PatientStrengthAssessments")
+  developmentPlans      DevelopmentPlan[]      @relation("PatientDevelopmentPlans")
 
   @@map("patients")
 }
@@ -941,6 +945,223 @@ enum QuestionType {
   SCALE // Escala likert
   RANKING // Ordenação de prioridades
   OPEN // Resposta aberta (para análise)
+}
+
+// ========================================
+// CHARACTER STRENGTHS & GEMS SYSTEM
+// ========================================
+
+// Forças de Caráter (baseado no VIA Survey)
+model CharacterStrength {
+  id          String  @id @default(cuid())
+  code        String  @unique // ex: "CREATIVITY", "CURIOSITY"
+  name        String // Nome em português
+  virtue      Virtue // Virtude associada
+  description String
+  examples    String? // JSON com exemplos de aplicação
+  healthTips  String? // JSON com dicas de saúde relacionadas
+  order       Int     @default(0)
+  active      Boolean @default(true)
+
+  assessmentResults StrengthAssessmentResult[]
+
+  @@map("character_strengths")
+}
+
+// Assessment de Forças de Caráter
+model StrengthAssessment {
+  id             String                       @id @default(cuid())
+  userId         String?
+  patientId      String?
+  assessmentType AssessmentType               @default(SELF)
+  status         AssessmentStatus             @default(IN_PROGRESS)
+  startedAt      DateTime                     @default(now())
+  completedAt    DateTime?
+  notes          String?
+  user           User?                        @relation("UserStrengthAssessments", fields: [userId], references: [id])
+  patient        Patient?                     @relation("PatientStrengthAssessments", fields: [patientId], references: [id])
+  results        StrengthAssessmentResult[]
+  responses      StrengthAssessmentResponse[]
+
+  @@index([userId, status])
+  @@index([patientId, status])
+  @@map("strength_assessments")
+}
+
+// Respostas do questionário de forças
+model StrengthAssessmentResponse {
+  id           String             @id @default(cuid())
+  assessmentId String
+  questionId   String
+  answer       String // JSON
+  score        Float?
+  answeredAt   DateTime           @default(now())
+  assessment   StrengthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  question     StrengthQuestion   @relation(fields: [questionId], references: [id])
+
+  @@unique([assessmentId, questionId])
+  @@map("strength_assessment_responses")
+}
+
+// Questões para avaliação de forças
+model StrengthQuestion {
+  id             String                       @id @default(cuid())
+  strengthCode   String // Código da força avaliada
+  questionText   String
+  questionType   QuestionType                 @default(SCALE)
+  options        String // JSON
+  targetAudience TargetAudience               @default(BOTH)
+  order          Int                          @default(0)
+  active         Boolean                      @default(true)
+  responses      StrengthAssessmentResponse[]
+
+  @@index([strengthCode, active])
+  @@map("strength_questions")
+}
+
+// Resultado consolidado por força
+model StrengthAssessmentResult {
+  id           String             @id @default(cuid())
+  assessmentId String
+  strengthId   String
+  score        Float // 0-5
+  rank         Int? // Posição no ranking (1 = mais forte)
+  isTopFive    Boolean            @default(false)
+  isGem        Boolean            @default(false) // Gema bruta identificada
+  assessment   StrengthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  strength     CharacterStrength  @relation(fields: [strengthId], references: [id])
+
+  @@unique([assessmentId, strengthId])
+  @@map("strength_assessment_results")
+}
+
+// Plano de Desenvolvimento Pessoal
+model DevelopmentPlan {
+  id               String                 @id @default(cuid())
+  userId           String?
+  patientId        String?
+  title            String
+  futureVision     String? // Visão de futuro do indivíduo
+  currentStratum   StratumLevel?
+  targetStratum    StratumLevel?
+  primaryStrengths String? // JSON com forças principais a alavancar
+  developmentAreas String? // JSON com áreas de desenvolvimento
+  status           PlanStatus             @default(ACTIVE)
+  startDate        DateTime               @default(now())
+  targetDate       DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  user             User?                  @relation("UserDevelopmentPlans", fields: [userId], references: [id])
+  patient          Patient?               @relation("PatientDevelopmentPlans", fields: [patientId], references: [id])
+  goals            DevelopmentGoal[]
+  milestones       DevelopmentMilestone[]
+
+  @@index([userId, status])
+  @@index([patientId, status])
+  @@map("development_plans")
+}
+
+// Metas do Plano de Desenvolvimento
+model DevelopmentGoal {
+  id           String          @id @default(cuid())
+  planId       String
+  title        String
+  description  String?
+  category     GoalCategory
+  strengthCode String? // Força de caráter relacionada
+  targetDate   DateTime?
+  status       GoalStatus      @default(NOT_STARTED)
+  progress     Int             @default(0) // 0-100
+  completedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  plan         DevelopmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  actions      GoalAction[]
+
+  @@index([planId, status])
+  @@map("development_goals")
+}
+
+// Ações para alcançar metas
+model GoalAction {
+  id          String          @id @default(cuid())
+  goalId      String
+  title       String
+  description String?
+  frequency   ActionFrequency @default(DAILY)
+  dueDate     DateTime?
+  completed   Boolean         @default(false)
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  goal        DevelopmentGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, completed])
+  @@map("goal_actions")
+}
+
+// Marcos de progresso
+model DevelopmentMilestone {
+  id          String          @id @default(cuid())
+  planId      String
+  title       String
+  description String?
+  targetDate  DateTime?
+  achieved    Boolean         @default(false)
+  achievedAt  DateTime?
+  celebration String? // Mensagem de celebração
+  createdAt   DateTime        @default(now())
+  plan        DevelopmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, achieved])
+  @@map("development_milestones")
+}
+
+enum Virtue {
+  WISDOM // Sabedoria
+  COURAGE // Coragem
+  HUMANITY // Humanidade
+  JUSTICE // Justiça
+  TEMPERANCE // Temperança
+  TRANSCENDENCE // Transcendência
+}
+
+enum TargetAudience {
+  STAFF // Apenas colaboradores
+  PATIENT // Apenas pacientes
+  BOTH // Ambos
+}
+
+enum PlanStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum GoalCategory {
+  HEALTH // Saúde física
+  MENTAL // Saúde mental
+  CAREER // Carreira/profissional
+  RELATIONSHIPS // Relacionamentos
+  PERSONAL // Desenvolvimento pessoal
+  SPIRITUAL // Espiritual/propósito
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ActionFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  ONCE
 }
 
 model FinancialTransaction {
