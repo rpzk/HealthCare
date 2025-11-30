@@ -21,7 +21,8 @@ import {
   DollarSign,
   Building,
   Mail,
-  UserCog
+  UserCog,
+  Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -126,6 +127,17 @@ const menuItems: MenuItem[] = [
     submenu: [
       { title: 'Equipe', href: '/admin/staff' },
       { title: 'Avaliação de Capacidade', href: '/hr/stratum' },
+    ]
+  },
+  {
+    title: 'Desenvolvimento',
+    icon: Sparkles,
+    href: '/development',
+    badge: 'NOVO',
+    submenu: [
+      { title: 'Visão Geral', href: '/development' },
+      { title: 'Horizonte Temporal', href: '/development?tab=stratum' },
+      { title: 'Forças de Caráter', href: '/development?tab=strengths' },
     ]
   },
   {
