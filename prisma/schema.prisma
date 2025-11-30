@@ -41,6 +41,7 @@ model User {
   person                 Person?
   termAcceptances        TermAcceptance[]
   protocols              Protocol[] // Protocolos criados pelo médico
+  stratumAssessments     StratumAssessment[]    @relation("UserStratumAssessments")
 
   // HR Management relations
   leaveRequests         LeaveRequest[]   @relation("UserLeaveRequests")
@@ -788,6 +789,7 @@ model JobRole {
   evaluations        CapabilityEvaluation[]
   occupation         Occupation?            @relation(fields: [occupationId], references: [id])
   userAssignments    UserJobRole[]
+  stratumProfile     JobStratumProfile?
 
   @@index([occupationId])
   @@map("job_roles")
@@ -828,6 +830,117 @@ model CapabilityEvaluation {
   @@index([evaluatorUserId, createdAt])
   @@index([jobRoleId])
   @@map("capability_evaluations")
+}
+
+// ========================================
+// STRATUM ASSESSMENT SYSTEM (Elliott Jaques)
+// ========================================
+
+// Questionário de avaliação de Time Span
+model StratumAssessment {
+  id                String                      @id @default(cuid())
+  userId            String
+  assessmentType    AssessmentType              @default(SELF)
+  status            AssessmentStatus            @default(IN_PROGRESS)
+  calculatedStratum StratumLevel?
+  timeSpanMonths    Int? // Horizonte temporal calculado em meses
+  confidenceScore   Float? // 0-1, confiança no resultado
+  startedAt         DateTime                    @default(now())
+  completedAt       DateTime?
+  expiresAt         DateTime? // Assessments expiram após 1 ano
+  notes             String?
+  user              User                        @relation("UserStratumAssessments", fields: [userId], references: [id])
+  responses         StratumAssessmentResponse[]
+
+  @@index([userId, status])
+  @@index([completedAt])
+  @@map("stratum_assessments")
+}
+
+// Respostas do questionário
+model StratumAssessmentResponse {
+  id            String            @id @default(cuid())
+  assessmentId  String
+  questionId    String
+  answer        String // JSON com a resposta
+  timeSpanValue Int? // Valor de time span desta resposta em meses
+  score         Float? // Score normalizado 0-1
+  answeredAt    DateTime          @default(now())
+  assessment    StratumAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  question      StratumQuestion   @relation(fields: [questionId], references: [id])
+
+  @@unique([assessmentId, questionId])
+  @@index([assessmentId])
+  @@map("stratum_assessment_responses")
+}
+
+// Banco de questões para avaliação
+model StratumQuestion {
+  id             String                      @id @default(cuid())
+  category       QuestionCategory
+  questionText   String
+  questionType   QuestionType                @default(SCENARIO)
+  options        String // JSON array de opções
+  stratumMapping String // JSON mapeando opções para estratos
+  weight         Float                       @default(1.0)
+  order          Int                         @default(0)
+  active         Boolean                     @default(true)
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  responses      StratumAssessmentResponse[]
+
+  @@index([category, active])
+  @@map("stratum_questions")
+}
+
+// Perfil de cargo com requisitos de estrato detalhados
+model JobStratumProfile {
+  id                  String        @id @default(cuid())
+  jobRoleId           String        @unique
+  minStratum          StratumLevel
+  optimalStratum      StratumLevel
+  maxStratum          StratumLevel?
+  timeSpanMinMonths   Int // Horizonte mínimo necessário
+  timeSpanMaxMonths   Int? // Horizonte máximo (para não sub-utilizar)
+  complexityFactors   String? // JSON com fatores de complexidade
+  keyResponsibilities String? // JSON com responsabilidades-chave
+  decisionTypes       String? // JSON com tipos de decisões
+  cboCode             String? // Código CBO relacionado
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  jobRole             JobRole       @relation(fields: [jobRoleId], references: [id])
+
+  @@map("job_stratum_profiles")
+}
+
+enum AssessmentType {
+  SELF // Auto-avaliação
+  MANAGER // Avaliação pelo gestor
+  PEER // Avaliação por par
+  EXTERNAL // Avaliação externa/consultor
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum QuestionCategory {
+  TIME_HORIZON // Horizonte temporal de planejamento
+  COMPLEXITY // Complexidade de problemas
+  ABSTRACTION // Nível de abstração
+  UNCERTAINTY // Tolerância à ambiguidade
+  DECISION_MAKING // Tomada de decisão
+  LEADERSHIP // Estilo de liderança
+}
+
+enum QuestionType {
+  SCENARIO // Cenário situacional
+  SCALE // Escala likert
+  RANKING // Ordenação de prioridades
+  OPEN // Resposta aberta (para análise)
 }
 
 model FinancialTransaction {
