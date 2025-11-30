@@ -123,6 +123,10 @@ const menuItems: MenuItem[] = [
     href: '/admin/staff',
     badge: 'RH',
     allowedRoles: ['ADMIN'],
+    submenu: [
+      { title: 'Equipe', href: '/admin/staff' },
+      { title: 'Avaliação de Capacidade', href: '/hr/stratum' },
+    ]
   },
   {
     title: 'Financeiro',
