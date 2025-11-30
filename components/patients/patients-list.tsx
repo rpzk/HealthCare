@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Search, Plus, Filter, MoreVertical, Phone, Mail, Edit, Trash2, UserX, UserCheck } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import PatientForm from './patient-form'
+import { NewPatientDialog } from './new-patient-dialog'
 
 interface Patient {
   id: string
@@ -47,11 +49,14 @@ interface PatientsDataLegacyShape {
 }
 
 export function PatientsList() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [showNewPatientDialog, setShowNewPatientDialog] = useState(false)
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -61,6 +66,15 @@ export function PatientsList() {
     total: 0,
     pages: 0
   })
+
+  // Detectar query param ?action=new para abrir diálogo
+  useEffect(() => {
+    if (searchParams?.get('action') === 'new') {
+      setShowNewPatientDialog(true)
+      // Limpar o query param da URL
+      router.replace('/patients', { scroll: false })
+    }
+  }, [searchParams, router])
 
   // Carregar pacientes
   const fetchPatients = async (page = 1, search = '') => {
@@ -257,12 +271,18 @@ export function PatientsList() {
         </div>
         <Button 
           variant="medical"
-          onClick={() => setShowForm(true)}
+          onClick={() => setShowNewPatientDialog(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
           Novo Paciente
         </Button>
       </div>
+
+      {/* Diálogo de escolha: manual ou convite */}
+      <NewPatientDialog 
+        open={showNewPatientDialog} 
+        onOpenChange={setShowNewPatientDialog} 
+      />
 
       {/* Banner de erro se houver */}
       {error && (
