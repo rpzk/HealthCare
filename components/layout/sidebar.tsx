@@ -46,7 +46,7 @@ const menuItems: MenuItem[] = [
     href: '/patients',
     submenu: [
       { title: 'Lista de Pacientes', href: '/patients' },
-      { title: 'Novo Paciente', href: '/patients/new' },
+      { title: 'Novo Paciente', href: '/patients?action=new' },
       { title: 'Busca Avançada', href: '/patients/search' },
     ]
   },

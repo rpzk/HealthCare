@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { DashboardSkeleton } from './skeleton'
+import { NewPatientDialog } from '../patients/new-patient-dialog'
 
 interface DashboardStats {
   totalPatients: number
@@ -55,6 +56,7 @@ export function DashboardOverview() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [newPatientOpen, setNewPatientOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -355,12 +357,15 @@ export function DashboardOverview() {
 
       {/* Ações rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <button className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left">
+        <button 
+          onClick={() => setNewPatientOpen(true)}
+          className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left"
+        >
           <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
             <Users className="h-6 w-6" />
           </div>
           <h3 className="font-semibold text-lg">Novo Paciente</h3>
-          <p className="text-blue-100 text-sm mt-1">Cadastrar ficha completa</p>
+          <p className="text-blue-100 text-sm mt-1">Cadastrar ou enviar convite</p>
         </button>
 
         <button className="p-6 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left">
@@ -396,6 +401,9 @@ export function DashboardOverview() {
           <p className="text-indigo-200 text-sm mt-1">Assistente inteligente</p>
         </button>
       </div>
+
+      {/* Diálogo de Novo Paciente */}
+      <NewPatientDialog open={newPatientOpen} onOpenChange={setNewPatientOpen} />
     </div>
   )
 }
