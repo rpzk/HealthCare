@@ -19,6 +19,9 @@ export { AISuggestions } from './ai-suggestions'
 // BI
 export { ConsultationBICheckboxes, defaultBIData } from './consultation-bi-checkboxes'
 
+// Histórico do Paciente
+export { PatientHistoryPanel } from './patient-history-panel'
+
 // Lista e formulários
 export { ConsultationsList } from './consultations-list'
 export { ConsultationForm } from './consultation-form'

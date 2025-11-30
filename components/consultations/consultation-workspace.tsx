@@ -15,6 +15,12 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { 
   FileText, 
   FlaskConical, 
@@ -30,9 +36,12 @@ import {
   MicOff,
   Loader2,
   Sparkles,
-  BookMarked
+  BookMarked,
+  Keyboard,
+  History
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { useKeyboardShortcuts, CONSULTATION_SHORTCUTS } from '@/hooks/use-keyboard-shortcuts'
 
 // Componentes de autocomplete e IA
 import { MedicationAutocomplete } from './medication-autocomplete'
@@ -42,6 +51,7 @@ import { ProtocolSelector } from './protocol-selector'
 import { ProtocolCreator } from './protocol-creator'
 import { AISuggestions } from './ai-suggestions'
 import { ConsultationBICheckboxes, defaultBIData } from './consultation-bi-checkboxes'
+import { PatientHistoryPanel } from './patient-history-panel'
 
 // ============ TIPOS ============
 interface Patient {
@@ -141,6 +151,25 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const [processing, setProcessing] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  // UI states
+  const [showHistory, setShowHistory] = useState(true)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Refs para focus
+  const medInputRef = useRef<HTMLInputElement>(null)
+  const examInputRef = useRef<HTMLInputElement>(null)
+  const cidInputRef = useRef<HTMLInputElement>(null)
+
+  // ============ ATALHOS DE TECLADO ============
+  useKeyboardShortcuts([
+    { ...CONSULTATION_SHORTCUTS.SAVE, action: () => saveAll() },
+    { ...CONSULTATION_SHORTCUTS.NEW_PRESCRIPTION, action: () => medInputRef.current?.focus() },
+    { ...CONSULTATION_SHORTCUTS.NEW_EXAM, action: () => examInputRef.current?.focus() },
+    { ...CONSULTATION_SHORTCUTS.NEW_DIAGNOSIS, action: () => cidInputRef.current?.focus() },
+    { ...CONSULTATION_SHORTCUTS.TOGGLE_RECORD, action: () => recording ? stopRecording() : startRecording() },
+    { ...CONSULTATION_SHORTCUTS.HELP, action: () => setShowShortcuts(prev => !prev) },
+  ])
 
   // ============ CARREGAR CONSULTA ============
   useEffect(() => {
@@ -331,6 +360,25 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     setNewCertificate({ type: 'COMPARECIMENTO', description: '', days: 1 })
   }
 
+  // ============ REPETIR PRESCRIÇÃO DO HISTÓRICO ============
+  const handleRepeatPrescription = (pastPrescription: {
+    medication: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions?: string
+  }) => {
+    const rx: Prescription = {
+      id: Date.now().toString(),
+      medication: pastPrescription.medication,
+      dosage: pastPrescription.dosage,
+      frequency: pastPrescription.frequency,
+      duration: pastPrescription.duration,
+      instructions: pastPrescription.instructions || ''
+    }
+    setPrescriptions(prev => [...prev, rx])
+  }
+
   // ============ SALVAR ============
   const saveAll = async () => {
     setSaving(true)
@@ -378,7 +426,31 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
 
   // ============ RENDER ============
   return (
-    <div className="p-4 space-y-4 max-w-[1600px] mx-auto">
+    <div className="p-4 space-y-4 max-w-[1800px] mx-auto">
+      {/* Modal de Atalhos */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowShortcuts(false)}>
+          <Card className="w-96" onClick={e => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Keyboard className="h-5 w-5" />
+                Atalhos de Teclado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between text-sm"><span>Salvar consulta</span><kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+S</kbd></div>
+              <div className="flex justify-between text-sm"><span>Nova prescrição</span><kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+P</kbd></div>
+              <div className="flex justify-between text-sm"><span>Novo exame</span><kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+E</kbd></div>
+              <div className="flex justify-between text-sm"><span>Novo diagnóstico</span><kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+D</kbd></div>
+              <div className="flex justify-between text-sm"><span>Gravar/Parar</span><kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+R</kbd></div>
+              <div className="flex justify-between text-sm"><span>Fechar atalhos</span><kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+/</kbd></div>
+              <Separator className="my-2" />
+              <p className="text-xs text-muted-foreground">Pressione Esc ou clique fora para fechar</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* HEADER */}
       <Card>
         <CardContent className="py-3">
@@ -395,6 +467,40 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Toggle Histórico */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={showHistory ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowHistory(prev => !prev)}
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {showHistory ? 'Ocultar histórico' : 'Mostrar histórico'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Atalhos */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowShortcuts(true)}
+                    >
+                      <Keyboard className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Atalhos de teclado (Ctrl+/)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               {/* Gravação */}
               <Button
                 variant={recording ? "destructive" : "outline"}
@@ -446,11 +552,23 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         </CardContent>
       </Card>
 
-      {/* GRID PRINCIPAL - 3 COLUNAS */}
-      <div className="grid lg:grid-cols-3 gap-4">
+      {/* LAYOUT PRINCIPAL */}
+      <div className="flex gap-4">
+        {/* PAINEL DE HISTÓRICO (lateral esquerda) */}
+        {showHistory && consultation?.patient?.id && (
+          <div className="w-80 flex-shrink-0">
+            <PatientHistoryPanel 
+              patientId={consultation.patient.id}
+              onRepeatPrescription={handleRepeatPrescription}
+            />
+          </div>
+        )}
+
+        {/* GRID PRINCIPAL - 3 COLUNAS */}
+        <div className={`grid gap-4 flex-1 ${showHistory ? 'lg:grid-cols-3' : 'lg:grid-cols-3'}`}>
         
-        {/* COLUNA 1: SOAP + Vitais + CID */}
-        <div className="space-y-4">
+          {/* COLUNA 1: SOAP + Vitais + CID */}
+          <div className="space-y-4">
           {/* Sinais Vitais */}
           <Card>
             <CardHeader className="py-2">
@@ -709,13 +827,14 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             </CardContent>
           </Card>
         </div>
+        </div>
       </div>
 
       {/* FOOTER - SALVAR */}
       <div className="sticky bottom-4 flex justify-center">
         <Button onClick={saveAll} disabled={saving} size="lg" className="shadow-lg px-8">
           {saving ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-          {saving ? 'Salvando...' : 'Salvar Consulta'}
+          {saving ? 'Salvando...' : 'Salvar Consulta (Ctrl+S)'}
         </Button>
       </div>
     </div>

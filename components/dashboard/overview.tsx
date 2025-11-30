@@ -10,7 +10,9 @@ import {
   Clock,
   UserCheck,
   AlertTriangle,
-  Activity
+  Activity,
+  Play,
+  Stethoscope
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
@@ -212,22 +214,24 @@ export function DashboardOverview() {
             <div className="space-y-4">
               {data.appointments && data.appointments.length > 0 ? (
                 data.appointments.map((appointment) => (
-                  <button
+                  <div
                     key={appointment.id}
-                    className="w-full text-left flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
-                    onClick={() => {
-                      if (appointment.consultationId) {
-                        router.push(`/consultations/${appointment.consultationId}`)
-                        return
-                      }
-                      const params = new URLSearchParams()
-                      if (appointment.patientId) params.set('patientId', appointment.patientId)
-                      if (appointment.date) params.set('date', appointment.date)
-                      const qs = params.toString()
-                      router.push(qs ? `/consultations?${qs}` : '/consultations')
-                    }}
+                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
                   >
-                    <div className="flex items-center space-x-4">
+                    <button
+                      className="flex items-center space-x-4 flex-1 text-left"
+                      onClick={() => {
+                        if (appointment.consultationId) {
+                          router.push(`/consultations/${appointment.consultationId}`)
+                          return
+                        }
+                        const params = new URLSearchParams()
+                        if (appointment.patientId) params.set('patientId', appointment.patientId)
+                        if (appointment.date) params.set('date', appointment.date)
+                        const qs = params.toString()
+                        router.push(qs ? `/consultations?${qs}` : '/consultations')
+                      }}
+                    >
                       <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold">
                         {appointment.patient.charAt(0)}
                       </div>
@@ -239,16 +243,32 @@ export function DashboardOverview() {
                           {appointment.type}
                         </p>
                       </div>
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="font-medium text-foreground">
+                          {appointment.time}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {appointment.duration}
+                        </p>
+                      </div>
+                      {appointment.consultationId && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white shadow-md"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/consultations/${appointment.consultationId}`)
+                          }}
+                          title="Iniciar Atendimento"
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Atender
+                        </Button>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-foreground">
-                        {appointment.time}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {appointment.duration}
-                      </p>
-                    </div>
-                  </button>
+                  </div>
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-muted rounded-xl">
@@ -280,7 +300,7 @@ export function DashboardOverview() {
                 data.patients.map((patient) => (
                   <div 
                     key={patient.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
                   >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
@@ -305,6 +325,16 @@ export function DashboardOverview() {
                     }`}>
                       {patient.status}
                     </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => router.push(`/consultations/new?patientId=${patient.id}`)}
+                      title="Nova Consulta"
+                    >
+                      <Stethoscope className="h-4 w-4 mr-1" />
+                      Consulta
+                    </Button>
                   </div>
                 </div>
               ))
