@@ -19,23 +19,42 @@ function getInvitesPrisma(): PrismaClient {
   return globalForInvites.invitesPrisma
 }
 
+// Roles que podem convidar e quem podem convidar
+const INVITE_PERMISSIONS: Record<string, string[]> = {
+  ADMIN: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PATIENT'],
+  DOCTOR: ['PATIENT'],
+  NURSE: ['PATIENT'],
+  RECEPTIONIST: ['PATIENT'],
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
 
-  if (!session) {
+  if (!session?.user) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
-  // Check permissions (optional, for now just allow authenticated users)
-  // if (session.user.role !== 'ADMIN' && session.user.role !== 'RECEPTIONIST') ...
+  const userRole = (session.user as { role?: string }).role || 'PATIENT'
+  const allowedRoles = INVITE_PERMISSIONS[userRole] || []
+
+  if (allowedRoles.length === 0) {
+    return NextResponse.json({ error: 'Você não tem permissão para enviar convites' }, { status: 403 })
+  }
 
   try {
     const prisma = getInvitesPrisma()
     const body = await req.json()
-    const { email, role } = body
+    const { email, role = 'PATIENT' } = body
 
     if (!email) {
-      return new NextResponse('Email is required', { status: 400 })
+      return NextResponse.json({ error: 'Email é obrigatório' }, { status: 400 })
+    }
+
+    // Verificar se o usuário pode convidar esse role
+    if (!allowedRoles.includes(role)) {
+      return NextResponse.json({ 
+        error: `Você não tem permissão para convidar ${role}. Permitidos: ${allowedRoles.join(', ')}` 
+      }, { status: 403 })
     }
 
     // Check if invite already exists and is pending

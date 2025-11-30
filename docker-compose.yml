@@ -42,8 +42,8 @@ services:
     container_name: healthcare-app
     environment:
       DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:-change_me}@postgres:5432/healthcare_db
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change_me}
-      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-umbrel_secret_key_123}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://healthcare.rafaelpiazenski.com}
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3}
       REDIS_HOST: redis
