@@ -20,7 +20,8 @@ import {
   Brain,
   DollarSign,
   Building,
-  Mail
+  Mail,
+  UserCog
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -114,6 +115,13 @@ const menuItems: MenuItem[] = [
     title: 'Gestão & BI',
     icon: BarChart3,
     href: '/admin/bi',
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    title: 'Gestão de Pessoal',
+    icon: UserCog,
+    href: '/admin/staff',
+    badge: 'RH',
     allowedRoles: ['ADMIN'],
   },
   {

@@ -1,0 +1,180 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
+
+interface RouteParams {
+  params: { id: string }
+}
+
+// GET - Detalhes de um profissional
+export async function GET(req: Request, { params }: RouteParams) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const userRole = (session.user as { role?: string }).role
+  if (userRole !== 'ADMIN') {
+    return NextResponse.json({ error: 'Apenas administradores podem acessar' }, { status: 403 })
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        speciality: true,
+        phone: true,
+        crmNumber: true,
+        _count: {
+          select: {
+            consultations: true,
+          }
+        }
+      }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Profissional não encontrado' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true, data: user })
+  } catch (error) {
+    console.error('[staff] Error:', error)
+    return NextResponse.json({ error: 'Erro ao buscar profissional' }, { status: 500 })
+  }
+}
+
+// PATCH - Atualizar profissional (status, role, etc)
+export async function PATCH(req: Request, { params }: RouteParams) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const userRole = (session.user as { role?: string }).role
+  if (userRole !== 'ADMIN') {
+    return NextResponse.json({ error: 'Apenas administradores podem editar' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json()
+    const { action, ...data } = body
+
+    // Ações especiais
+    if (action === 'toggle-status') {
+      const user = await prisma.user.findUnique({ where: { id: params.id } })
+      if (!user) {
+        return NextResponse.json({ error: 'Profissional não encontrado' }, { status: 404 })
+      }
+      
+      const updated = await prisma.user.update({
+        where: { id: params.id },
+        data: { isActive: !user.isActive },
+        select: { id: true, name: true, isActive: true }
+      })
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `${updated.name} foi ${updated.isActive ? 'ativado' : 'desativado'}`,
+        data: updated 
+      })
+    }
+
+    if (action === 'reset-password') {
+      // Gerar senha temporária
+      const tempPassword = crypto.randomBytes(4).toString('hex') // 8 chars
+      const hashedPassword = await bcrypt.hash(tempPassword, 10)
+      
+      const updated = await prisma.user.update({
+        where: { id: params.id },
+        data: { password: hashedPassword },
+        select: { id: true, name: true, email: true }
+      })
+      
+      // TODO: Enviar email com senha temporária
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `Senha resetada para ${updated.name}`,
+        tempPassword // Em produção, isso deveria ser enviado por email apenas
+      })
+    }
+
+    // Atualização normal de dados
+    const allowedFields = ['name', 'email', 'role', 'speciality', 'phone', 'crmNumber', 'isActive']
+    const updateData: Record<string, unknown> = {}
+    
+    for (const field of allowedFields) {
+      if (data[field] !== undefined) {
+        updateData[field] = data[field]
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: params.id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        speciality: true,
+        phone: true,
+        crmNumber: true,
+      }
+    })
+
+    return NextResponse.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('[staff] Error:', error)
+    return NextResponse.json({ error: 'Erro ao atualizar profissional' }, { status: 500 })
+  }
+}
+
+// DELETE - Remover profissional (soft delete = desativar)
+export async function DELETE(req: Request, { params }: RouteParams) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const userRole = (session.user as { role?: string }).role
+  if (userRole !== 'ADMIN') {
+    return NextResponse.json({ error: 'Apenas administradores podem remover' }, { status: 403 })
+  }
+
+  try {
+    // Soft delete - apenas desativa
+    const updated = await prisma.user.update({
+      where: { id: params.id },
+      data: { isActive: false },
+      select: { id: true, name: true }
+    })
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `${updated.name} foi desativado`
+    })
+  } catch (error) {
+    console.error('[staff] Error:', error)
+    return NextResponse.json({ error: 'Erro ao remover profissional' }, { status: 500 })
+  }
+}
