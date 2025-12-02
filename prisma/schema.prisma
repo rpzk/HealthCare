@@ -52,6 +52,13 @@ model User {
   scheduleEntries       ScheduleEntry[]  @relation("ScheduleEntries")
   timeBank              TimeBank[]
   vacationBalance       VacationBalance?
+  
+  // Convites de pacientes enviados
+  patientInvites        PatientInvite[]
+  
+  // Questionários integrativos
+  questionnaireTemplates QuestionnaireTemplate[]
+  sentQuestionnaires     PatientQuestionnaire[] @relation("SentQuestionnaires")
 
   @@map("users")
 }
@@ -178,6 +185,20 @@ model Patient {
   vitalSigns            VitalSigns[]
   strengthAssessments   StrengthAssessment[]   @relation("PatientStrengthAssessments")
   developmentPlans      DevelopmentPlan[]      @relation("PatientDevelopmentPlans")
+  
+  // Dispositivos de saúde conectados
+  connectedDevices      ConnectedDevice[]
+  deviceReadings        DeviceReading[]
+  readingThresholds     ReadingThreshold[]
+  deviceSyncSessions    DeviceSyncSession[]
+  
+  // Consentimentos de biometria (LGPD)
+  biometricConsents     PatientBiometricConsent[]
+  consentAuditLogs      ConsentAuditLog[]
+  patientInvite         PatientInvite?
+  
+  // Questionários integrativos recebidos
+  questionnaires        PatientQuestionnaire[]
 
   @@map("patients")
 }
@@ -320,6 +341,9 @@ model Consultation {
   financialTransaction FinancialTransaction?
   prescriptions        Prescription[]
   vitalSigns           VitalSigns[]
+  
+  // Questionários associados a esta consulta
+  questionnaires       PatientQuestionnaire[]
 
   @@map("consultations")
 }
@@ -695,7 +719,7 @@ model AuditLog {
   userEmail    String
   userRole     String
   action       String
-  resourceId   String
+  resourceId   String?
   ipAddress    String?
   userAgent    String?
   success      Boolean  @default(true)
@@ -2237,4 +2261,687 @@ enum ProtocolCategory {
   PREVENTIVE // Medicina Preventiva
   EMERGENCY // Urgência/Emergência
   CUSTOM // Personalizado
+}
+
+// ============================================
+// DISPOSITIVOS DE SAÚDE CONECTADOS (IoT/Wearables)
+// ============================================
+
+// Tipo de dispositivo de saúde
+enum HealthDeviceType {
+  BLOOD_PRESSURE   // Medidor de pressão
+  GLUCOMETER       // Glicosímetro
+  PULSE_OXIMETER   // Oxímetro de pulso
+  THERMOMETER      // Termômetro
+  SCALE            // Balança
+  HEART_RATE       // Monitor cardíaco
+  ECG              // Eletrocardiograma
+  STETHOSCOPE      // Estetoscópio digital
+  OTOSCOPE         // Otoscópio digital
+  DERMATOSCOPE     // Dermatoscópio
+  SPIROMETER       // Espirômetro
+  SLEEP_TRACKER    // Monitor de sono
+  ACTIVITY_TRACKER // Monitor de atividade
+  CGM              // Monitor contínuo de glicose
+  SMARTWATCH       // Relógio inteligente
+  FITNESS_BAND     // Pulseira fitness
+  OTHER            // Outro
+}
+
+// Fonte de dados do dispositivo
+enum DeviceDataSource {
+  APPLE_HEALTHKIT    // Apple HealthKit (iOS)
+  GOOGLE_FIT         // Google Fit (Android)
+  HEALTH_CONNECT     // Health Connect (Android 14+)
+  DIRECT_BLUETOOTH   // Conexão Bluetooth direta
+  DIRECT_WIFI        // Conexão WiFi direta
+  MANUAL_ENTRY       // Entrada manual
+  API_INTEGRATION    // Integração via API do fabricante
+  FHIR               // Padrão FHIR
+  OPEN_MHEALTH       // Padrão Open mHealth
+}
+
+// Status de conexão do dispositivo
+enum DeviceConnectionStatus {
+  CONNECTED       // Conectado e sincronizando
+  DISCONNECTED    // Desconectado
+  PAIRING         // Em processo de pareamento
+  ERROR           // Erro de conexão
+  NEEDS_AUTH      // Precisa reautorização
+}
+
+// Dispositivo de saúde conectado
+model ConnectedDevice {
+  id                String                 @id @default(cuid())
+  patientId         String
+  patient           Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Identificação do dispositivo
+  deviceType        HealthDeviceType
+  deviceName        String                 // Nome do dispositivo (ex: "Apple Watch Series 9")
+  manufacturer      String?                // Fabricante (ex: "Apple", "Omron")
+  model             String?                // Modelo específico
+  serialNumber      String?                // Número de série
+  firmwareVersion   String?                // Versão do firmware
+  
+  // Conexão
+  dataSource        DeviceDataSource
+  connectionStatus  DeviceConnectionStatus @default(DISCONNECTED)
+  lastSyncAt        DateTime?              // Última sincronização
+  syncFrequency     Int?                   // Frequência de sync em minutos
+  
+  // Autenticação (para APIs de fabricantes)
+  accessToken       String?                // Token de acesso (criptografado)
+  refreshToken      String?                // Token de refresh (criptografado)
+  tokenExpiresAt    DateTime?              // Expiração do token
+  
+  // Configurações
+  isActive          Boolean                @default(true)
+  autoSync          Boolean                @default(true)
+  notifyOnAbnormal  Boolean                @default(true) // Alertar valores anormais
+  
+  // Metadados
+  metadata          Json?                  // Dados extras específicos do dispositivo
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  
+  // Relações
+  readings          DeviceReading[]
+  
+  @@unique([patientId, serialNumber])
+  @@index([patientId])
+  @@index([deviceType])
+  @@map("connected_devices")
+}
+
+// Leitura/medição de um dispositivo
+model DeviceReading {
+  id              String          @id @default(cuid())
+  deviceId        String?
+  device          ConnectedDevice? @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Tipo de medição
+  readingType     ReadingType
+  
+  // Valores (usando campos genéricos para flexibilidade)
+  primaryValue    Float           // Valor principal (ex: glicose, SpO2, peso)
+  secondaryValue  Float?          // Valor secundário (ex: pressão diastólica)
+  tertiaryValue   Float?          // Valor terciário (se necessário)
+  unit            String          // Unidade (ex: "mg/dL", "mmHg", "kg")
+  
+  // Contexto da medição
+  measuredAt      DateTime        // Quando a medição foi feita
+  syncedAt        DateTime        @default(now()) // Quando foi sincronizado
+  
+  // Metadados da medição
+  context         ReadingContext? // Contexto (jejum, pós-refeição, etc)
+  notes           String?         // Observações
+  isManual        Boolean         @default(false) // Entrada manual vs automática
+  
+  // Qualidade/confiabilidade
+  confidence      Float?          // Score de confiança (0-1)
+  isValid         Boolean         @default(true)
+  invalidReason   String?         // Motivo se inválido
+  
+  // Alertas
+  isAbnormal      Boolean         @default(false)
+  alertSeverity   AlertSeverity?  // Severidade se anormal
+  alertTriggered  Boolean         @default(false)
+  
+  // Dados brutos do dispositivo
+  rawData         Json?           // Dados originais do dispositivo
+  
+  createdAt       DateTime        @default(now())
+  
+  @@index([patientId, readingType])
+  @@index([deviceId, measuredAt])
+  @@index([measuredAt])
+  @@index([isAbnormal])
+  @@map("device_readings")
+}
+
+// Tipo de leitura/medição
+enum ReadingType {
+  // Cardiovascular
+  BLOOD_PRESSURE_SYSTOLIC   // Pressão sistólica
+  BLOOD_PRESSURE_DIASTOLIC  // Pressão diastólica
+  BLOOD_PRESSURE            // Pressão (combinado)
+  HEART_RATE                // Frequência cardíaca
+  HEART_RATE_VARIABILITY    // Variabilidade cardíaca
+  ECG_RHYTHM                // Ritmo ECG
+  
+  // Respiratório
+  OXYGEN_SATURATION         // SpO2
+  RESPIRATORY_RATE          // Frequência respiratória
+  PEAK_FLOW                 // Pico de fluxo
+  FEV1                      // Volume expiratório forçado
+  
+  // Metabólico
+  BLOOD_GLUCOSE             // Glicemia
+  BLOOD_GLUCOSE_FASTING     // Glicemia em jejum
+  BLOOD_GLUCOSE_POSTMEAL    // Glicemia pós-prandial
+  KETONES                   // Cetonas
+  
+  // Composição corporal
+  WEIGHT                    // Peso
+  BMI                       // IMC
+  BODY_FAT                  // % gordura corporal
+  MUSCLE_MASS               // Massa muscular
+  BONE_MASS                 // Massa óssea
+  WATER_PERCENTAGE          // % água corporal
+  VISCERAL_FAT              // Gordura visceral
+  
+  // Temperatura
+  BODY_TEMPERATURE          // Temperatura corporal
+  SKIN_TEMPERATURE          // Temperatura da pele
+  
+  // Sono
+  SLEEP_DURATION            // Duração do sono
+  SLEEP_DEEP                // Sono profundo
+  SLEEP_REM                 // Sono REM
+  SLEEP_LIGHT               // Sono leve
+  SLEEP_AWAKE               // Tempo acordado
+  SLEEP_SCORE               // Score de qualidade
+  
+  // Atividade física
+  STEPS                     // Passos
+  DISTANCE                  // Distância
+  CALORIES_BURNED           // Calorias queimadas
+  ACTIVE_MINUTES            // Minutos ativos
+  FLOORS_CLIMBED            // Andares subidos
+  EXERCISE_DURATION         // Duração exercício
+  
+  // Estresse/Mental
+  STRESS_LEVEL              // Nível de estresse
+  MINDFULNESS_MINUTES       // Minutos de mindfulness
+  
+  // Áudio/Exame
+  HEART_SOUND               // Som cardíaco (estetoscópio)
+  LUNG_SOUND                // Som pulmonar
+  EAR_IMAGE                 // Imagem do ouvido (otoscópio)
+  SKIN_IMAGE                // Imagem da pele (dermatoscópio)
+  
+  // Outros
+  HYDRATION                 // Hidratação
+  MENSTRUAL_CYCLE           // Ciclo menstrual
+  MEDICATION_TAKEN          // Medicação tomada
+  OTHER                     // Outro
+}
+
+// Contexto da medição
+enum ReadingContext {
+  FASTING           // Em jejum
+  BEFORE_MEAL       // Antes da refeição
+  AFTER_MEAL        // Depois da refeição
+  BEFORE_EXERCISE   // Antes do exercício
+  AFTER_EXERCISE    // Depois do exercício
+  RESTING           // Em repouso
+  ACTIVE            // Em atividade
+  SLEEPING          // Dormindo
+  WAKING            // Ao acordar
+  BEDTIME           // Ao deitar
+  STRESSED          // Estressado
+  RELAXED           // Relaxado
+  ILL               // Doente
+  MEDICATED         // Após medicação
+}
+
+// Severidade de alerta
+enum AlertSeverity {
+  LOW       // Atenção
+  MEDIUM    // Moderado
+  HIGH      // Alto
+  CRITICAL  // Crítico
+}
+
+// Limites de referência para alertas
+model ReadingThreshold {
+  id              String      @id @default(cuid())
+  patientId       String?     // Se null, é padrão global
+  patient         Patient?    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  readingType     ReadingType
+  
+  // Limites
+  criticalLow     Float?      // Abaixo = crítico
+  warningLow      Float?      // Abaixo = atenção
+  normalMin       Float?      // Início da faixa normal
+  normalMax       Float?      // Fim da faixa normal
+  warningHigh     Float?      // Acima = atenção
+  criticalHigh    Float?      // Acima = crítico
+  
+  // Aplicabilidade
+  context         ReadingContext? // Contexto específico (ex: jejum para glicose)
+  ageMin          Int?        // Idade mínima
+  ageMax          Int?        // Idade máxima
+  
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@unique([patientId, readingType, context])
+  @@index([readingType])
+  @@map("reading_thresholds")
+}
+
+// Sessão de sincronização
+model DeviceSyncSession {
+  id              String          @id @default(cuid())
+  patientId       String
+  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  dataSource      DeviceDataSource
+  startedAt       DateTime        @default(now())
+  completedAt     DateTime?
+  
+  // Estatísticas
+  readingsImported Int            @default(0)
+  readingsSkipped  Int            @default(0)
+  errors          Int             @default(0)
+  
+  status          SyncStatus      @default(IN_PROGRESS)
+  errorMessage    String?
+  
+  @@index([patientId])
+  @@map("device_sync_sessions")
+}
+
+enum SyncStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+// ============================================
+// CONSENTIMENTO DE BIOMETRIA (LGPD)
+// ============================================
+
+// Tipos de dados biométricos que podem ser compartilhados
+enum BiometricDataType {
+  HEART_RATE           // Frequência cardíaca
+  BLOOD_PRESSURE       // Pressão arterial
+  OXYGEN_SATURATION    // Saturação de oxigênio
+  BLOOD_GLUCOSE        // Glicemia
+  BODY_TEMPERATURE     // Temperatura
+  WEIGHT               // Peso
+  BODY_COMPOSITION     // Composição corporal (gordura, massa muscular)
+  STEPS                // Passos
+  DISTANCE             // Distância percorrida
+  CALORIES             // Calorias
+  ACTIVITY             // Atividade física
+  SLEEP                // Dados de sono
+  HEART_SOUNDS         // Sons cardíacos (estetoscópio)
+  RESPIRATORY          // Dados respiratórios
+  ECG                  // Eletrocardiograma
+  OTHER                // Outros
+}
+
+// Convite para paciente com opções de consentimento
+model PatientInvite {
+  id              String        @id @default(cuid())
+  
+  // Dados do convite
+  email           String
+  phone           String?       // Para envio via WhatsApp
+  patientName     String        // Nome do paciente
+  token           String        @unique
+  expiresAt       DateTime
+  status          InviteStatus  @default(PENDING)
+  
+  // Quem enviou
+  invitedById     String
+  invitedBy       User          @relation(fields: [invitedById], references: [id])
+  
+  // Dados pré-preenchidos (opcional)
+  birthDate       DateTime?
+  cpf             String?
+  
+  // Mensagem personalizada
+  customMessage   String?
+  
+  // Consentimento aceito
+  consentAcceptedAt DateTime?
+  consentIpAddress  String?     // IP do aceite (auditoria)
+  consentUserAgent  String?     // Navegador usado (auditoria)
+  
+  // Relação com consentimentos
+  biometricConsents PatientBiometricConsent[]
+  
+  // Paciente criado (após aceite)
+  patientId       String?       @unique
+  patient         Patient?      @relation(fields: [patientId], references: [id])
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([email])
+  @@index([token])
+  @@map("patient_invites")
+}
+
+// Consentimento individual para cada tipo de dado biométrico
+model PatientBiometricConsent {
+  id              String            @id @default(cuid())
+  
+  // Relacionamentos
+  patientId       String?
+  patient         Patient?          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  inviteId        String?
+  invite          PatientInvite?    @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  
+  // Tipo de dado
+  dataType        BiometricDataType
+  
+  // Consentimento
+  isGranted       Boolean           @default(false)
+  grantedAt       DateTime?
+  revokedAt       DateTime?
+  
+  // Finalidade explicada ao paciente
+  purpose         String            // "Monitoramento de pressão arterial para acompanhamento de hipertensão"
+  
+  // Auditoria
+  ipAddress       String?
+  userAgent       String?
+  
+  // Validade (opcional - para consentimentos temporários)
+  validUntil      DateTime?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@unique([patientId, dataType])
+  @@index([patientId])
+  @@index([inviteId])
+  @@map("patient_biometric_consents")
+}
+
+// Histórico de alterações de consentimento (auditoria LGPD)
+model ConsentAuditLog {
+  id              String            @id @default(cuid())
+  
+  patientId       String
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  dataType        BiometricDataType
+  action          ConsentAction     // GRANTED, REVOKED, MODIFIED
+  previousValue   Boolean?
+  newValue        Boolean
+  
+  // Auditoria
+  ipAddress       String?
+  userAgent       String?
+  reason          String?           // Motivo da alteração (opcional)
+  
+  createdAt       DateTime          @default(now())
+  
+  @@index([patientId])
+  @@map("consent_audit_logs")
+}
+
+enum ConsentAction {
+  GRANTED
+  REVOKED
+  MODIFIED
+}
+
+// ==========================================
+// QUESTIONÁRIOS INTEGRATIVOS
+// ==========================================
+
+// Tipos de sistema terapêutico
+enum TherapeuticSystem {
+  AYURVEDA
+  HOMEOPATHY
+  TCM              // Traditional Chinese Medicine
+  ANTHROPOSOPHY
+  NATUROPATHY
+  FUNCTIONAL
+  GENERAL
+  CUSTOM
+}
+
+// Tipos de pergunta (questionários integrativos)
+enum IntakeQuestionType {
+  SINGLE_CHOICE     // Uma opção
+  MULTIPLE_CHOICE   // Múltiplas opções
+  SCALE             // Escala numérica (1-10, etc)
+  TEXT              // Texto livre
+  IMAGE_CHOICE      // Escolha com imagens
+  YES_NO            // Sim/Não
+  BODY_MAP          // Mapa corporal (clique em região)
+}
+
+// Status do questionário enviado
+enum QuestionnaireStatus {
+  PENDING           // Enviado, aguardando
+  IN_PROGRESS       // Paciente começou
+  COMPLETED         // Finalizado
+  EXPIRED           // Expirou sem resposta
+  CANCELLED         // Cancelado
+}
+
+// Template de questionário (criado pelo profissional)
+model QuestionnaireTemplate {
+  id                String              @id @default(cuid())
+  
+  // Metadados
+  name              String              // "Avaliação de Prakriti - Ayurveda"
+  description       String?             // Descrição para o profissional
+  patientIntro      String?             // Texto de introdução para o paciente
+  therapeuticSystem TherapeuticSystem   @default(GENERAL)
+  
+  // Organização
+  categories        IntakeCategory[]
+  
+  // Configurações
+  estimatedMinutes  Int                 @default(15)
+  allowPause        Boolean             @default(true)  // Paciente pode pausar
+  showProgress      Boolean             @default(true)  // Mostrar barra de progresso
+  randomizeQuestions Boolean            @default(false) // Aleatorizar ordem
+  
+  // Estilo visual
+  themeColor        String?             // Cor tema (#hex)
+  iconEmoji         String?             // Emoji do questionário 🌿
+  
+  // Template público ou privado
+  isPublic          Boolean             @default(false) // Disponível para outros profissionais
+  isBuiltIn         Boolean             @default(false) // Template do sistema
+  
+  // Criador
+  createdById       String?
+  createdBy         User?               @relation(fields: [createdById], references: [id])
+  
+  // Questionários enviados baseados neste template
+  sentQuestionnaires PatientQuestionnaire[]
+  
+  // Análise IA
+  aiAnalysisPrompt  String?             // Prompt customizado para análise IA
+  scoringLogic      Json?               // Lógica de pontuação (doshas, temperamentos)
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@map("questionnaire_templates")
+}
+
+// Categoria/Seção dentro do questionário
+model IntakeCategory {
+  id                String              @id @default(cuid())
+  
+  templateId        String
+  template          QuestionnaireTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  name              String              // "Características Físicas"
+  description       String?             // Breve explicação
+  order             Int                 @default(0)
+  iconEmoji         String?             // 🏃 para seção física
+  
+  questions         IntakeQuestion[]
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([templateId])
+  @@map("intake_categories")
+}
+
+// Pergunta individual
+model IntakeQuestion {
+  id                String              @id @default(cuid())
+  
+  categoryId        String
+  category          IntakeCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  // Conteúdo
+  text              String              // "Como é sua digestão habitualmente?"
+  helpText          String?             // Texto de ajuda/explicação
+  imageUrl          String?             // Imagem ilustrativa
+  
+  // Tipo e configuração
+  type              IntakeQuestionType  @default(SINGLE_CHOICE)
+  isRequired        Boolean             @default(true)
+  order             Int                 @default(0)
+  
+  // Para escala
+  scaleMin          Int?                // Ex: 1
+  scaleMax          Int?                // Ex: 10
+  scaleMinLabel     String?             // "Muito lenta"
+  scaleMaxLabel     String?             // "Muito rápida"
+  
+  // Opções de resposta
+  options           IntakeQuestionOption[]
+  
+  // Respostas dos pacientes
+  answers           PatientAnswer[]
+  
+  // Mapeamento para análise (ex: dosha, temperamento)
+  analysisMapping   Json?               // { "vata": 0, "pitta": 2, "kapha": 1 }
+  
+  // Lógica condicional (mostrar só se...)
+  conditionalLogic  Json?               // { "showIf": { "questionId": "xxx", "value": "sim" } }
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([categoryId])
+  @@map("intake_questions")
+}
+
+// Opção de resposta (para choice questions)
+model IntakeQuestionOption {
+  id                String              @id @default(cuid())
+  
+  questionId        String
+  question          IntakeQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  text              String              // "Rápida e irregular"
+  description       String?             // Explicação adicional
+  imageUrl          String?             // Imagem/ícone
+  emoji             String?             // 🔥
+  order             Int                 @default(0)
+  
+  // Pontuação para análise
+  scoreValue        Json?               // { "vata": 2, "pitta": 0, "kapha": 0 }
+  
+  // Respostas que selecionaram esta opção
+  selectedIn        PatientAnswer[]
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([questionId])
+  @@map("intake_question_options")
+}
+
+// Questionário enviado para um paciente específico
+model PatientQuestionnaire {
+  id                String              @id @default(cuid())
+  
+  // Template usado
+  templateId        String
+  template          QuestionnaireTemplate @relation(fields: [templateId], references: [id])
+  
+  // Paciente
+  patientId         String
+  patient           Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Profissional que enviou
+  sentById          String
+  sentBy            User                @relation("SentQuestionnaires", fields: [sentById], references: [id])
+  
+  // Status
+  status            QuestionnaireStatus @default(PENDING)
+  
+  // Token para acesso (link público)
+  accessToken       String              @unique @default(cuid())
+  
+  // Datas
+  sentAt            DateTime            @default(now())
+  startedAt         DateTime?           // Quando começou a responder
+  completedAt       DateTime?           // Quando finalizou
+  expiresAt         DateTime?           // Data limite
+  
+  // Progresso
+  lastQuestionId    String?             // Última pergunta respondida (para retomar)
+  progressPercent   Int                 @default(0)
+  
+  // Respostas
+  answers           PatientAnswer[]
+  
+  // Análise IA
+  aiAnalysis        Json?               // Resultado da análise automática
+  aiAnalyzedAt      DateTime?
+  
+  // Notas do profissional
+  professionalNotes String?
+  
+  // Associar a uma consulta (opcional)
+  consultationId    String?
+  consultation      Consultation?       @relation(fields: [consultationId], references: [id])
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([patientId])
+  @@index([templateId])
+  @@index([accessToken])
+  @@map("patient_questionnaires")
+}
+
+// Resposta individual do paciente
+model PatientAnswer {
+  id                String              @id @default(cuid())
+  
+  questionnaireId   String
+  questionnaire     PatientQuestionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  
+  questionId        String
+  question          IntakeQuestion      @relation(fields: [questionId], references: [id])
+  
+  // Resposta (dependendo do tipo)
+  textValue         String?             // Para TEXT
+  numericValue      Float?              // Para SCALE
+  booleanValue      Boolean?            // Para YES_NO
+  
+  // Para SINGLE/MULTIPLE_CHOICE
+  selectedOptionId  String?
+  selectedOption    IntakeQuestionOption? @relation(fields: [selectedOptionId], references: [id])
+  
+  // Para MULTIPLE_CHOICE (múltiplas seleções)
+  selectedOptionIds String[]            // Array de IDs
+  
+  // Para BODY_MAP
+  bodyMapData       Json?               // { "region": "head", "x": 50, "y": 30, "note": "dor" }
+  
+  // Metadados
+  answeredAt        DateTime            @default(now())
+  timeSpentSeconds  Int?                // Tempo gasto na pergunta
+  
+  @@unique([questionnaireId, questionId])
+  @@index([questionnaireId])
+  @@map("patient_answers")
 }

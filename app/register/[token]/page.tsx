@@ -66,6 +66,9 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
     where: { isActive: true }
   })
 
+  // Check if role is PATIENT - they need biometric consents
+  const isPatient = invite.role === 'PATIENT'
+
   return (
     <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -74,7 +77,7 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
           <p className="mt-2 text-gray-600">Complete seu cadastro para acessar o sistema.</p>
         </div>
         
-        <RegistrationForm invite={invite} terms={terms} />
+        <RegistrationForm invite={invite} terms={terms} isPatient={isPatient} />
       </div>
     </div>
   )

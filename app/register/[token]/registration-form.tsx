@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Loader2, CheckCircle, ArrowRight, ArrowLeft, Fingerprint, Camera, Mic, Activity, Shield } from 'lucide-react'
 
 interface Term {
   id: string
@@ -28,10 +29,44 @@ interface Invite {
 interface RegistrationFormProps {
   invite: Invite
   terms: Term[]
+  isPatient: boolean
 }
 
-export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
+// Tipos de consentimento biométrico
+const BIOMETRIC_CONSENT_TYPES = [
+  {
+    type: 'FACIAL_RECOGNITION',
+    icon: Camera,
+    title: 'Reconhecimento Facial',
+    description: 'Usado para verificação de identidade segura durante check-in e acesso a informações sensíveis.',
+    benefits: ['Check-in automático', 'Acesso seguro ao prontuário', 'Prevenção de fraudes']
+  },
+  {
+    type: 'FINGERPRINT',
+    icon: Fingerprint,
+    title: 'Impressão Digital',
+    description: 'Autenticação rápida e segura via dispositivos com leitor biométrico.',
+    benefits: ['Login instantâneo', 'Confirmação de presença', 'Assinatura de documentos']
+  },
+  {
+    type: 'VOICE_RECOGNITION',
+    icon: Mic,
+    title: 'Reconhecimento de Voz',
+    description: 'Identificação por padrões vocais para interações por telefone ou assistentes.',
+    benefits: ['Atendimento telefônico', 'Comandos de voz', 'Acessibilidade']
+  },
+  {
+    type: 'VITAL_SIGNS',
+    icon: Activity,
+    title: 'Sinais Vitais',
+    description: 'Coleta automática de dados de dispositivos vestíveis (smartwatch, etc).',
+    benefits: ['Monitoramento contínuo', 'Alertas de emergência', 'Histórico de saúde']
+  }
+]
+
+export function RegistrationForm({ invite, terms, isPatient }: RegistrationFormProps) {
   const router = useRouter()
+  const totalSteps = isPatient ? 3 : 2
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -44,7 +79,13 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
     gender: '',
     password: '',
     confirmPassword: '',
-    acceptedTerms: {} as Record<string, boolean>
+    acceptedTerms: {} as Record<string, boolean>,
+    biometricConsents: {
+      FACIAL_RECOGNITION: false,
+      FINGERPRINT: false,
+      VOICE_RECOGNITION: false,
+      VITAL_SIGNS: false
+    } as Record<string, boolean>
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -57,6 +98,16 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
       acceptedTerms: {
         ...prev.acceptedTerms,
         [termId]: checked
+      }
+    }))
+  }
+
+  const handleBiometricChange = (type: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      biometricConsents: {
+        ...prev.biometricConsents,
+        [type]: checked
       }
     }))
   }
@@ -88,8 +139,16 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
     return true
   }
 
+  // Step 3 (biometric) is optional - no validation needed, just informational
+  const validateStep3 = () => {
+    setError('')
+    return true
+  }
+
   const handleSubmit = async () => {
-    if (!validateStep2()) return
+    // Validate current step
+    if (isPatient && step === 3 && !validateStep3()) return
+    if (!isPatient && step === 2 && !validateStep2()) return
 
     setLoading(true)
     setError('')
@@ -106,7 +165,8 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
           birthDate: formData.birthDate,
           gender: formData.gender,
           password: formData.password,
-          acceptedTerms: Object.keys(formData.acceptedTerms).filter(key => formData.acceptedTerms[key])
+          acceptedTerms: Object.keys(formData.acceptedTerms).filter(key => formData.acceptedTerms[key]),
+          biometricConsents: isPatient ? formData.biometricConsents : undefined
         })
       })
 
@@ -127,19 +187,25 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
   const nextStep = () => {
     if (step === 1 && validateStep1()) {
       setStep(2)
+    } else if (step === 2 && validateStep2()) {
+      if (isPatient) {
+        setStep(3)
+      }
     }
   }
 
   const prevStep = () => {
-    setStep(1)
+    setStep(step - 1)
     setError('')
   }
+
+  const isLastStep = step === totalSteps
 
   return (
     <Card className="w-full bg-white shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Cadastro - Passo {step} de 2</span>
+          <span>Cadastro - Passo {step} de {totalSteps}</span>
           <span className="text-sm font-normal text-gray-500">{invite.email}</span>
         </CardTitle>
       </CardHeader>
@@ -269,9 +335,76 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
             ))}
           </div>
         )}
+
+        {/* Step 3: Biometric Consents (only for patients) */}
+        {step === 3 && isPatient && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <Shield className="h-8 w-8 text-blue-600" />
+              <div>
+                <h3 className="font-semibold text-blue-900">Consentimentos Biométricos</h3>
+                <p className="text-sm text-blue-700">
+                  Estes são <strong>opcionais</strong>. Você pode alterá-los depois em Configurações → Privacidade.
+                </p>
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-600">
+              Para melhorar sua experiência e segurança, você pode autorizar o uso de dados biométricos. 
+              Todos os dados são criptografados e protegidos conforme a LGPD.
+            </p>
+
+            <div className="space-y-4">
+              {BIOMETRIC_CONSENT_TYPES.map(consent => {
+                const Icon = consent.icon
+                const isEnabled = formData.biometricConsents[consent.type]
+                
+                return (
+                  <div 
+                    key={consent.type}
+                    className={`border rounded-lg p-4 transition-colors ${
+                      isEnabled ? 'border-green-300 bg-green-50' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg ${isEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                          <Icon className={`h-5 w-5 ${isEnabled ? 'text-green-600' : 'text-gray-500'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium">{consent.title}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{consent.description}</p>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {consent.benefits.map(benefit => (
+                              <span 
+                                key={benefit}
+                                className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+                              >
+                                {benefit}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => handleBiometricChange(consent.type, checked)}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm text-amber-800">
+              <strong>Nota:</strong> Você pode pular esta etapa sem ativar nenhum consentimento. 
+              Essas autorizações podem ser gerenciadas a qualquer momento nas configurações de privacidade.
+            </div>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between">
-        {step === 2 ? (
+        {step > 1 ? (
           <Button variant="outline" onClick={prevStep} disabled={loading}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
           </Button>
@@ -279,7 +412,7 @@ export function RegistrationForm({ invite, terms }: RegistrationFormProps) {
           <div></div> // Spacer
         )}
 
-        {step === 1 ? (
+        {!isLastStep ? (
           <Button onClick={nextStep}>
             Próximo <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

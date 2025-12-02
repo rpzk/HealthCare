@@ -20,10 +20,13 @@ export async function POST(req: Request) {
   try {
     const prisma = getRegisterPrisma()
     const body = await req.json()
-    const { token, name, cpf, phone, birthDate, gender, password, acceptedTerms } = body
+    const { token, name, cpf, phone, birthDate, gender, password, acceptedTerms, biometricConsents } = body
 
     if (!token || !name || !cpf || !password || !acceptedTerms) {
-      return new NextResponse('Missing required fields', { status: 400 })
+      return NextResponse.json(
+        { error: 'Campos obrigatórios não preenchidos', code: 'MISSING_FIELDS' },
+        { status: 400 }
+      )
     }
 
     // Validate invite
@@ -32,16 +35,35 @@ export async function POST(req: Request) {
     })
 
     if (!invite || invite.status !== 'PENDING' || invite.expiresAt < new Date()) {
-      return new NextResponse('Invalid or expired invite', { status: 400 })
+      return NextResponse.json(
+        { error: 'Convite inválido ou expirado', code: 'INVALID_INVITE' },
+        { status: 400 }
+      )
     }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: invite.email }
+      where: { email: invite.email },
+      include: { patient: true }
     })
 
     if (existingUser) {
-      return new NextResponse('User already exists', { status: 400 })
+      // Se já existe E já é paciente
+      if (existingUser.patient) {
+        return NextResponse.json(
+          { error: 'Você já possui cadastro. Faça login para acessar o sistema.', code: 'USER_IS_PATIENT' },
+          { status: 400 }
+        )
+      }
+      // Se existe mas NÃO é paciente, sugerir ativar perfil
+      return NextResponse.json(
+        { 
+          error: 'Você já possui uma conta no sistema. Faça login e acesse "Perfil → Ativar Perfil de Paciente" para completar seu cadastro como paciente.',
+          code: 'USER_EXISTS_NOT_PATIENT',
+          loginUrl: '/auth/login'
+        },
+        { status: 400 }
+      )
     }
 
     // Hash password
@@ -80,7 +102,7 @@ export async function POST(req: Request) {
 
       // If role is PATIENT, create Patient record
       if (invite.role === 'PATIENT') {
-        await tx.patient.create({
+        const patient = await tx.patient.create({
           data: {
             name,
             email: invite.email,
@@ -92,6 +114,34 @@ export async function POST(req: Request) {
             personId: person.id
           }
         })
+
+        // Create biometric consents if provided
+        // Map frontend consent types to BiometricDataType enum values
+        if (biometricConsents && typeof biometricConsents === 'object') {
+          const consentMapping: Record<string, string[]> = {
+            'FACIAL_RECOGNITION': [], // Not stored as biometric data type
+            'FINGERPRINT': [],        // Not stored as biometric data type
+            'VOICE_RECOGNITION': [],  // Not stored as biometric data type
+            'VITAL_SIGNS': ['HEART_RATE', 'BLOOD_PRESSURE', 'OXYGEN_SATURATION', 'BODY_TEMPERATURE']
+          }
+          
+          for (const [frontendType, dataTypes] of Object.entries(consentMapping)) {
+            const isGranted = biometricConsents[frontendType] === true
+            for (const dataType of dataTypes) {
+              await tx.patientBiometricConsent.create({
+                data: {
+                  patientId: patient.id,
+                  dataType: dataType as 'HEART_RATE' | 'BLOOD_PRESSURE' | 'OXYGEN_SATURATION' | 'BODY_TEMPERATURE',
+                  isGranted,
+                  grantedAt: isGranted ? new Date() : null,
+                  purpose: `Monitoramento de ${dataType.toLowerCase().replace('_', ' ')} via dispositivos vestíveis`,
+                  ipAddress: '0.0.0.0',
+                  userAgent: 'Browser'
+                }
+              })
+            }
+          }
+        }
       }
 
       // Record Term Acceptances
@@ -119,6 +169,9 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Registration error:', error)
-    return new NextResponse(error.message || 'Internal Server Error', { status: 500 })
+    return NextResponse.json(
+      { error: error.message || 'Erro interno do servidor', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    )
   }
 }

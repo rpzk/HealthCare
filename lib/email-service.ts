@@ -215,6 +215,111 @@ export class EmailService {
     })
     return result.success
   }
+
+  /**
+   * Template: Questionário de Saúde
+   */
+  public async sendQuestionnaireEmail(
+    to: string, 
+    patientName: string, 
+    questionnaireName: string, 
+    questionnaireLink: string,
+    expiresAt?: Date
+  ): Promise<boolean> {
+    const expiryText = expiresAt 
+      ? `<p><small>⏰ Este link expira em ${expiresAt.toLocaleDateString('pt-BR')}.</small></p>`
+      : ''
+    
+    const result = await this.sendEmail({
+      to,
+      subject: `📋 Questionário de Saúde: ${questionnaireName}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">📋 Questionário de Saúde</h1>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 16px;">Olá, <strong>${patientName}</strong>!</p>
+            
+            <p style="font-size: 15px; color: #4b5563;">
+              Sua equipe de saúde preparou um questionário especial para você:
+            </p>
+            
+            <div style="background: white; border: 2px solid #10B981; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+              <h2 style="color: #059669; margin: 0 0 10px 0;">${questionnaireName}</h2>
+            </div>
+            
+            <p style="font-size: 15px; color: #4b5563;">
+              Este questionário nos ajudará a compreender melhor sua saúde e oferecer um atendimento mais personalizado.
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${questionnaireLink}" style="display: inline-block; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                ✨ Responder Questionário
+              </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #6b7280;">
+              💡 <strong>Dica:</strong> Reserve cerca de 15-20 minutos em um local tranquilo para responder com calma.
+            </p>
+            
+            ${expiryText}
+            
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            
+            <p style="font-size: 13px; color: #9ca3af; text-align: center;">
+              Este e-mail foi enviado pelo HealthCare System.<br>
+              Se você não esperava este questionário, por favor entre em contato com sua clínica.
+            </p>
+          </div>
+        </div>
+      `,
+      text: `Olá ${patientName}! Você recebeu um questionário de saúde: ${questionnaireName}. Acesse: ${questionnaireLink}`
+    })
+    return result.success
+  }
+
+  /**
+   * Template: Notificação de Resposta de Questionário (para profissional)
+   */
+  public async sendQuestionnaireCompletedNotification(
+    to: string,
+    professionalName: string,
+    patientName: string,
+    questionnaireName: string,
+    viewLink: string
+  ): Promise<boolean> {
+    const result = await this.sendEmail({
+      to,
+      subject: `✅ ${patientName} respondeu: ${questionnaireName}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+          <div style="background: #10B981; padding: 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">✅ Questionário Respondido</h1>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 25px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <p>Olá, <strong>${professionalName}</strong>!</p>
+            
+            <p>O paciente <strong>${patientName}</strong> acabou de responder o questionário:</p>
+            
+            <div style="background: white; border-left: 4px solid #10B981; padding: 15px; margin: 15px 0;">
+              <strong>${questionnaireName}</strong>
+            </div>
+            
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${viewLink}" style="display: inline-block; background: #10B981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                📊 Ver Respostas
+              </a>
+            </div>
+          </div>
+        </div>
+      `,
+      text: `${patientName} respondeu o questionário "${questionnaireName}". Acesse: ${viewLink}`
+    })
+    return result.success
+  }
 }
 
 export const emailService = EmailService.getInstance()

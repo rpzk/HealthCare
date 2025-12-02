@@ -22,7 +22,8 @@ import {
   Building,
   Mail,
   UserCog,
-  Sparkles
+  Sparkles,
+  ClipboardList
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -101,6 +102,17 @@ const menuItems: MenuItem[] = [
       { title: 'Interações Medicamentosas', href: '/ai-medical?tab=interactions' },
       { title: 'Resumos Médicos', href: '/ai-medical?tab=summary' },
       { title: 'Dashboard Analytics', href: '/ai-analytics' },
+    ]
+  },
+  {
+    title: 'Questionários',
+    icon: ClipboardList,
+    href: '/questionnaires',
+    badge: 'NOVO',
+    allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+    submenu: [
+      { title: 'Templates', href: '/questionnaires' },
+      { title: 'Enviados', href: '/questionnaires?tab=sent' },
     ]
   },
   {
