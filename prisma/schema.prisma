@@ -2045,6 +2045,40 @@ model PrescriptionItem {
 }
 
 // =====================================================
+// FÓRMULAS MAGISTRAIS (Templates de Manipulação)
+// =====================================================
+
+model FormulaTemplate {
+  id          String @id @default(cuid())
+  name        String // Nome da fórmula
+  category    String // Categoria (Endocrinologia, Gastrointestinal, etc)
+  ingredients String // Ingredientes com doses (Vitamina D3 10.000 UI | K2 120 mcg)
+  form        String // Forma farmacêutica (Cápsula, Solução, Creme, etc)
+  dosage      String // Posologia sugerida
+  notes       String? // Notas técnicas
+
+  // Informações clínicas expandidas (do PDF)
+  indications       String? // Indicações clínicas
+  contraindications String? // Contraindicações
+  sideEffects       String? // Efeitos adversos
+  interactions      String? // Interações medicamentosas
+  monitoring        String? // Exames/monitoramento recomendado
+  duration          String? // Duração sugerida do tratamento
+  
+  // Metadados
+  source      String? // Fonte (Singularis, Vitalis, CSV, etc)
+  pharmacy    String? // Farmácia recomendada
+  
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
+  @@map("formula_templates")
+}
+
+// =====================================================
 // SISTEMA DE PROCEDIMENTOS SIGTAP (Importado do SSF)
 // =====================================================
 
