@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { StratumAssessment } from '@/components/hr/stratum-assessment'
 import { StrengthsAssessment } from '@/components/hr/strengths-assessment'
+import { DevelopmentPlanComponent } from '@/components/hr/development-plan'
+import { DevelopmentDashboard } from '@/components/hr/development-dashboard'
+import { IntegralProfile } from '@/components/hr/integral-profile'
 import { 
   Brain, 
   Gem,
@@ -14,7 +17,8 @@ import {
   TrendingUp,
   BookOpen,
   Sparkles,
-  Heart
+  Heart,
+  BarChart3
 } from 'lucide-react'
 
 export default function DevelopmentPage() {
@@ -40,10 +44,14 @@ export default function DevelopmentPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             <span className="hidden sm:inline">Visão Geral</span>
+          </TabsTrigger>
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Perfil</span>
           </TabsTrigger>
           <TabsTrigger value="stratum" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
@@ -180,7 +188,20 @@ export default function DevelopmentPage() {
                 </blockquote>
               </CardContent>
             </Card>
+
+            {/* Dashboard de Progresso */}
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold">Seu Progresso</h2>
+              </div>
+              <DevelopmentDashboard />
+            </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="profile" className="mt-6">
+          <IntegralProfile />
         </TabsContent>
 
         <TabsContent value="stratum" className="mt-6">
@@ -192,41 +213,7 @@ export default function DevelopmentPage() {
         </TabsContent>
 
         <TabsContent value="plan" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-                Plano de Desenvolvimento Pessoal
-              </CardTitle>
-              <CardDescription>
-                Crie um roteiro personalizado de crescimento
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-gray-500">
-                <TrendingUp className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                <p className="text-lg font-medium mb-2">Complete as avaliações primeiro</p>
-                <p className="text-sm max-w-md mx-auto">
-                  Para criar seu plano personalizado, primeiro complete as avaliações 
-                  de Horizonte Temporal e Forças de Caráter.
-                </p>
-                <div className="flex justify-center gap-4 mt-6">
-                  <button 
-                    onClick={() => setActiveTab('stratum')}
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                  >
-                    Avaliar Horizonte
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('strengths')}
-                    className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-                  >
-                    Descobrir Forças
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <DevelopmentPlanComponent />
         </TabsContent>
       </Tabs>
     </div>
