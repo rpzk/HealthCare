@@ -5,6 +5,8 @@ import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
 import { applyPatientMasking } from '@/lib/masking'
 import { startSpan } from '@/lib/tracing'
+import { requirePatientAccess } from '@/lib/patient-access'
+import { prisma } from '@/lib/prisma'
 
 interface RouteParams {
   params: {
@@ -12,11 +14,15 @@ interface RouteParams {
   }
 }
 
+// Lista de roles válidos
+const validRoles = ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'HEALTH_AGENT', 'TECHNICIAN', 'PHARMACIST', 'DENTIST', 'NUTRITIONIST', 'SOCIAL_WORKER', 'OTHER', 'PATIENT'] as const
+
 // Schema de validação para atualização de paciente
+// NOTA: O modelo Patient só tem campo 'address' (texto), não city/state/zipCode separados
 const updatePatientSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").optional(),
-  email: z.string().email("Email inválido").optional(),
-  phone: z.string().optional(),
+  email: z.string().email("Email inválido").nullable().optional(),
+  phone: z.string().nullable().optional(),
   birthDate: z.string().transform((val) => {
     if (!val) return undefined
     const date = new Date(val)
@@ -24,12 +30,17 @@ const updatePatientSchema = z.object({
     return date
   }).optional(),
   cpf: z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "CPF deve estar no formato XXX.XXX.XXX-XX").optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  emergencyContact: z.string().optional(),
-  // Campos removidos do schema real (não existem em prisma): bloodType, allergies (array), chronicDiseases
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+  address: z.string().nullable().optional(), // Endereço completo (texto único)
+  emergencyContact: z.string().nullable().optional(),
+  bloodType: z.string().nullable().optional(),
+  allergies: z.string().nullable().optional(),
+  chronicDiseases: z.string().nullable().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  // Campo para atualizar o role do usuário vinculado
+  userRole: z.enum(validRoles).optional(),
+  userId: z.string().optional(),
 })
 
 // Schema para PATCH (ações administrativas simples)
@@ -40,7 +51,32 @@ const patchPatientSchema = z.object({
 // GET /api/patients/[id] - Buscar paciente por ID
 export const GET = withRbac('patient.read', async (req, { params, user }) => {
   try {
-  const patient = await startSpan('patient.get', () => PatientService.getPatientById(params.id))
+    // Verificar se é uma requisição para edição (sem mascaramento)
+    const url = new URL(req.url)
+    const isEditMode = url.searchParams.get('edit') === 'true'
+    
+    // ============================================
+    // CONTROLE DE ACESSO - LGPD
+    // Verificar se o usuário tem acesso a este paciente
+    // ============================================
+    const accessCheck = await requirePatientAccess(user.id, params.id, user.role, isEditMode ? 'edit' : 'view')
+    if (!accessCheck.allowed) {
+      auditLogger.logError(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.PATIENT_READ,
+        'Patient',
+        'Acesso negado: não faz parte da equipe de atendimento',
+        { patientId: params.id }
+      )
+      return NextResponse.json(
+        { error: accessCheck.error },
+        { status: accessCheck.status || 403 }
+      )
+    }
+    
+    const patient = await startSpan('patient.get', () => PatientService.getPatientById(params.id))
     
     auditLogger.logSuccess(
       user.id,
@@ -48,10 +84,16 @@ export const GET = withRbac('patient.read', async (req, { params, user }) => {
       user.role,
       AuditAction.PATIENT_READ,
       'Patient',
-      { patientId: params.id, patientName: patient.name }
+      { patientId: params.id, patientName: patient.name, editMode: isEditMode }
     )
     
-  return NextResponse.json(applyPatientMasking(patient))
+    // Se é modo de edição e usuário tem permissão, retornar dados completos
+    // Caso contrário, aplicar mascaramento para LGPD
+    if (isEditMode) {
+      return NextResponse.json(patient)
+    }
+    
+    return NextResponse.json(applyPatientMasking(patient))
   } catch (error: any) {
     auditLogger.logError(
       user.id,
@@ -82,6 +124,26 @@ export const GET = withRbac('patient.read', async (req, { params, user }) => {
 // PUT /api/patients/[id] - Atualizar paciente
 export const PUT = withRbac('patient.write', async (req, { params, user }) => {
   try {
+    // ============================================
+    // CONTROLE DE ACESSO - LGPD
+    // ============================================
+    const accessCheck = await requirePatientAccess(user.id, params.id, user.role, 'edit')
+    if (!accessCheck.allowed) {
+      auditLogger.logError(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.PATIENT_UPDATE,
+        'Patient',
+        'Acesso negado: não tem permissão para editar',
+        { patientId: params.id }
+      )
+      return NextResponse.json(
+        { error: accessCheck.error },
+        { status: accessCheck.status || 403 }
+      )
+    }
+    
     const data = await req.json()
     
     // Validação com Zod
@@ -96,15 +158,54 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
 
     const validatedData = validationResult.data
 
+    // Extrair userRole e userId do validatedData para processar separadamente
+    const { userRole, userId, ...patientData } = validatedData
+
     // Validar se pelo menos um campo foi fornecido
-    if (Object.keys(validatedData).length === 0) {
+    if (Object.keys(patientData).length === 0 && !userRole) {
       return NextResponse.json(
         { error: 'Pelo menos um campo deve ser fornecido para atualização' },
         { status: 400 }
       )
     }
 
-  const patient = await startSpan('patient.update', () => PatientService.updatePatient(params.id, validatedData))
+    // Atualizar role do usuário vinculado se fornecido
+    if (userRole && userId) {
+      // Verificar se o usuário atual é ADMIN para alterar roles
+      if (user.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Apenas administradores podem alterar o papel de usuários' },
+          { status: 403 }
+        )
+      }
+      
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: userRole }
+      })
+      
+      auditLogger.logSuccess(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.USER_UPDATE,
+        'User',
+        { 
+          userId: userId,
+          oldRole: 'unknown',
+          newRole: userRole
+        }
+      )
+    }
+
+    // Atualizar paciente se houver dados para atualizar
+    let patient
+    if (Object.keys(patientData).length > 0) {
+      patient = await startSpan('patient.update', () => PatientService.updatePatient(params.id, patientData))
+    } else {
+      // Buscar paciente atual se só atualizamos o role
+      patient = await PatientService.getPatientById(params.id)
+    }
     
     auditLogger.logSuccess(
       user.id,
@@ -203,6 +304,27 @@ export const PATCH = withRbac('patient.write', async (req, { params, user }) => 
 // DELETE /api/patients/[id] - Excluir paciente (hard delete - use com cuidado)
 export const DELETE = withRbac('patient.write', async (req, { params, user }) => {
   try {
+    // ============================================
+    // CONTROLE DE ACESSO - LGPD
+    // Apenas FULL (médico responsável) ou ADMIN pode deletar
+    // ============================================
+    const accessCheck = await requirePatientAccess(user.id, params.id, user.role, 'delete')
+    if (!accessCheck.allowed) {
+      auditLogger.logError(
+        user.id,
+        user.email,
+        user.role,
+        AuditAction.PATIENT_DELETE,
+        'Patient',
+        'Acesso negado: não tem permissão para excluir',
+        { patientId: params.id }
+      )
+      return NextResponse.json(
+        { error: accessCheck.error },
+        { status: accessCheck.status || 403 }
+      )
+    }
+    
   await startSpan('patient.delete', () => PatientService.deletePatient(params.id))
     
     auditLogger.logSuccess(

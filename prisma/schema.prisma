@@ -59,6 +59,9 @@ model User {
   // Questionários integrativos
   questionnaireTemplates QuestionnaireTemplate[]
   sentQuestionnaires     PatientQuestionnaire[] @relation("SentQuestionnaires")
+  
+  // Equipe de cuidado
+  careTeamMemberships    PatientCareTeam[]
 
   @@map("users")
 }
@@ -199,6 +202,9 @@ model Patient {
   
   // Questionários integrativos recebidos
   questionnaires        PatientQuestionnaire[]
+  
+  // Equipe de cuidado do paciente
+  careTeam              PatientCareTeam[]
 
   @@map("patients")
 }
@@ -2978,4 +2984,47 @@ model PatientAnswer {
   @@unique([questionnaireId, questionId])
   @@index([questionnaireId])
   @@map("patient_answers")
+}
+
+// =====================================
+// EQUIPE DE CUIDADO DO PACIENTE
+// =====================================
+// Níveis de acesso: FULL, CONSULTATION, LIMITED, EMERGENCY, VIEW_ONLY
+
+// Relaciona pacientes aos profissionais que podem acessá-los
+model PatientCareTeam {
+  id              String          @id @default(cuid())
+  
+  // Paciente
+  patientId       String
+  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Profissional da equipe
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Nível de acesso: FULL, CONSULTATION, LIMITED, EMERGENCY, VIEW_ONLY
+  accessLevel     String          @default("CONSULTATION")
+  
+  // Quem adicionou à equipe
+  addedById       String?
+  
+  // Motivo/observação
+  reason          String?         // Ex: "Consulta agendada", "Médico de família"
+  
+  // Controle
+  isActive        Boolean         @default(true)
+  isPrimary       Boolean         @default(false)
+  
+  // Validade do acesso (null = permanente)
+  validUntil      DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@unique([patientId, userId])
+  @@index([patientId])
+  @@index([userId])
+  @@index([isActive])
+  @@map("patient_care_team")
 }

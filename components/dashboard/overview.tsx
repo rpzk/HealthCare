@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { 
   Users, 
   Calendar, 
@@ -18,6 +19,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { DashboardSkeleton } from './skeleton'
 import { NewPatientDialog } from '../patients/new-patient-dialog'
+
+// Importar CalendarView dinamicamente para evitar SSR issues
+const CalendarView = dynamic(
+  () => import('./calendar-view').then(mod => mod.CalendarView),
+  { 
+    ssr: false,
+    loading: () => (
+      <Card className="h-[700px] animate-pulse">
+        <CardHeader>
+          <div className="h-6 bg-muted rounded w-48" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-[600px] bg-muted/50 rounded" />
+        </CardContent>
+      </Card>
+    )
+  }
+)
 
 interface DashboardStats {
   totalPatients: number
@@ -200,6 +219,9 @@ export function DashboardOverview() {
           </Card>
         ))}
       </div>
+
+      {/* Calendário de Consultas */}
+      <CalendarView />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Próximas consultas */}

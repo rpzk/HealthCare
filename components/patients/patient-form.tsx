@@ -9,6 +9,24 @@ import { X, Save, UserPlus, MapPin, Check } from 'lucide-react'
 import { AddressAutocomplete, AddressSuggestion } from '../addresses/address-autocomplete'
 import { AddressMapPicker } from '../addresses/address-map-picker'
 
+// Opções de papel (role) disponíveis
+const ROLE_OPTIONS = [
+  { value: 'PATIENT', label: 'Paciente' },
+  { value: 'ADMIN', label: 'Administrador' },
+  { value: 'DOCTOR', label: 'Médico' },
+  { value: 'NURSE', label: 'Enfermeiro(a)' },
+  { value: 'RECEPTIONIST', label: 'Recepcionista' },
+  { value: 'PHYSIOTHERAPIST', label: 'Fisioterapeuta' },
+  { value: 'PSYCHOLOGIST', label: 'Psicólogo(a)' },
+  { value: 'HEALTH_AGENT', label: 'Agente de Saúde' },
+  { value: 'TECHNICIAN', label: 'Técnico(a)' },
+  { value: 'PHARMACIST', label: 'Farmacêutico(a)' },
+  { value: 'DENTIST', label: 'Dentista' },
+  { value: 'NUTRITIONIST', label: 'Nutricionista' },
+  { value: 'SOCIAL_WORKER', label: 'Assistente Social' },
+  { value: 'OTHER', label: 'Outro' },
+]
+
 interface PatientFormProps {
   patient?: any
   onSubmit: (data: any) => Promise<void>
@@ -18,22 +36,71 @@ interface PatientFormProps {
 
 export default function PatientForm({ patient, onSubmit, onCancel }: PatientFormProps) {
   const { data: session } = useSession()
+  
+  // Parsear endereço existente para extrair componentes
+  const parseAddress = (addr: string | undefined) => {
+    if (!addr) return { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
+    // Tentar extrair partes do endereço
+    const parts = addr.split(' - ')
+    const streetPart = parts[0] || ''
+    const rest = parts.slice(1).join(' - ')
+    
+    // Extrair número se houver vírgula
+    const streetMatch = streetPart.match(/^(.+?),?\s*(\d+\w*)?$/)
+    const street = streetMatch?.[1]?.trim() || streetPart
+    const number = streetMatch?.[2] || ''
+    
+    return { street, number, complement: '', neighborhood: rest, city: '', state: '', zipCode: '' }
+  }
+  
+  const parsedAddr = parseAddress(patient?.address)
+  
+  // Função para formatar CPF (aplicar ao carregar dados)
+  const formatCPFValue = (value: string | undefined) => {
+    if (!value) return ''
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length !== 11) return value // Retorna como está se não tiver 11 dígitos
+    return numbers
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+  }
+
+  // Função para formatar telefone (aplicar ao carregar dados)
+  const formatPhoneValue = (value: string | undefined) => {
+    if (!value) return ''
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length === 11) {
+      return numbers.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3')
+    } else if (numbers.length === 10) {
+      return numbers.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3')
+    }
+    return value
+  }
+  
   const [formData, setFormData] = useState({
     name: patient?.name || '',
     email: patient?.email || '',
-    cpf: patient?.cpf || '',
+    cpf: formatCPFValue(patient?.cpf),
     rg: patient?.rg || '',
     birthDate: patient?.birthDate ? patient.birthDate.split('T')[0] : '',
     gender: patient?.gender || 'FEMALE',
-    phone: patient?.phone || '',
-    address: patient?.address || '',
-    city: patient?.city || '',
-    state: patient?.state || '',
-    zipCode: patient?.zipCode || '',
+    phone: formatPhoneValue(patient?.phone),
+    // Campos de endereço separados para melhor UX
+    street: parsedAddr.street,
+    number: parsedAddr.number,
+    complement: '',
+    neighborhood: parsedAddr.neighborhood,
+    city: parsedAddr.city,
+    state: parsedAddr.state,
+    zipCode: parsedAddr.zipCode,
+    // Dados do usuário vinculado
+    userId: patient?.userAccount?.id || patient?.userId || '',
+    userRole: patient?.userAccount?.role || 'PATIENT',
     emergencyContact: patient?.emergencyContact || '',
     bloodType: patient?.bloodType || '',
-    allergies: patient?.allergies?.join(', ') || '',
-    chronicDiseases: patient?.chronicDiseases?.join(', ') || '',
+    allergies: patient?.allergies || '',
+    chronicDiseases: patient?.chronicDiseases || '',
     latitude: patient?.latitude || null,
     longitude: patient?.longitude || null,
   })
@@ -44,7 +111,9 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
   const handleAddressSelect = (suggestion: AddressSuggestion) => {
     setFormData(prev => ({
       ...prev,
-      address: `${suggestion.street || ''}${suggestion.number ? ', ' + suggestion.number : ''}${suggestion.neighborhood ? ' - ' + suggestion.neighborhood : ''}`,
+      street: suggestion.street || '',
+      number: suggestion.number || '',
+      neighborhood: suggestion.neighborhood || '',
       city: suggestion.city || prev.city,
       state: suggestion.state || prev.state,
       zipCode: suggestion.zipCode || prev.zipCode,
@@ -195,23 +264,38 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
 
     setLoading(true)
     try {
-      // Concatenar endereço completo
+      // Concatenar endereço completo a partir dos campos separados
+      const addressParts = [
+        formData.street,
+        formData.number ? `nº ${formData.number}` : '',
+        formData.complement,
+        formData.neighborhood,
+      ].filter(Boolean).join(', ')
+      
+      const locationParts = [
+        formData.city,
+        formData.state,
+      ].filter(Boolean).join('/')
+      
       const fullAddress = [
-        formData.address,
-        formData.city ? `${formData.city}/${formData.state}` : '',
+        addressParts,
+        locationParts,
         formData.zipCode ? `CEP: ${formData.zipCode}` : ''
       ].filter(Boolean).join(' - ')
 
       const submitData = {
-        ...formData,
-        address: fullAddress || formData.address, // Usa o concatenado ou o original
+        name: formData.name,
+        email: formData.email,
+        cpf: formData.cpf,
+        phone: formData.phone,
         birthDate: new Date(formData.birthDate),
-        allergies: formData.allergies.split(',').map((a: string) => a.trim()).filter((a: string) => a),
-        chronicDiseases: formData.chronicDiseases.split(',').map((d: string) => d.trim()).filter((d: string) => d),
-        bloodType: formData.bloodType || null,
-        doctorId: session.user.id, // Usar ID do usuário logado
+        gender: formData.gender,
+        address: fullAddress,
+        emergencyContact: formData.emergencyContact || null,
         latitude: formData.latitude,
-        longitude: formData.longitude
+        longitude: formData.longitude,
+        // Se tiver userId, inclui userRole para atualizar
+        ...(formData.userId ? { userId: formData.userId, userRole: formData.userRole } : {}),
       }
 
       await onSubmit(submitData)
@@ -350,6 +434,47 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
               </div>
             </div>
 
+            {/* Acesso ao Sistema - apenas se estiver editando e paciente tem usuário vinculado */}
+            {isEditing && formData.userId && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                  <span className="text-blue-600">🔐</span>
+                  Acesso ao Sistema
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Papel no Sistema *
+                    </label>
+                    <select
+                      name="userRole"
+                      value={formData.userRole}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border rounded-md border-gray-300 bg-white"
+                      disabled={loading}
+                    >
+                      {ROLE_OPTIONS.map(role => (
+                        <option key={role.value} value={role.value}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Define o que o usuário pode acessar no sistema
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="text-sm text-gray-600">
+                      <p><strong>ID do Usuário:</strong> {formData.userId}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Usuário vinculado a este paciente
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Contato */}
             <div>
               <h3 className="text-lg font-medium mb-4">Contato</h3>
@@ -388,61 +513,78 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                 {formData.latitude && formData.longitude && (
                   <div className="flex items-center text-green-600 text-sm bg-green-50 px-2 py-1 rounded-full border border-green-200">
                     <MapPin className="h-3 w-3 mr-1" />
-                    <span>Geolocalização encontrada</span>
+                    <span>Geolocalização OK</span>
                   </div>
                 )}
               </div>
               
               <div className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-md border border-blue-100 mb-4">
+                {/* Busca de endereço */}
+                <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
                   <p className="text-sm text-blue-800 mb-2">
-                    Busque o endereço para preenchimento automático e geolocalização:
+                    🔍 Busque o endereço para preenchimento automático:
                   </p>
                   <AddressAutocomplete 
                     onSelect={handleAddressSelect}
-                    value={formData.address}
+                    value={`${formData.street} ${formData.number} ${formData.neighborhood}`.trim()}
                   />
-                  
-                  <div className="mt-2">
-                    <p className="text-sm text-blue-800 mb-2">
-                      Ou selecione o local no mapa:
-                    </p>
-                    <AddressMapPicker 
-                      onAddressSelect={handleAddressSelect}
-                      initialLat={formData.latitude || undefined}
-                      initialLng={formData.longitude || undefined}
-                    />
-                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Campos de endereço */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="md:col-span-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Logradouro (Rua/Av)
+                    </label>
+                    <Input
+                      name="street"
+                      value={formData.street}
+                      onChange={handleChange}
+                      disabled={loading}
+                      placeholder="Rua das Flores"
+                    />
+                  </div>
+
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Logradouro
+                      Número
                     </label>
                     <Input
-                      name="address"
-                      value={formData.address}
+                      name="number"
+                      value={formData.number}
                       onChange={handleChange}
                       disabled={loading}
-                      placeholder="Rua, Número, Bairro"
+                      placeholder="123"
                     />
                   </div>
 
-                  <div>
+                  <div className="md:col-span-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CEP
+                      Complemento
                     </label>
                     <Input
-                      name="zipCode"
-                      value={formData.zipCode}
+                      name="complement"
+                      value={formData.complement}
                       onChange={handleChange}
-                      placeholder="12345-678"
                       disabled={loading}
+                      placeholder="Apto 101, Bloco B"
                     />
                   </div>
 
-                  <div>
+                  <div className="md:col-span-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bairro
+                    </label>
+                    <Input
+                      name="neighborhood"
+                      value={formData.neighborhood}
+                      onChange={handleChange}
+                      disabled={loading}
+                      placeholder="Centro"
+                    />
+                  </div>
+
+                  <div className="md:col-span-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Cidade
                     </label>
@@ -451,10 +593,11 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.city}
                       onChange={handleChange}
                       disabled={loading}
+                      placeholder="São Paulo"
                     />
                   </div>
 
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estado
                     </label>
@@ -463,6 +606,20 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.state}
                       onChange={handleChange}
                       placeholder="SP"
+                      maxLength={2}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CEP
+                    </label>
+                    <Input
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleChange}
+                      placeholder="01234-567"
                       disabled={loading}
                     />
                   </div>

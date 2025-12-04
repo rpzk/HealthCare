@@ -86,7 +86,7 @@ export async function POST(req: Request) {
               email: invite.email,
               name,
               password: hashedPassword,
-              role: invite.role === 'PATIENT' ? 'OTHER' : invite.role,
+              role: invite.role, // Manter o role do convite (incluindo PATIENT)
               isActive: true,
             }
           }

@@ -210,12 +210,6 @@ export function RegistrationForm({ invite, terms, isPatient }: RegistrationFormP
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
         {step === 1 && (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -403,32 +397,41 @@ export function RegistrationForm({ invite, terms, isPatient }: RegistrationFormP
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between">
-        {step > 1 ? (
-          <Button variant="outline" onClick={prevStep} disabled={loading}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-          </Button>
-        ) : (
-          <div></div> // Spacer
+      <CardFooter className="flex flex-col gap-4">
+        {/* Mensagem de erro visível próxima aos botões (melhor UX em mobile) */}
+        {error && (
+          <Alert variant="destructive" className="w-full">
+            <AlertDescription className="text-center">{error}</AlertDescription>
+          </Alert>
         )}
+        
+        <div className="flex justify-between w-full">
+          {step > 1 ? (
+            <Button variant="outline" onClick={prevStep} disabled={loading}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+            </Button>
+          ) : (
+            <div></div> // Spacer
+          )}
 
-        {!isLastStep ? (
-          <Button onClick={nextStep}>
-            Próximo <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
-              </>
-            ) : (
-              <>
-                Finalizar Cadastro <CheckCircle className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
-        )}
+          {!isLastStep ? (
+            <Button onClick={nextStep}>
+              Próximo <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+                </>
+              ) : (
+                <>
+                  Finalizar Cadastro <CheckCircle className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </CardFooter>
     </Card>
   )

@@ -24,9 +24,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    // Buscar o sistema CID-10
+    // Buscar o sistema CID-10 (pode estar como CID-10 ou ICD-10)
     const cidSystem = await prisma.codeSystem.findFirst({
-      where: { name: 'ICD-10' }
+      where: { 
+        OR: [
+          { name: 'CID-10' },
+          { name: 'ICD-10' }
+        ]
+      }
     })
 
     if (!cidSystem) {

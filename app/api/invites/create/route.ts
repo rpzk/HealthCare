@@ -69,10 +69,20 @@ export async function POST(req: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
     if (existingInvite) {
+      // Mesmo com convite existente, reenvia o email
+      const existingLink = `${baseUrl}/register/${existingInvite.token}`
+      console.log('[invites] Convite existente encontrado, reenviando email para:', email)
+      try {
+        const emailSent = await emailService.sendInviteEmail(email, existingLink)
+        console.log('[invites] Reenvio resultado:', emailSent ? '✅ Sucesso' : '❌ Falhou')
+      } catch (emailError) {
+        console.error('[invites] Failed to resend invite email:', emailError)
+      }
+      
       return NextResponse.json({
         inviteId: existingInvite.id,
         token: existingInvite.token,
-        link: `${baseUrl}/register/${existingInvite.token}`
+        link: existingLink
       })
     }
 
@@ -95,8 +105,10 @@ export async function POST(req: Request) {
 
     // Tentar enviar e-mail (não falha a requisição se o e-mail falhar)
     const link = `${baseUrl}/register/${invite.token}`
+    console.log('[invites] Tentando enviar e-mail de convite para:', email)
     try {
-      await emailService.sendInviteEmail(email, link)
+      const emailSent = await emailService.sendInviteEmail(email, link)
+      console.log('[invites] Resultado do envio:', emailSent ? '✅ Sucesso' : '❌ Falhou')
     } catch (emailError) {
       console.error('[invites] Failed to send invite email:', emailError)
     }

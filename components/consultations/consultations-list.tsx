@@ -50,8 +50,7 @@ interface ConsultationListResponse {
 export function ConsultationsList() {
   // Botão destacado no topo
   const TopBar = () => (
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-2xl font-bold text-foreground">Consultas</h2>
+    <div className="flex items-center justify-end mb-6">
       <Button
         onClick={() => {
           setEditingConsultation(null)
@@ -479,9 +478,34 @@ export function ConsultationsList() {
               <ConsultationForm
                 patient={editingConsultation?.patient}
                 onSubmit={async (data) => {
-                  setShowForm(false)
-                  setEditingConsultation(null)
-                  fetchConsultations()
+                  try {
+                    // Criar a consulta via API
+                    const response = await fetch('/api/consultations', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(data)
+                    })
+                    
+                    if (!response.ok) {
+                      const error = await response.json()
+                      throw new Error(error.error || 'Erro ao criar consulta')
+                    }
+                    
+                    const result = await response.json()
+                    
+                    setShowForm(false)
+                    setEditingConsultation(null)
+                    
+                    // Se a consulta foi iniciada imediatamente (IN_PROGRESS), redireciona para a sala
+                    if (data.status === 'IN_PROGRESS' && result.consultation?.id) {
+                      router.push(`/consultations/${result.consultation.id}`)
+                    } else {
+                      fetchConsultations()
+                    }
+                  } catch (error: any) {
+                    console.error('Erro ao criar consulta:', error)
+                    throw error
+                  }
                 }}
                 onCancel={() => {
                   setShowForm(false)

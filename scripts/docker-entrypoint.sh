@@ -5,13 +5,13 @@ echo "[entrypoint] Iniciando container healthcare-app"
 
 # Aguarda DB se variável DATABASE_URL estiver setada
 if [[ -n "${DATABASE_URL:-}" ]]; then
-  echo "[entrypoint] DATABASE_URL detectado. Executando prisma migrate deploy..."
-  npx prisma migrate deploy || {
-    echo "[entrypoint] prisma migrate deploy falhou" >&2
-    exit 1
+  echo "[entrypoint] DATABASE_URL detectado. Sincronizando schema com prisma db push..."
+  npx prisma db push --accept-data-loss || {
+    echo "[entrypoint] prisma db push falhou, tentando sem flag..."
+    npx prisma db push || echo "[entrypoint] prisma db push falhou (continuando)"
   }
 else
-  echo "[entrypoint] DATABASE_URL não definido. Pulando migrate deploy."
+  echo "[entrypoint] DATABASE_URL não definido. Pulando sync de schema."
 fi
 
 # Garante que Prisma Client esteja gerado (idempotente e rápido se já existir)

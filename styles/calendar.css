@@ -1,0 +1,189 @@
+/* Estilos customizados para react-big-calendar */
+
+/* Container principal */
+.rbc-calendar {
+  @apply font-sans;
+}
+
+/* Header do calendário */
+.rbc-header {
+  @apply py-2 font-medium text-sm border-b border-border bg-muted/30;
+}
+
+.rbc-header + .rbc-header {
+  @apply border-l border-border;
+}
+
+/* Células do mês */
+.rbc-month-view {
+  @apply border border-border rounded-lg overflow-hidden;
+}
+
+.rbc-month-row {
+  @apply border-b border-border;
+}
+
+.rbc-month-row:last-child {
+  @apply border-b-0;
+}
+
+.rbc-day-bg {
+  @apply border-l border-border;
+}
+
+.rbc-day-bg:first-child {
+  @apply border-l-0;
+}
+
+/* Célula do dia */
+.rbc-date-cell {
+  @apply text-right p-1 text-sm;
+}
+
+.rbc-date-cell > a {
+  @apply text-foreground hover:text-primary;
+}
+
+/* Dia atual */
+.rbc-today {
+  @apply bg-primary/5;
+}
+
+.rbc-today .rbc-button-link {
+  @apply font-bold text-primary;
+}
+
+/* Dias fora do mês */
+.rbc-off-range {
+  @apply text-muted-foreground/50;
+}
+
+.rbc-off-range-bg {
+  @apply bg-muted/20;
+}
+
+/* Eventos */
+.rbc-event {
+  @apply rounded px-1 py-0.5 text-xs mb-0.5;
+}
+
+.rbc-event:focus {
+  @apply outline-none ring-2 ring-primary ring-offset-1;
+}
+
+.rbc-event-content {
+  @apply truncate;
+}
+
+/* Evento selecionado */
+.rbc-selected {
+  @apply ring-2 ring-primary;
+}
+
+/* Mais eventos */
+.rbc-show-more {
+  @apply text-xs text-primary hover:underline cursor-pointer bg-transparent;
+}
+
+/* View de semana/dia */
+.rbc-time-view {
+  @apply border border-border rounded-lg overflow-hidden;
+}
+
+.rbc-time-header {
+  @apply border-b border-border;
+}
+
+.rbc-time-header-content {
+  @apply border-l border-border;
+}
+
+.rbc-time-header-gutter {
+  @apply bg-muted/30;
+}
+
+.rbc-time-content {
+  @apply border-t border-border;
+}
+
+.rbc-time-gutter {
+  @apply bg-muted/30 text-xs text-muted-foreground;
+}
+
+.rbc-timeslot-group {
+  @apply border-b border-border/50;
+}
+
+.rbc-time-slot {
+  @apply text-center;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  @apply border-t border-border/30;
+}
+
+.rbc-current-time-indicator {
+  @apply bg-red-500 h-0.5;
+}
+
+/* Agenda view */
+.rbc-agenda-view {
+  @apply border border-border rounded-lg overflow-hidden;
+}
+
+.rbc-agenda-table {
+  @apply w-full;
+}
+
+.rbc-agenda-table thead {
+  @apply bg-muted/30;
+}
+
+.rbc-agenda-table th {
+  @apply p-2 text-left text-sm font-medium border-b border-border;
+}
+
+.rbc-agenda-table td {
+  @apply p-2 border-b border-border text-sm;
+}
+
+.rbc-agenda-date-cell {
+  @apply font-medium;
+}
+
+.rbc-agenda-time-cell {
+  @apply text-muted-foreground;
+}
+
+.rbc-agenda-event-cell {
+  @apply cursor-pointer hover:bg-muted/50;
+}
+
+/* Popup de eventos */
+.rbc-overlay {
+  @apply bg-popover border border-border rounded-lg shadow-lg p-2 z-50;
+}
+
+.rbc-overlay-header {
+  @apply font-medium text-sm mb-2 pb-2 border-b border-border;
+}
+
+/* Toolbar - ocultada pois usamos customizada */
+.rbc-toolbar {
+  @apply hidden;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .rbc-header {
+    @apply text-xs py-1;
+  }
+  
+  .rbc-date-cell {
+    @apply text-xs p-0.5;
+  }
+  
+  .rbc-event {
+    @apply text-[10px] px-0.5;
+  }
+}

@@ -63,15 +63,21 @@ export function ConsultationForm({
     if (!patient) {
       fetchPatients()
     }
+    // Carregar médicos
+    fetchDoctors()
   }, [patient])
 
-  // Atualizar doctorId quando a sessão estiver disponível
+  // Atualizar doctorId quando a sessão estiver disponível e for médico
   useEffect(() => {
     if (session?.user?.id && !formData.doctorId) {
-      setFormData(prev => ({
-        ...prev,
-        doctorId: session.user.id
-      }))
+      // Se o usuário logado é médico, pré-selecionar ele
+      const userRole = (session.user as any).role
+      if (['DOCTOR', 'NURSE', 'ADMIN'].includes(userRole)) {
+        setFormData(prev => ({
+          ...prev,
+          doctorId: session.user.id
+        }))
+      }
     }
   }, [session, formData.doctorId])
 
@@ -94,7 +100,18 @@ export function ConsultationForm({
     }
   }
 
-  // Função fetchDoctors removida - usando apenas o médico logado
+  // Carregar lista de médicos
+  const fetchDoctors = async () => {
+    try {
+      const response = await fetch('/api/doctors')
+      if (response.ok) {
+        const data = await response.json()
+        setDoctors(data.doctors || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar médicos:', error)
+    }
+  }
 
   const fetchAvailableSlots = async () => {
     try {
