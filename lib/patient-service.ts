@@ -1,4 +1,5 @@
 import { Gender, RiskLevel, Prisma, PrismaClient } from '@prisma/client'
+import { getPatientAccessFilter } from '@/lib/patient-access'
 
 // Lazy Prisma to avoid bundling/runtime issues
 let __prisma: PrismaClient | undefined
@@ -38,6 +39,9 @@ export interface PatientFilters {
   gender?: string
   riskLevel?: string
   ageRange?: { min: number, max: number }
+  // Filtro de controle de acesso
+  userId?: string
+  userRole?: string
 }
 
 export class PatientService {
@@ -46,22 +50,46 @@ export class PatientService {
     try {
       const prisma = await getPrisma()
       // console.log('[patient-service] getPatients called')
-      const { search, riskLevel, gender, ageRange } = filters
+      const { search, riskLevel, gender, ageRange, userId, userRole } = filters
       
       // Construir filtros do Prisma
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = {}
       
+      // ============================================
+      // FILTRO DE CONTROLE DE ACESSO
+      // Se userId for fornecido, filtrar apenas pacientes acessíveis
+      // ============================================
+      if (userId) {
+        const accessFilter = getPatientAccessFilter(userId, userRole)
+        Object.assign(where, accessFilter)
+      }
+      
       if (search) {
-        where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { cpf: { contains: search.replace(/[^\d]/g, '') } }
-        ]
+        // Se já temos filtro de acesso, precisamos combinar com AND
+        const searchFilter = {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+            { cpf: { contains: search.replace(/[^\d]/g, '') } }
+          ]
+        }
+        
         // Se busca parece CPF completo (11 dígitos), usar hash
         const numeric = search.replace(/\D/g,'')
         if (numeric.length === 11) {
-          where.OR.push({ cpfHash: hashCPF(numeric) })
+          (searchFilter.OR as any[]).push({ cpfHash: hashCPF(numeric) })
+        }
+        
+        if (where.OR) {
+          // Combinar filtros existentes com busca
+          where.AND = [
+            { OR: where.OR },
+            searchFilter
+          ]
+          delete where.OR
+        } else {
+          Object.assign(where, searchFilter)
         }
       }
       
@@ -178,6 +206,16 @@ export class PatientService {
               crmNumber: true
             }
           },
+          // Usuário vinculado ao paciente (para gerenciar acesso)
+          userAccount: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              isActive: true
+            }
+          },
           consultations: {
             include: {
               doctor: {
@@ -229,8 +267,13 @@ export class PatientService {
         throw new Error('Paciente não encontrado')
       }
 
+      // Descriptografar campos sensíveis
       return {
         ...patient,
+        cpf: decrypt(patient.cpf as string | null),
+        medicalHistory: decrypt(patient.medicalHistory as string | null),
+        allergies: decrypt(patient.allergies as string | null),
+        currentMedications: decrypt(patient.currentMedications as string | null),
         age: this.calculateAge(patient.birthDate),
         doctor: patient.User ? {
           id: patient.User.id,

@@ -9,6 +9,7 @@ import { PatientDevelopment } from '@/components/patients/patient-development'
 import { PatientQuestionnaires } from '@/components/patients/patient-questionnaires'
 import {
   User,
+  Users,
   FileText,
   Pill,
   TestTube,
@@ -23,6 +24,7 @@ import {
   ClipboardList,
   Send,
 } from 'lucide-react'
+import { PatientCareTeam } from '@/components/patients/patient-care-team'
 
 interface Consultation {
   id: string
@@ -58,18 +60,20 @@ interface Patient {
   bloodType?: string | null
   allergies?: string | null
   observations?: string | null
-  createdAt: Date
-  consultations: Consultation[]
-  prescriptions: Prescription[]
-  ExamRequest: ExamRequest[]
+  createdAt?: Date
+  consultations?: Consultation[]
+  prescriptions?: Prescription[]
+  ExamRequest?: ExamRequest[]
 }
 
 interface PatientDetailsContentProps {
   patient: Patient
+  onClose?: () => void
+  defaultTab?: string
 }
 
-export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
-  const [activeTab, setActiveTab] = useState('overview')
+export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview' }: PatientDetailsContentProps) {
+  const [activeTab, setActiveTab] = useState(defaultTab)
 
   const calculateAge = (birthDate: Date | null | undefined) => {
     if (!birthDate) return null
@@ -88,7 +92,7 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Visão Geral</span>
@@ -108,6 +112,10 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
           <TabsTrigger value="exams" className="flex items-center gap-2">
             <TestTube className="h-4 w-4" />
             <span className="hidden sm:inline">Exames</span>
+          </TabsTrigger>
+          <TabsTrigger value="care-team" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Equipe</span>
           </TabsTrigger>
           <TabsTrigger value="development" className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
@@ -210,19 +218,19 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="p-2 bg-blue-50 rounded-lg">
                       <p className="text-xl font-bold text-blue-600">
-                        {patient.consultations.length}
+                        {patient.consultations?.length || 0}
                       </p>
                       <p className="text-xs text-gray-500">Consultas</p>
                     </div>
                     <div className="p-2 bg-green-50 rounded-lg">
                       <p className="text-xl font-bold text-green-600">
-                        {patient.prescriptions.length}
+                        {patient.prescriptions?.length || 0}
                       </p>
                       <p className="text-xs text-gray-500">Receitas</p>
                     </div>
                     <div className="p-2 bg-purple-50 rounded-lg">
                       <p className="text-xl font-bold text-purple-600">
-                        {patient.ExamRequest.length}
+                        {patient.ExamRequest?.length || 0}
                       </p>
                       <p className="text-xs text-gray-500">Exames</p>
                     </div>
@@ -289,9 +297,9 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
               </div>
             </CardHeader>
             <CardContent>
-              {patient.consultations.length > 0 ? (
+              {(patient.consultations?.length || 0) > 0 ? (
                 <div className="space-y-3">
-                  {patient.consultations.map((consultation) => (
+                  {patient.consultations?.map((consultation) => (
                     <div
                       key={consultation.id}
                       className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -345,9 +353,9 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
               </div>
             </CardHeader>
             <CardContent>
-              {patient.prescriptions.length > 0 ? (
+              {(patient.prescriptions?.length || 0) > 0 ? (
                 <div className="space-y-3">
-                  {patient.prescriptions.map((prescription) => (
+                  {patient.prescriptions?.map((prescription) => (
                     <div
                       key={prescription.id}
                       className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -390,9 +398,9 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
               </div>
             </CardHeader>
             <CardContent>
-              {patient.ExamRequest.length > 0 ? (
+              {(patient.ExamRequest?.length || 0) > 0 ? (
                 <div className="space-y-3">
-                  {patient.ExamRequest.map((exam) => (
+                  {patient.ExamRequest?.map((exam) => (
                     <div
                       key={exam.id}
                       className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -423,6 +431,11 @@ export function PatientDetailsContent({ patient }: PatientDetailsContentProps) {
         {/* Questionários */}
         <TabsContent value="questionnaires" className="mt-6">
           <PatientQuestionnaires patientId={patient.id} />
+        </TabsContent>
+
+        {/* Equipe de Cuidado */}
+        <TabsContent value="care-team" className="mt-6">
+          <PatientCareTeam patientId={patient.id} />
         </TabsContent>
 
         {/* Desenvolvimento */}

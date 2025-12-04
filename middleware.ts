@@ -91,7 +91,8 @@ export default function middleware(request: NextRequest) {
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('X-XSS-Protection', '0') // Disabled as per modern recommendations
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()')
+  // Permissions-Policy: Allow camera and microphone for teleconsulta
+  res.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()')
   
   // HSTS - enable in production
   if (process.env.NODE_ENV === 'production') {

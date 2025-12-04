@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { 
   FileText, 
   FlaskConical, 
@@ -38,7 +47,10 @@ import {
   Sparkles,
   BookMarked,
   Keyboard,
-  History
+  History,
+  Video,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useKeyboardShortcuts, CONSULTATION_SHORTCUTS } from '@/hooks/use-keyboard-shortcuts'
@@ -118,6 +130,11 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   // SOAP
   const [soap, setSoap] = useState({
@@ -182,7 +199,119 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       const res = await fetch(`/api/consultations/${consultationId}`)
       if (!res.ok) throw new Error('Falha ao carregar')
       const data = await res.json()
-      setConsultation(data.consultation || data)
+      const consultationData = data.consultation || data
+      setConsultation(consultationData)
+      
+      // Carregar dados SOAP salvos
+      if (consultationData.notes) {
+        try {
+          const savedData = JSON.parse(consultationData.notes)
+          if (savedData.soap) {
+            setSoap({
+              subjective: savedData.soap.subjective || '',
+              objective: savedData.soap.objective || '',
+              assessment: savedData.soap.assessment || '',
+              plan: savedData.soap.plan || ''
+            })
+          }
+          if (savedData.vitals) {
+            setVitals({
+              weight: savedData.vitals.weight || '',
+              height: savedData.vitals.height || '',
+              bloodPressure: savedData.vitals.bloodPressure || '',
+              heartRate: savedData.vitals.heartRate || '',
+              temperature: savedData.vitals.temperature || '',
+              saturation: savedData.vitals.saturation || ''
+            })
+          }
+          if (savedData.biData) {
+            setBIData(savedData.biData)
+          }
+          // Carregar diagnósticos do notes JSON
+          if (savedData.diagnoses && savedData.diagnoses.length > 0) {
+            setDiagnoses(savedData.diagnoses.map((d: any) => ({
+              id: d.id || Date.now().toString(),
+              code: d.code,
+              description: d.description,
+              type: d.type || 'PRINCIPAL'
+            })))
+          }
+        } catch {
+          // Se não for JSON, usar campos individuais
+          setSoap({
+            subjective: consultationData.chiefComplaint || consultationData.history || '',
+            objective: consultationData.physicalExam || '',
+            assessment: consultationData.assessment || '',
+            plan: consultationData.plan || ''
+          })
+        }
+      } else {
+        // Carregar dos campos individuais se notes estiver vazio
+        setSoap({
+          subjective: consultationData.chiefComplaint || consultationData.history || '',
+          objective: consultationData.physicalExam || '',
+          assessment: consultationData.assessment || '',
+          plan: consultationData.plan || ''
+        })
+      }
+      
+      // Carregar diagnósticos existentes (do relacionamento, se existir)
+      if (consultationData.diagnoses && consultationData.diagnoses.length > 0) {
+        setDiagnoses(consultationData.diagnoses.map((d: any) => ({
+          id: d.id,
+          code: d.code,
+          description: d.description,
+          type: d.type
+        })))
+      }
+      
+      // Carregar prescrições existentes
+      if (consultationData.prescriptions && consultationData.prescriptions.length > 0) {
+        const loadedPrescriptions: Prescription[] = []
+        for (const p of consultationData.prescriptions) {
+          try {
+            const meds = JSON.parse(p.medications)
+            if (Array.isArray(meds)) {
+              for (const med of meds) {
+                loadedPrescriptions.push({
+                  id: p.id + '-' + med.name,
+                  medication: med.name,
+                  dosage: med.dosage || '',
+                  frequency: med.frequency || '',
+                  duration: med.duration || '',
+                  instructions: med.instructions || ''
+                })
+              }
+            }
+          } catch {
+            // Se não for JSON, ignorar
+          }
+        }
+        if (loadedPrescriptions.length > 0) {
+          setPrescriptions(loadedPrescriptions)
+        }
+      }
+      
+      // Carregar exames existentes
+      if (consultationData.examRequests && consultationData.examRequests.length > 0) {
+        setExams(consultationData.examRequests.map((e: any) => ({
+          id: e.id,
+          examType: e.examType,
+          description: e.description,
+          priority: e.priority
+        })))
+      }
+      
+      // Carregar encaminhamentos existentes
+      if (consultationData.referrals && consultationData.referrals.length > 0) {
+        setReferrals(consultationData.referrals.map((r: any) => ({
+          id: r.id,
+          specialty: r.specialty,
+          description: r.reason || r.description,
+          priority: r.priority
+        })))
+      }
+      
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -280,6 +409,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     }
     setDiagnoses([...diagnoses, diag])
     setCidSearch('')
+    setValidationErrors([]) // Clear validation errors when adding diagnosis
     toast({ title: 'Diagnóstico adicionado', description: `${cid.code} - ${diag.description}` })
   }
 
@@ -379,9 +509,30 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     setPrescriptions(prev => [...prev, rx])
   }
 
+  // ============ VALIDAR CAMPOS OBRIGATÓRIOS ============
+  const validateForFinalization = (): string[] => {
+    const errors: string[] = []
+    
+    // SOAP - pelo menos Subjetivo e Avaliação são importantes
+    if (!soap.subjective.trim()) {
+      errors.push('Subjetivo (S) - Queixa principal do paciente')
+    }
+    if (!soap.assessment.trim()) {
+      errors.push('Avaliação (A) - Impressão diagnóstica')
+    }
+    
+    // Diagnósticos - pelo menos um é esperado
+    if (diagnoses.length === 0) {
+      errors.push('Diagnóstico - Pelo menos um CID/CIAP')
+    }
+    
+    return errors
+  }
+
   // ============ SALVAR ============
   const saveAll = async () => {
     setSaving(true)
+    setValidationErrors([])
     try {
       const res = await fetch(`/api/consultations/${consultationId}/complete`, {
         method: 'PATCH',
@@ -403,6 +554,111 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ============ FINALIZAR CONSULTA ============
+  const finalizeConsultation = async () => {
+    // Validar campos obrigatórios
+    const errors = validateForFinalization()
+    if (errors.length > 0) {
+      setValidationErrors(errors)
+      toast({ 
+        title: 'Campos obrigatórios', 
+        description: `Preencha: ${errors.join(', ')}`, 
+        variant: 'destructive' 
+      })
+      return
+    }
+    
+    setFinalizing(true)
+    setValidationErrors([])
+    
+    try {
+      // Primeiro salvar todos os dados
+      const saveRes = await fetch(`/api/consultations/${consultationId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: soap,
+          vitals,
+          prescriptions,
+          examRequests: exams,
+          referrals,
+          diagnoses,
+          certificates,
+          biData
+        })
+      })
+      if (!saveRes.ok) throw new Error('Erro ao salvar dados')
+      
+      // Depois finalizar a consulta mudando status
+      const finalizeRes = await fetch(`/api/consultations/${consultationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'complete',
+          notes: JSON.stringify(soap)
+        })
+      })
+      
+      if (!finalizeRes.ok) {
+        const errorData = await finalizeRes.json()
+        throw new Error(errorData.error || 'Erro ao finalizar')
+      }
+      
+      toast({ title: 'Consulta finalizada', description: 'A consulta foi concluída com sucesso' })
+      
+      // Recarregar para atualizar status
+      await loadConsultation()
+      
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setFinalizing(false)
+    }
+  }
+
+  // ============ CANCELAR CONSULTA ============
+  const cancelConsultation = async () => {
+    if (!cancelReason || cancelReason.trim().length < 3) {
+      toast({ 
+        title: 'Motivo obrigatório', 
+        description: 'Informe o motivo do cancelamento (mínimo 3 caracteres)', 
+        variant: 'destructive' 
+      })
+      return
+    }
+    
+    setCancelling(true)
+    
+    try {
+      const res = await fetch(`/api/consultations/${consultationId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReason.trim() })
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Erro ao cancelar')
+      }
+      
+      toast({ 
+        title: 'Consulta cancelada', 
+        description: 'A consulta foi cancelada com sucesso' 
+      })
+      
+      setShowCancelDialog(false)
+      setCancelReason('')
+      
+      // Redirecionar para a lista de consultas ou recarregar
+      window.location.href = '/consultations'
+      
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -451,69 +707,43 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         </div>
       )}
 
-      {/* HEADER */}
-      <Card>
-        <CardContent className="py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <User className="h-8 w-8 text-primary" />
-              <div>
-                <h2 className="text-lg font-semibold">{consultation?.patient?.name || 'Paciente'}</h2>
-                <p className="text-sm text-muted-foreground">
+      {/* HEADER - Compacto e responsivo */}
+      <Card className="flex-shrink-0">
+        <CardContent className="py-2 px-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            {/* Info do paciente */}
+            <div className="flex items-center gap-3 min-w-0">
+              <User className="h-6 w-6 text-primary flex-shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold truncate">{consultation?.patient?.name || 'Paciente'}</h2>
+                <p className="text-xs text-muted-foreground truncate">
                   {consultation?.patient?.age && `${consultation.patient.age} anos`}
-                  {consultation?.patient?.sex && ` • ${consultation.patient.sex === 'M' ? 'Masc' : 'Fem'}`}
+                  {consultation?.patient?.sex && ` • ${consultation.patient.sex === 'M' ? 'M' : 'F'}`}
                   {consultation?.patient?.cpf && ` • ${consultation.patient.cpf}`}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Toggle Histórico */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={showHistory ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowHistory(prev => !prev)}
-                    >
-                      <History className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {showHistory ? 'Ocultar histórico' : 'Mostrar histórico'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Atalhos */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowShortcuts(true)}
-                    >
-                      <Keyboard className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Atalhos de teclado (Ctrl+/)</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Gravação */}
+            
+            {/* Ações */}
+            <div className="flex items-center gap-1 flex-wrap">
+              <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-xs" asChild>
+                <Link href={`/consultations/${consultationId}/tele`}>
+                  <Video className="h-3 w-3 mr-1" /> Tele
+                </Link>
+              </Button>
+              <Button variant={showHistory ? "default" : "outline"} size="sm" className="h-7" onClick={() => setShowHistory(prev => !prev)}>
+                <History className="h-3 w-3" />
+              </Button>
               <Button
                 variant={recording ? "destructive" : "outline"}
                 size="sm"
+                className="h-7 text-xs"
                 onClick={recording ? stopRecording : startRecording}
                 disabled={processing}
               >
-                {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : 
-                 recording ? <><MicOff className="h-4 w-4 mr-1" /> Parar</> : 
-                 <><Mic className="h-4 w-4 mr-1" /> Gravar</>}
+                {processing ? <Loader2 className="h-3 w-3 animate-spin" /> : 
+                 recording ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
               </Button>
-              
-              {/* Ações rápidas */}
               <ProtocolSelector onApply={handleProtocolApply} />
               <AISuggestions 
                 soap={soap}
@@ -521,42 +751,18 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
                 patientSex={consultation?.patient?.sex}
                 onApply={handleAISuggestions}
               />
-              <ProtocolCreator 
-                prescriptions={prescriptions.map(rx => ({ 
-                  medication: rx.medication, 
-                  dosage: rx.dosage, 
-                  frequency: rx.frequency, 
-                  duration: rx.duration, 
-                  instructions: rx.instructions 
-                }))}
-                exams={exams.map(ex => ({ 
-                  examType: ex.examType, 
-                  description: ex.description, 
-                  priority: ex.priority 
-                }))}
-                referrals={referrals.map(ref => ({ 
-                  specialty: ref.specialty, 
-                  description: ref.description, 
-                  priority: ref.priority 
-                }))}
-                diagnoses={diagnoses.map(d => ({ 
-                  code: d.code, 
-                  description: d.description 
-                }))}
-                onSuccess={() => toast({ title: "Protocolo salvo!" })}
-              />
-              
-              <Badge variant="outline">{consultation?.status || 'EM_ANDAMENTO'}</Badge>
+              <Badge variant="outline" className="text-xs h-7">{consultation?.status || 'IN_PROGRESS'}</Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* LAYOUT PRINCIPAL */}
-      <div className="flex gap-4">
-        {/* PAINEL DE HISTÓRICO (lateral esquerda) */}
+      {/* LAYOUT PRINCIPAL - SOAP em destaque */}
+      <div className="flex gap-3 flex-1 min-h-0">
+        
+        {/* HISTÓRICO - Lateral esquerda (opcional) */}
         {showHistory && consultation?.patient?.id && (
-          <div className="w-80 flex-shrink-0">
+          <div className="w-64 flex-shrink-0 overflow-auto">
             <PatientHistoryPanel 
               patientId={consultation.patient.id}
               onRepeatPrescription={handleRepeatPrescription}
@@ -564,35 +770,31 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
           </div>
         )}
 
-        {/* GRID PRINCIPAL - 3 COLUNAS */}
-        <div className={`grid gap-4 flex-1 ${showHistory ? 'lg:grid-cols-3' : 'lg:grid-cols-3'}`}>
-        
-          {/* COLUNA 1: SOAP + Vitais + CID */}
-          <div className="space-y-4">
-          {/* Sinais Vitais */}
+        {/* ÁREA CENTRAL - SOAP ocupa ~60% */}
+        <div className="flex-1 min-w-0 space-y-3 overflow-auto">
+          
+          {/* Sinais Vitais - Inline compacto */}
           <Card>
-            <CardHeader className="py-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4" /> Sinais Vitais
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-3 gap-2">
+            <CardContent className="py-2 px-3">
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Activity className="h-3 w-3" /> Vitais:
+                </span>
                 {[
-                  { key: 'weight', label: 'Peso', placeholder: 'kg' },
-                  { key: 'height', label: 'Altura', placeholder: 'cm' },
-                  { key: 'bloodPressure', label: 'PA', placeholder: 'mmHg' },
-                  { key: 'heartRate', label: 'FC', placeholder: 'bpm' },
-                  { key: 'temperature', label: 'Temp', placeholder: '°C' },
-                  { key: 'saturation', label: 'SpO2', placeholder: '%' },
-                ].map(({ key, label, placeholder }) => (
-                  <div key={key}>
-                    <Label className="text-xs">{label}</Label>
+                  { key: 'weight', label: 'Peso', placeholder: 'kg', w: 'w-16' },
+                  { key: 'height', label: 'Alt', placeholder: 'cm', w: 'w-14' },
+                  { key: 'bloodPressure', label: 'PA', placeholder: 'mmHg', w: 'w-20' },
+                  { key: 'heartRate', label: 'FC', placeholder: 'bpm', w: 'w-14' },
+                  { key: 'temperature', label: 'T°', placeholder: '°C', w: 'w-14' },
+                  { key: 'saturation', label: 'SpO2', placeholder: '%', w: 'w-14' },
+                ].map(({ key, label, placeholder, w }) => (
+                  <div key={key} className="flex items-center gap-1">
+                    <Label className="text-xs text-muted-foreground">{label}</Label>
                     <Input
                       value={(vitals as any)[key]}
                       onChange={(e) => setVitals({ ...vitals, [key]: e.target.value })}
                       placeholder={placeholder}
-                      className="h-8 text-sm"
+                      className={`h-6 text-xs ${w}`}
                     />
                   </div>
                 ))}
@@ -600,52 +802,92 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
             </CardContent>
           </Card>
 
-          {/* SOAP */}
-          <Card>
-            <CardHeader className="py-2">
+          {/* SOAP - DESTAQUE PRINCIPAL */}
+          <Card className="border-primary/30 shadow-md flex-1">
+            <CardHeader className="py-2 px-4 bg-gradient-to-r from-primary/10 to-primary/5 border-b">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Stethoscope className="h-4 w-4" /> SOAP
+                <Stethoscope className="h-4 w-4 text-primary" />
+                Prontuário SOAP
+                {recording && (
+                  <Badge variant="destructive" className="ml-2 text-xs animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white mr-1" /> REC
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {[
-                { key: 'subjective', label: 'Subjetivo', placeholder: 'Queixa, HDA...' },
-                { key: 'objective', label: 'Objetivo', placeholder: 'Exame físico...' },
-                { key: 'assessment', label: 'Avaliação', placeholder: 'Diagnóstico...' },
-                { key: 'plan', label: 'Plano', placeholder: 'Conduta...' },
-              ].map(({ key, label, placeholder }) => (
-                <div key={key}>
-                  <Label className="text-xs font-medium">{label}</Label>
+            <CardContent className="p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 mb-1">
+                    <span className="w-5 h-5 rounded bg-blue-500 text-white flex items-center justify-center text-xs font-bold">S</span>
+                    Subjetivo
+                    <span className="text-destructive ml-1" title="Campo obrigatório para finalizar">*</span>
+                  </Label>
                   <Textarea
-                    value={(soap as any)[key]}
-                    onChange={(e) => setSoap({ ...soap, [key]: e.target.value })}
-                    placeholder={placeholder}
-                    className="min-h-[60px] text-sm resize-none"
+                    value={soap.subjective}
+                    onChange={(e) => { setSoap({ ...soap, subjective: e.target.value }); setValidationErrors([]) }}
+                    placeholder="Queixa principal, história da doença atual, sintomas..."
+                    className={`min-h-[140px] text-sm resize-y ${validationErrors.some(e => e.includes('Subjetivo')) ? 'border-destructive' : ''}`}
                   />
                 </div>
-              ))}
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 mb-1">
+                    <span className="w-5 h-5 rounded bg-green-500 text-white flex items-center justify-center text-xs font-bold">O</span>
+                    Objetivo
+                  </Label>
+                  <Textarea
+                    value={soap.objective}
+                    onChange={(e) => setSoap({ ...soap, objective: e.target.value })}
+                    placeholder="Exame físico, observações clínicas, sinais..."
+                    className="min-h-[140px] text-sm resize-y"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 mb-1">
+                    <span className="w-5 h-5 rounded bg-amber-500 text-white flex items-center justify-center text-xs font-bold">A</span>
+                    Avaliação
+                    <span className="text-destructive ml-1" title="Campo obrigatório para finalizar">*</span>
+                  </Label>
+                  <Textarea
+                    value={soap.assessment}
+                    onChange={(e) => { setSoap({ ...soap, assessment: e.target.value }); setValidationErrors([]) }}
+                    placeholder="Diagnóstico, hipóteses diagnósticas, impressão..."
+                    className={`min-h-[140px] text-sm resize-y ${validationErrors.some(e => e.includes('Avaliação')) ? 'border-destructive' : ''}`}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 mb-1">
+                    <span className="w-5 h-5 rounded bg-purple-500 text-white flex items-center justify-center text-xs font-bold">P</span>
+                    Plano
+                  </Label>
+                  <Textarea
+                    value={soap.plan}
+                    onChange={(e) => setSoap({ ...soap, plan: e.target.value })}
+                    placeholder="Conduta, tratamento, prescrições, orientações..."
+                    className="min-h-[140px] text-sm resize-y"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Diagnósticos CID-10 */}
-          <Card>
-            <CardHeader className="py-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="h-4 w-4" /> CID-10 ({diagnoses.length})
+          {/* CID-10 */}
+          <Card className={validationErrors.some(e => e.includes('Diagnóstico')) ? 'border-destructive' : ''}>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-xs flex items-center gap-2">
+                <FileText className="h-3 w-3" /> CID-10 ({diagnoses.length})
+                <span className="text-destructive" title="Campo obrigatório para finalizar">*</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {diagnoses.map((d) => (
-                <div key={d.id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
-                  <div>
-                    <span className="font-mono font-medium">{d.code}</span>
-                    <span className="text-muted-foreground ml-2 text-xs">{d.description}</span>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setDiagnoses(diagnoses.filter(x => x.id !== d.id))}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
+            <CardContent className="py-2 px-3">
+              <div className="flex flex-wrap gap-1 mb-2">
+                {diagnoses.map((d) => (
+                  <Badge key={d.id} variant="secondary" className="text-xs">
+                    <span className="font-mono">{d.code}</span>
+                    <button onClick={() => { setDiagnoses(diagnoses.filter(x => x.id !== d.id)); setValidationErrors([]) }} className="ml-1 hover:text-destructive">×</button>
+                  </Badge>
+                ))}
+              </div>
               <CIDAutocomplete 
                 value={cidSearch} 
                 onChange={setCidSearch} 
@@ -654,40 +896,32 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
               />
             </CardContent>
           </Card>
-
-          {/* BI Checkboxes */}
-          <ConsultationBICheckboxes data={biData} onChange={setBIData} />
         </div>
 
-        {/* COLUNA 2: Prescrições */}
-        <div className="space-y-4">
+        {/* LATERAL DIREITA - Prescrições, Exames, Encaminhamentos, Atestados */}
+        <div className="w-72 flex-shrink-0 space-y-2 overflow-auto">
+          
+          {/* Prescrições */}
           <Card>
-            <CardHeader className="py-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Prescrições ({prescriptions.length})
+            <CardHeader className="py-1.5 px-3">
+              <CardTitle className="text-xs flex items-center gap-1">
+                <FileText className="h-3 w-3" /> Prescrições ({prescriptions.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              <div className="max-h-[400px] overflow-auto space-y-2">
+            <CardContent className="py-2 px-3">
+              <div className="max-h-[100px] overflow-auto space-y-1 mb-2">
                 {prescriptions.map((rx) => (
-                  <div key={rx.id} className="p-2 bg-muted rounded text-sm">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">{rx.medication}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {rx.dosage} • {rx.frequency} • {rx.duration}
-                        </p>
-                        {rx.instructions && <p className="text-xs">{rx.instructions}</p>}
-                        {rx.controlled && <Badge variant="destructive" className="text-xs mt-1">Controlado</Badge>}
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => setPrescriptions(prescriptions.filter(p => p.id !== rx.id))}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                  <div key={rx.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{rx.medication}</p>
+                      <p className="text-muted-foreground truncate">{rx.dosage} • {rx.frequency}</p>
                     </div>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={() => setPrescriptions(prescriptions.filter(p => p.id !== rx.id))}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                 ))}
               </div>
-              <Separator />
               <MedicationAutocomplete 
                 value={medSearch}
                 onChange={setMedSearch}
@@ -700,20 +934,17 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
 
           {/* Exames */}
           <Card>
-            <CardHeader className="py-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FlaskConical className="h-4 w-4" /> Exames ({exams.length})
+            <CardHeader className="py-1.5 px-3">
+              <CardTitle className="text-xs flex items-center gap-1">
+                <FlaskConical className="h-3 w-3" /> Exames ({exams.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              <div className="max-h-[200px] overflow-auto space-y-2">
+            <CardContent className="py-2 px-3">
+              <div className="max-h-[80px] overflow-auto space-y-1 mb-2">
                 {exams.map((ex) => (
-                  <div key={ex.id} className="p-2 bg-muted rounded text-sm flex justify-between">
-                    <div>
-                      <p className="font-medium">{ex.description}</p>
-                      <Badge variant="outline" className="text-xs">{ex.examType}</Badge>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setExams(exams.filter(e => e.id !== ex.id))}>
+                  <div key={ex.id} className="p-1.5 bg-muted rounded text-xs flex justify-between">
+                    <span className="truncate flex-1">{ex.description}</span>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={() => setExams(exams.filter(e => e.id !== ex.id))}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -728,115 +959,229 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
               />
             </CardContent>
           </Card>
-        </div>
 
-        {/* COLUNA 3: Encaminhamentos e Atestados */}
-        <div className="space-y-4">
           {/* Encaminhamentos */}
           <Card>
-            <CardHeader className="py-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Send className="h-4 w-4" /> Encaminhamentos ({referrals.length})
+            <CardHeader className="py-1.5 px-3">
+              <CardTitle className="text-xs flex items-center gap-1">
+                <Send className="h-3 w-3" /> Encaminhamentos ({referrals.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              <div className="max-h-[150px] overflow-auto space-y-2">
-                {referrals.map((ref) => (
-                  <div key={ref.id} className="p-2 bg-muted rounded text-sm flex justify-between">
-                    <div>
-                      <p className="font-medium">{ref.specialty}</p>
-                      <p className="text-xs text-muted-foreground">{ref.description}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setReferrals(referrals.filter(r => r.id !== ref.id))}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Input
-                  placeholder="Especialidade"
-                  value={newReferral.specialty}
-                  onChange={(e) => setNewReferral({ ...newReferral, specialty: e.target.value })}
-                  className="h-8 text-sm"
-                />
-                <Textarea
-                  placeholder="Motivo"
-                  value={newReferral.description}
-                  onChange={(e) => setNewReferral({ ...newReferral, description: e.target.value })}
-                  className="min-h-[50px] text-sm"
-                />
-                <Button onClick={addReferral} size="sm" className="w-full">
-                  <Plus className="h-4 w-4 mr-1" /> Encaminhar
-                </Button>
-              </div>
+            <CardContent className="py-2 px-3 space-y-1">
+              {referrals.map((ref) => (
+                <div key={ref.id} className="p-1.5 bg-muted rounded text-xs flex justify-between">
+                  <span className="truncate flex-1">{ref.specialty}</span>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={() => setReferrals(referrals.filter(r => r.id !== ref.id))}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              <Input placeholder="Especialidade" value={newReferral.specialty} onChange={(e) => setNewReferral({ ...newReferral, specialty: e.target.value })} className="h-6 text-xs" />
+              <Input placeholder="Motivo" value={newReferral.description} onChange={(e) => setNewReferral({ ...newReferral, description: e.target.value })} className="h-6 text-xs" />
+              <Button onClick={addReferral} size="sm" className="w-full h-6 text-xs">
+                <Plus className="h-3 w-3 mr-1" /> Encaminhar
+              </Button>
             </CardContent>
           </Card>
 
           {/* Atestados */}
           <Card>
-            <CardHeader className="py-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Atestados ({certificates.length})
+            <CardHeader className="py-1.5 px-3">
+              <CardTitle className="text-xs flex items-center gap-1">
+                <FileText className="h-3 w-3" /> Atestados ({certificates.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              <div className="space-y-2">
-                {certificates.map((cert) => (
-                  <div key={cert.id} className="p-2 bg-muted rounded text-sm flex justify-between">
-                    <div>
-                      <Badge variant="outline" className="text-xs">{cert.type}</Badge>
-                      <p className="text-xs mt-1">{cert.description}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setCertificates(certificates.filter(c => c.id !== cert.id))}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Separator />
+            <CardContent className="py-2 px-3 space-y-1">
+              {certificates.map((cert) => (
+                <div key={cert.id} className="p-1.5 bg-muted rounded text-xs flex justify-between">
+                  <Badge variant="outline" className="text-xs h-5">{cert.type}</Badge>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setCertificates(certificates.filter(c => c.id !== cert.id))}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
               <Select value={newCertificate.type} onValueChange={(v) => setNewCertificate({ ...newCertificate, type: v })}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="COMPARECIMENTO">Comparecimento</SelectItem>
                   <SelectItem value="AFASTAMENTO">Afastamento</SelectItem>
                   <SelectItem value="ACOMPANHANTE">Acompanhante</SelectItem>
                 </SelectContent>
               </Select>
-              <Textarea
-                placeholder="Descrição"
-                value={newCertificate.description}
-                onChange={(e) => setNewCertificate({ ...newCertificate, description: e.target.value })}
-                className="min-h-[50px] text-sm"
-              />
+              <Input placeholder="Descrição" value={newCertificate.description} onChange={(e) => setNewCertificate({ ...newCertificate, description: e.target.value })} className="h-6 text-xs" />
               {newCertificate.type === 'AFASTAMENTO' && (
-                <Input
-                  type="number"
-                  placeholder="Dias"
-                  value={newCertificate.days}
-                  onChange={(e) => setNewCertificate({ ...newCertificate, days: parseInt(e.target.value) || 1 })}
-                  className="h-8 text-sm"
-                />
+                <Input type="number" placeholder="Dias" value={newCertificate.days} onChange={(e) => setNewCertificate({ ...newCertificate, days: parseInt(e.target.value) || 1 })} className="h-6 text-xs" />
               )}
-              <Button onClick={addCertificate} size="sm" className="w-full">
-                <Plus className="h-4 w-4 mr-1" /> Atestado
+              <Button onClick={addCertificate} size="sm" className="w-full h-6 text-xs">
+                <Plus className="h-3 w-3 mr-1" /> Atestado
               </Button>
             </CardContent>
           </Card>
         </div>
-        </div>
       </div>
 
-      {/* FOOTER - SALVAR */}
-      <div className="sticky bottom-4 flex justify-center">
-        <Button onClick={saveAll} disabled={saving} size="lg" className="shadow-lg px-8">
-          {saving ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-          {saving ? 'Salvando...' : 'Salvar Consulta (Ctrl+S)'}
-        </Button>
+      {/* FOOTER - SALVAR E FINALIZAR */}
+      <div className="sticky bottom-2 pt-2 space-y-2">
+        {/* Mostrar erros de validação se houver */}
+        {validationErrors.length > 0 && (
+          <div className="flex justify-center">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2 max-w-xl">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-destructive">Campos obrigatórios para finalizar:</p>
+                  <ul className="list-disc list-inside text-destructive/80 mt-1">
+                    {validationErrors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex justify-center gap-3">
+          {/* Botão Cancelar - só aparece se não finalizada */}
+          {consultation?.status !== 'COMPLETED' && consultation?.status !== 'CANCELLED' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => setShowCancelDialog(true)} 
+                    disabled={saving || finalizing || cancelling} 
+                    variant="outline"
+                    size="default" 
+                    className="shadow-lg px-4 text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Cancela esta consulta (erro de paciente, teste, etc.)</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mantém registro para auditoria
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
+          {/* Botão Salvar */}
+          <Button 
+            onClick={saveAll} 
+            disabled={saving || finalizing || consultation?.status === 'COMPLETED' || consultation?.status === 'CANCELLED'} 
+            variant="outline"
+            size="default" 
+            className="shadow-lg px-6"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar (Ctrl+S)
+          </Button>
+          
+          {/* Botão Finalizar */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={finalizeConsultation} 
+                  disabled={saving || finalizing || consultation?.status === 'COMPLETED' || consultation?.status === 'CANCELLED'} 
+                  size="default" 
+                  className="shadow-lg px-6 bg-green-600 hover:bg-green-700"
+                >
+                  {finalizing ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  )}
+                  Finalizar Consulta
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Salva os dados e marca a consulta como concluída</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Requer: Subjetivo, Avaliação e Diagnóstico
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        
+        {/* Status da consulta */}
+        {consultation?.status === 'COMPLETED' && (
+          <div className="flex justify-center">
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Consulta já finalizada
+            </Badge>
+          </div>
+        )}
+        
+        {consultation?.status === 'CANCELLED' && (
+          <div className="flex justify-center">
+            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
+              <XCircle className="h-3 w-3 mr-1" />
+              Consulta cancelada
+            </Badge>
+          </div>
+        )}
       </div>
+      
+      {/* Diálogo de confirmação de cancelamento */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Cancelar Consulta</DialogTitle>
+            <DialogDescription>
+              Esta ação cancelará a consulta. Os dados serão mantidos para auditoria, 
+              mas a consulta não poderá mais ser editada ou finalizada.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Label htmlFor="cancelReason" className="text-sm font-medium">
+              Motivo do cancelamento <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="cancelReason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Ex: Paciente selecionado incorretamente, consulta de teste, etc."
+              className="mt-2"
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              O motivo será registrado para fins de auditoria
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowCancelDialog(false)
+                setCancelReason('')
+              }}
+              disabled={cancelling}
+            >
+              Voltar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={cancelConsultation}
+              disabled={cancelling || cancelReason.trim().length < 3}
+            >
+              {cancelling ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              Confirmar Cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -147,7 +147,7 @@ class AuditLogger {
               action: auditLog.action,
               resourceType: auditLog.resource,
               resourceId: auditLog.resourceId || null,
-              details: auditLog.details ? JSON.stringify(auditLog.details).slice(0, 15000) : null,
+              metadata: auditLog.details ? JSON.stringify(auditLog.details).slice(0, 15000) : null,
               ipAddress: auditLog.ipAddress || null,
               userAgent: auditLog.userAgent || null,
               success: auditLog.success,

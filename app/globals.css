@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import 'react-big-calendar/lib/css/react-big-calendar.css';
+@import '../styles/calendar.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

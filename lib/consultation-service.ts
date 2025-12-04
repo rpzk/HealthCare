@@ -1,6 +1,7 @@
 import { Consultation, ConsultationStatus, ConsultationType, Prisma } from '@prisma/client'
 import { prisma, ensurePrismaConnected } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { ensureAccessOnConsultation } from '@/lib/patient-access'
 
 export interface ConsultationFilters {
   patientId?: string
@@ -17,9 +18,10 @@ export interface ConsultationCreateData {
   doctorId: string
   scheduledDate: Date
   type: ConsultationType
-  description?: string
+  chiefComplaint?: string  // Motivo/queixa principal
   notes?: string
   duration?: number // em minutos
+  status?: string
 }
 
 export interface ConsultationUpdateData {
@@ -180,13 +182,23 @@ export class ConsultationService {
           orderBy: {
             createdAt: 'desc'
           },
-          take: 5
+          take: 10
         },
         vitalSigns: {
           orderBy: {
             recordedAt: 'desc'
           },
           take: 1
+        },
+        diagnoses: {
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        examRequests: {
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       }
     })
@@ -238,8 +250,14 @@ export class ConsultationService {
 
     const consultation = await prisma.consultation.create({
       data: {
-        ...data,
-        status: 'SCHEDULED'
+        patientId: data.patientId,
+        doctorId: data.doctorId,
+        scheduledDate: data.scheduledDate,
+        type: data.type,
+        chiefComplaint: data.chiefComplaint,
+        notes: data.notes,
+        duration: data.duration || 60,
+        status: (data.status as ConsultationStatus) || 'SCHEDULED'
       },
       include: {
         patient: {
@@ -260,6 +278,14 @@ export class ConsultationService {
         }
       }
     })
+
+    // Auto-adicionar médico à equipe de cuidado do paciente
+    try {
+      await ensureAccessOnConsultation(data.patientId, data.doctorId)
+    } catch (error) {
+      // Não falhar a consulta por erro no care team
+      logger.warn('Erro ao adicionar médico à equipe de cuidado:', error)
+    }
 
     return consultation
   }

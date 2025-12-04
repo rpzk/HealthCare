@@ -1,4 +1,7 @@
 import { Metadata } from 'next'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
 import { DashboardOverview } from '@/components/dashboard/overview'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -9,7 +12,14 @@ export const metadata: Metadata = {
   description: 'Painel principal do sistema médico',
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Verificar sessão e redirecionar pacientes
+  const session = await getServerSession(authOptions)
+  
+  if (session?.user?.role === 'PATIENT') {
+    redirect('/minha-saude')
+  }
+
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />

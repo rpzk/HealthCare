@@ -83,6 +83,17 @@ export class EmailService {
     const { to, subject, html, text } = options
     const from = options.from || config.from
 
+    // DEBUG: Log de configuração
+    console.log('📧 [EMAIL-SERVICE] Config:', {
+      enabled: config.enabled,
+      provider: config.provider,
+      from: config.from,
+      smtpHost: config.smtp.host,
+      smtpPort: config.smtp.port,
+      smtpUser: config.smtp.auth.user ? '✓' : '✗',
+      smtpPass: config.smtp.auth.pass ? '✓' : '✗'
+    })
+
     try {
       if (!config.enabled) {
         console.log('📧 EMAIL (DISABLED):', { to, subject })

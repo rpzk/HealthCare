@@ -73,8 +73,8 @@ export const POST = withConsultationAuth(async (request, { user }) => {
       doctorId: validatedData.doctorId,
       scheduledDate,
       type: validatedData.type,
-      description: validatedData.description || '',
-      notes: validatedData.notes || '',
+      chiefComplaint: validatedData.description || undefined,  // Mapear description para chiefComplaint
+      notes: validatedData.notes || undefined,
       duration: validatedData.duration || 60,
       status: validatedData.status || 'SCHEDULED'
     }

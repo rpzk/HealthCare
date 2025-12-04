@@ -8,7 +8,7 @@ import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/maski
 import { sanitizeSearchQuery, sanitizeName, sanitizeEmail, sanitizeCpf } from '@/lib/sanitization'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
-export const GET = withPatientAuth(async (req, { user: _user }) => {
+export const GET = withPatientAuth(async (req, { user }) => {
   try {
     const { searchParams } = new URL(req.url)
     
@@ -33,8 +33,19 @@ export const GET = withPatientAuth(async (req, { user: _user }) => {
       }
     }
 
+    // ============================================
+    // CONTROLE DE ACESSO - LGPD
+    // Passa userId e role para filtrar apenas pacientes acessíveis
+    // ============================================
     const result = await startSpan('patients.list', () => PatientService.getPatients(
-      { search, gender, riskLevel, ageRange },
+      { 
+        search, 
+        gender, 
+        riskLevel, 
+        ageRange,
+        userId: user.id,
+        userRole: user.role 
+      },
       page,
       limit
     ))
