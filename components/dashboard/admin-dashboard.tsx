@@ -5,22 +5,17 @@ import { useRouter } from 'next/navigation'
 import { 
   Users, 
   Calendar, 
-  TrendingUp,
-  TrendingDown,
   Activity,
-  DollarSign,
   Clock,
   UserCheck,
   AlertTriangle,
   Building2,
-  Stethoscope,
-  ClipboardCheck,
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
   Download,
-  Filter
+  Inbox
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -36,36 +31,20 @@ import {
 } from "@/components/ui/select"
 
 interface AdminStats {
-  // Usuários
   totalUsers: number
   activeUsers: number
   newUsersThisMonth: number
   userGrowth: number
-  
-  // Pacientes
   totalPatients: number
-  newPatientsThisMonth: number
+  newPatientsThisPeriod: number
   patientGrowth: number
-  
-  // Atendimentos
   totalConsultationsMonth: number
   consultationsToday: number
   avgConsultationsPerDay: number
   consultationGrowth: number
-  
-  // Ocupação
-  occupancyRate: number
-  avgWaitTime: number
   cancellationRate: number
   noShowRate: number
-  
-  // Financeiro (se habilitado)
-  revenueMonth?: number
-  revenueGrowth?: number
-  
-  // Sistema
   systemHealth: 'healthy' | 'warning' | 'critical'
-  lastBackup?: string
 }
 
 interface TopProfessional {
@@ -73,21 +52,26 @@ interface TopProfessional {
   name: string
   role: string
   consultations: number
-  rating?: number
 }
 
 interface AlertItem {
   id: string
   type: 'warning' | 'error' | 'info'
   message: string
-  time: string
+}
+
+interface DashboardData {
+  stats: AdminStats
+  topProfessionals: TopProfessional[]
+  alerts: AlertItem[]
+  period: string
+  generatedAt: string
 }
 
 export function AdminDashboard() {
-  const [stats, setStats] = useState<AdminStats | null>(null)
-  const [topProfessionals, setTopProfessionals] = useState<TopProfessional[]>([])
-  const [alerts, setAlerts] = useState<AlertItem[]>([])
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState('month')
   const router = useRouter()
 
@@ -98,60 +82,20 @@ export function AdminDashboard() {
   const fetchAdminData = async () => {
     try {
       setLoading(true)
+      setError(null)
       
-      // Buscar dados do dashboard administrativo
-      const [statsRes, usersRes, consultationsRes] = await Promise.all([
-        fetch('/api/dashboard?section=all'),
-        fetch('/api/users?limit=1'),
-        fetch('/api/consultations?limit=1')
-      ])
-
-      // Dados reais ou mock para demonstração
-      const dashboardData = statsRes.ok ? await statsRes.json() : null
-      const usersData = usersRes.ok ? await usersRes.json() : null
+      const response = await fetch(`/api/admin/dashboard?period=${period}`)
       
-      // Construir estatísticas administrativas
-      const adminStats: AdminStats = {
-        totalUsers: usersData?.total || 4,
-        activeUsers: usersData?.active || 4,
-        newUsersThisMonth: 2,
-        userGrowth: 15,
-        
-        totalPatients: dashboardData?.data?.stats?.totalPatients || 1,
-        newPatientsThisMonth: 1,
-        patientGrowth: 100,
-        
-        totalConsultationsMonth: 45,
-        consultationsToday: dashboardData?.data?.stats?.consultationsToday || 0,
-        avgConsultationsPerDay: 8,
-        consultationGrowth: 12,
-        
-        occupancyRate: 72,
-        avgWaitTime: 15,
-        cancellationRate: 8,
-        noShowRate: 5,
-        
-        systemHealth: 'healthy',
-        lastBackup: new Date().toISOString()
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Erro ao carregar dados')
       }
-      
-      setStats(adminStats)
-      
-      // Top profissionais (mock)
-      setTopProfessionals([
-        { id: '1', name: 'Dr. João Silva', role: 'Clínica Geral', consultations: 45, rating: 4.9 },
-        { id: '2', name: 'Dra. Maria Santos', role: 'Pediatria', consultations: 38, rating: 4.8 },
-        { id: '3', name: 'Dr. Carlos Lima', role: 'Cardiologia', consultations: 32, rating: 4.7 },
-      ])
-      
-      // Alertas (mock)
-      setAlerts([
-        { id: '1', type: 'warning', message: 'Estoque baixo: Dipirona 500mg', time: '2h atrás' },
-        { id: '2', type: 'info', message: '3 usuários aguardando aprovação', time: '5h atrás' },
-      ])
-      
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error)
+
+      const result = await response.json()
+      setData(result.data)
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err)
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
       setLoading(false)
     }
@@ -161,13 +105,27 @@ export function AdminDashboard() {
     return <AdminDashboardSkeleton />
   }
 
-  if (!stats) {
+  if (error) {
     return (
-      <div className="text-center py-8 text-red-600">
-        Erro ao carregar dashboard administrativo
+      <div className="flex flex-col items-center justify-center py-12">
+        <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+        <p className="text-lg font-medium text-red-600">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchAdminData}>
+          Tentar novamente
+        </Button>
       </div>
     )
   }
+
+  if (!data) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Nenhum dado disponível
+      </div>
+    )
+  }
+
+  const { stats, topProfessionals, alerts } = data
 
   return (
     <div className="space-y-6">
@@ -192,7 +150,7 @@ export function AdminDashboard() {
               <SelectItem value="year">Este Ano</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={fetchAdminData}>
+          <Button variant="outline" size="icon" onClick={fetchAdminData} title="Atualizar">
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm">
@@ -223,7 +181,6 @@ export function AdminDashboard() {
                 }`} />
                 <span className="text-sm">{alert.message}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{alert.time}</span>
             </div>
           ))}
         </div>
@@ -237,10 +194,10 @@ export function AdminDashboard() {
           change={stats.patientGrowth}
           icon={Users}
           color="blue"
-          subtitle={`+${stats.newPatientsThisMonth} este mês`}
+          subtitle={stats.newPatientsThisPeriod > 0 ? `+${stats.newPatientsThisPeriod} no período` : undefined}
         />
         <MetricCard
-          title="Atendimentos/Mês"
+          title="Atendimentos"
           value={stats.totalConsultationsMonth.toLocaleString()}
           change={stats.consultationGrowth}
           icon={Calendar}
@@ -248,12 +205,13 @@ export function AdminDashboard() {
           subtitle={`${stats.consultationsToday} hoje`}
         />
         <MetricCard
-          title="Taxa de Ocupação"
-          value={`${stats.occupancyRate}%`}
-          change={5}
+          title="Média Diária"
+          value={stats.avgConsultationsPerDay.toString()}
+          change={0}
           icon={Activity}
           color="purple"
-          subtitle={`Média: ${stats.avgConsultationsPerDay}/dia`}
+          subtitle="atendimentos/dia"
+          hideChange
         />
         <MetricCard
           title="Usuários Ativos"
@@ -271,27 +229,13 @@ export function AdminDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Tempo Médio de Espera</p>
-                <p className="text-2xl font-bold">{stats.avgWaitTime} min</p>
-              </div>
-              <Clock className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-            <Progress value={100 - (stats.avgWaitTime / 30 * 100)} className="mt-3" />
-            <p className="text-xs text-muted-foreground mt-1">Meta: 30 min</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-sm text-muted-foreground">Taxa de Cancelamento</p>
                 <p className="text-2xl font-bold">{stats.cancellationRate}%</p>
               </div>
-              <TrendingDown className="h-8 w-8 text-red-500/50" />
+              <Clock className="h-8 w-8 text-muted-foreground/50" />
             </div>
-            <Progress value={100 - stats.cancellationRate * 5} className="mt-3" />
-            <p className="text-xs text-muted-foreground mt-1">Meta: &lt;5%</p>
+            <Progress value={Math.max(0, 100 - stats.cancellationRate * 5)} className="mt-3" />
+            <p className="text-xs text-muted-foreground mt-1">Meta: &lt;10%</p>
           </CardContent>
         </Card>
 
@@ -304,8 +248,21 @@ export function AdminDashboard() {
               </div>
               <AlertTriangle className="h-8 w-8 text-amber-500/50" />
             </div>
-            <Progress value={100 - stats.noShowRate * 10} className="mt-3" />
-            <p className="text-xs text-muted-foreground mt-1">Meta: &lt;3%</p>
+            <Progress value={Math.max(0, 100 - stats.noShowRate * 10)} className="mt-3" />
+            <p className="text-xs text-muted-foreground mt-1">Meta: &lt;5%</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Novos Usuários</p>
+                <p className="text-2xl font-bold">{stats.newUsersThisMonth}</p>
+              </div>
+              <Users className="h-8 w-8 text-blue-500/50" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">No período selecionado</p>
           </CardContent>
         </Card>
 
@@ -319,7 +276,7 @@ export function AdminDashboard() {
                     stats.systemHealth === 'healthy' ? 'bg-green-500' :
                     stats.systemHealth === 'warning' ? 'bg-amber-500' : 'bg-red-500'
                   }`} />
-                  <p className="text-lg font-semibold capitalize">
+                  <p className="text-lg font-semibold">
                     {stats.systemHealth === 'healthy' ? 'Saudável' :
                      stats.systemHealth === 'warning' ? 'Atenção' : 'Crítico'}
                   </p>
@@ -327,9 +284,6 @@ export function AdminDashboard() {
               </div>
               <Activity className="h-8 w-8 text-green-500/50" />
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Último backup: {stats.lastBackup ? new Date(stats.lastBackup).toLocaleString('pt-BR') : 'N/A'}
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -351,31 +305,35 @@ export function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {topProfessionals.map((prof, index) => (
-                <div key={prof.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      index === 0 ? 'bg-amber-100 text-amber-700' :
-                      index === 1 ? 'bg-slate-100 text-slate-700' :
-                      'bg-orange-100 text-orange-700'
-                    }`}>
-                      {index + 1}
+            {topProfessionals.length > 0 ? (
+              <div className="space-y-4">
+                {topProfessionals.map((prof, index) => (
+                  <div key={prof.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                        index === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                        index === 1 ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' :
+                        'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-medium">{prof.name}</p>
+                        <p className="text-sm text-muted-foreground">{prof.role || 'Profissional'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{prof.name}</p>
-                      <p className="text-sm text-muted-foreground">{prof.role}</p>
+                    <div className="text-right">
+                      <p className="font-semibold">{prof.consultations} atend.</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{prof.consultations} atend.</p>
-                    {prof.rating && (
-                      <p className="text-sm text-muted-foreground">⭐ {prof.rating}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Inbox className="h-12 w-12 mb-3 opacity-50" />
+                <p>Nenhum atendimento no período</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -424,41 +382,23 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Distribuição por tipo de atendimento */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Distribuição de Atendimentos</CardTitle>
-              <CardDescription>Por tipo de consulta no período</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/admin/bi')}>
-              Ver detalhes
-              <ArrowUpRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatBlock label="Consultas Iniciais" value={18} total={45} color="blue" />
-            <StatBlock label="Retornos" value={15} total={45} color="green" />
-            <StatBlock label="Urgências" value={7} total={45} color="red" />
-            <StatBlock label="Teleconsultas" value={5} total={45} color="purple" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Timestamp */}
+      <p className="text-xs text-muted-foreground text-right">
+        Atualizado em {new Date(data.generatedAt).toLocaleString('pt-BR')}
+      </p>
     </div>
   )
 }
 
-// Componentes auxiliares
+// Componente MetricCard
 function MetricCard({ 
   title, 
   value, 
   change, 
   icon: Icon, 
   color, 
-  subtitle 
+  subtitle,
+  hideChange = false
 }: { 
   title: string
   value: string
@@ -466,13 +406,14 @@ function MetricCard({
   icon: any
   color: 'blue' | 'green' | 'purple' | 'amber' | 'red'
   subtitle?: string
+  hideChange?: boolean
 }) {
-  const colors = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    purple: 'bg-purple-500',
-    amber: 'bg-amber-500',
-    red: 'bg-red-500'
+  const colorClasses = {
+    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    amber: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+    red: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
   }
 
   const isPositive = change >= 0
@@ -484,21 +425,23 @@ function MetricCard({
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold">{value}</p>
-            <div className="flex items-center gap-2">
-              <Badge 
-                variant="secondary" 
-                className={`text-xs ${isPositive ? 'text-green-600' : 'text-red-600'}`}
-              >
-                {isPositive ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
-                {Math.abs(change)}%
-              </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!hideChange && (
+                <Badge 
+                  variant="secondary" 
+                  className={`text-xs ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                >
+                  {isPositive ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
+                  {Math.abs(change)}%
+                </Badge>
+              )}
               {subtitle && (
                 <span className="text-xs text-muted-foreground">{subtitle}</span>
               )}
             </div>
           </div>
-          <div className={`p-3 rounded-lg ${colors[color]}/10`}>
-            <Icon className={`h-6 w-6 text-${color}-500`} />
+          <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+            <Icon className="h-6 w-6" />
           </div>
         </div>
       </CardContent>
@@ -506,31 +449,7 @@ function MetricCard({
   )
 }
 
-function StatBlock({ 
-  label, 
-  value, 
-  total, 
-  color 
-}: { 
-  label: string
-  value: number
-  total: number
-  color: string
-}) {
-  const percentage = Math.round((value / total) * 100)
-  
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{value}</span>
-      </div>
-      <Progress value={percentage} className="h-2" />
-      <p className="text-xs text-muted-foreground text-right">{percentage}%</p>
-    </div>
-  )
-}
-
+// Skeleton
 function AdminDashboardSkeleton() {
   return (
     <div className="space-y-6">
