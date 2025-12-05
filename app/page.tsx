@@ -13,11 +13,17 @@ export const metadata: Metadata = {
 }
 
 export default async function DashboardPage() {
-  // Verificar sessão e redirecionar pacientes
+  // Verificar sessão e redirecionar por role
   const session = await getServerSession(authOptions)
   
+  // Pacientes vão para área do paciente
   if (session?.user?.role === 'PATIENT') {
     redirect('/minha-saude')
+  }
+
+  // Admins vão para painel administrativo
+  if (session?.user?.role === 'ADMIN') {
+    redirect('/admin')
   }
 
   return (
