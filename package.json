@@ -11,6 +11,7 @@
     "start:ollama": "./scripts/start-with-ollama.sh",
     "start:ollama:seed": "./scripts/start-with-ollama.sh --seed",
     "lint": "next lint",
+    "createsuperuser": "node scripts/createsuperuser.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
