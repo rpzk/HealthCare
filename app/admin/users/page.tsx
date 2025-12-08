@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Filter,
   Download,
-  Eye
+  Eye,
+  Shield
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -56,6 +57,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toast } from '@/hooks/use-toast'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { UserRolesDialog } from '@/components/admin/user-roles-dialog'
 
 interface User {
   id: string
@@ -102,6 +104,8 @@ export default function AdminUsersPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('DOCTOR')
   const [inviting, setInviting] = useState(false)
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -389,6 +393,13 @@ export default function AdminUsersPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             Ver detalhes
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedUser(user)
+                            setRolesDialogOpen(true)
+                          }}>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Gerenciar papéis
+                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Key className="h-4 w-4 mr-2" />
                             Redefinir senha
@@ -474,6 +485,17 @@ export default function AdminUsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* User Roles Dialog */}
+      {selectedUser && (
+        <UserRolesDialog
+          open={rolesDialogOpen}
+          onOpenChange={setRolesDialogOpen}
+          userId={selectedUser.id}
+          userName={selectedUser.name}
+          onSuccess={fetchUsers}
+        />
+      )}
     </div>
   )
 }

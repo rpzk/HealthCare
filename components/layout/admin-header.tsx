@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { useActiveRole } from '@/hooks/use-active-role'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,13 +30,32 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  DOCTOR: 'Médico',
+  NURSE: 'Enfermeiro(a)',
+  RECEPTIONIST: 'Recepcionista',
+  PATIENT: 'Paciente',
+  PHYSIOTHERAPIST: 'Fisioterapeuta',
+  PSYCHOLOGIST: 'Psicólogo(a)',
+  HEALTH_AGENT: 'Agente de Saúde',
+  TECHNICIAN: 'Técnico(a)',
+  PHARMACIST: 'Farmacêutico(a)',
+  DENTIST: 'Dentista',
+  NUTRITIONIST: 'Nutricionista',
+  SOCIAL_WORKER: 'Assistente Social',
+  OTHER: 'Usuário',
+}
+
 export function AdminHeader() {
   const router = useRouter()
   const { data: session } = useSession()
+  const { activeRole } = useActiveRole()
   
   const userName = session?.user?.name || 'Administrador'
   const userEmail = session?.user?.email || ''
   const initials = userName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+  const roleLabel = ROLE_LABELS[activeRole || 'ADMIN'] || 'Administrador'
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/auth/signin' })
@@ -72,6 +93,9 @@ export function AdminHeader() {
 
         {/* Ações */}
         <div className="flex items-center gap-2">
+          {/* Role Switcher */}
+          <RoleSwitcher />
+
           {/* Notificações */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -97,7 +121,7 @@ export function AdminHeader() {
                 </Avatar>
                 <div className="hidden lg:block text-left">
                   <p className="text-sm font-medium">{userName}</p>
-                  <p className="text-xs text-muted-foreground">Administrador</p>
+                  <p className="text-xs text-muted-foreground">{roleLabel}</p>
                 </div>
                 <ChevronDown className="h-4 w-4 hidden lg:block" />
               </Button>

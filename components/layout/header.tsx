@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AIAssistantButton } from '@/components/ai/assistant-button'
 import { NotificationCenter } from '@/components/ui/notification-center'
-import { QuickNav } from '@/components/navigation/quick-nav'
 import { GlobalSearch } from '@/components/search/global-search'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { useActiveRole } from '@/hooks/use-active-role'
 import { signOut, useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -40,6 +41,7 @@ const roleLabels: Record<string, { label: string; color: string; icon: React.Rea
 export function Header() {
   const router = useRouter()
   const { data: session } = useSession()
+  const { activeRole } = useActiveRole()
 
   const handleSettings = () => {
     router.push('/settings')
@@ -57,7 +59,8 @@ export function Header() {
     router.push('/minha-saude')
   }
 
-  const userRole = session?.user?.role || 'OTHER'
+  // Usar papel ativo (do cookie) em vez do papel da sessão
+  const userRole = activeRole || session?.user?.role || 'OTHER'
   const userName = session?.user?.name || 'Usuário'
   const roleInfo = roleLabels[userRole] || roleLabels.OTHER
 
@@ -85,6 +88,8 @@ export function Header() {
             </div>
 
             <div className="flex items-center space-x-3">
+              <RoleSwitcher />
+              
               <AIAssistantButton />
               
               <NotificationCenter />
@@ -154,7 +159,6 @@ export function Header() {
           </div>
         </div>
       </header>
-      <QuickNav />
     </>
   )
 }

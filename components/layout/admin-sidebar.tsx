@@ -28,7 +28,8 @@ import {
   TrendingUp,
   PieChart,
   Server,
-  Key
+  Key,
+  FlaskConical
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -121,6 +122,16 @@ const adminMenuItems: MenuItem[] = [
       { title: 'Inventário', href: '/inventory' },
       { title: 'Fornecedores', href: '/inventory/suppliers' },
       { title: 'Pedidos', href: '/inventory/orders' },
+    ]
+  },
+  {
+    title: 'Configurações Clínicas',
+    icon: FlaskConical,
+    href: '/admin/exam-combos',
+    submenu: [
+      { title: 'Combos de Exames', href: '/admin/exam-combos' },
+      { title: 'Protocolos', href: '/admin/protocols' },
+      { title: 'Catálogo de Exames', href: '/admin/exam-catalog' },
     ]
   },
   {

@@ -134,4 +134,17 @@
   .status-emergency {
     @apply status-badge bg-red-500/10 text-red-500 border border-red-500/20;
   }
+  
+  /* Sidebar responsive margin - ajusta automaticamente */
+  .sidebar-content {
+    margin-left: 14rem; /* 56 * 0.25rem = 14rem = w-56 */
+    transition: margin-left 0.3s ease;
+  }
+}
+
+/* Sidebar collapsed state via CSS - detecta quando sidebar está colapsada */
+@media (min-width: 768px) {
+  body:has(.sidebar-collapsed) .sidebar-content {
+    margin-left: 4rem; /* w-16 */
+  }
 }
