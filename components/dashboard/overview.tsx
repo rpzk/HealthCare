@@ -11,14 +11,13 @@ import {
   Clock,
   UserCheck,
   AlertTriangle,
-  Activity,
   Play,
   Stethoscope
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { DashboardSkeleton } from './skeleton'
-import { NewPatientDialog } from '../patients/new-patient-dialog'
+import { FloatingActionButton } from './floating-action-button'
 
 // Importar CalendarView dinamicamente para evitar SSR issues
 const CalendarView = dynamic(
@@ -75,7 +74,6 @@ export function DashboardOverview() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [newPatientOpen, setNewPatientOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -377,55 +375,8 @@ export function DashboardOverview() {
         </Card>
       </div>
 
-      {/* Ações rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <button 
-          onClick={() => setNewPatientOpen(true)}
-          className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left"
-        >
-          <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
-            <Users className="h-6 w-6" />
-          </div>
-          <h3 className="font-semibold text-lg">Novo Paciente</h3>
-          <p className="text-blue-100 text-sm mt-1">Cadastrar ou enviar convite</p>
-        </button>
-
-        <button className="p-6 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left">
-          <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
-            <Calendar className="h-6 w-6" />
-          </div>
-          <h3 className="font-semibold text-lg">Agendar Consulta</h3>
-          <p className="text-green-100 text-sm mt-1">Marcar novo horário</p>
-        </button>
-
-        <button className="p-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left">
-          <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
-            <FileText className="h-6 w-6" />
-          </div>
-          <h3 className="font-semibold text-lg">Criar Prontuário</h3>
-          <p className="text-purple-100 text-sm mt-1">Registro clínico rápido</p>
-        </button>
-
-        <button 
-          className="p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-xl text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group text-left relative overflow-hidden"
-          onClick={() => window.open('/patients/1/agent', '_blank')}
-        >
-          <div className="absolute top-0 right-0 p-2">
-            <div className="flex items-center space-x-1 bg-white/10 rounded-full px-2 py-1">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-xs font-medium">Online</span>
-            </div>
-          </div>
-          <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
-            <Activity className="h-6 w-6" />
-          </div>
-          <h3 className="font-semibold text-lg">Agente Médico IA</h3>
-          <p className="text-indigo-200 text-sm mt-1">Assistente inteligente</p>
-        </button>
-      </div>
-
-      {/* Diálogo de Novo Paciente */}
-      <NewPatientDialog open={newPatientOpen} onOpenChange={setNewPatientOpen} />
+      {/* Floating Action Button para ações rápidas */}
+      <FloatingActionButton />
     </div>
   )
 }

@@ -62,8 +62,29 @@ model User {
   
   // Equipe de cuidado
   careTeamMemberships    PatientCareTeam[]
+  
+  // Combos de exames criados
+  examCombos             ExamCombo[]
+  
+  // Papéis atribuídos (permite que um usuário tenha múltiplos papéis)
+  assignedRoles          UserAssignedRole[]
 
   @@map("users")
+}
+
+// Tabela para papéis atribuídos a um usuário
+// Permite que administradores atribuam papéis adicionais
+model UserAssignedRole {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role     // Papel atribuído (ADMIN, DOCTOR, etc.)
+  isPrimary   Boolean  @default(false) // Se é o papel principal
+  assignedAt  DateTime @default(now())
+  assignedBy  String?  // ID do admin que atribuiu
+  
+  @@unique([userId, role]) // Um usuário não pode ter o mesmo papel duas vezes
+  @@map("user_assigned_roles")
 }
 
 model Person {
@@ -2143,11 +2164,69 @@ model ExamCatalog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  protocolExams ProtocolExam[]
+  protocolExams  ProtocolExam[]
+  examComboItems ExamComboItem[] // Combos que incluem este exame
 
   @@index([name])
   @@index([examCategory])
   @@map("exam_catalog")
+}
+
+// ============================================
+// COMBOS/PACOTES DE EXAMES
+// ============================================
+
+model ExamCombo {
+  id          String        @id @default(cuid())
+  name        String // Nome do combo (ex: "Check-up Básico", "Perfil Lipídico")
+  description String? // Descrição do combo
+  category    ExamCategory? // Categoria principal do combo
+
+  // Configurações
+  isActive Boolean @default(true)
+  isPublic Boolean @default(true) // Disponível para todos os médicos
+
+  // Criador (opcional - combos do sistema não têm criador)
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  // Exames do combo
+  items ExamComboItem[]
+
+  // Metadados
+  usageCount Int      @default(0) // Quantas vezes foi usado
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
+  @@index([isActive])
+  @@map("exam_combos")
+}
+
+model ExamComboItem {
+  id String @id @default(cuid())
+
+  // Relacionamentos
+  comboId String
+  combo   ExamCombo @relation(fields: [comboId], references: [id], onDelete: Cascade)
+
+  examId String
+  exam   ExamCatalog @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  // Ordem do exame no combo
+  order Int @default(0)
+
+  // Configurações específicas
+  notes      String? // Notas específicas para este exame no combo
+  isRequired Boolean @default(true) // Se o exame é obrigatório ou opcional
+
+  createdAt DateTime @default(now())
+
+  @@unique([comboId, examId]) // Um exame só pode estar uma vez em cada combo
+  @@index([comboId])
+  @@index([examId])
+  @@map("exam_combo_items")
 }
 
 enum ExamCategory {

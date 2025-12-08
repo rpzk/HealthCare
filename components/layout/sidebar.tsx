@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { useTheme } from 'next-themes'
 import { 
   Calendar, 
   FileText, 
   Users, 
   Stethoscope, 
   ChevronDown, 
+  ChevronLeft,
+  ChevronRight,
   Home,
   TestTube,
   Pill,
@@ -18,24 +19,30 @@ import {
   BarChart3,
   Settings,
   Brain,
-  DollarSign,
   Building,
-  Mail,
-  UserCog,
+  ClipboardList,
   Sparkles,
-  ClipboardList
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { useSidebar } from '@/hooks/use-sidebar'
 
 interface MenuItem {
-  title: string;
-  icon: any;
-  href: string;
-  submenu?: Array<{ title: string; href: string }>;
-  badge?: string;
-  allowedRoles?: Array<'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST'>;
+  title: string
+  icon: any
+  href: string
+  submenu?: Array<{ title: string; href: string }>
 }
 
+// Menu simplificado - sem itens ADMIN (esses ficam no painel admin)
 const menuItems: MenuItem[] = [
   {
     title: 'Dashboard',
@@ -47,9 +54,9 @@ const menuItems: MenuItem[] = [
     icon: Users,
     href: '/patients',
     submenu: [
-      { title: 'Lista de Pacientes', href: '/patients' },
-      { title: 'Novo Paciente', href: '/patients?action=new' },
-      { title: 'Busca Avançada', href: '/patients/search' },
+      { title: 'Lista', href: '/patients' },
+      { title: 'Novo', href: '/patients?action=new' },
+      { title: 'Busca', href: '/patients/search' },
     ]
   },
   {
@@ -57,10 +64,9 @@ const menuItems: MenuItem[] = [
     icon: Stethoscope,
     href: '/consultations',
     submenu: [
-      { title: 'Todas as Consultas', href: '/consultations' },
-      { title: 'Agendar Consulta', href: '/consultations/new' },
-      { title: 'Consultas de Hoje', href: '/consultations/today' },
-      { title: 'Histórico', href: '/consultations/history' },
+      { title: 'Todas', href: '/consultations' },
+      { title: 'Agendar', href: '/consultations/new' },
+      { title: 'Hoje', href: '/consultations/today' },
     ]
   },
   {
@@ -68,9 +74,8 @@ const menuItems: MenuItem[] = [
     icon: FileText,
     href: '/records',
     submenu: [
-      { title: 'Todos os Prontuários', href: '/records' },
-      { title: 'Novo Registro', href: '/records/new' },
-      { title: 'Pesquisar', href: '/records/search' },
+      { title: 'Todos', href: '/records' },
+      { title: 'Novo', href: '/records/new' },
     ]
   },
   {
@@ -78,9 +83,8 @@ const menuItems: MenuItem[] = [
     icon: TestTube,
     href: '/exams',
     submenu: [
-      { title: 'Solicitar Exame', href: '/exams/new' },
+      { title: 'Solicitar', href: '/exams/new' },
       { title: 'Resultados', href: '/exams/results' },
-      { title: 'Histórico', href: '/exams/history' },
     ]
   },
   {
@@ -98,22 +102,15 @@ const menuItems: MenuItem[] = [
     icon: Brain,
     href: '/ai-medical',
     submenu: [
-      { title: 'Análise de Sintomas', href: '/ai-medical?tab=symptoms' },
-      { title: 'Interações Medicamentosas', href: '/ai-medical?tab=interactions' },
-      { title: 'Resumos Médicos', href: '/ai-medical?tab=summary' },
-      { title: 'Dashboard Analytics', href: '/ai-analytics' },
+      { title: 'Análise', href: '/ai-medical?tab=symptoms' },
+      { title: 'Interações', href: '/ai-medical?tab=interactions' },
+      { title: 'Analytics', href: '/ai-analytics' },
     ]
   },
   {
     title: 'Questionários',
     icon: ClipboardList,
     href: '/questionnaires',
-    badge: 'NOVO',
-    allowedRoles: ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
-    submenu: [
-      { title: 'Templates', href: '/questionnaires' },
-      { title: 'Enviados', href: '/questionnaires?tab=sent' },
-    ]
   },
   {
     title: 'Saúde da Família',
@@ -125,104 +122,30 @@ const menuItems: MenuItem[] = [
     ]
   },
   {
-    title: 'Gestão & BI',
-    icon: BarChart3,
-    href: '/admin/bi',
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    title: 'Gestão de Pessoal',
-    icon: UserCog,
-    href: '/admin/staff',
-    badge: 'RH',
-    allowedRoles: ['ADMIN'],
-    submenu: [
-      { title: 'Equipe', href: '/admin/staff' },
-      { title: 'Avaliação de Capacidade', href: '/hr/stratum' },
-    ]
-  },
-  {
-    title: 'Desenvolvimento',
-    icon: Sparkles,
-    href: '/development',
-    badge: 'NOVO',
-    submenu: [
-      { title: 'Visão Geral', href: '/development' },
-      { title: 'Horizonte Temporal', href: '/development?tab=stratum' },
-      { title: 'Forças de Caráter', href: '/development?tab=strengths' },
-    ]
-  },
-  {
-    title: 'Financeiro',
-    icon: DollarSign,
-    href: '/admin/financial',
-    badge: 'ADMIN',
-    allowedRoles: ['ADMIN'],
-  },
-  {
     title: 'Relatórios',
     icon: BarChart3,
     href: '/reports',
-    submenu: [
-      { title: 'Dashboard Médico', href: '/reports/dashboard' },
-      { title: 'Estatísticas', href: '/reports/stats' },
-      { title: 'Exportar Dados', href: '/reports/export' },
-    ]
   },
   {
     title: 'Configurações',
     icon: Settings,
     href: '/settings',
-    submenu: [
-      { title: 'Geral', href: '/settings' },
-      { title: 'Horários de Atendimento', href: '/settings/schedule' },
-    ]
-  },
-  {
-    title: 'Monitoramento de Segurança',
-    icon: Activity,
-    href: '/security-monitoring',
-    badge: 'ADMIN',
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    title: 'Convites',
-    icon: Mail,
-    href: '/admin/invites',
-    badge: 'ADMIN',
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    title: 'AI Enterprise Analytics',
-    icon: Brain,
-    href: '/ai-enterprise-analytics',
-    badge: 'AI',
-    allowedRoles: ['ADMIN'],
   },
 ]
 
 export function Sidebar() {
+  const { isCollapsed, toggleCollapsed } = useSidebar()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const pathname = usePathname()
   const { data: session } = useSession()
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
-  const userRole = (session as any)?.user?.role as 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | undefined
-
-  const visibleMenuItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      if (!item.allowedRoles) return true
-      if (!userRole) return false
-      return item.allowedRoles.includes(userRole)
-    })
-  }, [userRole])
 
   // Auto-expand groups that contain the active route
   useEffect(() => {
+    if (isCollapsed) return
     const toExpand: string[] = []
     for (const item of menuItems) {
       if (!pathname) continue
-      if (item.submenu && item.submenu.some((s) => pathname.startsWith(s.href))) {
+      if (item.submenu && item.submenu.some((s) => pathname.startsWith(s.href.split('?')[0]))) {
         toExpand.push(item.title)
       }
     }
@@ -230,9 +153,10 @@ export function Sidebar() {
       const merged = Array.from(new Set([...prev, ...toExpand]))
       return merged
     })
-  }, [pathname])
+  }, [pathname, isCollapsed])
 
   const toggleExpanded = (title: string) => {
+    if (isCollapsed) return
     setExpandedItems(prev => 
       prev.includes(title) 
         ? prev.filter(item => item !== title)
@@ -242,113 +166,122 @@ export function Sidebar() {
 
   const isActive = (href: string) => {
     if (!pathname) return false
-    return pathname === href || (href !== '/' && pathname.startsWith(href))
+    const cleanHref = href.split('?')[0]
+    return pathname === cleanHref || (cleanHref !== '/' && pathname.startsWith(cleanHref))
   }
 
-  const inactiveItemClasses = 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-
   return (
-    <div
-      className={cn(
-        'fixed left-0 top-32 w-64 h-[calc(100vh-8rem)] border-r overflow-y-auto transition-colors duration-300 shadow-sm supports-[backdrop-filter]:backdrop-blur-xl bg-background/60 border-border/40 text-foreground'
-      )}
-    >
-      <nav className="p-4 space-y-2">
-        {visibleMenuItems.map((item) => (
-          <div key={item.title}>
-            {item.submenu ? (
-              <button
-                onClick={() => toggleExpanded(item.title)}
-                className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                  isActive(item.href)
-                    ? 'bg-primary/90 text-primary-foreground shadow-md ring-1 ring-primary/40'
-                    : inactiveItemClasses
-                )}
-                aria-expanded={expandedItems.includes(item.title)}
-                aria-controls={`submenu-${item.title}`}
-              >
-                <div className="flex items-center space-x-3">
-                  <item.icon
-                    className={cn(
-                      'h-5 w-5',
-                      isActive(item.href)
-                        ? 'text-primary-foreground'
-                        : 'text-muted-foreground group-hover:text-foreground'
-                    )}
-                  />
-                  <span>{item.title}</span>
-                </div>
-                <ChevronDown 
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    expandedItems.includes(item.title) && "rotate-180"
-                  )}
-                />
-              </button>
+    <TooltipProvider delayDuration={0}>
+      <div
+        className={cn(
+          'fixed left-0 top-16 h-[calc(100vh-4rem)] border-r transition-all duration-300 z-40',
+          'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
+          isCollapsed ? 'w-16 sidebar-collapsed' : 'w-56'
+        )}
+      >
+        {/* Botão de colapsar */}
+        <div className="absolute -right-3 top-4 z-50">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-6 w-6 rounded-full border shadow-md bg-background"
+            onClick={toggleCollapsed}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
             ) : (
-              <Link
-                href={item.href}
-                className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                  isActive(item.href)
-                    ? 'bg-primary/90 text-primary-foreground shadow-md ring-1 ring-primary/40'
-                    : inactiveItemClasses
-                )}
-              >
-                <div className="flex items-center">
-                  <item.icon
-                    className={cn(
-                      'h-5 w-5 mr-3',
-                      isActive(item.href)
-                        ? 'text-primary-foreground'
-                        : 'text-muted-foreground group-hover:text-foreground'
-                    )}
-                  />
-                  <span>{item.title}</span>
-                </div>
-                {item.badge && (!item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))) && (
-                  <span
-                    className={cn(
-                      'px-2 py-1 text-xs font-bold rounded',
-                      isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-800'
-                    )}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
+              <ChevronLeft className="h-3 w-3" />
             )}
-            
-            {item.submenu && expandedItems.includes(item.title) && (
-              <div
-                className={cn(
-                  'ml-4 mt-2 space-y-1 border-l-2 pl-2 border-border'
-                )}
-                id={`submenu-${item.title}`}
-                role="region"
-                aria-label={`Submenu ${item.title}`}
-              >
-                {item.submenu.map((subItem) => (
-                  <Link
-                    key={subItem.title}
-                    href={subItem.href}
-                    className={cn(
-                      'w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors',
-                      isActive(subItem.href)
-                        ? 'bg-accent/90 text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    )}
-                    aria-current={isActive(subItem.href) ? 'page' : undefined}
-                  >
-                    {subItem.title}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
-    </div>
+          </Button>
+        </div>
+
+        <nav className={cn('p-2 space-y-1 overflow-y-auto h-full', isCollapsed && 'px-2')}>
+          {menuItems.map((item) => (
+            <div key={item.title}>
+              {isCollapsed ? (
+                // Modo colapsado - apenas ícones com tooltip
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'flex items-center justify-center p-2.5 rounded-lg transition-colors',
+                        isActive(item.href)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    {item.title}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                // Modo expandido
+                <>
+                  {item.submenu ? (
+                    <button
+                      onClick={() => toggleExpanded(item.title)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
+                        isActive(item.href)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        <span className="font-medium">{item.title}</span>
+                      </div>
+                      <ChevronDown 
+                        className={cn(
+                          "h-4 w-4 transition-transform",
+                          expandedItems.includes(item.title) && "rotate-180"
+                        )}
+                      />
+                    </button>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                        isActive(item.href)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="font-medium">{item.title}</span>
+                    </Link>
+                  )}
+                  
+                  {/* Submenu */}
+                  {item.submenu && expandedItems.includes(item.title) && (
+                    <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-3">
+                      {item.submenu.map((subItem) => (
+                        <Link
+                          key={subItem.title}
+                          href={subItem.href}
+                          className={cn(
+                            'block px-2 py-1.5 text-sm rounded transition-colors',
+                            isActive(subItem.href)
+                              ? 'bg-accent text-accent-foreground font-medium'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {subItem.title}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </nav>
+      </div>
+    </TooltipProvider>
   )
 }
