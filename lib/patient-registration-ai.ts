@@ -4,6 +4,8 @@
  */
 
 import { medicalDocumentAI } from './medical-document-ai'
+
+/* eslint-disable no-useless-escape */
 import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'
 

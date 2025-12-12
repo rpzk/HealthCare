@@ -8,7 +8,7 @@ interface ClientLoggerProps {
 
 declare global {
   interface Window {
-    __SECURITY_RAW?: SecurityOverviewResponse | null
+    __SECURITY_RAW?: unknown
   }
 }
 

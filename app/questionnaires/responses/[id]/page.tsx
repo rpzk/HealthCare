@@ -16,19 +16,17 @@ import {
   Clock,
   Sparkles,
   User,
-  Lightbulb,
-  Leaf,
   Flame,
   Droplets,
+  Wind,
+  Waves,
+  Zap,
+  Lightbulb,
+  Leaf,
   Sun,
   Moon,
-  Wind,
-  Mountain,
-  Waves,
-  TreePine,
-  Zap
 } from 'lucide-react'
-import { formatDistanceToNow, format } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 // Universal Analysis Interface
@@ -203,22 +201,21 @@ export default function ResponseDetailPage({ params }: { params: { id: string } 
   const [analyzing, setAnalyzing] = useState(false)
 
   useEffect(() => {
+    async function fetchResponse() {
+      try {
+        const res = await fetch(`/api/questionnaires/responses/${params.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setResponse(data)
+        }
+      } catch (error) {
+        console.error('Error fetching response:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchResponse()
   }, [params.id])
-
-  async function fetchResponse() {
-    try {
-      const res = await fetch(`/api/questionnaires/responses/${params.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setResponse(data)
-      }
-    } catch (error) {
-      console.error('Error fetching response:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function runAnalysis() {
     setAnalyzing(true)

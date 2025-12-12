@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const tokens = await exchangeCodeForTokens(code)
 
     // Salvar integração no banco
-    await prisma.userIntegration.upsert({
+    await (prisma as any).userIntegration.upsert({
       where: {
         userId_provider: {
           userId: state,

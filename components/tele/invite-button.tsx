@@ -23,13 +23,13 @@ export function TeleInviteButton({ consultationId }: TeleInviteButtonProps) {
         headers: { 'Content-Type': 'application/json' }
       })
 
-      const data = await response.json()
+      const data = await response.json() as { teleLink?: string; message?: string; error?: string }
 
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao enviar convite')
       }
 
-      setTeleLink(data.teleLink)
+      setTeleLink(data.teleLink ?? null)
       setSent(true)
       
       toast({
@@ -37,12 +37,12 @@ export function TeleInviteButton({ consultationId }: TeleInviteButtonProps) {
         description: data.message,
       })
 
-    } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message,
-        variant: 'destructive'
-      })
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      } else {
+        toast({ title: 'Erro', description: String(error), variant: 'destructive' })
+      }
     } finally {
       setLoading(false)
     }

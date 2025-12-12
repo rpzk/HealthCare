@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { AlertCircle, HeartPulse } from 'lucide-react'
+import { startAuthentication } from '@simplewebauthn/browser'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +43,46 @@ export default function SignIn() {
       setError('Erro ao fazer login. Tente novamente.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePasskey = async () => {
+    if (!email) {
+      setError('Informe o email para usar Passkey')
+      return
+    }
+    setError('')
+    setPasskeyLoading(true)
+    try {
+      const optionsRes = await fetch('/api/auth/webauthn/authenticate/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      if (!optionsRes.ok) {
+        const data = await optionsRes.json()
+        throw new Error(data.error || 'Não foi possível iniciar Passkey')
+      }
+      const options = await optionsRes.json()
+      const assertion = await startAuthentication(options)
+      const result = await signIn('passkey', {
+        redirect: false,
+        email,
+        assertion: JSON.stringify(assertion)
+      })
+      if (result?.error) {
+        throw new Error('Falha ao autenticar com Passkey')
+      }
+      const session = await getSession()
+      if (session) {
+        router.push('/')
+        router.refresh()
+      }
+    } catch (err: any) {
+      console.error('Passkey login error', err)
+      setError(err?.message || 'Erro ao autenticar com Passkey')
+    } finally {
+      setPasskeyLoading(false)
     }
   }
 
@@ -105,6 +147,15 @@ export default function SignIn() {
             disabled={loading}
           >
             {loading ? 'Entrando...' : 'Entrar'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={passkeyLoading}
+            onClick={handlePasskey}
+          >
+            {passkeyLoading ? 'Autenticando...' : 'Entrar com Passkey'}
           </Button>
         </form>
 

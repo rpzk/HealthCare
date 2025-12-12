@@ -15,7 +15,10 @@ export const POST = withAuth(async (req: NextRequest, { params, user }) => {
   if (rl instanceof NextResponse) return rl
   const roomId = params?.id as string
   if (!roomId) return NextResponse.json({ error: 'roomId ausente' }, { status: 400 })
-  const body = await req.json().catch(()=>null)
+  const body = await req.json().catch((err: unknown) => {
+    console.warn('Invalid JSON in tele signal POST', err)
+    return null
+  })
   if (!body) return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   const { type, sdp, candidate, from } = body
   if (!from) return NextResponse.json({ error: 'from ausente' }, { status: 400 })
@@ -24,6 +27,10 @@ export const POST = withAuth(async (req: NextRequest, { params, user }) => {
   const pub = new Redis(getRedisConnection())
   const channel = `tele:room:${roomId}`
   await pub.publish(channel, JSON.stringify({ type, sdp, candidate, from, at: Date.now() }))
-  try { await pub.quit() } catch {}
+  try {
+    await pub.quit()
+  } catch (err: unknown) {
+    console.warn('Error quitting redis publisher', err)
+  }
   return NextResponse.json({ ok: true })
 })

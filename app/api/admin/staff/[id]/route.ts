@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { EmailService } from '@/lib/email-service'
 
 interface RouteParams {
   params: { id: string }
@@ -102,13 +103,26 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         data: { password: hashedPassword },
         select: { id: true, name: true, email: true }
       })
-      
-      // TODO: Enviar email com senha temporária
-      
+
+      // Enviar a senha temporária por e-mail (nunca expor na resposta HTTP)
+      const emailService = EmailService.getInstance()
+      await emailService.sendEmail({
+        to: updated.email,
+        subject: 'Sua senha temporária - HealthCare',
+        html: `
+          <div style="font-family: sans-serif; color: #333;">
+            <h2>Olá, ${updated.name}!</h2>
+            <p>Uma senha temporária foi gerada para sua conta.</p>
+            <p><strong>Senha temporária:</strong> ${tempPassword}</p>
+            <p>Por favor, acesse o sistema e altere sua senha imediatamente.</p>
+          </div>
+        `,
+        text: `Olá, ${updated.name}. Sua senha temporária é: ${tempPassword}. Acesse o sistema e altere-a imediatamente.`
+      })
+
       return NextResponse.json({ 
         success: true, 
-        message: `Senha resetada para ${updated.name}`,
-        tempPassword // Em produção, isso deveria ser enviado por email apenas
+        message: `Senha resetada para ${updated.name} e enviada por e-mail`
       })
     }
 

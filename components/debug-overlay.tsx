@@ -1,20 +1,26 @@
-'use client'
+"use client"
+
 import React from 'react'
+
+declare global {
+  interface Window {
+    __PATIENTS_RAW?: unknown
+    __SECURITY_RAW?: unknown
+    __LAST_PAGES_STACK?: unknown
+  }
+}
 
 export function DebugOverlay() {
   const [open,setOpen] = React.useState(false)
-  const [info,setInfo] = React.useState<any>(null)
+  const [info, setInfo] = React.useState<Record<string, unknown> | null>(null)
   React.useEffect(()=>{
     const params = new URLSearchParams(window.location.search)
     if(!params.get('debug')) return
     setOpen(true)
     function collect(){
-      const data: any = {}
-      // @ts-ignore
+      const data: Record<string, unknown> = {}
       data.__patients_raw = window.__PATIENTS_RAW || null
-      // @ts-ignore
       data.__security_raw = window.__SECURITY_RAW || null
-      // @ts-ignore
       data.__last_pages_stack = window.__LAST_PAGES_STACK || null
       setInfo(data)
     }

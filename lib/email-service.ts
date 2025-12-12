@@ -111,7 +111,7 @@ export class EmailService {
           })
           break
         
-        case 'smtp':
+        case 'smtp': {
           const transporter = await this.getTransporter(config)
           if (!transporter) {
             throw new Error('SMTP Transporter not initialized')
@@ -124,6 +124,7 @@ export class EmailService {
             text
           })
           break
+        }
         
         default:
           console.warn(`⚠️ Provedor de e-mail desconhecido: ${config.provider}`)

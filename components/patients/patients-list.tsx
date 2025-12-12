@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import PatientForm from './patient-form'
+import PatientForm, { type PatientFormData } from './patient-form'
 import { PatientDetailsContent } from './patient-details-content'
 
 interface Patient {
@@ -84,7 +84,7 @@ export function PatientsList() {
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 10, total: 0, pages: 0 })
 
   const [showForm, setShowForm] = useState(false)
-  const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
+  const [editingPatient, setEditingPatient] = useState<Partial<PatientFormData> & { userAccount?: { id?: string; role?: string } } | null>(null)
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null)
   const [formLoading, setFormLoading] = useState(false)
@@ -107,8 +107,9 @@ export function PatientsList() {
 
       setPatients(list)
       setPagination(pag)
-    } catch (err: any) {
-      setError(err?.message || 'Erro desconhecido')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(message || 'Erro desconhecido')
       setPatients([])
     } finally {
       setLoading(false)
@@ -142,7 +143,7 @@ export function PatientsList() {
     }
   }
 
-  const handleSubmitPatient = async (data: any) => {
+  const handleSubmitPatient = async (data: PatientFormData) => {
     try {
       setFormLoading(true)
       const isEditing = !!editingPatient?.id
@@ -163,8 +164,9 @@ export function PatientsList() {
       setShowForm(false)
       setEditingPatient(null)
       fetchPatients(currentPage, searchTerm)
-    } catch (err: any) {
-      alert(err?.message || 'Erro ao salvar paciente')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      alert(message || 'Erro ao salvar paciente')
     } finally {
       setFormLoading(false)
     }
@@ -320,7 +322,7 @@ export function PatientsList() {
 
       {showForm && (
         <PatientForm
-          patient={editingPatient}
+          patient={editingPatient ?? undefined}
           onSubmit={handleSubmitPatient}
           onCancel={() => { setShowForm(false); setEditingPatient(null) }}
           loading={formLoading}

@@ -125,9 +125,10 @@ export function ConsultationsList() {
           pages: data.pagination.pages
         }))
       }
-    } catch (err: any) {
-      console.error('Erro ao buscar consultas:', err)
-      setError(err.message || 'Erro ao carregar consultas')
+    } catch (err) {
+      const error = err as Error
+      console.error('Erro ao buscar consultas:', error)
+      setError(error.message || 'Erro ao carregar consultas')
       setConsultations([])
     } finally {
       setLoading(false)
@@ -149,9 +150,10 @@ export function ConsultationsList() {
       }
       
       await fetchConsultations()
-    } catch (err: any) {
-      console.error(`Erro ao ${action} consulta:`, err)
-      setError(err.message)
+    } catch (err) {
+      const error = err as Error
+      console.error(`Erro ao ${action} consulta:`, error)
+      setError(error.message)
     } finally {
       setFormLoading(false)
     }
@@ -477,7 +479,7 @@ export function ConsultationsList() {
               </div>
               <ConsultationForm
                 patient={editingConsultation?.patient}
-                onSubmit={async (data) => {
+                onSubmit={async (data: any) => {
                   try {
                     // Criar a consulta via API
                     const response = await fetch('/api/consultations', {
@@ -502,9 +504,10 @@ export function ConsultationsList() {
                     } else {
                       fetchConsultations()
                     }
-                  } catch (error: any) {
-                    console.error('Erro ao criar consulta:', error)
-                    throw error
+                  } catch (error) {
+                    const err = error as Error
+                    console.error('Erro ao criar consulta:', err)
+                    throw err
                   }
                 }}
                 onCancel={() => {

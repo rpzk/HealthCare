@@ -10,7 +10,7 @@ export interface AuditLog {
   action: string
   resource: string
   resourceId?: string
-  details?: Record<string, any>
+  details?: Record<string, unknown>
   ipAddress?: string
   userAgent?: string
   timestamp: Date
@@ -32,6 +32,9 @@ export enum AuditAction {
   PATIENT_READ = 'PATIENT_READ',
   PATIENT_UPDATE = 'PATIENT_UPDATE',
   PATIENT_DELETE = 'PATIENT_DELETE',
+
+  // Usuário
+  USER_UPDATE = 'USER_UPDATE',
 
   // Consultas
   CONSULTATION_CREATE = 'CONSULTATION_CREATE',
@@ -96,9 +99,9 @@ class AuditLogger {
     userRole: string,
     action: AuditAction,
     resource: string,
-    options: {
+      options: {
       resourceId?: string
-      details?: Record<string, any>
+      details?: Record<string, unknown>
       ipAddress?: string
       userAgent?: string
       success?: boolean
@@ -181,7 +184,7 @@ class AuditLogger {
     userRole: string,
     action: AuditAction,
     resource: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ) {
     this.log(userId, userEmail, userRole, action, resource, {
       details,
@@ -199,7 +202,7 @@ class AuditLogger {
     action: AuditAction,
     resource: string,
     errorMessage: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ) {
     this.log(userId, userEmail, userRole, action, resource, {
       details,

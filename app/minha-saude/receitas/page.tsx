@@ -10,7 +10,6 @@ import {
   Pill,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Calendar,
   User,
   AlertTriangle,

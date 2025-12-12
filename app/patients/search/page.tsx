@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -297,7 +297,7 @@ export default function PatientSearchPage() {
             <p>• <strong>CPF:</strong> Digite os números do CPF (com ou sem pontuação)</p>
             <p>• <strong>Email:</strong> Digite o email completo ou parte dele</p>
             <p>• <strong>Filtros:</strong> Combine filtros para refinar sua busca</p>
-            <p>• <strong>Resultados:</strong> Clique em "Ver Detalhes" para acessar o prontuário completo</p>
+            <p>• <strong>Resultados:</strong> Clique em &quot;Ver Detalhes&quot; para acessar o prontuário completo</p>
           </div>
         </CardContent>
       </Card>

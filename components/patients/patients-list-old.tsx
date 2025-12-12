@@ -540,7 +540,7 @@ export function PatientsList() {
           </DialogHeader>
           {selectedPatient && (
             <PatientDetailsContent 
-              patient={selectedPatient} 
+              patient={selectedPatient as any} 
               onClose={() => setSelectedPatient(null)}
             />
           )}

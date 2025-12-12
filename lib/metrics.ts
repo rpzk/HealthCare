@@ -87,7 +87,12 @@ export async function renderPrometheus(prisma?: { auditLog?: { count: () => Prom
       out.push('\n# HELP audit_logs_total Total de audit logs')
       out.push('# TYPE audit_logs_total gauge')
       out.push(`audit_logs_total ${total}`)
-    } catch {}
+    } catch (e) {
+      // don't fail rendering metrics if audit log query fails - log at debug level
+      // keeps the catch from being an empty block (ESLint no-empty)
+      // eslint-disable-next-line no-console
+      console.debug('renderPrometheus: unable to count audit logs', e)
+    }
   }
 
   if (Object.keys(gauges).length) {

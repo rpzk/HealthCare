@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx'
 import { ExternalFetchAdapter, ExternalUpdatesService } from '@/lib/external-updates-service'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { Session } from 'next-auth'
 
 const SUPPORTED_SOURCES = ['ICD10', 'ICD11', 'CIAP2', 'NURSING', 'CBO'] as const
 type SupportedSource = (typeof SUPPORTED_SOURCES)[number]
@@ -27,6 +28,10 @@ interface UploadedNormalizedRow {
   title: string
   parent?: string
   description?: string
+}
+
+interface CustomSession {
+  user?: (Session['user'] & { role?: string }) | undefined
 }
 
 async function saveBuffer(buffer: Buffer, filename: string) {
@@ -70,7 +75,7 @@ function isNormalizedRow(row: UploadedRowCandidate): row is UploadedNormalizedRo
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Verificar autenticação e permissão de admin
-  const session = await getServerSession(req, res, authOptions as any) as { user?: { role?: string } } | null
+  const session = await getServerSession(req, res, authOptions) as CustomSession | null
   if (!session?.user || session.user.role !== 'ADMIN') {
     return res.status(403).json({ error: 'Acesso restrito a administradores' })
   }

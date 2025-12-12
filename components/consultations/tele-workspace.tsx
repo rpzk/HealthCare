@@ -20,7 +20,10 @@ type Props = {
 }
 
 export function TeleWorkspace({ consultationId }: Props) {
-  const [consultation, setConsultation] = useState<any>(null)
+  interface Patient { id?: string; name?: string; age?: number; sex?: 'M'|'F' }
+  interface Consultation { id?: string; patient?: Patient }
+
+  const [consultation, setConsultation] = useState<Consultation | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -38,15 +41,22 @@ export function TeleWorkspace({ consultationId }: Props) {
 
   // Vitals (collapsed by default)
   const [showVitals, setShowVitals] = useState(false)
-  const [vitals, setVitals] = useState({
-    weight: '', height: '', bloodPressure: '',
-    heartRate: '', temperature: '', saturation: ''
-  })
+  type Vitals = { weight: string; height: string; bloodPressure: string; heartRate: string; temperature: string; saturation: string }
+  const [vitals, setVitals] = useState<Vitals>({ weight: '', height: '', bloodPressure: '', heartRate: '', temperature: '', saturation: '' })
+
+  const vitalsFields: Array<{ key: keyof Vitals; label: string; placeholder: string }> = [
+    { key: 'weight', label: 'Peso', placeholder: 'kg' },
+    { key: 'height', label: 'Altura', placeholder: 'cm' },
+    { key: 'bloodPressure', label: 'PA', placeholder: 'mmHg' },
+    { key: 'heartRate', label: 'FC', placeholder: 'bpm' },
+    { key: 'temperature', label: 'Temp', placeholder: '°C' },
+    { key: 'saturation', label: 'SpO2', placeholder: '%' },
+  ]
 
   // Quick lists
-  const [prescriptions, setPrescriptions] = useState<any[]>([])
-  const [exams, setExams] = useState<any[]>([])
-  const [diagnoses, setDiagnoses] = useState<any[]>([])
+  const [prescriptions, setPrescriptions] = useState<Array<Record<string, unknown>>>([])
+  const [exams, setExams] = useState<Array<Record<string, unknown>>>([])
+  const [diagnoses, setDiagnoses] = useState<Array<Record<string, unknown>>>([])
 
   // Load consultation
   useEffect(() => {
@@ -59,8 +69,9 @@ export function TeleWorkspace({ consultationId }: Props) {
       if (!res.ok) throw new Error('Falha ao carregar')
       const data = await res.json()
       setConsultation(data.consultation || data)
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } catch (e: unknown) {
+      if (e instanceof Error) toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+      else toast({ title: 'Erro', description: String(e), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -77,7 +88,8 @@ export function TeleWorkspace({ consultationId }: Props) {
       mediaRecorderRef.current = mr
       mr.start()
       setRecording(true)
-    } catch (e: any) {
+    } catch (e: unknown) {
+      console.warn('Start recording failed', e)
       toast({ title: 'Erro', description: 'Não foi possível acessar o microfone', variant: 'destructive' })
     }
   }
@@ -109,7 +121,8 @@ export function TeleWorkspace({ consultationId }: Props) {
         })
         toast({ title: 'Transcrição concluída', description: 'SOAP preenchido automaticamente' })
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      console.warn('Transcription error', e)
       toast({ title: 'Erro', description: 'Falha na transcrição', variant: 'destructive' })
     } finally {
       setProcessing(false)
@@ -132,7 +145,8 @@ export function TeleWorkspace({ consultationId }: Props) {
         })
       })
       toast({ title: 'Salvo!', description: 'Consulta atualizada com sucesso' })
-    } catch (e: any) {
+    } catch (e: unknown) {
+      console.warn('Save error', e)
       toast({ title: 'Erro', description: 'Falha ao salvar', variant: 'destructive' })
     } finally {
       setSaving(false)
@@ -200,19 +214,12 @@ export function TeleWorkspace({ consultationId }: Props) {
         </button>
         {showVitals && (
           <div className="mt-2 grid grid-cols-6 gap-2 p-3 bg-muted/50 rounded-lg">
-            {[
-              { key: 'weight', label: 'Peso', placeholder: 'kg' },
-              { key: 'height', label: 'Altura', placeholder: 'cm' },
-              { key: 'bloodPressure', label: 'PA', placeholder: 'mmHg' },
-              { key: 'heartRate', label: 'FC', placeholder: 'bpm' },
-              { key: 'temperature', label: 'Temp', placeholder: '°C' },
-              { key: 'saturation', label: 'SpO2', placeholder: '%' },
-            ].map(({ key, label, placeholder }) => (
+            {vitalsFields.map(({ key, label, placeholder }) => (
               <div key={key}>
                 <Label className="text-xs text-muted-foreground">{label}</Label>
                 <Input
-                  value={(vitals as any)[key]}
-                  onChange={(e) => setVitals({ ...vitals, [key]: e.target.value })}
+                    value={vitals[key as keyof Vitals]}
+                    onChange={(e) => setVitals(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder={placeholder}
                   className="h-8 text-sm"
                 />

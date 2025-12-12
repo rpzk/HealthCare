@@ -1,8 +1,19 @@
 "use client"
-import React,{useEffect,useState} from 'react'
+import React,{useEffect,useState, useCallback} from 'react'
 
 interface CodeRef { id:string; code:string; display:string }
 interface Diagnosis { id:string; status:string; certainty:string; createdAt:string; primaryCode: CodeRef; secondaryCodes: { code: CodeRef }[]; notes?:string|null }
+interface Revision {
+  id: string;
+  changedAt: string;
+  reason: string;
+  previous: unknown;
+  next: unknown;
+}
+interface Detail {
+  id: string;
+  revisions: Revision[];
+}
 
 export default function PatientDiagnosesPage({ params }: { params: { id:string } }) {
   const patientId = params.id
@@ -11,24 +22,31 @@ export default function PatientDiagnosesPage({ params }: { params: { id:string }
   const [error,setError] = useState<string|null>(null)
   const [query,setQuery] = useState('')
   const [system,setSystem] = useState('CID10')
-  const [searchResults,setSearchResults] = useState<any[]>([])
-  const [primary,setPrimary] = useState<any|null>(null)
-  const [secondary,setSecondary] = useState<any[]>([])
+  const [searchResults,setSearchResults] = useState<CodeRef[]>([])
+  const [primary,setPrimary] = useState<CodeRef|null>(null)
+  const [secondary,setSecondary] = useState<CodeRef[]>([])
   const [notes,setNotes] = useState('')
   const [creating,setCreating] = useState(false)
   const [showForm,setShowForm] = useState(false)
-  const [detail,setDetail] = useState<any|null>(null)
+  const [detail,setDetail] = useState<Detail|null>(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const r = await fetch(`/api/diagnoses?patientId=${patientId}`)
       const j = await r.json(); if(!r.ok) throw new Error(j.error||'erro')
       setItems(j.diagnoses || [])
-    } catch(e:any){ setError(e.message) }
+    } catch(e:unknown){ 
+      if (e instanceof Error) {
+        setError(e.message) 
+      } else {
+        setError('An unknown error occurred')
+      }
+    }
     finally { setLoading(false) }
-  }
-  useEffect(()=>{ load() },[patientId])
+  }, [patientId])
+
+  useEffect(()=>{ load() },[load])
 
   useEffect(()=>{ // live search codes
     if(query.trim().length<3){ setSearchResults([]); return }
@@ -48,7 +66,13 @@ export default function PatientDiagnosesPage({ params }: { params: { id:string }
       const j = await r.json(); if(!r.ok) throw new Error(j.error||'erro')
       setPrimary(null); setSecondary([]); setNotes(''); setShowForm(false)
       load()
-    } catch(e:any){ alert(e.message) }
+    } catch(e:unknown){ 
+      if (e instanceof Error) {
+        alert(e.message) 
+      } else {
+        alert('An unknown error occurred')
+      }
+    }
     finally { setCreating(false) }
   }
 
@@ -117,7 +141,7 @@ export default function PatientDiagnosesPage({ params }: { params: { id:string }
         {detail && <div className="space-y-2 max-h-[60vh] overflow-auto border rounded bg-white p-3">
           <div className="text-xs text-gray-500">ID: {detail.id}</div>
           {detail.revisions.length===0 && <div className="text-xs text-gray-400">Sem revisões.</div>}
-          {detail.revisions.map((r:any)=> <div key={r.id} className="border rounded p-2 text-xs space-y-1">
+          {detail.revisions.map((r: Revision)=> <div key={r.id} className="border rounded p-2 text-xs space-y-1">
             <div className="flex justify-between"><span>{new Date(r.changedAt).toLocaleString()}</span><span>{r.reason||''}</span></div>
             <div className="grid grid-cols-2 gap-2">
               <div>

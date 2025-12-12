@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -15,13 +15,11 @@ import {
   Wind,
   Scale,
   Ruler,
-  Clock,
   TrendingUp,
   TrendingDown,
   Minus,
   RefreshCw,
-  Calendar,
-  Plus,
+  
   LineChart
 } from 'lucide-react'
 import Link from 'next/link'
@@ -33,7 +31,7 @@ interface VitalSign {
   type: string
   value: number
   unit: string
-  measuredAt: string
+  recordedAt: string
   notes?: string
 }
 
@@ -114,7 +112,7 @@ const vitalTypes: VitalSummary[] = [
 ]
 
 export default function SinaisVitaisPacientePage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const [vitals, setVitals] = useState<VitalSign[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -139,13 +137,13 @@ export default function SinaisVitaisPacientePage() {
   const getLatestVital = (type: string) => {
     return vitals
       .filter(v => v.type === type)
-      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())[0]
+      .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())[0]
   }
 
   const getTrend = (type: string): 'up' | 'down' | 'stable' | undefined => {
     const typeVitals = vitals
       .filter(v => v.type === type)
-      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
+      .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
     
     if (typeVitals.length < 2) return undefined
     
@@ -231,7 +229,7 @@ export default function SinaisVitaisPacientePage() {
                           </span>
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          {formatDistanceToNow(parseISO(latest.measuredAt), { 
+                          {formatDistanceToNow(parseISO(latest.recordedAt), { 
                             addSuffix: true, 
                             locale: ptBR 
                           })}
@@ -274,7 +272,7 @@ export default function SinaisVitaisPacientePage() {
         ) : (
           <div className="space-y-2">
             {vitals
-              .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
+              .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
               .slice(0, 10)
               .map((vital) => {
                 const vitalType = vitalTypes.find(v => v.type === vital.type)
@@ -290,7 +288,7 @@ export default function SinaisVitaisPacientePage() {
                         <div className="flex-1">
                           <p className="text-sm font-medium">{vitalType?.label || vital.type}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(parseISO(vital.measuredAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                            {format(parseISO(vital.recordedAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
                           </p>
                         </div>
                         <div className="text-right">

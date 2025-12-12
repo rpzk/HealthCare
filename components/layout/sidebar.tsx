@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { ComponentType, SVGProps } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import { 
-  Calendar, 
+  
   FileText, 
   Users, 
   Stethoscope, 
@@ -21,9 +21,7 @@ import {
   Brain,
   Building,
   ClipboardList,
-  Sparkles,
-  PanelLeftClose,
-  PanelLeft
+  
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -37,7 +35,7 @@ import { useSidebar } from '@/hooks/use-sidebar'
 
 interface MenuItem {
   title: string
-  icon: any
+  icon: ComponentType<SVGProps<SVGSVGElement>>
   href: string
   submenu?: Array<{ title: string; href: string }>
 }
@@ -137,7 +135,7 @@ export function Sidebar() {
   const { isCollapsed, toggleCollapsed } = useSidebar()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const pathname = usePathname()
-  const { data: session } = useSession()
+  // no session usage in this component (kept out to avoid unnecessary renders)
 
   // Auto-expand groups that contain the active route
   useEffect(() => {

@@ -38,22 +38,24 @@ export async function GET(request: NextRequest) {
     // Formatar resposta para autocomplete
     const formatted = suggestions.map(med => ({
       id: med.id,
-      code: med.code,
+      // legacy frontend expects a 'code' field sometimes — use id as fallback
+      code: (med as any).code ?? med.id,
       name: med.name,
-      displayName: med.brandName ? `${med.name} (${med.brandName})` : med.name,
-      synonyms: med.synonyms,
+      displayName: (med as any).tradeName ? `${med.name} (${(med as any).tradeName})` : med.name,
+      // medication-service returns 'synonym' (singular) in select
+      synonyms: med.synonym ? [med.synonym] : [],
       prescriptionType: med.prescriptionType,
-      prescriptionTypeLabel: getPrescriptionTypeLabel(med.prescriptionType),
+      prescriptionTypeLabel: getPrescriptionTypeLabel(med.prescriptionType ?? ''),
       route: med.route,
-      routeLabel: getRouteLabel(med.route),
+      routeLabel: getRouteLabel(med.route ?? ''),
       form: med.form,
-      
-      // Valores padrão para prescrição
-      defaultDosage: med.defaultDosage,
-      defaultFrequency: med.defaultFrequency,
-      defaultDuration: med.defaultDuration,
-      defaultQuantity: med.defaultQuantity,
-      unit: med.unit,
+
+      // Valores padrão para prescrição - map to available schema fields
+      defaultDosage: med.strength ?? null,
+      defaultFrequency: med.defaultFrequency ?? null,
+      defaultDuration: med.defaultDuration ?? null,
+      defaultQuantity: med.maxQuantity ?? null,
+      unit: med.unit ?? null,
       
       // Disponibilidade
       availability: getAvailabilityLabels(med),
@@ -105,9 +107,9 @@ function getRouteLabel(route: string): string {
 function getAvailabilityLabels(med: any): string[] {
   const labels: string[] = []
   
-  if (med.isBasicPharmacy) labels.push('Farmácia Básica')
-  if (med.isPopularPharmacy) labels.push('Farmácia Popular')
-  if (med.isHospital) labels.push('Hospitalar')
+  if (med.basicPharmacy) labels.push('Farmácia Básica')
+  if (med.popularPharmacy) labels.push('Farmácia Popular')
+  if (med.hospitalPharmacy) labels.push('Hospitalar')
   
   return labels
 }
@@ -118,7 +120,7 @@ function getRestrictionLabels(med: any): string[] {
   if (med.minAge) labels.push(`Idade mínima: ${med.minAge} anos`)
   if (med.maxAge) labels.push(`Idade máxima: ${med.maxAge} anos`)
   if (med.sexRestriction) {
-    labels.push(`Apenas sexo ${med.sexRestriction === 'MALE' ? 'masculino' : 'feminino'}`)
+    labels.push(`Apenas sexo ${med.sexRestriction === 'M' ? 'masculino' : 'feminino'}`)
   }
   
   return labels

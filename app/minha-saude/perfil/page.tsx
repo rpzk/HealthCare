@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+// Separator removed: not used in this page
 import { 
-  User, 
+  
   ArrowLeft,
-  Mail,
+  
   Phone,
   Calendar,
   MapPin,
@@ -22,12 +22,12 @@ import {
   Heart,
   Droplets,
   AlertTriangle,
-  FileText,
-  Settings,
+  
+  
   Bell,
   Lock,
   HelpCircle,
-  Edit,
+  
   QrCode
 } from 'lucide-react'
 import Link from 'next/link'

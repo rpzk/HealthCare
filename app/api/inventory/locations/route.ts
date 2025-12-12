@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 
 // Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient, type Prisma } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
@@ -17,7 +17,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     const url = new URL(req.url)
     const active = url.searchParams.get('active')
 
-    const where: any = {}
+    const where: Prisma.StorageLocationWhereInput = {}
     if (active !== null) {
       where.isActive = active === 'true'
     }
@@ -33,10 +33,10 @@ export const GET = withAuth(async (req: NextRequest) => {
     })
 
     return NextResponse.json(locations)
-  } catch (error: any) {
-    console.error('Error fetching locations:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error fetching locations:', error)
     return NextResponse.json(
-      { error: 'Erro ao buscar localizações', details: error.message },
+      { error: 'Erro ao buscar localizações', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -64,13 +64,15 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     })
 
     return NextResponse.json(location, { status: 201 })
-  } catch (error: any) {
-    if (error.code === 'P2002') {
+  } catch (error: unknown) {
+    // Prisma unique constraint error P2002
+    if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002') {
       return NextResponse.json({ error: 'Nome já existe' }, { status: 400 })
     }
-    console.error('Error creating location:', error)
+
+    if (error instanceof Error) console.error('Error creating location:', error)
     return NextResponse.json(
-      { error: 'Erro ao criar localização', details: error.message },
+      { error: 'Erro ao criar localização', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

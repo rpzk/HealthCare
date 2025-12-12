@@ -62,9 +62,7 @@ export class ConsultationService {
 
     const skip = (page - 1) * limit
     
-    // Using any here due to complex Prisma dynamic query building
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {}
+    const where: Prisma.ConsultationWhereInput = {}
 
     // Filtros básicos
     if (filters.patientId) where.patientId = filters.patientId
@@ -99,7 +97,7 @@ export class ConsultationService {
           }
         },
         {
-          description: {
+          notes: {
             contains: filters.search,
             mode: 'insensitive'
           }
@@ -284,7 +282,8 @@ export class ConsultationService {
       await ensureAccessOnConsultation(data.patientId, data.doctorId)
     } catch (error) {
       // Não falhar a consulta por erro no care team
-      logger.warn('Erro ao adicionar médico à equipe de cuidado:', error)
+      // log the error safely (some environments may not accept unknown as second arg)
+      logger.warn(String(error))
     }
 
     return consultation
@@ -507,7 +506,7 @@ export class ConsultationService {
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
 
-    const where: any = {
+    const where: Prisma.ConsultationWhereInput = {
       scheduledDate: {
         gte: startOfDay,
         lt: endOfDay
@@ -546,7 +545,7 @@ export class ConsultationService {
   static async getUpcomingConsultations(doctorId?: string, limit = 5) {
     const now = new Date()
     
-    const where: any = {
+    const where: Prisma.ConsultationWhereInput = {
       scheduledDate: {
         gte: now
       },

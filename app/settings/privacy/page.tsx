@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -149,7 +149,7 @@ interface AuditLog {
 }
 
 export default function PrivacySettingsPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   
@@ -162,15 +162,7 @@ export default function PrivacySettingsPage() {
   const [revokeReason, setRevokeReason] = useState('')
   const [revokingAll, setRevokingAll] = useState(false)
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login')
-    } else if (status === 'authenticated') {
-      fetchConsents()
-    }
-  }, [status, router])
-
-  const fetchConsents = async () => {
+  const fetchConsents = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/my-consents')
@@ -182,12 +174,21 @@ export default function PrivacySettingsPage() {
         // Usuário não é paciente
         toast({ title: 'Esta funcionalidade é apenas para pacientes', variant: 'destructive' })
       }
-    } catch (error) {
-      toast({ title: 'Erro ao carregar permissões', variant: 'destructive' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao carregar permissões'
+      toast({ title: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login')
+    } else if (status === 'authenticated') {
+      fetchConsents()
+    }
+  }, [status, router, fetchConsents])
 
   const handleToggleConsent = async (dataType: string, currentValue: boolean) => {
     try {
@@ -211,8 +212,9 @@ export default function PrivacySettingsPage() {
       } else {
         toast({ title: 'Erro ao atualizar permissão', variant: 'destructive' })
       }
-    } catch (error) {
-      toast({ title: 'Erro ao atualizar permissão', variant: 'destructive' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar permissão'
+      toast({ title: message, variant: 'destructive' })
     } finally {
       setUpdating(null)
     }
@@ -234,8 +236,9 @@ export default function PrivacySettingsPage() {
       } else {
         toast({ title: 'Erro ao revogar permissões', variant: 'destructive' })
       }
-    } catch (error) {
-      toast({ title: 'Erro ao revogar permissões', variant: 'destructive' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao revogar permissões'
+      toast({ title: message, variant: 'destructive' })
     } finally {
       setRevokingAll(false)
     }

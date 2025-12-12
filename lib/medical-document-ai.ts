@@ -3,6 +3,8 @@
  * Processa documentos externos e distribui automaticamente no sistema
  */
 
+/* eslint-disable no-useless-escape */
+
 import { prisma } from '@/lib/prisma';
 
 export interface MedicalDocument {

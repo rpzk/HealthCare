@@ -16,17 +16,10 @@ export async function GET(req: NextRequest) {
     const userEmail = session.user.email
 
     // Buscar o paciente vinculado a este usuário
-    const patient = await prisma.patient.findFirst({
-      where: {
-        OR: [
-          { userId: userId },
-          { email: userEmail }
-        ]
-      },
-      include: {
-        user: true
-      }
-    })
+    const whereClause: any = { OR: [{ userId }] }
+    if (userEmail) whereClause.OR.push({ email: userEmail })
+
+    const patient = await prisma.patient.findFirst({ where: whereClause })
 
     if (!patient) {
       return NextResponse.json({ 
@@ -46,25 +39,12 @@ export async function GET(req: NextRequest) {
         patientId: patient.id,
         OR: [
           { status: 'ACTIVE' },
-          { 
-            expiresAt: {
-              gte: today
-            }
+          {
+            endDate: { gte: today }
           }
         ]
       },
-      include: {
-        prescriptionItems: {
-          include: {
-            medication: true
-          }
-        },
-        prescriber: {
-          select: {
-            name: true
-          }
-        }
-      },
+      include: { items: { include: { medication: true } }, doctor: { select: { name: true } } },
       orderBy: {
         createdAt: 'desc'
       },
@@ -72,11 +52,11 @@ export async function GET(req: NextRequest) {
     })
 
     // Processar medicamentos do dia
-    const medications = activePrescriptions.flatMap(prescription => 
-      prescription.prescriptionItems.map(item => ({
+    const medications = activePrescriptions.flatMap(prescription =>
+      prescription.items.map(item => ({
         id: item.id,
         prescriptionId: prescription.id,
-        name: item.medication?.name || item.medicationName || 'Medicamento',
+        name: item.medication?.name || item.customName || 'Medicamento',
         dosage: item.dosage,
         frequency: item.frequency,
         instructions: item.instructions,
@@ -90,35 +70,20 @@ export async function GET(req: NextRequest) {
     const upcomingAppointments = await prisma.consultation.findMany({
       where: {
         patientId: patient.id,
-        scheduledAt: {
-          gte: today,
-          lte: nextWeek
-        },
-        status: {
-          in: ['SCHEDULED', 'CONFIRMED']
-        }
+        scheduledDate: { gte: today, lte: nextWeek },
+        status: { in: ['SCHEDULED'] }
       },
-      include: {
-        professional: {
-          select: {
-            id: true,
-            name: true,
-            specialty: true
-          }
-        }
-      },
-      orderBy: {
-        scheduledAt: 'asc'
-      },
+      include: { doctor: { select: { id: true, name: true, speciality: true } } },
+      orderBy: { scheduledDate: 'asc' },
       take: 5
     })
 
     const appointments = upcomingAppointments.map(apt => ({
       id: apt.id,
-      date: apt.scheduledAt.toISOString().split('T')[0],
-      time: apt.scheduledAt.toTimeString().substring(0, 5),
-      doctor: apt.professional?.name || 'Profissional',
-      specialty: apt.professional?.specialty || 'Clínico Geral',
+      date: apt.scheduledDate.toISOString().split('T')[0],
+      time: apt.scheduledDate.toTimeString().substring(0, 5),
+      doctor: apt.doctor?.name || 'Profissional',
+      specialty: apt.doctor?.speciality || 'Clínico Geral',
       type: apt.type || 'Consulta',
       status: apt.status
     }))
@@ -128,18 +93,14 @@ export async function GET(req: NextRequest) {
       where: {
         patientId: patient.id
       },
-      orderBy: {
-        measuredAt: 'desc'
-      }
+      orderBy: { recordedAt: 'desc' }
     })
 
     // Buscar exames pendentes
-    const pendingExams = await prisma.exam.count({
+    const pendingExams = await prisma.examRequest.count({
       where: {
         patientId: patient.id,
-        status: {
-          in: ['SCHEDULED', 'PENDING']
-        }
+        status: { in: ['SCHEDULED', 'REQUESTED'] }
       }
     })
 
@@ -163,19 +124,18 @@ export async function GET(req: NextRequest) {
         id: patient.id,
         name: patient.name,
         cpf: patient.cpf,
-        birthDate: patient.birthDate,
-        bloodType: patient.bloodType
+        birthDate: patient.birthDate
       },
       medications,
       appointments,
       activePrescriptionsCount: activePrescriptions.length,
       latestVitals: latestVitals ? {
-        bloodPressureSystolic: latestVitals.bloodPressureSystolic,
-        bloodPressureDiastolic: latestVitals.bloodPressureDiastolic,
+        systolicBP: latestVitals.systolicBP,
+        diastolicBP: latestVitals.diastolicBP,
         heartRate: latestVitals.heartRate,
         temperature: latestVitals.temperature,
         weight: latestVitals.weight,
-        measuredAt: latestVitals.measuredAt
+        recordedAt: latestVitals.recordedAt
       } : null,
       pendingExams,
       unreadNotifications,

@@ -83,9 +83,8 @@ export async function POST(
       where: { id },
       data: {
         status: 'CANCELLED',
-        cancelledAt: new Date(),
-        cancelledById: session.user.id,
-        cancellationReason: reason.trim()
+        // Keep a cancellation trace in notes so we don't rely on non-existent schema fields
+        notes: (consultation.notes || '') + `\n[CANCELLED by ${session.user.name || session.user.id} at ${new Date().toISOString()}] Reason: ${reason.trim()}`
       },
       include: {
         patient: {
@@ -94,9 +93,6 @@ export async function POST(
         doctor: {
           select: { id: true, name: true }
         },
-        cancelledBy: {
-          select: { id: true, name: true }
-        }
       }
     })
 
@@ -109,9 +105,8 @@ export async function POST(
       consultation: {
         id: updatedConsultation.id,
         status: updatedConsultation.status,
-        cancelledAt: updatedConsultation.cancelledAt,
-        cancellationReason: updatedConsultation.cancellationReason,
-        cancelledBy: updatedConsultation.cancelledBy,
+        // note: cancellation metadata preserved inside 'notes' field when schema lacks dedicated fields
+        notes: updatedConsultation.notes,
         patient: updatedConsultation.patient,
         doctor: updatedConsultation.doctor
       }

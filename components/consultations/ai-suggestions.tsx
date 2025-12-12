@@ -61,9 +61,9 @@ interface AISuggestionsProps {
   patientSex?: 'M' | 'F'
   patientHistory?: string
   onApply: (suggestions: {
-    prescriptions: any[]
-    exams: any[]
-    referrals: any[]
+    prescriptions: AISuggestion['prescriptions']
+    exams: AISuggestion['exams']
+    referrals: AISuggestion['referrals']
   }) => void
 }
 
@@ -116,18 +116,18 @@ export function AISuggestions({
         
         // Selecionar tudo por padrão
         setSelected({
-          prescriptions: new Set(data.suggestions.prescriptions.map((_: any, i: number) => i)),
-          exams: new Set(data.suggestions.exams.map((_: any, i: number) => i)),
-          referrals: new Set(data.suggestions.referrals.map((_: any, i: number) => i))
+          prescriptions: new Set(data.suggestions.prescriptions.map((_: AISuggestion['prescriptions'][number], i: number) => i)),
+          exams: new Set(data.suggestions.exams.map((_: AISuggestion['exams'][number], i: number) => i)),
+          referrals: new Set(data.suggestions.referrals.map((_: AISuggestion['referrals'][number], i: number) => i))
         })
       } else {
         const err = await res.json()
         throw new Error(err.error || 'Erro ao obter sugestões')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível obter sugestões da IA",
+        description: error instanceof Error ? error.message : "Não foi possível obter sugestões da IA",
         variant: "destructive"
       })
     } finally {
@@ -162,6 +162,7 @@ export function AISuggestions({
           frequency: rx.frequency,
           duration: rx.duration,
           instructions: rx.instructions
+          , reasoning: rx.reasoning ?? ''
         })),
       exams: suggestions.exams
         .filter((_, i) => selected.exams.has(i))
@@ -169,6 +170,7 @@ export function AISuggestions({
           examType: exam.examType,
           description: exam.description,
           priority: exam.priority
+          , reasoning: exam.reasoning ?? ''
         })),
       referrals: suggestions.referrals
         .filter((_, i) => selected.referrals.has(i))
@@ -176,6 +178,7 @@ export function AISuggestions({
           specialty: ref.specialty,
           description: ref.description,
           priority: ref.priority
+          , reasoning: ref.reasoning ?? ''
         }))
     }
 

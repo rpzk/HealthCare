@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -50,7 +50,7 @@ export function AddressAutocomplete({
         setItems(results)
         setOpen(results.length > 0)
       } catch (e) {
-        if ((e as any).name !== 'AbortError') {
+        if ((e as Error).name !== 'AbortError') {
           setItems([])
           setOpen(false)
         }
@@ -87,7 +87,8 @@ export function AddressAutocomplete({
                   className="cursor-pointer px-3 py-2 hover:bg-gray-100"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => onPick(s)}
-                  role="option">
+                  role="option"
+                  aria-selected={false}>
                 {s.label}
               </li>
             ))}

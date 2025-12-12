@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,14 +16,12 @@ import {
   Clock,
   FileText,
   Pill,
-  Stethoscope,
   RefreshCw,
   Inbox,
-  Check,
-  Trash2
+  Check
 } from 'lucide-react'
 import Link from 'next/link'
-import { format, parseISO, formatDistanceToNow } from 'date-fns'
+import { parseISO, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface Notification {
@@ -55,7 +53,7 @@ const typeColors: Record<string, string> = {
 }
 
 export default function NotificacoesPacientePage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [loading, setLoading] = useState(true)

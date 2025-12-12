@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
-
-const globalForDoctors = globalThis as typeof globalThis & {
-  doctorsPrisma?: PrismaClient
-}
-
-function getDoctorsPrisma(): PrismaClient {
-  if (!globalForDoctors.doctorsPrisma) {
-    globalForDoctors.doctorsPrisma = new PrismaClient({
-      log: ['error']
-    })
-  }
-  return globalForDoctors.doctorsPrisma
-}
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -24,8 +11,6 @@ export async function GET() {
   }
 
   try {
-    const prisma = getDoctorsPrisma()
-    
     // Buscar usuários com roles médicas
     const doctors = await prisma.user.findMany({
       where: {
@@ -38,7 +23,8 @@ export async function GET() {
         id: true,
         name: true,
         email: true,
-        role: true
+        role: true,
+        crmNumber: true
       },
       orderBy: {
         name: 'asc'
@@ -51,7 +37,7 @@ export async function GET() {
       name: doc.name,
       email: doc.email,
       specialty: getRoleLabel(doc.role),
-      crmNumber: 'N/A' // TODO: Adicionar campo CRM ao modelo User se necessário
+      crmNumber: doc.crmNumber || 'N/A'
     }))
 
     return NextResponse.json({ doctors: formattedDoctors })

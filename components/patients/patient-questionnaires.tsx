@@ -45,7 +45,7 @@ interface PatientQuestionnairesProps {
   patientId: string
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }> = {
   PENDING: { label: 'Aguardando', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
   IN_PROGRESS: { label: 'Em andamento', color: 'bg-blue-100 text-blue-800', icon: Clock },
   COMPLETED: { label: 'Concluído', color: 'bg-green-100 text-green-800', icon: CheckCircle },

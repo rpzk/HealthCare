@@ -1,6 +1,6 @@
 "use client"
 import { AddressForm } from '@/components/addresses/address-form'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 type Address = {
   id: string
@@ -20,7 +20,7 @@ export default function PatientAddressesPage({ params }: { params: { id: string 
   const [addresses, setAddresses] = useState<Address[]>([])
   const [loading, setLoading] = useState(true)
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/addresses?patientId=${patientId}`)
@@ -29,9 +29,9 @@ export default function PatientAddressesPage({ params }: { params: { id: string 
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId])
 
-  useEffect(() => { load() }, [patientId])
+  useEffect(() => { load() }, [load])
 
   return (
     <div className="space-y-4">

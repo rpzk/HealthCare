@@ -15,14 +15,10 @@ export async function GET(req: NextRequest) {
     const userEmail = session.user.email
 
     // Buscar o paciente vinculado a este usuário
-    const patient = await prisma.patient.findFirst({
-      where: {
-        OR: [
-          { userId: userId },
-          { email: userEmail }
-        ]
-      }
-    })
+    const whereClause: any = { OR: [{ userId }] }
+    if (userEmail) whereClause.OR.push({ email: userEmail })
+
+    const patient = await prisma.patient.findFirst({ where: whereClause })
 
     if (!patient) {
       return NextResponse.json([])
@@ -30,60 +26,25 @@ export async function GET(req: NextRequest) {
 
     // Buscar consultas como histórico
     const consultations = await prisma.consultation.findMany({
-      where: {
-        patientId: patient.id,
-        status: { in: ['COMPLETED', 'CONFIRMED', 'IN_PROGRESS'] }
-      },
-      include: {
-        professional: {
-          select: {
-            name: true,
-            specialty: true
-          }
-        }
-      },
-      orderBy: {
-        date: 'desc'
-      },
+      where: { patientId: patient.id, status: { in: ['COMPLETED', 'IN_PROGRESS'] } },
+      include: { doctor: { select: { name: true, speciality: true } } },
+      orderBy: { scheduledDate: 'desc' },
       take: 50
     })
 
     // Buscar prescrições
     const prescriptions = await prisma.prescription.findMany({
-      where: {
-        patientId: patient.id
-      },
-      include: {
-        prescriber: {
-          select: {
-            name: true,
-            specialty: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
+      where: { patientId: patient.id },
+      include: { doctor: { select: { name: true, speciality: true } } },
+      orderBy: { createdAt: 'desc' },
       take: 50
     })
 
     // Buscar exames
     const exams = await prisma.examRequest.findMany({
-      where: {
-        patientId: patient.id,
-        status: 'COMPLETED'
-      },
-      include: {
-        exam: {
-          select: { name: true }
-        },
-        requestedBy: {
-          select: { name: true }
-        }
-      },
-      orderBy: {
-        performedAt: 'desc'
-      },
+      where: { patientId: patient.id, status: 'COMPLETED' },
+      include: { doctor: { select: { name: true } } },
+      orderBy: { completedDate: 'desc' },
       take: 50
     })
 
@@ -94,33 +55,24 @@ export async function GET(req: NextRequest) {
         type: 'CONSULTATION' as const,
         title: c.type || 'Consulta Médica',
         description: c.notes?.substring(0, 200) || null,
-        date: c.date.toISOString(),
-        professional: c.professional ? {
-          name: c.professional.name,
-          specialty: c.professional.specialty
-        } : null
+        date: (c.scheduledDate || c.actualDate || new Date()).toISOString(),
+        professional: c.doctor ? { name: c.doctor.name, specialty: c.doctor.speciality } : null
       })),
       ...prescriptions.map(p => ({
         id: p.id,
         type: 'PRESCRIPTION' as const,
         title: 'Prescrição Médica',
-        description: p.notes?.substring(0, 200) || null,
+        description: p.instructions?.substring(0, 200) || null,
         date: p.createdAt.toISOString(),
-        professional: p.prescriber ? {
-          name: p.prescriber.name,
-          specialty: p.prescriber.specialty
-        } : null
+        professional: p.doctor ? { name: p.doctor.name, specialty: p.doctor.speciality } : null
       })),
       ...exams.map(e => ({
         id: e.id,
         type: 'EXAM' as const,
-        title: e.exam?.name || 'Exame',
+        title: e.examType || 'Exame',
         description: e.notes?.substring(0, 200) || null,
-        date: e.performedAt?.toISOString() || e.requestedAt.toISOString(),
-        professional: e.requestedBy ? {
-          name: e.requestedBy.name,
-          specialty: null
-        } : null
+        date: e.completedDate?.toISOString() || e.requestDate.toISOString(),
+        professional: e.doctor ? { name: e.doctor.name, specialty: null } : null
       }))
     ]
 

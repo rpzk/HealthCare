@@ -30,10 +30,11 @@ export async function warmupPrisma(retries: number = 5) {
       incCounter('prisma_warmup_success_total')
       setGauge('prisma_warmup_last_ms', Date.now()-start)
       return
-    } catch (e:any) {
+    } catch (e) {
+      const err = e as Error
       incCounter('prisma_warmup_fail_total', { attempt: String(i+1) })
       if (i === retries-1) {
-        console.error('[prisma-warmup] Falha final:', e.message)
+        console.error('[prisma-warmup] Falha final:', err.message)
       } else {
         const backoff = 200 * Math.pow(2,i)
         await new Promise(r=>setTimeout(r, backoff))

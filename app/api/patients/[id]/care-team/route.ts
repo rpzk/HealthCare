@@ -59,21 +59,10 @@ export async function GET(
       ]
     })
 
-    // Buscar médico responsável
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId },
-      select: {
-        primaryDoctorId: true,
-        primaryDoctor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            speciality: true
-          }
-        }
-      }
+    // Buscar médico responsável via equipe (isPrimary)
+    const primaryMember = await prisma.patientCareTeam.findFirst({
+      where: { patientId, isPrimary: true, isActive: true },
+      include: { user: { select: { id: true, name: true, email: true, role: true, speciality: true } } }
     })
 
     // Formatar resposta
@@ -95,7 +84,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      responsibleDoctor: patient?.primaryDoctor,
+      responsibleDoctor: primaryMember?.user || null,
       careTeam: formattedTeam,
       totalMembers: formattedTeam.length
     })
@@ -228,13 +217,10 @@ export async function DELETE(
       )
     }
 
-    // Não pode remover o médico responsável
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId },
-      select: { primaryDoctorId: true }
-    })
+    // Não pode remover o médico responsável (checar equipe primária)
+    const primary = await prisma.patientCareTeam.findFirst({ where: { patientId, isPrimary: true, isActive: true } })
 
-    if (patient?.primaryDoctorId === userId) {
+    if (primary?.userId === userId) {
       return NextResponse.json(
         { error: 'Não é possível remover o médico responsável. Altere o médico responsável primeiro.' },
         { status: 400 }

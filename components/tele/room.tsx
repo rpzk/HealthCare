@@ -45,7 +45,10 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
         const res = await fetch('/api/tele/config')
         const json = await res.json().catch(() => null)
         if (json?.iceServers) setIceServers(json.iceServers)
-      } catch {}
+      } catch (e) {
+        // Non-fatal — keep default ICE servers
+        console.warn('Failed to load ICE config', e)
+      }
     })()
   }, [])
 
@@ -61,7 +64,11 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cleanup()
+      try {
+        cleanup()
+      } catch (e) {
+        console.warn('Error during cleanup', e)
+      }
     }
   }, [])
 
@@ -73,7 +80,9 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       }
       pcRef.current?.close()
       esRef.current?.close()
-    } catch {}
+    } catch (err: unknown) {
+      console.warn('Error during cleanup', err)
+    }
   }, [])
 
   async function join() {
@@ -144,7 +153,7 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       const es = new EventSource(`/api/tele/rooms/${roomId}/events?clientId=${encodeURIComponent(clientId)}`)
       esRef.current = es
       
-      es.addEventListener('signal', async (ev: any) => {
+      es.addEventListener('signal', async (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data)
           if (data.type === 'offer') {
@@ -160,10 +169,15 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
             if (!pc.currentRemoteDescription) {
               await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
             }
-          } else if (data.type === 'candidate' && data.candidate) {
-            try { await pc.addIceCandidate(data.candidate) } catch {}
+            } else if (data.type === 'candidate' && data.candidate) {
+            try {
+              await pc.addIceCandidate(data.candidate)
+            } catch (e) {
+              // ignore candidate insertion errors
+              console.warn('Failed to add ICE candidate', e)
+            }
           }
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('Signaling error:', err)
         }
       })
@@ -193,15 +207,19 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
 
       setJoined(true)
       setStatus('connecting')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao entrar:', err)
       setStatus('idle')
-      if (err.name === 'NotAllowedError') {
-        setError('Permita o acesso à câmera e microfone')
-      } else if (err.name === 'NotFoundError') {
-        setError('Câmera ou microfone não encontrado')
+      if (err instanceof Error) {
+        if ((err as Error).name === 'NotAllowedError') {
+          setError('Permita o acesso à câmera e microfone')
+        } else if ((err as Error).name === 'NotFoundError') {
+          setError('Câmera ou microfone não encontrado')
+        } else {
+          setError(err.message || 'Erro ao iniciar chamada')
+        }
       } else {
-        setError(err.message || 'Erro ao iniciar chamada')
+        setError(String(err) || 'Erro ao iniciar chamada')
       }
     }
   }

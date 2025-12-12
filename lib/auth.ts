@@ -1,6 +1,7 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import type { PrismaClient } from '@prisma/client'
+import { verifyAuthenticationResponseForUser } from './webauthn'
 
 // Lazy Prisma para evitar problemas de empacotamento/edge
 let prismaRef: PrismaClient | undefined
@@ -25,6 +26,50 @@ function getLoginKey(email: string, ip?: string) {
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    CredentialsProvider({
+      id: "passkey",
+      name: "Passkey",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        assertion: { label: "Assertion", type: "text" }
+      },
+      async authorize(credentials, req) {
+        if (!credentials?.email || !credentials?.assertion) {
+          console.warn('Tentativa de login passkey sem email/assertion')
+          return null
+        }
+
+        try {
+          const prisma = await getPrisma()
+          const user = await prisma.user.findFirst({
+            where: { email: { equals: credentials.email, mode: 'insensitive' } },
+            select: { id: true, email: true, name: true, role: true, isActive: true }
+          })
+
+          if (!user || !user.isActive) {
+            console.warn('Usuário inválido/inativo para passkey', credentials.email)
+            return null
+          }
+
+          const assertion = JSON.parse(credentials.assertion)
+          const verification = await verifyAuthenticationResponseForUser(credentials.email, assertion, req as any)
+          if (!verification.verified) {
+            console.warn('Passkey não verificada para', credentials.email)
+            return null
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          }
+        } catch (error) {
+          console.error('Erro na autenticação passkey:', error)
+          return null
+        }
+      }
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {

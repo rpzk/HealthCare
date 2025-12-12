@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType, type SVGProps } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   Users, 
@@ -403,7 +403,7 @@ function MetricCard({
   title: string
   value: string
   change: number
-  icon: any
+  icon: ComponentType<SVGProps<SVGSVGElement>>
   color: 'blue' | 'green' | 'purple' | 'amber' | 'red'
   subtitle?: string
   hideChange?: boolean

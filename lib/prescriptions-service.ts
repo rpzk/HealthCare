@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import type { Prisma, PrescriptionStatus } from '@prisma/client'
 
 export interface PrescriptionFilters {
   search?: string
@@ -83,8 +84,9 @@ export class PrescriptionsServiceDb {
   }
 
   static async list(filters: PrescriptionFilters = {}, page = 1, limit = 10) {
-    const where: any = {}
-    if (filters.status) where.status = filters.status
+    const where: Prisma.PrescriptionWhereInput = {}
+    // status is passed as a string; cast it to the appropriate Prisma enum type
+    if (filters.status) where.status = filters.status as PrescriptionStatus
     if (filters.patientId) where.patientId = filters.patientId
     if (filters.doctorId) where.doctorId = filters.doctorId
     if (filters.search) {
@@ -200,8 +202,7 @@ export class PrescriptionsServiceDb {
           patientId: data.patientId,
           doctorId: doctorId,
             consultationId: data.consultationId || null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          status: (data.status || 'ACTIVE') as any,
+          status: (data.status || 'ACTIVE') as PrescriptionStatus,
           ...med,
         },
         include: {

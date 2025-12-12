@@ -235,7 +235,7 @@ export class RedisRateLimiter {
     windowMs: number,
     blockDurationMs: number,
     now: number
-  ): Promise<any> {
+  ): Promise<RateLimitResult> {
     // 🚀 Script Lua para operação atômica - evita race conditions
     const luaScript = `
       local key = KEYS[1]
@@ -478,7 +478,7 @@ export class RedisRateLimiter {
  */
 export class RedisCache {
   private redis: Redis;
-  private fallbackMemory: Map<string, CacheItem<any>> = new Map();
+  private fallbackMemory: Map<string, CacheItem<unknown>> = new Map();
   private isRedisConnected = false;
 
   constructor(config?: Partial<RedisConfig>) {
@@ -607,7 +607,7 @@ export class RedisCache {
     // Fallback para memória
     const item = this.fallbackMemory.get(key);
     if (item && item.expiry > Date.now()) {
-      return item.data;
+    return item.data as T;
     }
 
     // Remover item expirado
@@ -670,10 +670,10 @@ export function getRedisCache(): RedisCache {
 // Helper para expor estatísticas do cache Redis (uso interno no dashboard)
 export async function getRedisCacheStats() {
   const cache = _redisCache || null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cacheAny = cache as any;
-  const isConnected = !!(cache && cacheAny?.isRedisConnected);
-  const memoryFallbackEntries = cache && cacheAny?.fallbackMemory ? cacheAny.fallbackMemory.size : 0;
+  // Access internal cache info safely without using `any` so lint stays clean
+  const cacheInfo = cache as unknown as { isRedisConnected?: boolean; fallbackMemory?: Map<string, unknown> } | null;
+  const isConnected = !!(cacheInfo && cacheInfo.isRedisConnected);
+  const memoryFallbackEntries = cacheInfo && cacheInfo.fallbackMemory ? cacheInfo.fallbackMemory.size : 0;
   return {
     redisConnected: isConnected,
     memoryFallbackEntries

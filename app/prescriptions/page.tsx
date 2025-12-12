@@ -25,13 +25,17 @@ import {
   Edit
 } from 'lucide-react'
 
+interface Medication {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+}
+
 interface Prescription {
   id: string
-  medication: string
-  dosage: string
-  frequency: string
-  duration: string
-  instructions?: string
+  medications: Medication[];
   status: string
   startDate: string
   endDate?: string
@@ -198,14 +202,14 @@ export default function PrescriptionsPage() {
             </CardContent>
           </Card>
         ) : (
-          prescriptions.map((prescription) => {
-            const meds = (prescription as any).medications as Array<unknown> | undefined
-            const main = meds && meds.length > 0 ? meds[0] as Record<string, unknown> : undefined
-            const medName = (main?.name as string) || 'Medicamentos'
-            const medDosage = (main?.dosage as string) || '-'
-            const medFrequency = (main?.frequency as string) || '-'
-            const medDuration = (main?.duration as string) || '-'
-            const instructions = main?.instructions as string
+          prescriptions.map((prescription: Prescription) => {
+            const meds = prescription.medications;
+            const main = meds && meds.length > 0 ? meds[0] : undefined
+            const medName = main?.name || 'Medicamentos'
+            const medDosage = main?.dosage || '-'
+            const medFrequency = main?.frequency || '-'
+            const medDuration = main?.duration || '-'
+            const instructions = main?.instructions
             return (
             <Card key={prescription.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">

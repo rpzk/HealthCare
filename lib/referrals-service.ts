@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
 
 export interface ReferralFilters {
   search?: string
@@ -45,7 +46,7 @@ export class ReferralsService {
   ) {
     try {
       const { search, patientId, doctorId, status, specialty, dateFrom, dateTo } = filters
-    const where: any = {}
+    const where: Prisma.ReferralWhereInput = {}
 
       if (patientId) where.patientId = patientId
       if (doctorId) where.doctorId = doctorId

@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -16,7 +15,6 @@ import {
   Check,
   User,
   Stethoscope,
-  Heart,
   AlertCircle,
   Loader2
 } from 'lucide-react'
@@ -65,8 +63,8 @@ const DEFAULT_SERVICES: ServiceType[] = [
 ]
 
 export default function AgendarConsultaPage() {
-  const { data: session } = useSession()
-  const router = useRouter()
+  const { data: _session } = useSession()
+  const _router = useRouter()
   
   const [step, setStep] = useState<Step>('service')
   const [loading, setLoading] = useState(false)
@@ -257,9 +255,10 @@ export default function AgendarConsultaPage() {
       }
       
       setSuccess(true)
-    } catch (err: any) {
-      console.error('Erro no agendamento:', err)
-      setError(err.message || 'Erro ao agendar consulta')
+      } catch (err) {
+        const e = err as Error
+        console.error('Erro no agendamento:', e)
+        setError(e.message || 'Erro ao agendar consulta')
     } finally {
       setSubmitting(false)
     }

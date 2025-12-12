@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,23 +11,20 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  FileText,
-  Download,
+  
   Eye,
-  Filter,
-  Search,
+  
   RefreshCw,
-  Inbox,
+  
   CheckCircle,
   AlertCircle,
   FlaskConical,
   Microscope,
   TestTube,
-  Stethoscope,
-  ChevronRight
+  
 } from 'lucide-react'
 import Link from 'next/link'
-import { format, parseISO, formatDistanceToNow } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface Exam {
@@ -79,7 +76,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 }
 
 export default function ExamesPacientePage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const [exams, setExams] = useState<Exam[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [loading, setLoading] = useState(true)

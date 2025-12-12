@@ -37,7 +37,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       const endDate = new Date(date)
       endDate.setHours(23, 59, 59, 999)
       
-      where.scheduledAt = {
+      where.scheduledDate = {
         gte: startDate,
         lte: endDate
       }
@@ -83,7 +83,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
             }
           }
         },
-        orderBy: { scheduledAt: 'asc' },
+        orderBy: { scheduledDate: 'asc' },
         skip: (page - 1) * limit,
         take: limit
       }),
@@ -130,7 +130,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       )
     }
     
-    const { patientId, doctorId, scheduledAt, type, notes } = parseResult.data
+    const { patientId, doctorId, scheduledDate, type, notes } = parseResult.data
 
     // Verify patient exists
     const patient = await prisma.patient.findUnique({ where: { id: patientId } })
@@ -144,13 +144,13 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       return NextResponse.json({ error: 'Médico não encontrado' }, { status: 404 })
     }
 
-    const appointmentDate = new Date(scheduledAt)
+    const appointmentDate = new Date(scheduledDate)
 
     // Check for conflicting appointments (same doctor, same time)
     const conflict = await prisma.consultation.findFirst({
       where: {
         doctorId,
-        scheduledAt: {
+        scheduledDate: {
           gte: new Date(appointmentDate.getTime() - 30 * 60 * 1000), // 30 min before
           lte: new Date(appointmentDate.getTime() + 30 * 60 * 1000)  // 30 min after
         },
@@ -169,7 +169,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       data: {
         patientId,
         doctorId,
-        scheduledAt: appointmentDate,
+        scheduledDate: appointmentDate,
         type: type || 'CONSULTATION',
         notes,
         status: 'SCHEDULED'

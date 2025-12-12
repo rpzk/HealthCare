@@ -82,8 +82,8 @@ export default async function TeleJoinPage({ params }: Props) {
     )
   }
 
-  const scheduledDate = consultation.scheduledFor 
-    ? new Date(consultation.scheduledFor).toLocaleString('pt-BR', {
+  const scheduledDate = (consultation as any).scheduledDate 
+    ? new Date((consultation as any).scheduledDate).toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,8 +44,6 @@ import {
   Mic,
   MicOff,
   Loader2,
-  Sparkles,
-  BookMarked,
   Keyboard,
   History,
   Video,
@@ -60,9 +58,8 @@ import { MedicationAutocomplete } from './medication-autocomplete'
 import { CIDAutocomplete } from './cid-autocomplete'
 import { ExamAutocomplete } from './exam-autocomplete'
 import { ProtocolSelector } from './protocol-selector'
-import { ProtocolCreator } from './protocol-creator'
 import { AISuggestions } from './ai-suggestions'
-import { ConsultationBICheckboxes, defaultBIData } from './consultation-bi-checkboxes'
+import { defaultBIData } from './consultation-bi-checkboxes'
 import { PatientHistoryPanel } from './patient-history-panel'
 
 // ============ TIPOS ============
@@ -145,10 +142,28 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   })
 
   // Sinais vitais
-  const [vitals, setVitals] = useState({
+  type Vitals = {
+    weight: string
+    height: string
+    bloodPressure: string
+    heartRate: string
+    temperature: string
+    saturation: string
+  }
+
+  const [vitals, setVitals] = useState<Vitals>({
     weight: '', height: '', bloodPressure: '',
     heartRate: '', temperature: '', saturation: ''
   })
+
+  const vitalsFields: Array<{ key: keyof Vitals; label: string; placeholder: string; w: string }> = [
+    { key: 'weight', label: 'Peso', placeholder: 'kg', w: 'w-16' },
+    { key: 'height', label: 'Alt', placeholder: 'cm', w: 'w-14' },
+    { key: 'bloodPressure', label: 'PA', placeholder: 'mmHg', w: 'w-20' },
+    { key: 'heartRate', label: 'FC', placeholder: 'bpm', w: 'w-14' },
+    { key: 'temperature', label: 'T°', placeholder: '°C', w: 'w-14' },
+    { key: 'saturation', label: 'SpO2', placeholder: '%', w: 'w-14' },
+  ]
 
   // Listas
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
@@ -191,6 +206,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   // ============ CARREGAR CONSULTA ============
   useEffect(() => {
     loadConsultation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consultationId])
 
   const loadConsultation = async () => {
@@ -229,7 +245,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
           }
           // Carregar diagnósticos do notes JSON
           if (savedData.diagnoses && savedData.diagnoses.length > 0) {
-            setDiagnoses(savedData.diagnoses.map((d: any) => ({
+            setDiagnoses(savedData.diagnoses.map((d: Diagnosis) => ({
               id: d.id || Date.now().toString(),
               code: d.code,
               description: d.description,
@@ -257,7 +273,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       
       // Carregar diagnósticos existentes (do relacionamento, se existir)
       if (consultationData.diagnoses && consultationData.diagnoses.length > 0) {
-        setDiagnoses(consultationData.diagnoses.map((d: any) => ({
+        setDiagnoses(consultationData.diagnoses.map((d: Diagnosis) => ({
           id: d.id,
           code: d.code,
           description: d.description,
@@ -294,7 +310,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       
       // Carregar exames existentes
       if (consultationData.examRequests && consultationData.examRequests.length > 0) {
-        setExams(consultationData.examRequests.map((e: any) => ({
+        setExams(consultationData.examRequests.map((e: ExamRequest) => ({
           id: e.id,
           examType: e.examType,
           description: e.description,
@@ -304,16 +320,17 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       
       // Carregar encaminhamentos existentes
       if (consultationData.referrals && consultationData.referrals.length > 0) {
-        setReferrals(consultationData.referrals.map((r: any) => ({
+        setReferrals(consultationData.referrals.map((r: Referral) => ({
           id: r.id,
           specialty: r.specialty,
-          description: r.reason || r.description,
+          description: r.description,
           priority: r.priority
         })))
       }
       
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      const err = e as Error
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -330,8 +347,9 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       mediaRecorderRef.current = mr
       mr.start()
       setRecording(true)
-    } catch (e: any) {
-      toast({ title: 'Erro', description: 'Não foi possível acessar o microfone', variant: 'destructive' })
+    } catch (e) {
+      const err = e as Error
+      toast({ title: 'Erro', description: `Não foi possível acessar o microfone: ${err.message}`, variant: 'destructive' })
     }
   }
 
@@ -362,15 +380,25 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         })
         toast({ title: 'Transcrição concluída', description: 'SOAP preenchido automaticamente' })
       }
-    } catch (e: any) {
-      toast({ title: 'Erro', description: 'Falha na transcrição', variant: 'destructive' })
+    } catch (e) {
+      const err = e as Error
+      toast({ title: 'Erro', description: `Falha na transcrição: ${err.message}`, variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
   }
 
+interface Medication {
+  id: string;
+  name: string;
+  displayName: string;
+  defaultDosage: string;
+  defaultFrequency: string;
+  prescriptionType: string;
+}
+
   // ============ HANDLERS DE SELEÇÃO ============
-  const handleMedicationSelect = (med: any) => {
+  const handleMedicationSelect = (med: Medication) => {
     const rx: Prescription = {
       id: Date.now().toString(),
       medicationId: med.id,
@@ -386,7 +414,13 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     toast({ title: 'Medicamento adicionado', description: med.name || med.displayName })
   }
 
-  const handleExamSelect = (exam: any) => {
+interface Exam {
+  id: string;
+  name: string;
+  category: string;
+}
+
+  const handleExamSelect = (exam: Exam) => {
     const ex: ExamRequest = {
       id: Date.now().toString(),
       examCatalogId: exam.id,
@@ -399,7 +433,13 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     toast({ title: 'Exame solicitado', description: exam.name })
   }
 
-  const handleCIDSelect = (cid: any) => {
+interface CID {
+  code: string;
+  description: string;
+  shortDescription: string;
+}
+
+  const handleCIDSelect = (cid: CID) => {
     if (diagnoses.some(d => d.code === cid.code)) return
     const diag: Diagnosis = {
       id: Date.now().toString(),
@@ -413,39 +453,77 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     toast({ title: 'Diagnóstico adicionado', description: `${cid.code} - ${diag.description}` })
   }
 
+interface Protocol {
+  prescriptions: Prescription[];
+  exams: ExamRequest[];
+  referrals: Referral[];
+}
+
   // ============ PROTOCOLO E IA ============
-  const handleProtocolApply = (protocol: any) => {
+  const handleProtocolApply = (protocol: {
+    prescriptions?: Array<{ medicationName?: string; dosage?: string; frequency?: string; duration?: string; instructions?: string }>
+    exams?: Array<{ examName?: string; description?: string; priority?: string }>
+    referrals?: Array<{ specialty?: string; description?: string; priority?: string }>
+  }) => {
     if (protocol.prescriptions) {
-      setPrescriptions(prev => [...prev, ...protocol.prescriptions.map((rx: any) => ({
+      const list = protocol.prescriptions || []
+      setPrescriptions(prev => [...prev, ...list.map((rx) => ({
         id: Date.now().toString() + Math.random(),
-        medication: rx.medicationName || rx.medication,
-        dosage: rx.dosage,
-        frequency: rx.frequency,
-        duration: rx.duration,
-        instructions: rx.instructions
+        medication: rx.medicationName || '',
+        dosage: rx.dosage || '',
+        frequency: rx.frequency || '',
+        duration: rx.duration || '',
+        instructions: rx.instructions || ''
       }))])
     }
     if (protocol.exams) {
-      setExams(prev => [...prev, ...protocol.exams.map((ex: any) => ({
+      const list = protocol.exams || []
+      const normalized = list.map((ex) => ({
         id: Date.now().toString() + Math.random(),
-        examType: ex.category || 'LABORATORY',
-        description: ex.examName || ex.description,
-        priority: ex.priority || 'NORMAL'
-      }))])
+        examType: ex.examName || '',
+        description: ex.description || '',
+        priority: (ex.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'NORMAL' | 'HIGH'
+      })) as unknown as ExamRequest[]
+      setExams(prev => [...prev, ...normalized])
     }
     if (protocol.referrals) {
-      setReferrals(prev => [...prev, ...protocol.referrals.map((ref: any) => ({
+      const list = protocol.referrals || []
+      const normalizedRefs = list.map((ref) => ({
         id: Date.now().toString() + Math.random(),
-        specialty: ref.specialty,
-        description: ref.description,
-        priority: ref.priority || 'NORMAL'
-      }))])
+        specialty: ref.specialty || '',
+        description: ref.description || '',
+        priority: (ref.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'NORMAL' | 'HIGH'
+      })) as unknown as Referral[]
+      setReferrals(prev => [...prev, ...normalizedRefs])
     }
   }
 
-  const handleAISuggestions = (suggestions: any) => {
+interface Suggestions {
+  prescriptions: Array<{
+    medication: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions: string
+    reasoning?: string
+  }>
+  exams: Array<{
+    examType: string
+    description: string
+    priority: string
+    reasoning?: string
+  }>
+  referrals: Array<{
+    specialty: string
+    description: string
+    priority: string
+    reasoning?: string
+  }>
+}
+
+  const handleAISuggestions = (suggestions: Suggestions) => {
     if (suggestions.prescriptions) {
-      setPrescriptions(prev => [...prev, ...suggestions.prescriptions.map((rx: any) => ({
+      setPrescriptions(prev => [...prev, ...suggestions.prescriptions.map((rx: Prescription) => ({
         id: Date.now().toString() + Math.random(),
         medication: rx.medication,
         dosage: rx.dosage,
@@ -455,20 +533,24 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       }))])
     }
     if (suggestions.exams) {
-      setExams(prev => [...prev, ...suggestions.exams.map((ex: any) => ({
+      const list = suggestions.exams || []
+      const normalized = list.map((ex) => ({
         id: Date.now().toString() + Math.random(),
         examType: ex.examType,
         description: ex.description,
-        priority: ex.priority || 'NORMAL'
-      }))])
+        priority: (ex.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'NORMAL' | 'HIGH'
+      })) as unknown as ExamRequest[]
+      setExams(prev => [...prev, ...normalized])
     }
     if (suggestions.referrals) {
-      setReferrals(prev => [...prev, ...suggestions.referrals.map((ref: any) => ({
+      const list = suggestions.referrals || []
+      const normalizedRefs = list.map((ref) => ({
         id: Date.now().toString() + Math.random(),
         specialty: ref.specialty,
         description: ref.description,
-        priority: ref.priority || 'NORMAL'
-      }))])
+        priority: (ref.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'NORMAL' | 'HIGH'
+      })) as unknown as Referral[]
+      setReferrals(prev => [...prev, ...normalizedRefs])
     }
   }
 
@@ -550,8 +632,9 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       })
       if (!res.ok) throw new Error('Erro ao salvar')
       toast({ title: 'Consulta salva', description: 'Dados salvos com sucesso' })
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } catch (e) {
+      const err = e as Error
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -612,8 +695,9 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       // Recarregar para atualizar status
       await loadConsultation()
       
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } catch (e) {
+      const err = e as Error
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     } finally {
       setFinalizing(false)
     }
@@ -655,8 +739,9 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       // Redirecionar para a lista de consultas ou recarregar
       window.location.href = '/consultations'
       
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } catch (e) {
+      const err = e as Error
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     } finally {
       setCancelling(false)
     }
@@ -780,24 +865,18 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
                 <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <Activity className="h-3 w-3" /> Vitais:
                 </span>
-                {[
-                  { key: 'weight', label: 'Peso', placeholder: 'kg', w: 'w-16' },
-                  { key: 'height', label: 'Alt', placeholder: 'cm', w: 'w-14' },
-                  { key: 'bloodPressure', label: 'PA', placeholder: 'mmHg', w: 'w-20' },
-                  { key: 'heartRate', label: 'FC', placeholder: 'bpm', w: 'w-14' },
-                  { key: 'temperature', label: 'T°', placeholder: '°C', w: 'w-14' },
-                  { key: 'saturation', label: 'SpO2', placeholder: '%', w: 'w-14' },
-                ].map(({ key, label, placeholder, w }) => (
-                  <div key={key} className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">{label}</Label>
-                    <Input
-                      value={(vitals as any)[key]}
-                      onChange={(e) => setVitals({ ...vitals, [key]: e.target.value })}
-                      placeholder={placeholder}
-                      className={`h-6 text-xs ${w}`}
-                    />
-                  </div>
-                ))}
+                {vitalsFields.map(({ key, label, placeholder, w }) => (
+                    <div key={key} className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground">{label}</Label>
+                      <Input
+                        value={vitals[key]}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVitals(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className={`h-6 text-xs ${w}`}
+                      />
+                    </div>
+                  ))
+                }
               </div>
             </CardContent>
           </Card>

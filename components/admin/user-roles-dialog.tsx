@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { 
   Shield, 
   Stethoscope, 
@@ -20,7 +19,6 @@ import {
   UserCog,
   Loader2,
   Star,
-  Plus,
   X
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -148,14 +146,7 @@ export function UserRolesDialog({
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set())
   const [primaryRole, setPrimaryRole] = useState<string>('')
 
-  // Carregar papéis atuais
-  useEffect(() => {
-    if (open && userId) {
-      loadRoles()
-    }
-  }, [open, userId])
-
-  const loadRoles = async () => {
+  const loadRoles = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/users/${userId}/roles`)
@@ -175,7 +166,14 @@ export function UserRolesDialog({
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId, toast])
+
+  // Carregar papéis atuais
+  useEffect(() => {
+    if (open && userId) {
+      loadRoles()
+    }
+  }, [open, userId, loadRoles])
 
   const handleRoleToggle = (role: string) => {
     const newSelected = new Set(selectedRoles)

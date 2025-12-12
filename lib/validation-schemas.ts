@@ -216,17 +216,23 @@ export const microAreaSchema = z.object({
   ,reason: z.string().max(300).optional()
 })
 
-export function validateAddress(data:any){ const r = addressSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validatePlace(data:any){ const r = placeSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateMicroArea(data:any){ const r = microAreaSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
+export function validateAddress(data: unknown) {
+  return createValidator(addressSchema)(data)
+}
+
+export function validatePlace(data: unknown) {
+  return createValidator(placeSchema)(data)
+}
+
+export function validateMicroArea(data: unknown) {
+  return createValidator(microAreaSchema)(data)
+}
 
 // ---------------- Clinical Coding (CID10, CID11, CIAP2, NURSING) ----------------
 import * as PrismaNS from '@prisma/client'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { CodeSystemKind, DiagnosisStatus, DiagnosisCertainty } = PrismaNS as any
 
 export const codeSystemUpsertSchema = z.object({
-  kind: z.nativeEnum(CodeSystemKind),
+  kind: z.nativeEnum(PrismaNS.CodeSystemKind),
   name: z.string().min(2),
   version: z.string().max(40).optional(),
   description: z.string().max(2000).optional(),
@@ -234,7 +240,7 @@ export const codeSystemUpsertSchema = z.object({
 })
 
 export const medicalCodeImportSchema = z.object({
-  systemKind: z.nativeEnum(CodeSystemKind),
+  systemKind: z.nativeEnum(PrismaNS.CodeSystemKind),
   systemVersion: z.string().max(40).optional(),
   rebuildSearchText: z.boolean().optional(),
   codes: z.array(z.object({
@@ -253,26 +259,35 @@ export const diagnosisCreateSchema = z.object({
   secondaryCodeIds: z.array(z.string().cuid()).max(10).optional(),
   notes: z.string().max(5000).optional(),
   onsetDate: z.string().datetime().optional(),
-  certainty: z.nativeEnum(DiagnosisCertainty).optional()
+  certainty: z.nativeEnum(PrismaNS.DiagnosisCertainty).optional()
 })
 
 export const diagnosisUpdateSchema = z.object({
-  status: z.nativeEnum(DiagnosisStatus).optional(),
+  status: z.nativeEnum(PrismaNS.DiagnosisStatus).optional(),
   resolvedDate: z.string().datetime().optional(),
   notes: z.string().max(5000).optional(),
-  certainty: z.nativeEnum(DiagnosisCertainty).optional(),
+  certainty: z.nativeEnum(PrismaNS.DiagnosisCertainty).optional(),
   secondaryCodeIds: z.array(z.string().cuid()).max(10).optional()
 }).refine(v => Object.keys(v).length > 0, { message: 'Nada para atualizar' })
 
-export function validateCodeSystem(data:any){ const r = codeSystemUpsertSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateCodeImport(data:any){ const r = medicalCodeImportSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateDiagnosisCreate(data:any){ const r = diagnosisCreateSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateDiagnosisUpdate(data:any){ const r = diagnosisUpdateSchema.safeParse(data); return { success:r.success, data: r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
+export function validateCodeSystem(data: unknown) {
+  return createValidator(codeSystemUpsertSchema)(data)
+}
+
+export function validateCodeImport(data: unknown) {
+  return createValidator(medicalCodeImportSchema)(data)
+}
+
+export function validateDiagnosisCreate(data: unknown) {
+  return createValidator(diagnosisCreateSchema)(data)
+}
+
+export function validateDiagnosisUpdate(data: unknown) {
+  return createValidator(diagnosisUpdateSchema)(data)
+}
 
 // ---------------- Occupations / Capability (CBO + Elliott Jaques) ----------------
 import * as PrismaAll from '@prisma/client'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { StratumLevel } = PrismaAll as any
 
 export const cboGroupUpsertSchema = z.object({
   code: z.string().min(2),
@@ -292,8 +307,8 @@ export const occupationUpsertSchema = z.object({
 export const jobRoleCreateSchema = z.object({
   title: z.string().min(2),
   occupationCode: z.string().optional(),
-  requiredMinStratum: z.nativeEnum(StratumLevel),
-  requiredMaxStratum: z.nativeEnum(StratumLevel).optional(),
+  requiredMinStratum: z.nativeEnum(PrismaAll.StratumLevel),
+  requiredMaxStratum: z.nativeEnum(PrismaAll.StratumLevel).optional(),
   description: z.string().max(8000).optional(),
   tasks: z.string().max(12000).optional(),
   capabilities: z.record(z.number().min(0).max(1)).optional()
@@ -308,16 +323,30 @@ export const capabilityEvaluationSchema = z.object({
   subjectUserId: z.string().cuid(),
   evaluatorUserId: z.string().cuid(),
   jobRoleId: z.string().cuid().optional(),
-  stratumAssessed: z.nativeEnum(StratumLevel),
-  potentialStratum: z.nativeEnum(StratumLevel).optional(),
+  stratumAssessed: z.nativeEnum(PrismaAll.StratumLevel),
+  potentialStratum: z.nativeEnum(PrismaAll.StratumLevel).optional(),
   timeSpanMonths: z.number().int().min(1).max(240).optional(),
   evidence: z.string().max(15000).optional(),
-  gaps: z.record(z.any()).optional(),
+  gaps: z.record(z.unknown()).optional(),
   recommendations: z.string().max(15000).optional()
 })
 
-export function validateCboGroup(data:any){ const r = cboGroupUpsertSchema.safeParse(data); return { success:r.success, data:r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateOccupation(data:any){ const r = occupationUpsertSchema.safeParse(data); return { success:r.success, data:r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateJobRole(data:any){ const r = jobRoleCreateSchema.safeParse(data); return { success:r.success, data:r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateAssignUserRole(data:any){ const r = assignUserRoleSchema.safeParse(data); return { success:r.success, data:r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
-export function validateCapabilityEvaluation(data:any){ const r = capabilityEvaluationSchema.safeParse(data); return { success:r.success, data:r.success? r.data:undefined, errors: r.success?undefined:r.error.errors.map(e=>`${e.path.join('.')}: ${e.message}`) } }
+export function validateCboGroup(data: unknown) {
+  return createValidator(cboGroupUpsertSchema)(data)
+}
+
+export function validateOccupation(data: unknown) {
+  return createValidator(occupationUpsertSchema)(data)
+}
+
+export function validateJobRole(data: unknown) {
+  return createValidator(jobRoleCreateSchema)(data)
+}
+
+export function validateAssignUserRole(data: unknown) {
+  return createValidator(assignUserRoleSchema)(data)
+}
+
+export function validateCapabilityEvaluation(data: unknown) {
+  return createValidator(capabilityEvaluationSchema)(data)
+}

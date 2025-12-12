@@ -30,11 +30,12 @@ new Worker('ai-jobs', async job => {
   const start = Date.now()
   try {
     switch(job.name){
-      case 'symptom_analysis':
+      case 'symptom_analysis': {
         const result = await medicalAI.analyzeSymptoms(job.data.payload)
         incCounter('ai_queue_processed_total', { type: job.name })
         observeHistogram('ai_queue_job_duration_ms', Date.now()-start, { type: job.name })
         return result
+      }
       case 'transcribe_and_generate_soap_draft': {
         // Expected payload: { filePath, patientId?, doctorId?, locale?, speciality? }
         const { filePath, locale, speciality } = job.data.payload || {}

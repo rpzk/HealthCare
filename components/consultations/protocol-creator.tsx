@@ -161,10 +161,10 @@ export function ProtocolCreator({
         const err = await res.json()
         throw new Error(err.error || 'Erro ao salvar protocolo')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível salvar o protocolo",
+        description: error instanceof Error ? error.message : String(error) || "Não foi possível salvar o protocolo",
         variant: "destructive"
       })
     } finally {

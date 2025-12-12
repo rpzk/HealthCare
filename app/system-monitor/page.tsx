@@ -23,7 +23,6 @@ import {
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
-import { toast } from '@/hooks/use-toast'
 
 interface SystemData {
   system: {
@@ -79,8 +78,9 @@ export default function SystemMonitorPage() {
       setData(result)
       setLastUpdate(new Date())
       setError(null)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao carregar dados'
+      setError(message)
       console.error('Erro ao carregar métricas:', err)
     } finally {
       setLoading(false)

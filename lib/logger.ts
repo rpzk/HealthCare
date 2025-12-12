@@ -19,7 +19,7 @@ export const logger = pino({
   timestamp: pino.stdTimeFunctions.isoTime
 })
 
-export function childLogger(ctx: Record<string, any>) {
+export function childLogger(ctx: Record<string, unknown>) {
   return logger.child(ctx)
 }
 

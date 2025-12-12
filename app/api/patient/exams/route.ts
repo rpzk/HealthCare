@@ -15,14 +15,10 @@ export async function GET(req: NextRequest) {
     const userEmail = session.user.email
 
     // Buscar o paciente vinculado a este usuário
-    const patient = await prisma.patient.findFirst({
-      where: {
-        OR: [
-          { userId: userId },
-          { email: userEmail }
-        ]
-      }
-    })
+    const whereClause: any = { OR: [{ userId }] }
+    if (userEmail) whereClause.OR.push({ email: userEmail })
+
+    const patient = await prisma.patient.findFirst({ where: whereClause })
 
     if (!patient) {
       return NextResponse.json([])
@@ -30,42 +26,23 @@ export async function GET(req: NextRequest) {
 
     // Buscar exames do paciente
     const examRequests = await prisma.examRequest.findMany({
-      where: {
-        patientId: patient.id
-      },
-      include: {
-        exam: {
-          select: {
-            name: true,
-            type: true,
-            category: true
-          }
-        },
-        requestedBy: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        requestedAt: 'desc'
-      },
+      where: { patientId: patient.id },
+      include: { doctor: { select: { name: true } } },
+      orderBy: { requestDate: 'desc' },
       take: 50
     })
 
     const exams = examRequests.map(req => ({
       id: req.id,
-      name: req.exam?.name || 'Exame',
-      type: req.exam?.type || 'LABORATORY',
+      name: req.examType || 'Exame',
+      type: 'LABORATORY',
       status: req.status,
-      requestedAt: req.requestedAt.toISOString(),
-      performedAt: req.performedAt?.toISOString() || null,
+      requestedAt: req.requestDate.toISOString(),
+      performedAt: req.completedDate?.toISOString() || null,
       resultAvailable: req.status === 'COMPLETED',
       resultUrl: null,
       notes: req.notes,
-      professional: req.requestedBy ? {
-        name: req.requestedBy.name
-      } : null
+      professional: req.doctor ? { name: req.doctor.name } : null
     }))
 
     return NextResponse.json(exams)

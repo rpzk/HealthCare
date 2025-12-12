@@ -21,10 +21,10 @@ export function initTracing(){
   }
 }
 
-export function startSpan(name: string, fn: () => Promise<any>) {
+export function startSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
   const tracer = trace.getTracer('healthcare-app')
   const span = tracer.startSpan(name)
   return Promise.resolve(fn())
-    .then(res => { span.end(); return res })
-    .catch(err => { span.recordException(err as Error); span.end(); throw err })
+    .then((res: T) => { span.end(); return res })
+    .catch((err: unknown) => { span.recordException(err as Error); span.end(); throw err })
 }

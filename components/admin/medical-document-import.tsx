@@ -7,12 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { 
   Upload, 
   File, 
-  FileText, 
   AlertCircle, 
   CheckCircle2, 
   Clock,
   Eye,
-  Download,
   Trash2,
   Brain
 } from 'lucide-react'

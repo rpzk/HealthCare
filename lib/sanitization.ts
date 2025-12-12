@@ -40,6 +40,7 @@ export function sanitizeText(input: string): string {
   
   return input
     // Remove caracteres de controle (exceto newline e tab)
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Normaliza múltiplos espaços em um só
     .replace(/\s+/g, ' ')

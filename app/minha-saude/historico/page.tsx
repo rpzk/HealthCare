@@ -2,32 +2,29 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import { 
   FileText, 
   ArrowLeft,
   Calendar,
-  Clock,
   Stethoscope,
   Pill,
   Activity,
   AlertTriangle,
   RefreshCw,
-  ChevronRight,
-  Download,
-  Search,
-  Filter,
-  Inbox,
+  
   ClipboardList,
+  Inbox,
   Syringe,
-  Scissors
+  Scissors,
+  Download
 } from 'lucide-react'
 import Link from 'next/link'
-import { format, parseISO, formatDistanceToNow } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface MedicalRecord {
@@ -92,7 +89,7 @@ const typeConfig: Record<string, { label: string; icon: typeof FileText; color: 
 }
 
 export default function HistoricoPacientePage() {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [activeTab, setActiveTab] = useState<'all' | 'consultations' | 'exams' | 'prescriptions'>('all')
   const [loading, setLoading] = useState(true)

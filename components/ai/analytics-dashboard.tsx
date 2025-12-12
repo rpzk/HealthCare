@@ -158,7 +158,7 @@ export function AIAnalyticsDashboard() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatusIndicator
-                status={performance.aiServiceStatus as any}
+                status={performance.aiServiceStatus === 'error' ? 'warning' : (performance.aiServiceStatus as 'online' | 'offline' | 'warning' | 'maintenance')}
                 label="Serviço de IA"
                 description={`${performance.activeAnalyses} análises ativas`}
               />

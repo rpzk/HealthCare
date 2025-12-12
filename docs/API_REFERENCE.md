@@ -225,7 +225,7 @@ Content-Type: application/json
 {
   "patientId": "clp...",
   "doctorId": "clu...",
-  "scheduledAt": "2024-11-28T14:00:00Z",
+  "scheduledDate": "2024-11-28T14:00:00Z",
   "type": "regular",
   "reason": "Consulta de rotina"
 }
@@ -618,7 +618,7 @@ const patients = await client.patients.list({ limit: 10 })
 const consultation = await client.consultations.create({
   patientId: 'clp...',
   doctorId: 'clu...',
-  scheduledAt: new Date('2024-11-28T14:00:00Z')
+  scheduledDate: new Date('2024-11-28T14:00:00Z')
 })
 ```
 

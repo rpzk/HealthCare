@@ -202,7 +202,7 @@ class RateLimitingService {
   /**
    * Get current usage statistics for a user
    */
-  getUserStats(userId: string): Record<string, any> {
+  getUserStats(userId: string): Record<string, number> {
     const now = Date.now()
     const stats: Record<string, number> = {
       createdLastMinute: 0,

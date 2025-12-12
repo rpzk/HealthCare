@@ -36,7 +36,7 @@ import { Badge } from '@/components/ui/badge'
 
 interface MenuItem {
   title: string
-  icon: any
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   href: string
   submenu?: Array<{ title: string; href: string; badge?: string }>
   badge?: string

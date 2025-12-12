@@ -36,13 +36,12 @@ import {
   MessageCircle,
   Brain,
   Target,
-  Zap,
   Lightbulb,
   TrendingUp,
   Award,
   Flame,
   Leaf,
-  Wind,
+  
   ClipboardList,
   CheckCircle,
   Lock,
@@ -56,11 +55,10 @@ import {
   Salad,
   Plus,
   LogOut,
-  ArrowLeftRight,
-  Settings
+  ArrowLeftRight
 } from 'lucide-react'
 import Link from 'next/link'
-import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns'
+import { format, parseISO, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Dialog,
@@ -126,6 +124,7 @@ interface Notification {
 
 interface Questionnaire {
   id: string
+  templateId?: string
   title: string
   description: string
   icon: typeof Leaf
@@ -135,6 +134,14 @@ interface Questionnaire {
   time: string
   completed: boolean
   progress: number
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED'
+  state: 'pending' | 'in-progress' | 'completed' | 'expired' | 'cancelled'
+  sentAt?: string | Date | null
+  expiresAt?: string | Date | null
+  startedAt?: string | Date | null
+  completedAt?: string | Date | null
+  dueInHours: number | null
+  isDueSoon: boolean
 }
 
 interface HealthDimension {
@@ -143,82 +150,35 @@ interface HealthDimension {
   icon: typeof Dumbbell
   color: string
   bgColor: string
+  status?: string
+  details?: string[]
+}
+
+type RawQuestionnaire = {
+  id: string
+  templateId?: string
+  title?: string
+  description?: string
+  questions?: number
+  time?: string
+  completed?: boolean
+  progress?: number
+  status?: string
+  state?: string
+  sentAt?: string | null
+  expiresAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  dueInHours?: number | null
+  isDueSoon?: boolean
 }
 
 // Definição dos questionários disponíveis (estrutura, não dados mockados)
-const questionnaireDefinitions: Questionnaire[] = [
-  {
-    id: 'lifestyle',
-    title: 'Estilo de Vida',
-    description: 'Avalie seus hábitos diários',
-    icon: Leaf,
-    color: 'from-green-500 to-emerald-600',
-    bgColor: 'bg-green-50 dark:bg-green-950/30',
-    questions: 25,
-    time: '10 min',
-    completed: false,
-    progress: 0
-  },
-  {
-    id: 'mental-health',
-    title: 'Saúde Mental',
-    description: 'Bem-estar emocional e psicológico',
-    icon: Brain,
-    color: 'from-purple-500 to-violet-600',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/30',
-    questions: 20,
-    time: '8 min',
-    completed: false,
-    progress: 0
-  },
-  {
-    id: 'nutrition',
-    title: 'Nutrição',
-    description: 'Hábitos alimentares e dieta',
-    icon: Salad,
-    color: 'from-orange-500 to-amber-600',
-    bgColor: 'bg-orange-50 dark:bg-orange-950/30',
-    questions: 30,
-    time: '12 min',
-    completed: false,
-    progress: 0
-  },
-  {
-    id: 'physical',
-    title: 'Aptidão Física',
-    description: 'Nível de atividade e exercícios',
-    icon: Dumbbell,
-    color: 'from-blue-500 to-cyan-600',
-    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
-    questions: 15,
-    time: '6 min',
-    completed: false,
-    progress: 0
-  },
-  {
-    id: 'sleep',
-    title: 'Qualidade do Sono',
-    description: 'Padrões e qualidade do sono',
-    icon: Bed,
-    color: 'from-indigo-500 to-blue-600',
-    bgColor: 'bg-indigo-50 dark:bg-indigo-950/30',
-    questions: 18,
-    time: '7 min',
-    completed: false,
-    progress: 0
-  },
-  {
-    id: 'stress',
-    title: 'Gestão de Estresse',
-    description: 'Como você lida com pressões',
-    icon: Wind,
-    color: 'from-teal-500 to-cyan-600',
-    bgColor: 'bg-teal-50 dark:bg-teal-950/30',
-    questions: 22,
-    time: '9 min',
-    completed: false,
-    progress: 0
-  }
+const questionnaireTemplates: Array<{ icon: typeof Leaf; color: string; bgColor: string }> = [
+  { icon: Leaf, color: 'from-green-500 to-emerald-600', bgColor: 'bg-green-50 dark:bg-green-950/30' },
+  { icon: Brain, color: 'from-indigo-500 to-purple-600', bgColor: 'bg-indigo-50 dark:bg-indigo-950/30' },
+  { icon: Salad, color: 'from-amber-500 to-orange-600', bgColor: 'bg-amber-50 dark:bg-amber-950/30' },
+  { icon: Bed, color: 'from-slate-500 to-blue-600', bgColor: 'bg-slate-50 dark:bg-slate-950/30' },
 ]
 
 // Definição das dimensões de saúde (estrutura, sem scores mockados)
@@ -254,8 +214,9 @@ export default function MinhaSaudePage() {
   const [patientData, setPatientData] = useState<PatientData | null>(null)
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [consultations, setConsultations] = useState<Consultation[]>([])
-  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>(questionnaireDefinitions)
+  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([])
   const [healthDimensions, setHealthDimensions] = useState<HealthDimension[]>(healthDimensionDefinitions)
+  const [healthDimensionsLoading, setHealthDimensionsLoading] = useState(false)
   
   // Carregar notificações
   useEffect(() => {
@@ -309,6 +270,33 @@ export default function MinhaSaudePage() {
       default: return 'bg-gray-100 text-gray-600 dark:bg-gray-800'
     }
   }
+
+  const getQuestionnaireStatus = (q: Questionnaire) => {
+    switch (q.state) {
+      case 'completed':
+        return { label: 'Completo', className: 'bg-green-100 text-green-700 dark:bg-green-900/50', icon: CheckCircle }
+      case 'in-progress':
+        return { label: 'Em andamento', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50', icon: Activity }
+      case 'expired':
+        return { label: 'Expirado', className: 'bg-red-100 text-red-700 dark:bg-red-900/50', icon: AlertCircle }
+      case 'cancelled':
+        return { label: 'Cancelado', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800', icon: Lock }
+      default:
+        return { label: 'Pendente', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50', icon: ClipboardList }
+    }
+  }
+
+  const getDueLabel = (q: Questionnaire) => {
+    if (q.state === 'completed' && q.completedAt) {
+      return `Concluído ${formatDistanceToNow(new Date(q.completedAt), { addSuffix: true, locale: ptBR })}`
+    }
+    if (q.state === 'expired') return 'Expirou'
+    if (q.dueInHours === null) return 'Sem prazo'
+    if (q.dueInHours < 0) return 'Expirado'
+    if (q.dueInHours < 24) return `Vence em ${q.dueInHours}h`
+    const days = Math.ceil(q.dueInHours / 24)
+    return `Vence em ${days}d`
+  }
   
   useEffect(() => {
     const hour = new Date().getHours()
@@ -334,6 +322,8 @@ export default function MinhaSaudePage() {
 
       try {
         setError(null)
+
+        setHealthDimensionsLoading(true)
         
         const patientResponse = await fetch('/api/patients/me')
         
@@ -342,9 +332,10 @@ export default function MinhaSaudePage() {
           setPatientData(patient)
           
           if (patient?.id) {
-            const [prescRes, consultRes] = await Promise.all([
+            const [prescRes, consultRes, questionnairesRes] = await Promise.all([
               fetch(`/api/prescriptions?patientId=${patient.id}`),
-              fetch(`/api/consultations?patientId=${patient.id}`)
+              fetch(`/api/consultations?patientId=${patient.id}`),
+              fetch('/api/patient/questionnaires?limit=50&includeCompleted=true')
             ])
             
             if (prescRes.ok) {
@@ -367,9 +358,88 @@ export default function MinhaSaudePage() {
               setConsultations(future)
             }
 
-            // TODO: Carregar dados de questionários e dimensões de saúde do banco
-            // const questionnaireRes = await fetch(`/api/questionnaires?patientId=${patient.id}`)
-            // const dimensionsRes = await fetch(`/api/health-dimensions?patientId=${patient.id}`)
+            if (questionnairesRes.ok) {
+              const { questionnaires: qs } = await questionnairesRes.json()
+              const mapped: Questionnaire[] = (qs || []).map((q: RawQuestionnaire, idx: number) => {
+                const template = questionnaireTemplates[idx % questionnaireTemplates.length]
+                const status = (q.status || 'PENDING') as Questionnaire['status']
+                const state = (q.state || (status === 'COMPLETED'
+                  ? 'completed'
+                  : status === 'IN_PROGRESS'
+                    ? 'in-progress'
+                    : status === 'EXPIRED'
+                      ? 'expired'
+                      : status === 'CANCELLED'
+                        ? 'cancelled'
+                        : 'pending')) as Questionnaire['state']
+                const expiresAt = q.expiresAt ? new Date(q.expiresAt) : null
+                const dueInHours = q.dueInHours ?? (expiresAt ? Math.round((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60)) : null)
+                const isDueSoon = q.isDueSoon ?? (dueInHours !== null && dueInHours <= 48 && dueInHours >= 0)
+
+                return {
+                  id: q.id,
+                  templateId: q.templateId,
+                  title: q.title,
+                  description: q.description,
+                  icon: template.icon,
+                  color: template.color,
+                  bgColor: template.bgColor,
+                  questions: q.questions || 0,
+                  time: q.time || '—',
+                  completed: !!q.completed,
+                  progress: q.progress ?? 0,
+                  status,
+                  state,
+                  sentAt: q.sentAt,
+                  expiresAt,
+                  startedAt: q.startedAt,
+                  completedAt: q.completedAt,
+                  dueInHours,
+                  isDueSoon,
+                }
+              }).sort((a: Questionnaire, b: Questionnaire) => {
+                const weight = (q: Questionnaire) => {
+                  switch (q.state) {
+                    case 'pending': return 1
+                    case 'in-progress': return 2
+                    case 'expired': return 3
+                    case 'completed': return 4
+                    case 'cancelled': return 5
+                    default: return 6
+                  }
+                }
+                const diff = weight(a) - weight(b)
+                if (diff !== 0) return diff
+                const aDate = a.sentAt ? new Date(a.sentAt).getTime() : 0
+                const bDate = b.sentAt ? new Date(b.sentAt).getTime() : 0
+                return bDate - aDate
+              })
+              setQuestionnaires(mapped)
+            }
+            // Health dimensions
+            try {
+              const hdRes = await fetch('/api/patient/health-dimensions')
+              if (hdRes.ok) {
+                const { dimensions } = await hdRes.json()
+                if (Array.isArray(dimensions) && dimensions.length) {
+                  const mappedDims: HealthDimension[] = dimensions.map((d, idx) => {
+                    const template = healthDimensionDefinitions[idx % healthDimensionDefinitions.length]
+                    return {
+                      ...template,
+                      name: d.name || template.name,
+                      score: typeof d.score === 'number' ? d.score : null,
+                      status: d.status,
+                      details: d.details || [],
+                    }
+                  })
+                  setHealthDimensions(mappedDims)
+                }
+              }
+            } catch (err) {
+              console.error('Erro ao carregar dimensões de saúde', err)
+            } finally {
+              setHealthDimensionsLoading(false)
+            }
           }
         } else if (patientResponse.status !== 404) {
           throw new Error('Erro ao carregar dados')
@@ -379,6 +449,7 @@ export default function MinhaSaudePage() {
         setError('Não foi possível carregar seus dados. Tente novamente.')
       } finally {
         setLoading(false)
+        setHealthDimensionsLoading(false)
       }
     }
 
@@ -745,8 +816,8 @@ export default function MinhaSaudePage() {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {healthDimensions.map((dim) => (
-                    <div key={dim.name} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                  {healthDimensions.map((dim, idx) => (
+                    <div key={`${dim.name}-${idx}`} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                       <div className="flex items-center gap-2 mb-2">
                         <dim.icon className={`h-4 w-4 ${dim.color}`} />
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{dim.name}</span>
@@ -759,6 +830,13 @@ export default function MinhaSaudePage() {
                           <Progress value={dim.score || 0} className="h-2" />
                         </div>
                       </div>
+                      <div className="flex items-center justify-between mt-2 text-[11px] text-muted-foreground">
+                        <span>{dim.status || (dim.score !== null ? 'Atualizado' : 'Pendente')}</span>
+                        {healthDimensionsLoading && <span>Carregando…</span>}
+                      </div>
+                      {dim.details && dim.details.length > 0 && (
+                        <p className="text-[11px] text-muted-foreground mt-1">{dim.details.join(' · ')}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1044,12 +1122,12 @@ export default function MinhaSaudePage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold">{completedQuestionnaires}/{totalQuestionnaires}</p>
+                    <p className="text-3xl font-bold">{completedQuestionnaires}/{totalQuestionnaires || 0}</p>
                     <p className="text-indigo-200 text-xs">avaliações completas</p>
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Progress value={(completedQuestionnaires / totalQuestionnaires) * 100} className="h-2 bg-white/20" />
+                  <Progress value={totalQuestionnaires ? (completedQuestionnaires / totalQuestionnaires) * 100 : 0} className="h-2 bg-white/20" />
                 </div>
               </CardContent>
             </Card>
@@ -1072,16 +1150,16 @@ export default function MinhaSaudePage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <h4 className="font-semibold">{q.title}</h4>
-                          {q.completed ? (
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Completo
-                            </Badge>
-                          ) : q.progress > 0 ? (
-                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50">
-                              {q.progress}%
-                            </Badge>
-                          ) : null}
+                          {(() => {
+                            const status = getQuestionnaireStatus(q)
+                            const Icon = status.icon
+                            return (
+                              <Badge className={status.className}>
+                                <Icon className="h-3 w-3 mr-1" />
+                                {status.label}
+                              </Badge>
+                            )
+                          })()}
                         </div>
                         <p className="text-sm text-muted-foreground">{q.description}</p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
@@ -1092,6 +1170,10 @@ export default function MinhaSaudePage() {
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {q.time}
+                          </span>
+                          <span className={`flex items-center gap-1 ${q.isDueSoon ? 'text-amber-600' : ''}`}>
+                            <Calendar className="h-3 w-3" />
+                            {getDueLabel(q)}
                           </span>
                         </div>
                         {!q.completed && q.progress > 0 && (
