@@ -126,21 +126,23 @@ export function ConsultationDevelopmentWidget({
       try {
         // Fetch stratum assessment
         const stratumRes = await fetch(`/api/stratum/assessments?userId=${patientId}&limit=1`)
-        const stratumAssessments = stratumRes.ok ? await stratumRes.json() : []
+        const stratumAssessments = stratumRes.ok ? await stratumRes.json() as Array<{ calculatedStratum: string; timeSpanMonths: number; completedAt?: string }> : []
         
         // Fetch strengths assessment
         const strengthsRes = await fetch(`/api/strengths/assessments?userId=${patientId}&limit=1`)
-        const strengthsAssessments = strengthsRes.ok ? await strengthsRes.json() : []
+        type StrengthItem = { code: string; name: string; virtue: string; score: number; completedAt?: string }
+        const strengthsAssessments = strengthsRes.ok ? await strengthsRes.json() as Array<{ topStrengths?: StrengthItem[]; completedAt?: string }> : []
         
         // Fetch current goals
         const plansRes = await fetch(`/api/development/plans?userId=${patientId}&status=ACTIVE`)
-        const plans = plansRes.ok ? await plansRes.json() : []
+        type GoalItem = { title: string; category: string; progress: number; status?: string }
+        const plans = plansRes.ok ? await plansRes.json() as Array<{ goals?: GoalItem[] }> : []
         
         const latestStratum = stratumAssessments[0]
         const latestStrengths = strengthsAssessments[0]
         
-        const currentGoals = plans.flatMap((plan: any) => 
-          plan.goals?.filter((g: any) => g.status === 'IN_PROGRESS').slice(0, 3).map((g: any) => ({
+        const currentGoals = plans.flatMap((plan) => 
+          plan.goals?.filter((g) => g.status === 'IN_PROGRESS').slice(0, 3).map((g) => ({
             title: g.title,
             category: g.category,
             progress: g.progress,
@@ -154,7 +156,7 @@ export function ConsultationDevelopmentWidget({
             name: stratumData[latestStratum.calculatedStratum]?.name || '',
             description: stratumData[latestStratum.calculatedStratum]?.description || '',
           } : undefined,
-          topStrengths: latestStrengths?.topStrengths?.slice(0, 3).map((s: any) => ({
+          topStrengths: latestStrengths?.topStrengths?.slice(0, 3).map((s) => ({
             code: s.code,
             name: s.name,
             virtue: s.virtue,

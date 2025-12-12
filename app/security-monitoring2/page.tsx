@@ -5,7 +5,7 @@ import { isSecurityOverviewResponse } from '../security-monitoring/validation';
 
 declare global {
   interface Window {
-    __SECURITY_RAW?: SecurityOverviewResponse | null;
+    __SECURITY_RAW?: unknown;
   }
 }
 

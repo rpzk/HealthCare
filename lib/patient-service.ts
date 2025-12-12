@@ -53,8 +53,7 @@ export class PatientService {
       const { search, riskLevel, gender, ageRange, userId, userRole } = filters
       
       // Construir filtros do Prisma
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const where: any = {}
+      const where: Prisma.PatientWhereInput = {}
       
       // ============================================
       // FILTRO DE CONTROLE DE ACESSO
@@ -67,7 +66,7 @@ export class PatientService {
       
       if (search) {
         // Se já temos filtro de acesso, precisamos combinar com AND
-        const searchFilter = {
+        const searchFilter: Prisma.PatientWhereInput = {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
             { email: { contains: search, mode: 'insensitive' } },
@@ -78,7 +77,8 @@ export class PatientService {
         // Se busca parece CPF completo (11 dígitos), usar hash
         const numeric = search.replace(/\D/g,'')
         if (numeric.length === 11) {
-          (searchFilter.OR as any[]).push({ cpfHash: hashCPF(numeric) })
+          // add CPF hash match as an additional OR condition
+          searchFilter.OR = [...(searchFilter.OR || []), { cpfHash: hashCPF(numeric) }]
         }
         
         if (where.OR) {
@@ -93,8 +93,9 @@ export class PatientService {
         }
       }
       
-      if (riskLevel) where.riskLevel = riskLevel
-      if (gender) where.gender = gender
+      // Filters come as strings from API; cast to the generated types
+      if (riskLevel) where.riskLevel = riskLevel as RiskLevel
+      if (gender) where.gender = gender as Gender
 
       // Filtro de idade (mais complexo, precisa calcular)
       if (ageRange) {

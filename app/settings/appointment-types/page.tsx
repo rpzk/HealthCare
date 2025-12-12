@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { 
   Plus, 
@@ -15,7 +14,6 @@ import {
   Save, 
   RotateCcw, 
   ArrowLeft,
-  Stethoscope,
   AlertCircle,
   Check,
   Loader2,
@@ -57,7 +55,7 @@ export default function AppointmentTypesPage() {
       return
     }
     loadServices()
-  }, [session])
+  }, [session, router])
 
   const loadServices = async () => {
     try {
@@ -103,8 +101,9 @@ export default function AppointmentTypesPage() {
 
       setSuccess('Configurações salvas com sucesso!')
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao salvar configurações')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar configurações'
+      setError(message)
     } finally {
       setSaving(false)
     }
@@ -122,8 +121,9 @@ export default function AppointmentTypesPage() {
       setServices(data.services || [])
       setSuccess('Restaurado para padrão!')
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err) {
-      setError('Erro ao restaurar')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao restaurar'
+      setError(message)
     } finally {
       setSaving(false)
     }
@@ -202,7 +202,7 @@ export default function AppointmentTypesPage() {
 
         {/* Lista de Serviços */}
         <div className="space-y-4 mb-6">
-          {services.map((service, index) => (
+          {services.map((service) => (
             <Card key={service.id} className="relative">
               <CardContent className="p-4">
                 <div className="flex gap-4">

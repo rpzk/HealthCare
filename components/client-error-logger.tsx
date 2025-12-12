@@ -15,14 +15,14 @@ export function ClientErrorLogger() {
     // Instrument proxy for any object that looks like pagination
     const origDefine = Object.defineProperty
     try {
-      Object.defineProperty = function(obj: any, prop: string | symbol, desc: any) {
+      (Object as any).defineProperty = function(obj: any, prop: string | symbol, desc: PropertyDescriptor) {
         if(prop === 'pages' && typeof desc?.get === 'function') {
           const originalGet = desc.get
           desc.get = function(...args: any[]) {
             const stack = new Error().stack?.split('\n').slice(0,8).join(' | ')
-            // @ts-expect-error - attaching diagnostic info for debugging in dev only
-            window.__LAST_PAGES_STACK = stack
-            return originalGet.apply(this, args as any)
+            // attaching diagnostic info for debugging in dev only
+            ;(window as any).__LAST_PAGES_STACK = stack
+            return (originalGet as any).call(this)
           }
         }
         return origDefine(obj, prop, desc)

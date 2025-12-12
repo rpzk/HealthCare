@@ -1,6 +1,8 @@
 "use client"
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import type { LatLngExpression } from 'leaflet'
+import type { GeoJsonObject } from 'geojson'
 
 // Lazy import Leaflet objects inside client component
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
@@ -13,7 +15,7 @@ interface MicroArea { id:string; name:string; polygonGeo?:string; centroidLat?:n
 interface Place { id:string; name:string; latitude?:number; longitude?:number; microAreaId?:string }
 interface Address { id:string; latitude?:number; longitude?:number; microAreaId?:string; patientId?:string }
 
-export function MicroAreasOverlayMap(){
+export function MicroAreasOverlayMap({ heightClass = 'h-[500px]' }: { heightClass?: string }){
   const [microAreas,setMicroAreas]=useState<MicroArea[]>([])
   const [places,setPlaces]=useState<Place[]>([])
   const [addresses,setAddresses]=useState<Address[]>([])
@@ -35,20 +37,27 @@ export function MicroAreasOverlayMap(){
     load()
   },[])
 
-  const center = microAreas.find(m=>m.centroidLat && m.centroidLng) ? [microAreas[0].centroidLat!, microAreas[0].centroidLng!] : [-23.55,-46.63]
+  const firstCentroid = microAreas.find(m=>m.centroidLat && m.centroidLng)
+  const center: LatLngExpression = firstCentroid
+    ? [firstCentroid.centroidLat!, firstCentroid.centroidLng!]
+    : [-23.55,-46.63]
 
   return (
-    <div className="h-[500px] w-full border rounded overflow-hidden">
+    <div className={`${heightClass} w-full border rounded overflow-hidden relative`}>
       {loading && <div className="absolute z-10 m-2 px-2 py-1 text-xs bg-white/80 rounded">Carregando...</div>}
-      <MapContainer center={center as any} zoom={12} style={{height:'100%',width:'100%'}}>
+      <MapContainer center={center} zoom={12} style={{height:'100%',width:'100%'}}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {microAreas.map(ma=>{
-          let feature: any = undefined
+          let feature: GeoJsonObject | null = null
           if (ma.polygonGeo){
-            try { feature = JSON.parse(ma.polygonGeo) } catch {}
+            try {
+              feature = JSON.parse(ma.polygonGeo) as GeoJsonObject
+            } catch (err) {
+              console.warn('Invalid polygonGeo for micro-area', ma.id, err)
+            }
           }
           return (
-            <>
+            <Fragment key={ma.id}>
               {feature && <GeoJSON key={ma.id} data={feature} />}
               {ma.centroidLat && ma.centroidLng && (
                 <Marker position={[ma.centroidLat, ma.centroidLng]} key={ma.id+"-centroid"}>
@@ -58,7 +67,7 @@ export function MicroAreasOverlayMap(){
                   </Popup>
                 </Marker>
               )}
-            </>
+            </Fragment>
           )
         })}
         {places.map(pl => pl.latitude && pl.longitude ? (

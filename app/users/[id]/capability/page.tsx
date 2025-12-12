@@ -2,14 +2,21 @@
 import React, { useEffect, useState } from 'react'
 
 interface Evaluation { id:string; stratumAssessed:string; potentialStratum?:string; createdAt:string; timeSpanMonths?:number }
+interface Match {
+  id: string;
+  title: string;
+  requiredMinStratum: string;
+  requiredMaxStratum?: string;
+  _fitScore?: number;
+}
 
 async function fetchEvaluations(id:string){ const r = await fetch(`/api/capability/user/${id}/evaluations`); return (await r.json()).evaluations as Evaluation[] }
-async function fetchMatches(id:string){ const r = await fetch(`/api/capability/match-detailed/${id}`); return (await r.json()).roles }
+async function fetchMatches(id:string){ const r = await fetch(`/api/capability/match-detailed/${id}`); return (await r.json()).roles as Match[] }
 
 export default function UserCapabilityPage({ params }: { params: { id: string } }){
   const userId = params.id
   const [evals,setEvals] = useState<Evaluation[]>([])
-  const [matches,setMatches] = useState<any[]>([])
+  const [matches,setMatches] = useState<Match[]>([])
   const [loading,setLoading] = useState(true)
 
   useEffect(()=>{ let active=true; (async()=>{

@@ -8,7 +8,18 @@ export default function NewConsultationContainer() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (data: any) => {
+  type NewConsultationData = Partial<{
+    patientId: string
+    doctorId: string
+    scheduledDate: string
+    type: 'ROUTINE' | 'URGENT' | 'EMERGENCY' | 'FOLLOW_UP' | 'PREVENTIVE'
+    description: string
+    notes: string
+    duration: number
+    status: string
+  }>
+
+  const handleSubmit = async (data: NewConsultationData) => {
     setLoading(true)
     try {
       const res = await fetch('/api/consultations', {

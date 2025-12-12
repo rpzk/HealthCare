@@ -11,9 +11,6 @@ import {
   Search,
   RefreshCw,
   CheckCircle,
-  AlertCircle,
-  Phone,
-  Mail,
   ChevronRight,
   Activity,
   ClipboardList,
@@ -24,10 +21,11 @@ interface Appointment {
   id: string
   patient: { id: string; name: string; cpf?: string; phone?: string }
   doctor: { id: string; name: string; speciality?: string }
-  scheduledAt: string
+  scheduledDate: string
   status: string
   type: string
   notes?: string
+  checkedInAt?: string
 }
 
 interface DashboardStats {
@@ -37,13 +35,10 @@ interface DashboardStats {
   completedToday: number
 }
 
-interface Patient {
+interface NotificationItem {
   id: string
-  name: string
-  cpf?: string
-  birthDate?: string
-  phone?: string
-  email?: string
+  title: string
+  message: string
 }
 
 export default function ReceptionDashboard() {
@@ -51,14 +46,39 @@ export default function ReceptionDashboard() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'agenda' | 'checkin' | 'patients'>('agenda')
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [waitingList, setWaitingList] = useState<any[]>([])
+  const [waitingList, setWaitingList] = useState<Appointment[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false)
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    
+    try {
+      const [apptRes, statsRes, notifRes] = await Promise.all([
+        fetch(`/api/appointments?date=${selectedDate}`).then(r => r.ok ? r.json() as Promise<{ data?: Appointment[] }> : { data: [] }),
+        fetch('/api/reception/stats').then(r => r.ok ? r.json() : null),
+        fetch('/api/notifications?limit=5').then(r => r.ok ? r.json() as Promise<{ data?: NotificationItem[] }> : { data: [] })
+      ])
+      
+      setAppointments(apptRes.data || [])
+      setStats(statsRes)
+      setNotifications(notifRes.data || [])
+      
+      // Filter waiting patients
+      const waiting = (apptRes.data || []).filter((a) => 
+        a.status === 'CHECKED_IN' || a.status === 'WAITING'
+      )
+      setWaitingList(waiting)
+    } catch (err: unknown) {
+      console.error('Error loading data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedDate])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -71,34 +91,8 @@ export default function ReceptionDashboard() {
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadData, 30000)
     return () => clearInterval(interval)
-  }, [session, status, selectedDate])
+  }, [session, status, selectedDate, router, loadData])
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    
-    try {
-      const [apptRes, statsRes, notifRes] = await Promise.all([
-        fetch(`/api/appointments?date=${selectedDate}`).then(r => r.ok ? r.json() : { data: [] }),
-        fetch('/api/reception/stats').then(r => r.ok ? r.json() : null),
-        fetch('/api/notifications?limit=5').then(r => r.ok ? r.json() : { data: [] })
-      ])
-      
-      setAppointments(apptRes.data || [])
-      setStats(statsRes)
-      setNotifications(notifRes.data || [])
-      
-      // Filter waiting patients
-      const waiting = (apptRes.data || []).filter((a: any) => 
-        a.status === 'CHECKED_IN' || a.status === 'WAITING'
-      )
-      setWaitingList(waiting)
-    } catch (err: any) {
-      console.error('Error loading data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedDate])
 
   const handleCheckIn = async (appointmentId: string) => {
     try {
@@ -112,8 +106,9 @@ export default function ReceptionDashboard() {
       }
       
       loadData()
-    } catch (err: any) {
-      alert(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro no check-in'
+      alert(message)
     }
   }
 
@@ -323,7 +318,7 @@ export default function ReceptionDashboard() {
                             >
                               <div className="flex items-center gap-4">
                                 <div className="text-center min-w-[60px]">
-                                  <p className="text-lg font-bold">{formatTime(appointment.scheduledAt)}</p>
+                                  <p className="text-lg font-bold">{formatTime(appointment.scheduledDate)}</p>
                                 </div>
                                 <div>
                                   <p className="font-medium">{appointment.patient.name}</p>
@@ -379,7 +374,7 @@ export default function ReceptionDashboard() {
                             <div>
                               <p className="font-medium">{appointment.patient.name}</p>
                               <p className="text-sm text-gray-500">
-                                {formatTime(appointment.scheduledAt)} • {appointment.doctor.name}
+                                {formatTime(appointment.scheduledDate)} • {appointment.doctor.name}
                               </p>
                             </div>
                             <button
@@ -447,7 +442,7 @@ export default function ReceptionDashboard() {
                         <div className="flex-1">
                           <p className="font-medium">{item.patient.name}</p>
                           <p className="text-sm text-gray-500">
-                            Chegou às {formatTime(item.checkedInAt || item.scheduledAt)}
+                            Chegou às {formatTime(item.checkedInAt || item.scheduledDate)}
                           </p>
                         </div>
                       </div>
@@ -470,7 +465,7 @@ export default function ReceptionDashboard() {
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {notifications.map((notif: any) => (
+                    {notifications.map((notif) => (
                       <div
                         key={notif.id}
                         className="p-3 bg-gray-50 rounded-lg"
@@ -529,6 +524,24 @@ export default function ReceptionDashboard() {
   )
 }
 
+interface NotificationItem {
+  id: string
+  title: string
+  message: string
+}
+
+interface ModalPatient {
+  id: string;
+  name: string;
+  cpf?: string;
+}
+
+interface ModalDoctor {
+  id: string;
+  name: string;
+  speciality?: string;
+}
+
 // New Appointment Modal
 function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [formData, setFormData] = useState({
@@ -539,8 +552,8 @@ function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSu
     type: 'CONSULTATION',
     notes: ''
   })
-  const [patients, setPatients] = useState<any[]>([])
-  const [doctors, setDoctors] = useState<any[]>([])
+  const [patients, setPatients] = useState<ModalPatient[]>([])
+  const [doctors, setDoctors] = useState<ModalDoctor[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchPatient, setSearchPatient] = useState('')
@@ -550,7 +563,9 @@ function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSu
     fetch('/api/users?role=DOCTOR')
       .then(r => r.json())
       .then(data => setDoctors(data.data || data || []))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Failed to load doctors', err)
+      })
   }, [])
 
   useEffect(() => {
@@ -558,7 +573,9 @@ function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSu
       fetch(`/api/patients?search=${encodeURIComponent(searchPatient)}`)
         .then(r => r.json())
         .then(data => setPatients(data.data || data || []))
-        .catch(() => {})
+        .catch((err) => {
+          console.error('Failed to load patients', err)
+        })
     }
   }, [searchPatient])
 
@@ -568,7 +585,7 @@ function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSu
     setError('')
 
     try {
-      const scheduledAt = new Date(`${formData.date}T${formData.time}:00`)
+      const scheduledDate = new Date(`${formData.date}T${formData.time}:00`)
       
       const res = await fetch('/api/appointments', {
         method: 'POST',
@@ -576,7 +593,7 @@ function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSu
         body: JSON.stringify({
           patientId: formData.patientId,
           doctorId: formData.doctorId,
-          scheduledAt: scheduledAt.toISOString(),
+          scheduledDate: scheduledDate.toISOString(),
           type: formData.type,
           notes: formData.notes
         })
@@ -588,8 +605,9 @@ function NewAppointmentModal({ onClose, onSuccess }: { onClose: () => void; onSu
       }
 
       onSuccess()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao criar agendamento'
+      setError(message)
     } finally {
       setLoading(false)
     }

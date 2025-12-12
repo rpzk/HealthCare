@@ -161,6 +161,12 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
     // Extrair userRole e userId do validatedData para processar separadamente
     const { userRole, userId, ...patientData } = validatedData
 
+    // Remove any fields explicitly set to null so PatientService.updatePatient receives undefined instead of null
+    const safePatientData: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(patientData)) {
+      if (v !== null) safePatientData[k] = v
+    }
+
     // Validar se pelo menos um campo foi fornecido
     if (Object.keys(patientData).length === 0 && !userRole) {
       return NextResponse.json(
@@ -201,7 +207,7 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
     // Atualizar paciente se houver dados para atualizar
     let patient
     if (Object.keys(patientData).length > 0) {
-      patient = await startSpan('patient.update', () => PatientService.updatePatient(params.id, patientData))
+      patient = await startSpan('patient.update', () => PatientService.updatePatient(params.id, safePatientData))
     } else {
       // Buscar paciente atual se só atualizamos o role
       patient = await PatientService.getPatientById(params.id)

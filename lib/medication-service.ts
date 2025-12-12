@@ -12,7 +12,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import type { Medication, Prisma } from '@prisma/client'
+import type { Medication, Prisma, PrescriptionType } from '@prisma/client'
 
 export interface MedicationSearchOptions {
   query?: string
@@ -82,9 +82,8 @@ export class MedicationService {
       orderDir = 'asc'
     } = options
 
-    // Using any for dynamic Prisma query building (OR conditions require mutable array)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {
+    // Build a properly typed where input for Prisma
+    const where: Prisma.MedicationWhereInput = {
       active: true  // Campo correto no schema
     }
 
@@ -100,7 +99,8 @@ export class MedicationService {
 
     // Filtros específicos
     if (prescriptionType) {
-      where.prescriptionType = prescriptionType
+      // cast incoming string to Prisma enum type
+      where.prescriptionType = prescriptionType as PrescriptionType
     }
 
     if (route) {
@@ -122,14 +122,14 @@ export class MedicationService {
 
     // Filtros de restrição por idade
     if (patientAge !== undefined) {
-      where.AND = where.AND || []
-      where.AND.push({
+      if (!Array.isArray(where.AND)) where.AND = []
+      ;(where.AND as any[]).push({
         OR: [
           { minAge: null },
           { minAge: { lte: patientAge } }
         ]
       })
-      where.AND.push({
+      ;(where.AND as any[]).push({
         OR: [
           { maxAge: null },
           { maxAge: { gte: patientAge } }
@@ -139,8 +139,8 @@ export class MedicationService {
 
     // Filtros de restrição por sexo - usando M/F conforme schema
     if (patientSex) {
-      where.AND = where.AND || []
-      where.AND.push({
+      if (!Array.isArray(where.AND)) where.AND = []
+      ;(where.AND as any[]).push({
         OR: [
           { sexRestriction: null },
           { sexRestriction: patientSex }
@@ -177,7 +177,7 @@ export class MedicationService {
     patientAge?: number
     patientSex?: 'M' | 'F'
     availabilityFilter?: 'basic' | 'popular' | 'hospital' | 'all'
-  } = {}): Promise<any[]> {
+  } = {}): Promise<Array<Partial<Medication>>> {
     if (!query || query.length < 2) {
       return []
     }
@@ -185,7 +185,7 @@ export class MedicationService {
     const { patientAge, patientSex, availabilityFilter = 'all' } = options
     const searchTerm = query.toLowerCase()
 
-    const where: any = {
+    const where: Prisma.MedicationWhereInput = {
       active: true,
       OR: [
         { name: { contains: searchTerm, mode: 'insensitive' } },
@@ -205,14 +205,14 @@ export class MedicationService {
 
     // Filtros de restrição
     if (patientAge !== undefined) {
-      where.AND = where.AND || []
-      where.AND.push({
+      if (!Array.isArray(where.AND)) where.AND = []
+      ;(where.AND as any[]).push({
         OR: [
           { minAge: null },
           { minAge: { lte: patientAge } }
         ]
       })
-      where.AND.push({
+      ;(where.AND as any[]).push({
         OR: [
           { maxAge: null },
           { maxAge: { gte: patientAge } }
@@ -222,7 +222,7 @@ export class MedicationService {
 
     if (patientSex) {
       where.AND = where.AND || []
-      where.AND.push({
+      ;(where.AND as any[]).push({
         OR: [
           { sexRestriction: null },
           { sexRestriction: patientSex }
@@ -264,7 +264,7 @@ export class MedicationService {
   /**
    * Busca um medicamento por ID
    */
-  static async getById(id: string): Promise<any | null> {
+  static async getById(id: string): Promise<Medication | null> {
     return prisma.medication.findUnique({
       where: { id }
     })
@@ -455,8 +455,8 @@ export class MedicationService {
   /**
    * Busca medicamentos da farmácia básica para UBS
    */
-  static async getBasicPharmacyMedications(query?: string): Promise<any[]> {
-    const where: any = {
+  static async getBasicPharmacyMedications(query?: string): Promise<Medication[]> {
+    const where: Prisma.MedicationWhereInput = {
       active: true,
       basicPharmacy: true
     }
@@ -478,8 +478,8 @@ export class MedicationService {
   /**
    * Busca medicamentos disponíveis na Farmácia Popular
    */
-  static async getPopularPharmacyMedications(query?: string): Promise<any[]> {
-    const where: any = {
+  static async getPopularPharmacyMedications(query?: string): Promise<Medication[]> {
+    const where: Prisma.MedicationWhereInput = {
       active: true,
       popularPharmacy: true
     }

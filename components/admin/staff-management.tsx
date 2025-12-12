@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useState, useCallback } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -113,11 +113,7 @@ export function StaffManagement() {
   const [tempPassword, setTempPassword] = useState('')
   const [resetting, setResetting] = useState(false)
 
-  useEffect(() => {
-    loadStaff()
-  }, [search, roleFilter, statusFilter])
-
-  const loadStaff = async () => {
+  const loadStaff = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -138,7 +134,11 @@ export function StaffManagement() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [search, roleFilter, statusFilter])
+
+  useEffect(() => {
+    loadStaff()
+  }, [loadStaff])
 
   const handleInvite = async () => {
     if (!inviteEmail) return

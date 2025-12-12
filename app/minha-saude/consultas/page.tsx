@@ -13,11 +13,10 @@ import {
   Clock,
   User,
   MapPin,
-  Phone,
   Video,
   CheckCircle2,
   XCircle,
-  AlertCircle,
+  
   Plus,
   Pill
 } from 'lucide-react'

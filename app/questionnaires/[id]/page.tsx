@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
@@ -15,17 +14,16 @@ import {
   Send, 
   Edit, 
   Copy, 
-  Trash2, 
   Clock,
   FileText,
-  Users,
   CheckCircle,
   XCircle,
   AlertCircle,
   Link as LinkIcon,
   Loader2,
   Eye,
-  BarChart3
+  BarChart3,
+  LucideProps,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -100,7 +98,7 @@ interface Template {
   }
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string; icon: any }> = {
+const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.FC<LucideProps> }> = {
   PENDING: { label: 'Aguardando', color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
   IN_PROGRESS: { label: 'Em andamento', color: 'bg-blue-100 text-blue-800', icon: Clock },
   COMPLETED: { label: 'Concluído', color: 'bg-green-100 text-green-800', icon: CheckCircle },
@@ -122,17 +120,7 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
   const [expiresInDays, setExpiresInDays] = useState('7')
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchTemplate()
-    fetchSentQuestionnaires()
-    fetchPatients()
-    // Auto-open dialog if patient is preselected
-    if (preselectedPatientId) {
-      setShowSendDialog(true)
-    }
-  }, [params.id, preselectedPatientId])
-
-  async function fetchTemplate() {
+  const fetchTemplate = useCallback(async () => {
     try {
       const res = await fetch(`/api/questionnaires/${params.id}`)
       if (res.ok) {
@@ -144,9 +132,9 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id])
 
-  async function fetchSentQuestionnaires() {
+  const fetchSentQuestionnaires = useCallback(async () => {
     try {
       const res = await fetch(`/api/questionnaires/${params.id}/send`)
       if (res.ok) {
@@ -156,9 +144,9 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
     } catch (error) {
       console.error('Error fetching sent questionnaires:', error)
     }
-  }
+  }, [params.id])
 
-  async function fetchPatients() {
+  const fetchPatients = useCallback(async () => {
     try {
       const res = await fetch('/api/patients?limit=100')
       if (res.ok) {
@@ -168,7 +156,17 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
     } catch (error) {
       console.error('Error fetching patients:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchTemplate()
+    fetchSentQuestionnaires()
+    fetchPatients()
+    // Auto-open dialog if patient is preselected
+    if (preselectedPatientId) {
+      setShowSendDialog(true)
+    }
+  }, [preselectedPatientId, fetchTemplate, fetchSentQuestionnaires, fetchPatients])
 
   async function sendToPatient() {
     if (!selectedPatient) return
@@ -236,7 +234,7 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
     )
   }
 
-  const totalQuestions = template.categories.reduce((acc, cat) => acc + cat.questions.length, 0)
+  const totalQuestions = template.categories.reduce((acc: number, cat: Category) => acc + cat.questions.length, 0)
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -579,12 +577,59 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
         {/* Analytics Tab */}
         <TabsContent value="analytics">
           <Card>
-            <CardContent className="py-12 text-center">
-              <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">Análises em breve</h3>
-              <p className="text-muted-foreground">
-                Estatísticas agregadas e padrões nas respostas aparecerão aqui.
-              </p>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Analytics rápidos</CardTitle>
+                <CardDescription>Resumo das remessas e conclusão do questionário</CardDescription>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <BarChart3 className="h-4 w-4" />
+                <span>Atualiza ao abrir a aba</span>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-3">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Total enviado</p>
+                <p className="text-3xl font-bold">{sentQuestionnaires.length}</p>
+                <div className="text-sm text-muted-foreground">
+                  {template._count.sentQuestionnaires} histórico(s) registrado(s)
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Conclusão</p>
+                {(() => {
+                  const completed = sentQuestionnaires.filter(sq => sq.status === 'COMPLETED').length
+                  const rate = sentQuestionnaires.length > 0 
+                    ? Math.round((completed / sentQuestionnaires.length) * 100)
+                    : 0
+                  return (
+                    <>
+                      <p className="text-3xl font-bold">{rate}%</p>
+                      <p className="text-sm text-muted-foreground">{completed} concluído(s)</p>
+                    </>
+                  )
+                })()}
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <div className="space-y-1 text-sm">
+                  {(['PENDING','IN_PROGRESS','COMPLETED','EXPIRED','CANCELLED'] as const).map(status => {
+                    const count = sentQuestionnaires.filter(sq => sq.status === status).length
+                    if (count === 0) return null
+                    const statusMeta = STATUS_LABELS[status]
+                    const StatusIcon = statusMeta.icon
+                    return (
+                      <div key={status} className="flex items-center gap-2">
+                        <StatusIcon className={`h-4 w-4 ${statusMeta.color.replace('bg-','text-').split(' ')[0]}`} />
+                        <span className="font-medium">{statusMeta.label}</span>
+                        <span className="text-muted-foreground">· {count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

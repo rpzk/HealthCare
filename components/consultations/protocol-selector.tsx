@@ -60,10 +60,10 @@ interface Protocol {
 }
 
 interface ProtocolData {
-  prescriptions: any[]
-  exams: any[]
-  referrals: any[]
-  diagnoses: any[]
+  prescriptions: Protocol['prescriptions']
+  exams: Protocol['exams']
+  referrals: Protocol['referrals']
+  diagnoses: Protocol['diagnoses']
 }
 
 interface ProtocolSelectorProps {

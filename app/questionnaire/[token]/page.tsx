@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
@@ -16,7 +15,6 @@ import {
   Clock, 
   Loader2,
   Sparkles,
-  Heart,
   Home,
   Pause,
   Play
@@ -107,11 +105,7 @@ export default function QuestionnairePlayPage({ params }: { params: { token: str
   const [answers, setAnswers] = useState<Record<string, Answer>>({})
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
 
-  useEffect(() => {
-    fetchQuestionnaire()
-  }, [params.token])
-
-  async function fetchQuestionnaire() {
+  const fetchQuestionnaire = useCallback(async () => {
     try {
       const res = await fetch(`/api/questionnaire/${params.token}`)
       if (res.ok) {
@@ -130,10 +124,14 @@ export default function QuestionnairePlayPage({ params }: { params: { token: str
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.token]);
+
+  useEffect(() => {
+    fetchQuestionnaire()
+  }, [fetchQuestionnaire])
 
   // Get flat list of all questions
-  const allQuestions = questionnaire?.template.categories.flatMap((cat, catIdx) => 
+  const allQuestions = useMemo(() => questionnaire?.template.categories.flatMap((cat, catIdx) => 
     cat.questions.map((q, qIdx) => ({
       ...q,
       categoryIndex: catIdx,
@@ -141,7 +139,7 @@ export default function QuestionnairePlayPage({ params }: { params: { token: str
       categoryName: cat.name,
       categoryEmoji: cat.iconEmoji
     }))
-  ) || []
+  ) || [], [questionnaire]);
 
   const currentFlatIndex = allQuestions.findIndex(
     q => q.categoryIndex === currentCategoryIndex && q.questionIndex === currentQuestionIndex
@@ -191,7 +189,7 @@ export default function QuestionnairePlayPage({ params }: { params: { token: str
   }, [currentFlatIndex, allQuestions])
 
   // Save progress to server
-  async function saveProgress(isComplete = false) {
+  const saveProgress = useCallback(async (isComplete = false) => {
     if (isComplete) {
       setCompleting(true)
     } else {
@@ -224,7 +222,7 @@ export default function QuestionnairePlayPage({ params }: { params: { token: str
       setSaving(false)
       setCompleting(false)
     }
-  }
+  }, [answers, params.token]);
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -235,7 +233,7 @@ export default function QuestionnairePlayPage({ params }: { params: { token: str
     }, 30000)
 
     return () => clearInterval(interval)
-  }, [answers])
+  }, [answers, saveProgress])
 
   // Current answer value
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : null

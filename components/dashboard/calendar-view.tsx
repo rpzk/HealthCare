@@ -59,6 +59,8 @@ interface CalendarEvent {
   allDay?: boolean
 }
 
+type ServerCalendarEvent = Omit<CalendarEvent, 'start' | 'end'> & { start: string; end: string }
+
 // Cores por status
 const statusColors: Record<string, { bg: string; border: string; text: string }> = {
   SCHEDULED: { bg: 'bg-blue-100', border: 'border-blue-400', text: 'text-blue-800' },
@@ -148,17 +150,18 @@ export function CalendarView() {
       if (!res.ok) throw new Error('Falha ao carregar eventos')
       
       const data = await res.json()
-      
+
       // Converter strings de data para objetos Date
-      const formattedEvents = data.events.map((event: any) => ({
+      const formattedEvents = data.events.map((event: ServerCalendarEvent): CalendarEvent => ({
         ...event,
         start: new Date(event.start),
         end: new Date(event.end),
       }))
       
       setEvents(formattedEvents)
-    } catch (error) {
-      console.error('Erro ao carregar eventos:', error)
+    } catch (error: unknown) {
+      if (error instanceof Error) console.error('Erro ao carregar eventos:', error)
+      else console.error('Erro ao carregar eventos:', String(error))
     } finally {
       setLoading(false)
     }
@@ -197,7 +200,9 @@ export function CalendarView() {
 
   // Toolbar customizada
   const CustomToolbar = useMemo(() => {
-    return function Toolbar({ onNavigate, onView, label }: any) {
+    type ToolbarProps = { onNavigate: (action: string) => void; onView: (view: View) => void; label: string }
+
+    return function Toolbar({ onNavigate, onView, label }: ToolbarProps) {
       return (
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -311,7 +316,7 @@ export function CalendarView() {
             eventPropGetter={eventStyleGetter}
             components={{
               event: EventComponent,
-              toolbar: CustomToolbar,
+              toolbar: CustomToolbar as any,
             }}
             messages={messages}
             culture="pt-BR"

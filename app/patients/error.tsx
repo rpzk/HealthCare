@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 
-export default function PatientsError({ error, reset }: { error: any, reset: () => void }) {
+export default function PatientsError({ error, reset }: { error: Error, reset: () => void }) {
   React.useEffect(() => {
     console.error('[Patients] Boundary captured error:', error)
   }, [error])

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
@@ -12,10 +13,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+type FamilyWithMemberCount = Prisma.HouseholdGetPayload<{
+  include: {
+    _count: {
+      select: { members: true }
+    }
+  }
+}>
+
 export const dynamic = 'force-dynamic';
 
 export default async function FamiliesPage() {
-  let families: any[] = [];
+  let families: FamilyWithMemberCount[] = [];
   
   try {
     if (prisma) {

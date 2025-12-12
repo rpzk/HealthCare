@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,6 @@ import {
   Search, 
   FileText, 
   Send, 
-  BarChart3,
   Leaf,
   Flower2,
   Circle,
@@ -24,7 +23,7 @@ import {
   Loader2,
   Sparkles,
   User,
-  ArrowRight
+  LucideProps,
 } from 'lucide-react'
 
 interface QuestionnaireTemplate {
@@ -48,7 +47,7 @@ interface QuestionnaireTemplate {
   }>
 }
 
-const SYSTEM_ICONS: Record<string, any> = {
+const SYSTEM_ICONS: Record<string, React.FC<LucideProps>> = {
   AYURVEDA: Leaf,
   HOMEOPATHY: Flower2,
   TCM: Circle,
@@ -78,26 +77,7 @@ function QuestionnairesPageContent() {
   const [activeTab, setActiveTab] = useState('all')
   const [seeding, setSeeding] = useState(false)
 
-  useEffect(() => {
-    fetchTemplates()
-    if (patientId) {
-      fetchPatient(patientId)
-    }
-  }, [patientId])
-
-  async function fetchPatient(id: string) {
-    try {
-      const res = await fetch(`/api/patients/${id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setPatient(data)
-      }
-    } catch (error) {
-      console.error('Error fetching patient:', error)
-    }
-  }
-
-  async function fetchTemplates() {
+  const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch('/api/questionnaires')
       if (res.ok) {
@@ -109,7 +89,26 @@ function QuestionnairesPageContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  const fetchPatient = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/patients/${id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setPatient(data)
+      }
+    } catch (error) {
+      console.error('Error fetching patient:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchTemplates()
+    if (patientId) {
+      fetchPatient(patientId)
+    }
+  }, [patientId, fetchTemplates, fetchPatient])
 
   async function seedBuiltInTemplates() {
     setSeeding(true)
@@ -218,7 +217,7 @@ function QuestionnairesPageContent() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {templates.reduce((acc, t) => acc + t._count.sentQuestionnaires, 0)}
+                  {templates.reduce((acc: number, t: QuestionnaireTemplate) => acc + t._count.sentQuestionnaires, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Enviados</p>
               </div>

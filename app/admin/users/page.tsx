@@ -14,10 +14,7 @@ import {
   Loader2,
   Stethoscope,
   ShieldCheck,
-  Clipboard,
   RefreshCw,
-  Filter,
-  Download,
   Eye,
   Shield
 } from 'lucide-react'

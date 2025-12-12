@@ -437,7 +437,7 @@ export default function NewExamRequestForm() {
       <div>
         <label className="block text-sm font-medium mb-2">Exames *</label>
         
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'individual' | 'combo')} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <FlaskConical className="h-4 w-4" />

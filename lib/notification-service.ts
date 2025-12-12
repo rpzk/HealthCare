@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 
 // Direct PrismaClient instantiation to avoid bundling issues
 const globalForNotification = globalThis as unknown as { notificationPrisma: PrismaClient }
@@ -59,8 +60,9 @@ export class NotificationService {
           priority: data.priority,
           title: data.title,
           message: data.message,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          metadata: (data.metadata || {}) as any,
+          // Prisma expects a JSON Input type for metadata; cast safely or pass null
+          // prefer undefined when metadata absent to match Prisma Input types
+          metadata: data.metadata ? (data.metadata as unknown as Prisma.InputJsonValue) : undefined,
           expiresAt: data.expiresAt
         }
       })
@@ -155,7 +157,7 @@ export class NotificationService {
     })
   }
 
-  static async notifyCriticalAlert(userId: string, title: string, message: string, metadata?: Record<string, any>) {
+  static async notifyCriticalAlert(userId: string, title: string, message: string, metadata?: Record<string, unknown>) {
     return this.createNotification({
       type: 'critical_alert',
       priority: 'critical',

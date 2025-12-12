@@ -1,4 +1,4 @@
-import { getServerSession } from 'next-auth'
+import { getServerSession, type Session } from 'next-auth'
 import TeleRoomCompact from '@/components/tele/room-compact'
 import { authOptions } from '@/lib/auth'
 import { TeleWorkspace } from '@/components/consultations/tele-workspace'
@@ -10,7 +10,7 @@ import Link from 'next/link'
 interface Props { params: { id: string } }
 
 export default async function TelePage({ params }: Props){
-  const session = await getServerSession(authOptions as any).catch(()=>null) as any
+  const session = await getServerSession(authOptions).catch(() => null) as Session | null
   const userId = session?.user?.id as string | undefined
   
   if (!userId){

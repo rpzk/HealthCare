@@ -1,104 +1,72 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Activity, Heart, Thermometer, Eye, ArrowLeft, User, Calendar, Plus, TrendingUp } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Activity, Heart, Thermometer, Eye, User, Plus, TrendingUp } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
+import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts'
 
 interface VitalSign {
   id: string
-  patient: {
-    id: string
-    name: string
-  }
-  blood_pressure_systolic: number
-  blood_pressure_diastolic: number
-  heart_rate: number
-  temperature: number
-  respiratory_rate: number
-  oxygen_saturation: number
+  systolicBP: number | null
+  diastolicBP: number | null
+  heartRate: number | null
+  temperature: number | null
+  respiratoryRate: number | null
+  oxygenSaturation: number | null
+  weight?: number | null
+  height?: number | null
+  bmi?: number | null
+  bloodGlucose?: number | null
+  notes?: string | null
+  recordedAt: string
+}
+
+interface NewVitalForm {
+  systolicBP?: number
+  diastolicBP?: number
+  heartRate?: number
+  respiratoryRate?: number
+  temperature?: number
+  oxygenSaturation?: number
   weight?: number
   height?: number
-  recorded_by: string
-  recorded_at: string
   notes?: string
 }
 
 export default function VitalSignsPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([])
   const [showNewForm, setShowNewForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredSigns, setFilteredSigns] = useState<VitalSign[]>([])
-
-  // Dados simulados para demonstração
-  const sampleVitalSigns: VitalSign[] = [
-    {
-      id: '1',
-      patient: { id: '1', name: 'Maria Silva' },
-      blood_pressure_systolic: 120,
-      blood_pressure_diastolic: 80,
-      heart_rate: 72,
-      temperature: 36.5,
-      respiratory_rate: 16,
-      oxygen_saturation: 98,
-      weight: 65,
-      height: 165,
-      recorded_by: 'Enfermeira Ana',
-      recorded_at: new Date().toISOString(),
-      notes: 'Paciente estável, sem alterações significativas'
-    },
-    {
-      id: '2',
-      patient: { id: '2', name: 'João Santos' },
-      blood_pressure_systolic: 140,
-      blood_pressure_diastolic: 90,
-      heart_rate: 85,
-      temperature: 37.2,
-      respiratory_rate: 18,
-      oxygen_saturation: 96,
-      weight: 80,
-      recorded_by: 'Enfermeira Paula',
-      recorded_at: new Date(Date.now() - 86400000).toISOString(),
-      notes: 'Pressão arterial elevada, temperatura ligeiramente alta'
-    },
-    {
-      id: '3',
-      patient: { id: '3', name: 'Ana Costa' },
-      blood_pressure_systolic: 110,
-      blood_pressure_diastolic: 70,
-      heart_rate: 68,
-      temperature: 36.2,
-      respiratory_rate: 14,
-      oxygen_saturation: 99,
-      weight: 58,
-      height: 160,
-      recorded_by: 'Técnico Roberto',
-      recorded_at: new Date(Date.now() - 172800000).toISOString(),
-      notes: 'Sinais vitais dentro da normalidade'
-    }
-  ]
-
+  const [form, setForm] = useState<NewVitalForm>({})
+  const [saving, setSaving] = useState(false)
   useEffect(() => {
-    // Simular carregamento de dados
-    setTimeout(() => {
-      setVitalSigns(sampleVitalSigns)
-      setLoading(false)
-    }, 1000)
+    const load = async () => {
+      try {
+        const res = await fetch('/api/patient/vitals')
+        if (!res.ok) throw new Error('Falha ao carregar sinais vitais')
+        const data = (await res.json()) as VitalSign[]
+        setVitalSigns(data)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   useEffect(() => {
     if (searchTerm) {
       const filtered = vitalSigns.filter(sign =>
-        sign.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sign.recorded_by.toLowerCase().includes(searchTerm.toLowerCase())
+        `${sign.notes || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredSigns(filtered)
     } else {
@@ -156,6 +124,23 @@ export default function VitalSignsPage() {
     const bmi = weight / (heightInMeters * heightInMeters)
     return bmi.toFixed(1)
   }
+
+  const chartData = useMemo(() => {
+    return [...vitalSigns]
+      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
+      .map((v) => ({
+        date: new Date(v.recordedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        systolic: v.systolicBP ?? null,
+        diastolic: v.diastolicBP ?? null,
+        hr: v.heartRate ?? null,
+        spo2: v.oxygenSaturation ?? null,
+        temp: v.temperature ?? null,
+      }))
+  }, [vitalSigns])
+
+  const highBPCount = filteredSigns.filter(sign => (sign.systolicBP ?? 0) >= 140 || (sign.diastolicBP ?? 0) >= 90).length
+  const feverCount = filteredSigns.filter(sign => (sign.temperature ?? 0) >= 37.5).length
+  const lowSpO2Count = filteredSigns.filter(sign => (sign.oxygenSaturation ?? 100) < 95).length
 
   const getBMIStatus = (bmi: number) => {
     if (bmi < 18.5) return { label: 'Abaixo do peso', color: 'bg-blue-100 text-blue-800' }
@@ -221,11 +206,7 @@ export default function VitalSignsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Hipertensão</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {filteredSigns.filter(sign => 
-                        sign.blood_pressure_systolic >= 140 || sign.blood_pressure_diastolic >= 90
-                      ).length}
-                    </p>
+                    <p className="text-2xl font-bold text-red-600">{highBPCount}</p>
                   </div>
                   <Heart className="h-8 w-8 text-red-600" />
                 </div>
@@ -237,9 +218,7 @@ export default function VitalSignsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Febre</p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {filteredSigns.filter(sign => sign.temperature >= 37.5).length}
-                    </p>
+                    <p className="text-2xl font-bold text-orange-600">{feverCount}</p>
                   </div>
                   <Thermometer className="h-8 w-8 text-orange-600" />
                 </div>
@@ -251,9 +230,7 @@ export default function VitalSignsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Saturação &lt; 95%</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {filteredSigns.filter(sign => sign.oxygen_saturation < 95).length}
-                    </p>
+                    <p className="text-2xl font-bold text-blue-600">{lowSpO2Count}</p>
                   </div>
                   <Eye className="h-8 w-8 text-blue-600" />
                 </div>
@@ -266,7 +243,7 @@ export default function VitalSignsPage() {
             <CardContent className="pt-6">
               <div className="flex space-x-4">
                 <Input
-                  placeholder="Buscar por paciente ou profissional..."
+                  placeholder="Buscar em observações..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1"
@@ -275,13 +252,57 @@ export default function VitalSignsPage() {
             </CardContent>
           </Card>
 
+          {/* Tendências */}
+          {chartData.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Tendências recentes</CardTitle>
+                <CardDescription>Visualize evolução de pressão, FC e SpO₂</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="h-60">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <XAxis dataKey="date" fontSize={12} />
+                        <YAxis label={{ value: 'mmHg', angle: -90, position: 'insideLeft', fontSize: 12 }} fontSize={12} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="systolic" name="Sistólica" stroke="#ef4444" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="diastolic" name="Diastólica" stroke="#fb923c" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="h-60">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <XAxis dataKey="date" fontSize={12} />
+                        <YAxis label={{ value: 'bpm / %', angle: -90, position: 'insideLeft', fontSize: 12 }} fontSize={12} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="hr" name="FC" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="spo2" name="SpO₂" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="temp" name="Temp" stroke="#f97316" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Lista de Sinais Vitais */}
           <div className="space-y-4">
             {filteredSigns.map((sign) => {
-              const bpStatus = getBPStatus(sign.blood_pressure_systolic, sign.blood_pressure_diastolic)
-              const tempStatus = getTemperatureStatus(sign.temperature)
-              const hrStatus = getHeartRateStatus(sign.heart_rate)
-              const bmi = calculateBMI(sign.weight, sign.height)
+              const bpStatus = getBPStatus(sign.systolicBP || 0, sign.diastolicBP || 0)
+              const tempStatus = getTemperatureStatus(sign.temperature || 0)
+              const hrStatus = getHeartRateStatus(sign.heartRate || 0)
+              const bmi = calculateBMI(sign.weight || undefined, sign.height || undefined)
+              const alerts: string[] = []
+              if ((sign.oxygenSaturation ?? 100) < 95) alerts.push('SpO₂ abaixo de 95%')
+              if ((sign.heartRate ?? 0) > 100) alerts.push('FC elevada')
+              if ((sign.temperature ?? 0) >= 38) alerts.push('Febre')
+              if ((sign.systolicBP ?? 0) >= 140 || (sign.diastolicBP ?? 0) >= 90) alerts.push('Pressão elevada')
               
               return (
                 <Card key={sign.id}>
@@ -292,9 +313,9 @@ export default function VitalSignsPage() {
                           <User className="h-5 w-5 text-red-600" />
                         </div>
                         <div>
-                          <CardTitle className="text-lg">{sign.patient.name}</CardTitle>
+                          <CardTitle className="text-lg">Registro de Sinais Vitais</CardTitle>
                           <CardDescription>
-                            Registrado por {sign.recorded_by} • {formatDate(sign.recorded_at)}
+                            {formatDate(sign.recordedAt)}
                           </CardDescription>
                         </div>
                       </div>
@@ -312,7 +333,7 @@ export default function VitalSignsPage() {
                           <span className="text-sm font-medium">Pressão Arterial</span>
                         </div>
                         <p className="text-xl font-bold">
-                          {sign.blood_pressure_systolic}/{sign.blood_pressure_diastolic}
+                          {sign.systolicBP ?? '--'}/{sign.diastolicBP ?? '--'}
                         </p>
                         <p className="text-xs text-muted-foreground">mmHg</p>
                       </div>
@@ -323,7 +344,7 @@ export default function VitalSignsPage() {
                           <Activity className="h-4 w-4 text-pink-600" />
                           <span className="text-sm font-medium">FC</span>
                         </div>
-                        <p className="text-xl font-bold">{sign.heart_rate}</p>
+                        <p className="text-xl font-bold">{sign.heartRate ?? '--'}</p>
                         <p className="text-xs text-muted-foreground">bpm</p>
                         <Badge className={hrStatus.color}>
                           {hrStatus.label}
@@ -336,7 +357,7 @@ export default function VitalSignsPage() {
                           <Thermometer className="h-4 w-4 text-orange-600" />
                           <span className="text-sm font-medium">Temperatura</span>
                         </div>
-                        <p className="text-xl font-bold">{sign.temperature}°C</p>
+                        <p className="text-xl font-bold">{sign.temperature ?? '--'}°C</p>
                         <Badge className={tempStatus.color}>
                           {tempStatus.label}
                         </Badge>
@@ -348,12 +369,12 @@ export default function VitalSignsPage() {
                           <Eye className="h-4 w-4 text-blue-600" />
                           <span className="text-sm font-medium">Respiração</span>
                         </div>
-                        <p className="text-lg font-bold">{sign.respiratory_rate} rpm</p>
-                        <p className="text-lg font-bold">{sign.oxygen_saturation}% SpO₂</p>
+                        <p className="text-lg font-bold">{sign.respiratoryRate ?? '--'} rpm</p>
+                        <p className="text-lg font-bold">{sign.oxygenSaturation ?? '--'}% SpO₂</p>
                       </div>
 
                       {/* Peso e IMC */}
-                      {sign.weight && (
+                      {sign.weight !== null && sign.weight !== undefined && (
                         <div className="bg-muted rounded-lg p-3">
                           <div className="flex items-center space-x-2 mb-1">
                             <TrendingUp className="h-4 w-4 text-green-600" />
@@ -380,31 +401,57 @@ export default function VitalSignsPage() {
                         <p className="text-sm"><strong>Observações:</strong> {sign.notes}</p>
                       </div>
                     )}
+                    {alerts.length > 0 && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                        <strong>Alertas:</strong> {alerts.join(' · ')}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )
             })}
           </div>
 
-          {/* Formulário rápido (simplificado) */}
+          {/* Formulário rápido */}
           {showNewForm && (
             <Card>
               <CardHeader>
                 <CardTitle>Registrar Novos Sinais Vitais</CardTitle>
-                <CardDescription>
-                  Funcionalidade em desenvolvimento - Em breve será possível registrar novos sinais vitais
-                </CardDescription>
+                <CardDescription>Preencha os campos desejados; os demais são opcionais.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Plus className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Formulário de registro será implementado em breve</p>
-                  <Button 
-                    onClick={() => setShowNewForm(false)} 
-                    variant="outline" 
-                    className="mt-4"
-                  >
-                    Fechar
+              <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Input type="number" placeholder="Pressão sistólica (mmHg)" value={form.systolicBP ?? ''} onChange={e => setForm(f => ({ ...f, systolicBP: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input type="number" placeholder="Pressão diastólica (mmHg)" value={form.diastolicBP ?? ''} onChange={e => setForm(f => ({ ...f, diastolicBP: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input type="number" placeholder="Frequência cardíaca (bpm)" value={form.heartRate ?? ''} onChange={e => setForm(f => ({ ...f, heartRate: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input type="number" placeholder="Temperatura (°C)" value={form.temperature ?? ''} onChange={e => setForm(f => ({ ...f, temperature: e.target.value ? Number(e.target.value) : undefined }))} step="0.1" />
+                <Input type="number" placeholder="Respiração (rpm)" value={form.respiratoryRate ?? ''} onChange={e => setForm(f => ({ ...f, respiratoryRate: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input type="number" placeholder="Saturação (%)" value={form.oxygenSaturation ?? ''} onChange={e => setForm(f => ({ ...f, oxygenSaturation: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input type="number" placeholder="Peso (kg)" value={form.weight ?? ''} onChange={e => setForm(f => ({ ...f, weight: e.target.value ? Number(e.target.value) : undefined }))} step="0.1" />
+                <Input type="number" placeholder="Altura (cm)" value={form.height ?? ''} onChange={e => setForm(f => ({ ...f, height: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input placeholder="Observações" value={form.notes ?? ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+                <div className="md:col-span-2 lg:col-span-3 flex gap-3 justify-end">
+                  <Button variant="outline" onClick={() => setShowNewForm(false)}>Cancelar</Button>
+                  <Button onClick={async () => {
+                    setSaving(true)
+                    try {
+                      const res = await fetch('/api/patient/vitals', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(form)
+                      })
+                      if (!res.ok) throw new Error('Falha ao salvar')
+                      const list = await fetch('/api/patient/vitals')
+                      const data = (await list.json()) as VitalSign[]
+                      setVitalSigns(data)
+                      setShowNewForm(false)
+                      setForm({})
+                    } catch (err) {
+                      console.error(err)
+                    } finally {
+                      setSaving(false)
+                    }
+                  }} disabled={saving}>
+                    {saving ? 'Salvando...' : 'Salvar'}
                   </Button>
                 </div>
               </CardContent>

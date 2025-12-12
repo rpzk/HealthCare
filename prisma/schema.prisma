@@ -45,6 +45,9 @@ model User {
   strengthAssessments    StrengthAssessment[]   @relation("UserStrengthAssessments")
   developmentPlans       DevelopmentPlan[]      @relation("UserDevelopmentPlans")
 
+  // Passkeys / WebAuthn credentials
+  webauthnCredentials    WebAuthnCredential[]
+
   // HR Management relations
   leaveRequests         LeaveRequest[]   @relation("UserLeaveRequests")
   approvedLeaveRequests LeaveRequest[]   @relation("ApprovedLeaveRequests")
@@ -55,6 +58,9 @@ model User {
   
   // Convites de pacientes enviados
   patientInvites        PatientInvite[]
+  
+  // Fila de espera (médicos)
+  waitingLists          WaitingList[]
   
   // Questionários integrativos
   questionnaireTemplates QuestionnaireTemplate[]
@@ -68,8 +74,41 @@ model User {
   
   // Papéis atribuídos (permite que um usuário tenha múltiplos papéis)
   assignedRoles          UserAssignedRole[]
+  
+  // Telemedicina - Gravações como médico
+  doctorRecordings       TelemedicineRecording[] @relation("DoctorRecordings")
+  recordingAccessTokens  RecordingAccessToken[]
+  
+  // Atestados médicos emitidos
+  medicalCertificates    MedicalCertificate[] @relation("DoctorCertificates")
+  
+  // NPS recebidos
+  npsResponses           NpsResponse[] @relation("DoctorNpsResponses")
+  
+  // Assinatura Digital
+  digitalCertificates    DigitalCertificate[] @relation("UserDigitalCertificates")
+  signedDocuments        SignedDocument[] @relation("UserSignedDocuments")
 
   @@map("users")
+}
+
+model WebAuthnCredential {
+  id                      String   @id @default(cuid())
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId            String   @unique
+  publicKey               String
+  counter                 Int      @default(0)
+  deviceType              String?
+  backedUp                Boolean  @default(false)
+  transports              String?
+  authenticatorAttachment String?
+  nickname                String?
+  createdAt               DateTime @default(now())
+  lastUsedAt              DateTime?
+
+  @@index([userId])
+  @@map("webauthn_credentials")
 }
 
 // Tabela para papéis atribuídos a um usuário
@@ -226,6 +265,21 @@ model Patient {
   
   // Equipe de cuidado do paciente
   careTeam              PatientCareTeam[]
+  
+  // Convênios médicos do paciente
+  insurances            PatientInsurance[]
+  
+  // Fila de espera
+  waitingLists          WaitingList[]
+  
+  // Gravações de teleconsulta
+  telemedicineRecordings TelemedicineRecording[]
+  
+  // Atestados médicos
+  medicalCertificates   MedicalCertificate[]
+  
+  // NPS enviados
+  npsResponses          NpsResponse[]
 
   @@map("patients")
 }
@@ -371,6 +425,18 @@ model Consultation {
   
   // Questionários associados a esta consulta
   questionnaires       PatientQuestionnaire[]
+  
+  // Fila de espera atendida
+  waitingList          WaitingList?
+  
+  // Gravações de telemedicina
+  telemedicineRecordings TelemedicineRecording[]
+  
+  // Atestados emitidos
+  medicalCertificates  MedicalCertificate[]
+  
+  // NPS da consulta
+  npsResponse          NpsResponse?
 
   @@map("consultations")
 }
@@ -1227,12 +1293,51 @@ model FinancialTransaction {
   paymentMethod  String?
   patientId      String?
   consultationId String?           @unique
+  insuranceId    String?           // Link to insurance/convenio
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   consultation   Consultation?     @relation(fields: [consultationId], references: [id])
   patient        Patient?          @relation(fields: [patientId], references: [id])
+  insurance      HealthInsurance?  @relation(fields: [insuranceId], references: [id])
 
   @@map("financial_transactions")
+}
+
+model HealthInsurance {
+  id                 String                 @id @default(cuid())
+  name               String                 // Nome do convênio (ex: Unimed, SulAmérica)
+  type               InsuranceType          @default(PRIVATE)
+  code               String?                @unique // Código ANS
+  contactPhone       String?
+  contactEmail       String?
+  billingAddress     String?
+  isActive           Boolean                @default(true)
+  coveragePercentage Int                    @default(100) // % coberto
+  copayAmount        Decimal?               @db.Decimal(10, 2) // Valor da coparticipação
+  notes              String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  patients           PatientInsurance[]
+  transactions       FinancialTransaction[]
+
+  @@map("health_insurances")
+}
+
+model PatientInsurance {
+  id              String          @id @default(cuid())
+  patientId       String
+  insuranceId     String
+  cardNumber      String?         // Número da carteirinha
+  validUntil      DateTime?       // Validade
+  plan            String?         // Tipo de plano
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  insurance       HealthInsurance @relation(fields: [insuranceId], references: [id])
+
+  @@unique([patientId, insuranceId])
+  @@map("patient_insurances")
 }
 
 model DoctorSchedule {
@@ -1549,6 +1654,13 @@ enum TransactionStatus {
   PAID
   CANCELLED
   OVERDUE
+}
+
+enum InsuranceType {
+  PRIVATE     // Convênio particular
+  SUS         // Sistema Único de Saúde
+  CORPORATE   // Convênio empresarial
+  OTHER
 }
 
 model SystemSetting {
@@ -3106,4 +3218,433 @@ model PatientCareTeam {
   @@index([userId])
   @@index([isActive])
   @@map("patient_care_team")
+}
+
+// ========================================
+// FILA DE ESPERA (WAITING LIST)
+// ========================================
+
+model WaitingList {
+  id              String            @id @default(cuid())
+  
+  // Paciente
+  patientId       String
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Médico/Especialidade desejada
+  doctorId        String?           // Médico específico (opcional)
+  doctor          User?             @relation(fields: [doctorId], references: [id])
+  specialty       String?           // Especialidade genérica
+  
+  // Preferências de horário
+  preferredDays   String[]          // ["MON", "WED", "FRI"]
+  preferredTimes  String[]          // ["MORNING", "AFTERNOON", "EVENING"]
+  
+  // Prioridade (1-10, quanto maior mais urgente)
+  priority        Int               @default(5)
+  urgencyReason   String?           // Motivo da urgência
+  
+  // Status
+  status          WaitingListStatus @default(ACTIVE)
+  
+  // Notificações enviadas
+  notificationsSent Int             @default(0)
+  lastNotifiedAt  DateTime?
+  
+  // Quando foi atendido
+  appointmentId   String?           @unique
+  appointment     Consultation?     @relation(fields: [appointmentId], references: [id])
+  
+  // Observações
+  notes           String?
+  
+  // Controle
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  expiresAt       DateTime?         // Data limite para atendimento
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+  @@index([priority])
+  @@map("waiting_lists")
+}
+
+enum WaitingListStatus {
+  ACTIVE        // Aguardando vaga
+  NOTIFIED      // Paciente foi notificado de vaga disponível
+  SCHEDULED     // Consulta agendada
+  EXPIRED       // Prazo expirou
+  CANCELLED     // Paciente cancelou
+}
+
+// =====================================
+// TELEMEDICINE RECORDINGS
+// =====================================
+
+enum RecordingStatus {
+  RECORDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  DELETED
+}
+
+model TelemedicineRecording {
+  id                String              @id @default(cuid())
+  
+  // Relacionamentos
+  consultationId    String
+  consultation      Consultation        @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  
+  doctorId          String
+  doctor            User                @relation("DoctorRecordings", fields: [doctorId], references: [id])
+  
+  patientId         String
+  patient           Patient             @relation(fields: [patientId], references: [id])
+  
+  // Dados da gravação
+  status            RecordingStatus     @default(RECORDING)
+  startedAt         DateTime            @default(now())
+  endedAt           DateTime?
+  duration          Int?                // Duração em segundos
+  
+  // Arquivo
+  filePath          String?
+  fileName          String?
+  fileSize          Int?                // Tamanho em bytes
+  fileHash          String?             // SHA-256 para integridade
+  format            String              @default("webm")
+  
+  // LGPD - Consentimento
+  patientConsent    Boolean             @default(false)
+  consentTimestamp  DateTime?
+  
+  // Soft delete
+  deletedAt         DateTime?
+  
+  // Timestamps
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relações
+  accessTokens      RecordingAccessToken[]
+  
+  @@index([consultationId])
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RecordingAccessToken {
+  id              String                @id @default(cuid())
+  
+  recordingId     String
+  recording       TelemedicineRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  
+  userId          String
+  user            User                  @relation(fields: [userId], references: [id])
+  
+  token           String                @unique
+  expiresAt       DateTime
+  
+  createdAt       DateTime              @default(now())
+  
+  @@index([recordingId])
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// =====================================
+// MEDICAL CERTIFICATES (ATESTADOS)
+// =====================================
+
+enum CertificateType {
+  MEDICAL_LEAVE      // Atestado de afastamento
+  FITNESS            // Atestado de aptidão física
+  ACCOMPANIMENT      // Atestado de acompanhante
+  TIME_OFF           // Atestado de comparecimento
+  CUSTOM             // Atestado personalizado
+}
+
+model MedicalCertificate {
+  id                String            @id @default(cuid())
+  
+  // Numeração sequencial obrigatória
+  sequenceNumber    Int               @unique
+  year              Int               // Ano da emissão (para reiniciar numeração)
+  
+  // Relacionamentos
+  patientId         String
+  patient           Patient           @relation(fields: [patientId], references: [id])
+  
+  doctorId          String
+  doctor            User              @relation("DoctorCertificates", fields: [doctorId], references: [id])
+  
+  consultationId    String?
+  consultation      Consultation?     @relation(fields: [consultationId], references: [id])
+  
+  // Dados do atestado
+  type              CertificateType   @default(MEDICAL_LEAVE)
+  days              Int?              // Dias de afastamento (null se não aplicável)
+  startDate         DateTime          // Data inicial do afastamento/validade
+  endDate           DateTime?         // Data final (calculada: startDate + days)
+  
+  // CID-10 (opcional - não obrigatório em atestados)
+  includeCid        Boolean           @default(false)
+  cidCode           String?
+  cidDescription    String?
+  
+  // Texto do atestado
+  title             String            @default("ATESTADO MÉDICO")
+  content           String            // Texto livre do atestado
+  observations      String?           // Observações adicionais
+  
+  // PDF e assinatura
+  pdfPath           String?           // Caminho do PDF gerado
+  pdfHash           String?           // Hash SHA-256 do PDF
+  qrCodeData        String?           // Dados do QR Code para validação
+  
+  // Assinatura digital (futuro)
+  digitalSignature  String?           // Base64 da assinatura digital ICP-Brasil
+  certificateChain  String?           // Cadeia de certificados
+  timestamp         DateTime?         // Timestamp da assinatura
+  
+  // Controle
+  issuedAt          DateTime          @default(now())
+  revokedAt         DateTime?
+  revokedReason     String?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([consultationId])
+  @@index([sequenceNumber, year])
+  @@index([issuedAt])
+}
+
+// =====================================
+// NPS (NET PROMOTER SCORE)
+// =====================================
+
+enum NpsScore {
+  DETRACTOR       // 0-6
+  PASSIVE         // 7-8
+  PROMOTER        // 9-10
+}
+
+model NpsResponse {
+  id                String        @id @default(cuid())
+  
+  // Relacionamentos
+  patientId         String
+  patient           Patient       @relation(fields: [patientId], references: [id])
+  
+  consultationId    String        @unique
+  consultation      Consultation  @relation(fields: [consultationId], references: [id])
+  
+  doctorId          String
+  doctor            User          @relation("DoctorNpsResponses", fields: [doctorId], references: [id])
+  
+  // Score NPS (0-10)
+  score             Int           // 0-10
+  category          NpsScore      // Calculado automaticamente
+  
+  // Feedback
+  feedback          String?       // Comentário opcional
+  wouldRecommend    Boolean       @default(true)
+  
+  // Categorização de feedback
+  tags              String[]      @default([]) // Ex: ["atendimento", "tempo_espera", "limpeza"]
+  sentiment         String?       // POSITIVE, NEUTRAL, NEGATIVE (análise de IA)
+  
+  // Controle
+  sentAt            DateTime?     // Quando foi enviada a pesquisa
+  respondedAt       DateTime      @default(now())
+  
+  // WhatsApp integration
+  sentViaWhatsApp   Boolean       @default(false)
+  whatsAppMessageId String?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([consultationId])
+  @@index([score])
+  @@index([category])
+  @@index([respondedAt])
+}
+
+// Assinatura Digital (ICP-Brasil)
+model DigitalCertificate {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation("UserDigitalCertificates", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Dados do certificado
+  certificateType   CertificateAuthority // A1, A3, A4
+  issuer            String    // Autoridade Certificadora (ex: Serasa, Certisign)
+  subject           String    // CN do certificado
+  serialNumber      String    @unique
+  notBefore         DateTime  // Início da validade
+  notAfter          DateTime  // Fim da validade
+  
+  // Armazenamento
+  certificatePem    String    @db.Text // Certificado em formato PEM
+  publicKeyPem      String    @db.Text // Chave pública
+  
+  // A3/A4: Token físico (não armazenar chave privada)
+  isHardwareToken   Boolean   @default(false)
+  tokenSerialNumber String?   // Identificador do token A3
+  
+  // Status
+  isActive          Boolean   @default(true)
+  revokedAt         DateTime?
+  revokedReason     String?
+  
+  // Uso
+  lastUsedAt        DateTime?
+  usageCount        Int       @default(0)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relações
+  signedDocuments   SignedDocument[]
+  
+  @@index([userId])
+  @@index([notAfter])
+  @@index([isActive])
+}
+
+// Documento assinado digitalmente
+model SignedDocument {
+  id                  String              @id @default(cuid())
+  
+  // Tipo de documento
+  documentType        SignedDocumentType
+  documentId          String              // ID do prontuário, atestado, prescrição, etc.
+  
+  // Assinatura
+  certificateId       String
+  certificate         DigitalCertificate  @relation(fields: [certificateId], references: [id])
+  signerId            String              // userId do assinante
+  signer              User                @relation("UserSignedDocuments", fields: [signerId], references: [id])
+  
+  // Dados da assinatura
+  signatureAlgorithm  String              // SHA256withRSA, etc.
+  signatureValue      String              @db.Text // Base64 da assinatura
+  signatureHash       String              // Hash SHA-256 do documento original
+  
+  // Timestamp (carimbo de tempo)
+  timestampAuthority  String?             // URL da TSA (Time Stamping Authority)
+  timestampToken      String?             @db.Text // Token de tempo RFC 3161
+  timestampedAt       DateTime?
+  
+  // Metadados
+  ipAddress           String?
+  userAgent           String?
+  geolocation         String?             // Lat,Long (opcional)
+  
+  // Validação
+  isValid             Boolean             @default(true)
+  validatedAt         DateTime?
+  validationResult    String?             @db.Text // Resultado da última validação
+  
+  // Auditoria
+  signedAt            DateTime            @default(now())
+  createdAt           DateTime            @default(now())
+  
+  @@index([documentType, documentId])
+  @@index([signerId])
+  @@index([certificateId])
+  @@index([signedAt])
+}
+
+enum CertificateAuthority {
+  A1  // Chave privada armazenada em software (1 ano)
+  A3  // Chave privada em token/smartcard (3 anos)
+  A4  // Chave privada em token/smartcard (3 anos, alta segurança)
+}
+
+enum SignedDocumentType {
+  MEDICAL_RECORD      // Prontuário
+  MEDICAL_CERTIFICATE // Atestado médico
+  PRESCRIPTION        // Prescrição/receita
+  EXAM_REQUEST        // Solicitação de exame
+  EXAM_RESULT         // Resultado de exame
+  REFERRAL            // Encaminhamento
+  CONSENT_FORM        // Termo de consentimento
+  TELECONSULTATION    // Relatório de teleconsulta
+  DISCHARGE_SUMMARY   // Sumário de alta
+}
+
+// Alerta de auditoria (anomalias, tentativas de acesso, etc.)
+model AuditAlert {
+  id              String          @id @default(cuid())
+  
+  // Tipo de alerta
+  alertType       AuditAlertType
+  severity        AlertSeverity   @default(MEDIUM)
+  
+  // Detalhes
+  title           String
+  description     String          @db.Text
+  
+  // Origem
+  userId          String?
+  ipAddress       String?
+  resourceType    String?
+  resourceId      String?
+  
+  // Evidências
+  auditLogIds     String[]        // Array de IDs de AuditLog relacionados
+  metadata        Json?           // Dados adicionais
+  
+  // Status
+  status          AlertStatus     @default(OPEN)
+  assignedTo      String?         // Admin/Manager responsável
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  resolutionNotes String?         @db.Text
+  
+  // Notificação
+  notifiedAt      DateTime?
+  notifiedVia     String?         // email, slack, sms
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@index([alertType])
+  @@index([severity])
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum AuditAlertType {
+  FAILED_LOGIN_ATTEMPTS       // Múltiplas tentativas de login falhadas
+  UNAUTHORIZED_ACCESS         // Acesso a recurso sem permissão
+  DATA_EXPORT_BULK            // Exportação em massa de dados
+  ROLE_PRIVILEGE_ESCALATION   // Tentativa de elevar privilégios
+  AFTER_HOURS_ACCESS          // Acesso fora do horário
+  UNUSUAL_ACTIVITY_PATTERN    // Padrão anômalo de acesso
+  SENSITIVE_DATA_ACCESS       // Acesso a dados sensíveis (HIV, psiquiatria)
+  GDPR_DATA_DELETION          // Solicitação LGPD de exclusão
+  FAILED_AUDIT_VALIDATION     // Inconsistências em auditoria
+  CRITICAL_ERROR              // Erro crítico do sistema
+}
+
+enum AlertStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  FALSE_POSITIVE
+  IGNORED
 }

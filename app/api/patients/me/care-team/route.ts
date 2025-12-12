@@ -59,21 +59,10 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    // Buscar médico responsável (se houver)
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId },
-      select: {
-        primaryDoctorId: true,
-        primaryDoctor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            speciality: true,
-            phone: true
-          }
-        }
-      }
+    // Buscar médico responsável (se houver) via equipe (isPrimary)
+    const primary = await prisma.patientCareTeam.findFirst({
+      where: { patientId, isPrimary: true, isActive: true },
+      include: { user: { select: { id: true, name: true, email: true, speciality: true, phone: true } } }
     })
 
     // Formatar resposta amigável para o paciente
@@ -95,13 +84,13 @@ export async function GET(request: NextRequest) {
 
     // Adicionar médico responsável à lista se não estiver
     let medicoResponsavel = null
-    if (patient?.primaryDoctor) {
+    if (primary?.user) {
       medicoResponsavel = {
-        id: patient.primaryDoctor.id,
-        nome: patient.primaryDoctor.name,
-        email: patient.primaryDoctor.email,
-        telefone: patient.primaryDoctor.phone,
-        especialidade: patient.primaryDoctor.speciality
+        id: primary.user.id,
+        nome: primary.user.name,
+        email: primary.user.email,
+        telefone: primary.user.phone,
+        especialidade: primary.user.speciality
       }
     }
 

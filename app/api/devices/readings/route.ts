@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma, ReadingType, ReadingContext, AlertSeverity } from '@prisma/client'
+import { EmailService } from '@/lib/email-service'
 
 // Limites de referência padrão
 const DEFAULT_THRESHOLDS: Record<string, {
@@ -291,8 +292,39 @@ export async function POST(request: NextRequest) {
 
     if (criticalReadings.length > 0) {
       // Criar notificação de alerta
-      // TODO: Implementar notificação push/email
       console.log(`⚠️ ${criticalReadings.length} leituras críticas para paciente ${patientId}`)
+
+      // Tentar enviar e-mail de alerta para o paciente ou responsável
+      try {
+        const patient = await prisma.patient.findUnique({
+          where: { id: patientId },
+          select: { email: true, name: true }
+        })
+
+        const recipient = patient?.email
+        if (recipient) {
+          const emailService = EmailService.getInstance()
+          const list = criticalReadings
+            .map(r => `${r.readingType} = ${r.primaryValue}${r.unit ? ' ' + r.unit : ''} (${r.alertSeverity})`)
+            .join('<br>')
+
+          await emailService.sendEmail({
+            to: recipient,
+            subject: 'Alerta de sinais vitais críticos',
+            html: `
+              <div style="font-family: sans-serif; color: #333;">
+                <h2>Leituras críticas detectadas</h2>
+                <p>Identificamos leituras críticas no monitoramento do paciente <strong>${patient?.name || 'Paciente'}</strong>.</p>
+                <p>${list}</p>
+                <p>Recomendação: revisar imediatamente essas leituras e contatar o paciente se necessário.</p>
+              </div>
+            `,
+            text: `Leituras críticas para ${patient?.name || 'Paciente'}: ${criticalReadings.map(r => `${r.readingType}=${r.primaryValue} (${r.alertSeverity})`).join(', ')}`
+          })
+        }
+      } catch (notifyError) {
+        console.error('Erro ao enviar alerta de leitura crítica:', notifyError)
+      }
     }
 
     return NextResponse.json({

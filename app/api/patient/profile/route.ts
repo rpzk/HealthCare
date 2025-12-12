@@ -15,16 +15,12 @@ export async function GET(req: NextRequest) {
     const userEmail = session.user.email
 
     // Buscar o paciente vinculado a este usuário
+    const whereClause: any = { OR: [{ userId }] }
+    if (userEmail) whereClause.OR.push({ email: userEmail })
+
     const patient = await prisma.patient.findFirst({
-      where: {
-        OR: [
-          { userId: userId },
-          { email: userEmail }
-        ]
-      },
-      include: {
-        address: true
-      }
+      where: whereClause,
+      include: { addresses: true }
     })
 
     if (!patient) {
@@ -43,19 +39,36 @@ export async function GET(req: NextRequest) {
       cpf: patient.cpf,
       birthDate: patient.birthDate?.toISOString() || null,
       gender: patient.gender,
-      bloodType: patient.bloodType,
-      allergies: patient.allergies || [],
-      address: patient.address ? {
-        street: patient.address.street,
-        number: patient.address.number,
-        city: patient.address.city,
-        state: patient.address.state
-      } : null,
-      emergencyContact: patient.emergencyContactName ? {
-        name: patient.emergencyContactName,
-        phone: patient.emergencyContactPhone,
-        relation: patient.emergencyContactRelation || 'Contato'
-      } : null
+      // the schema stores a free-form 'address' string and a relation 'addresses' -> we surface the primary address if present
+      allergies: patient.allergies ? patient.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+      address: (patient.addresses && patient.addresses.length > 0) ? (() => {
+        const primary = patient.addresses.find((a: any) => a.isPrimary) || patient.addresses[0]
+        return {
+          street: primary.street,
+          number: primary.number,
+          city: primary.city,
+          state: primary.state
+        }
+      })() : null,
+      // emergencyContact is stored as a free-form string, sometimes JSON; try to parse if possible
+      emergencyContact: (function() {
+        const raw = patient.emergencyContact
+        if (!raw) return null
+        try {
+          const parsed = JSON.parse(raw)
+          if (typeof parsed === 'object' && parsed !== null) {
+            return {
+              name: parsed.name || parsed.nome || String(parsed),
+              phone: parsed.phone || parsed.telefone || parsed.phoneNumber || null,
+              relation: parsed.relation || parsed.relacao || 'Contato'
+            }
+          }
+          return { name: String(parsed), phone: null, relation: 'Contato' }
+        } catch (e) {
+          // not JSON — return raw string as name
+          return { name: String(raw), phone: null, relation: 'Contato' }
+        }
+      })()
     })
 
   } catch (error) {

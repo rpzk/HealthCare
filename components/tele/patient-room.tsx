@@ -48,7 +48,9 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
         const res = await fetch('/api/tele/config')
         const json = await res.json().catch(() => null)
         if (json?.iceServers) setIceServers(json.iceServers)
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to load ICE config', e)
+      }
     })()
   }, [])
 
@@ -66,13 +68,6 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
     return () => clearInterval(interval)
   }, [status])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanup()
-    }
-  }, [])
-
   const cleanup = useCallback(() => {
     try {
       if (previewStream) {
@@ -84,8 +79,13 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
       }
       pcRef.current?.close()
       esRef.current?.close()
-    } catch {}
+    } catch (e) {
+      console.warn('Cleanup error', e)
+    }
   }, [previewStream])
+
+  // Cleanup on unmount — include cleanup dependency (stable via useCallback)
+  useEffect(() => cleanup, [cleanup])
 
   async function checkPermissions() {
     try {
@@ -119,7 +119,9 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
 
       setHasPermissions(camPerm === 'granted' && micPerm === 'granted')
       setStatus('idle')
-    } catch {
+    } catch (e) {
+      // non-fatal permission check failure
+      console.warn('Permission check failed', e)
       setStatus('idle')
     }
   }
@@ -146,22 +148,27 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
       if (localRef.current) {
         localRef.current.srcObject = stream
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao testar dispositivos:', err)
       setHasPermissions(false)
-      
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError('Você precisa permitir o acesso à câmera e microfone')
-        setErrorDetails('Clique no ícone de cadeado na barra de endereço do navegador e permita o acesso')
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setError('Câmera ou microfone não encontrados')
-        setErrorDetails('Verifique se seus dispositivos estão conectados corretamente')
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        setError('Não foi possível acessar a câmera')
-        setErrorDetails('A câmera pode estar sendo usada por outro aplicativo')
+
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Você precisa permitir o acesso à câmera e microfone')
+          setErrorDetails('Clique no ícone de cadeado na barra de endereço do navegador e permita o acesso')
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setError('Câmera ou microfone não encontrados')
+          setErrorDetails('Verifique se seus dispositivos estão conectados corretamente')
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setError('Não foi possível acessar a câmera')
+          setErrorDetails('A câmera pode estar sendo usada por outro aplicativo')
+        } else {
+          setError('Erro ao acessar dispositivos')
+          setErrorDetails(err.message)
+        }
       } else {
         setError('Erro ao acessar dispositivos')
-        setErrorDetails(err.message)
+        setErrorDetails(String(err))
       }
     }
   }
@@ -254,7 +261,7 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
       const es = new EventSource(`/api/tele/rooms/${roomId}/events?clientId=${encodeURIComponent(clientId)}`)
       esRef.current = es
       
-      es.addEventListener('signal', async (ev: any) => {
+      es.addEventListener('signal', async (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data)
           if (data.type === 'offer') {
@@ -271,7 +278,11 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
               await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
             }
           } else if (data.type === 'candidate' && data.candidate) {
-            try { await pc.addIceCandidate(data.candidate) } catch {}
+            try {
+              await pc.addIceCandidate(data.candidate)
+            } catch (e) {
+              console.warn('Failed to add ICE candidate', e)
+            }
           }
         } catch (err) {
           console.error('Signaling error:', err)
@@ -303,19 +314,24 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
 
       setJoined(true)
       setStatus('waiting')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao entrar:', err)
       setStatus('error')
-      
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError('Permissão negada')
-        setErrorDetails('Você precisa permitir o acesso à câmera e microfone para participar da chamada')
-      } else if (err.name === 'NotFoundError') {
-        setError('Dispositivos não encontrados')
-        setErrorDetails('Verifique se sua câmera e microfone estão conectados')
+
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Permissão negada')
+          setErrorDetails('Você precisa permitir o acesso à câmera e microfone para participar da chamada')
+        } else if (err.name === 'NotFoundError') {
+          setError('Dispositivos não encontrados')
+          setErrorDetails('Verifique se sua câmera e microfone estão conectados')
+        } else {
+          setError('Erro ao iniciar chamada')
+          setErrorDetails(err.message)
+        }
       } else {
         setError('Erro ao iniciar chamada')
-        setErrorDetails(err.message)
+        setErrorDetails(String(err))
       }
     }
   }

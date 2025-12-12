@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 
 // Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient, type Prisma } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
@@ -40,8 +40,9 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
       return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
     }
 
-    const totalStock = product.inventory.reduce((sum: number, i: any) => sum + i.quantity, 0)
-    const availableStock = product.inventory.reduce((sum: number, i: any) => sum + (i.quantity - i.reservedQty), 0)
+    // Calculate stock from inventory items
+    const totalStock = product.inventory.reduce((sum: number, i) => sum + (i.quantity || 0), 0)
+    const availableStock = product.inventory.reduce((sum: number, i) => sum + ((i.quantity || 0) - (i.reservedQty || 0)), 0)
 
     return NextResponse.json({
       ...product,
@@ -49,10 +50,10 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
       availableStock,
       isLowStock: totalStock <= product.minStock
     })
-  } catch (error: any) {
-    console.error('Error fetching product:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error fetching product:', error)
     return NextResponse.json(
-      { error: 'Erro ao buscar produto', details: error.message },
+      { error: 'Erro ao buscar produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -97,10 +98,10 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
       'isActive', 'isControlled', 'requiresLot', 'costPrice', 'sellPrice'
     ]
 
-    const updateData: any = {}
+    const updateData: Partial<Prisma.ProductUpdateInput> = {}
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
-        updateData[field] = body[field]
+        (updateData as any)[field] = body[field]
       }
     }
 
@@ -113,10 +114,10 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
     })
 
     return NextResponse.json(product)
-  } catch (error: any) {
-    console.error('Error updating product:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error updating product:', error)
     return NextResponse.json(
-      { error: 'Erro ao atualizar produto', details: error.message },
+      { error: 'Erro ao atualizar produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -156,10 +157,10 @@ export const DELETE = withAuth(async (req: NextRequest, { params, user }) => {
     // Hard delete if no inventory
     await prisma.product.delete({ where: { id } })
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Error deleting product:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error deleting product:', error)
     return NextResponse.json(
-      { error: 'Erro ao excluir produto', details: error.message },
+      { error: 'Erro ao excluir produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

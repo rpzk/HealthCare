@@ -435,7 +435,7 @@ export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview
 
         {/* Equipe de Cuidado */}
         <TabsContent value="care-team" className="mt-6">
-          <PatientCareTeam patientId={patient.id} />
+          <PatientCareTeam patientId={patient.id} patientName={patient.name} />
         </TabsContent>
 
         {/* Desenvolvimento */}

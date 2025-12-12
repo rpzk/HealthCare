@@ -60,7 +60,7 @@ export async function exchangeCodeForTokens(code: string): Promise<{
 // Obter cliente autenticado para um usuário
 async function getAuthenticatedClient(userId: string): Promise<calendar_v3.Calendar | null> {
   // Buscar tokens do usuário no banco
-  const integration = await prisma.userIntegration.findFirst({
+  const integration = await (prisma as any).userIntegration.findFirst({
     where: {
       userId,
       provider: 'google_calendar',
@@ -85,7 +85,7 @@ async function getAuthenticatedClient(userId: string): Promise<calendar_v3.Calen
       const { credentials } = await oauth2Client.refreshAccessToken()
       
       // Atualizar tokens no banco
-      await prisma.userIntegration.update({
+      await (prisma as any).userIntegration.update({
         where: { id: integration.id },
         data: {
           accessToken: credentials.access_token,
@@ -97,7 +97,7 @@ async function getAuthenticatedClient(userId: string): Promise<calendar_v3.Calen
     } catch (error) {
       console.error('Erro ao renovar token Google:', error)
       // Desativar integração se não conseguir renovar
-      await prisma.userIntegration.update({
+      await (prisma as any).userIntegration.update({
         where: { id: integration.id },
         data: { active: false },
       })
@@ -321,7 +321,11 @@ export async function syncConsultationsToGoogleCalendar(
     try {
       const notes = JSON.parse(consultation.notes || '{}')
       existingEventId = notes.googleCalendarEventId
-    } catch {}
+    } catch (e) {
+      // ignore malformed notes JSON but keep debugging info
+      // eslint-disable-next-line no-console
+      console.debug('googleCalendar: parsing consultation.notes failed', e)
+    }
     
     if (existingEventId) {
       continue // Já sincronizado
@@ -335,7 +339,7 @@ export async function syncConsultationsToGoogleCalendar(
       endTime: new Date(consultation.scheduledDate.getTime() + (consultation.duration || 30) * 60000),
       attendeeEmail: consultation.patient.email || undefined,
       attendeeName: consultation.patient.name,
-      type: consultation.type,
+      type: consultation.meetingLink || consultation.videoUrl ? 'TELEMEDICINE' : (consultation.homeVisit ? 'HOME_VISIT' : 'IN_PERSON'),
       meetingLink: consultation.meetingLink || undefined,
     })
     

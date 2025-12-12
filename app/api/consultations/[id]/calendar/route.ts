@@ -53,18 +53,21 @@ export async function GET(
     const endTime = addMinutes(startTime, consultation.duration || 30)
     
     const typeLabels: Record<string, string> = {
-      IN_PERSON: 'Presencial',
-      TELEMEDICINE: 'Teleconsulta',
-      HOME_VISIT: 'Visita Domiciliar',
+      INITIAL: 'Consulta inicial',
+      FOLLOW_UP: 'Retorno',
+      EMERGENCY: 'Emergência',
+      ROUTINE: 'Rotina',
+      SPECIALIST: 'Especialista',
     }
-    
+
     const eventData = {
       id: consultation.id,
       title: `Consulta Médica - Dr(a). ${consultation.doctor.name}`,
       description: `Consulta ${typeLabels[consultation.type] || 'Médica'} com Dr(a). ${consultation.doctor.name}\n\nPaciente: ${consultation.patient.name}\nTelefone: ${consultation.patient.phone || 'Não informado'}`,
       startTime,
       endTime,
-      location: consultation.type === 'TELEMEDICINE' ? 'Online (Teleconsulta)' : undefined,
+      // Determine location based on available hints in the model
+      location: consultation.meetingLink || consultation.videoUrl ? 'Online (Teleconsulta)' : (consultation.homeVisit ? 'Visita Domiciliar' : undefined),
       organizerName: consultation.doctor.name,
       organizerEmail: consultation.doctor.email,
       attendeeName: consultation.patient.name,

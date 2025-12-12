@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { 
@@ -21,7 +20,6 @@ import {
   Moon, 
   Footprints, 
   Thermometer, 
-  Stethoscope,
   Mail,
   Send,
   Copy,
@@ -102,8 +100,8 @@ const biometricTypes = [
 ]
 
 export default function InvitePatientPage() {
-  const { data: session } = useSession()
-  const router = useRouter()
+  const { data: _session } = useSession()
+  const _router = useRouter()
   const { toast } = useToast()
   
   const [loading, setLoading] = useState(false)

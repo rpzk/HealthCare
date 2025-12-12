@@ -27,9 +27,36 @@ const ROLE_OPTIONS = [
   { value: 'OTHER', label: 'Outro' },
 ]
 
+export type PatientFormData = {
+  id?: string
+  name: string
+  email: string
+  cpf: string
+  rg?: string
+  birthDate?: string | Date
+  address?: string
+  gender?: string
+  phone?: string
+  street?: string
+  number?: string
+  complement?: string
+  neighborhood?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  userId?: string
+  userRole?: string
+  emergencyContact?: string | null
+  bloodType?: string
+  allergies?: string
+  chronicDiseases?: string
+  latitude?: number | null
+  longitude?: number | null
+}
+
 interface PatientFormProps {
-  patient?: any
-  onSubmit: (data: any) => Promise<void>
+  patient?: Partial<PatientFormData> & { userAccount?: { id?: string; role?: string } }
+  onSubmit: (data: PatientFormData) => Promise<void>
   onCancel: () => void
   loading?: boolean
 }
@@ -54,6 +81,14 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
   }
   
   const parsedAddr = parseAddress(patient?.address)
+
+  // Normaliza data de nascimento para campo date input (ISO yyyy-mm-dd)
+  const getBirthDateString = (b?: string | Date) => {
+    if (!b) return ''
+    if (typeof b === 'string') return b.split('T')[0]
+    if (b instanceof Date) return b.toISOString().split('T')[0]
+    return String(b).split('T')[0]
+  }
   
   // Função para formatar CPF (aplicar ao carregar dados)
   const formatCPFValue = (value: string | undefined) => {
@@ -83,7 +118,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     email: patient?.email || '',
     cpf: formatCPFValue(patient?.cpf),
     rg: patient?.rg || '',
-    birthDate: patient?.birthDate ? patient.birthDate.split('T')[0] : '',
+    birthDate: getBirthDateString(patient?.birthDate),
     gender: patient?.gender || 'FEMALE',
     phone: formatPhoneValue(patient?.phone),
     // Campos de endereço separados para melhor UX

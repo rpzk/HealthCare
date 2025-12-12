@@ -115,7 +115,18 @@ export const CodingService = {
     if (cached) return cached
     const redis = getRedis()
     if (redis) {
-      try { const r = await redis.get(cacheKey); if (r) { const parsed = JSON.parse(r); cacheSet(cacheKey, parsed, 30_000); return parsed } } catch {}
+      try {
+        const r = await redis.get(cacheKey)
+        if (r) {
+          const parsed = JSON.parse(r)
+          cacheSet(cacheKey, parsed, 30_000)
+          return parsed
+        }
+      } catch (e) {
+        // Redis read failed — fallback to DB search
+        // eslint-disable-next-line no-console
+        console.debug('FTS cache read failed', e)
+      }
     }
     let results: { id: string; code: string; display: string }[] = []
     if (opts.fts && q.length > 2) {
@@ -126,7 +137,11 @@ export const CodingService = {
         const sexFilter = opts.sexRestriction ? `AND (mc."sexRestriction" = '${opts.sexRestriction}' OR mc."sexRestriction" IS NULL)` : ''
         const categoryFilter = opts.categoriesOnly ? `AND mc."isCategory" = true` : ''
         results = await prisma.$queryRawUnsafe(`SELECT mc.* FROM medical_codes mc JOIN code_systems cs ON mc."systemId" = cs.id WHERE to_tsvector('simple', coalesce(mc.code,'')||' '||coalesce(mc.display,'')||' '||coalesce(mc.description,'')) @@ plainto_tsquery('simple', $1) ${systemFilter} ${chapterFilter} ${sexFilter} ${categoryFilter} ORDER BY mc.code LIMIT ${limit}`, q)
-      } catch { /* fallback below */ }
+      } catch (e) {
+        // Full-text query failed — fallback to Prisma-based search below
+        // eslint-disable-next-line no-console
+        console.debug('FTS search failed, falling back', e)
+      }
     }
     if (!results.length) {
       const lo = q.toLowerCase()
@@ -153,7 +168,14 @@ export const CodingService = {
       })
     }
     cacheSet(cacheKey, results, 30_000)
-    if (redis) { try { await redis.setex(cacheKey, 30, JSON.stringify(results)) } catch {} }
+    if (redis) {
+      try {
+        await redis.setex(cacheKey, 30, JSON.stringify(results))
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.debug('Failed to set FTS cache in redis', e)
+      }
+    }
     return results
   },
   async getCodeDetail(idOrCode: string) {

@@ -31,7 +31,11 @@ export function createRequestId(): string {
     if (g.crypto && typeof g.crypto.randomUUID === 'function') {
       return g.crypto.randomUUID()
     }
-  } catch (_) {}
+  } catch (e) {
+    // If crypto.randomUUID unexpectedly throws, continue to fallback
+    // eslint-disable-next-line no-console
+    console.debug('createRequestId crypto.randomUUID error', e)
+  }
   // Fallback: pseudo-UUID (not cryptographically secure)
   const rnd = Math.random().toString(36).slice(2, 10)
   return `req_${Date.now()}_${rnd}`

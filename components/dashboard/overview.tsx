@@ -100,9 +100,14 @@ export function DashboardOverview() {
       const dashboardData = await response.json()
       // A API retorna { success: true, data: {...} }
       setData(dashboardData.data || dashboardData)
-    } catch (err: any) {
-      console.error('Erro ao carregar dashboard:', err)
-      setError(err.message || 'Não foi possível carregar os dados do dashboard.')
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error('Erro ao carregar dashboard:', err)
+        setError(err.message || 'Não foi possível carregar os dados do dashboard.')
+      } else {
+        console.error('Erro ao carregar dashboard:', String(err))
+        setError('Não foi possível carregar os dados do dashboard.')
+      }
       
       // Em caso de erro, mostra zerado em vez de dados falsos
       setData({

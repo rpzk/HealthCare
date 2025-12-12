@@ -177,8 +177,9 @@ export function RegistrationForm({ invite, terms, isPatient }: RegistrationFormP
 
       // Success
       router.push('/auth/signin?registered=true')
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao realizar cadastro.'
+      setError(message)
     } finally {
       setLoading(false)
     }

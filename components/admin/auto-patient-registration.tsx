@@ -46,9 +46,14 @@ interface PatientData {
   }
 }
 
+interface Patient {
+  id: string;
+  name: string;
+}
+
 interface RegistrationResult {
   success: boolean
-  patient: any
+  patient: Patient
   action: 'created' | 'updated'
   confidence: number
   extractedData: PatientData
@@ -349,8 +354,8 @@ João Carlos Silva (Esposo): (11) 99876-5432`
               <h4 className="font-medium text-green-800 mb-2">Paciente no Sistema</h4>
               <div className="text-sm text-green-700">
                 <div><strong>ID:</strong> {result.patient.id}</div>
-                <div><strong>Email no sistema:</strong> {result.patient.email}</div>
-                <div><strong>Cadastrado em:</strong> {new Date(result.patient.createdAt).toLocaleString('pt-BR')}</div>
+                <div><strong>Email no sistema:</strong> {(result.patient as any).email}</div>
+                <div><strong>Cadastrado em:</strong> {new Date((result.patient as any).createdAt).toLocaleString('pt-BR')}</div>
               </div>
             </div>
           </CardContent>

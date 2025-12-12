@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 
 // Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient, type Prisma, MovementType, Role } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
@@ -23,10 +23,11 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     const page = parseInt(url.searchParams.get('page') || '1')
     const limit = parseInt(url.searchParams.get('limit') || '50')
 
-    const where: any = {}
+    const where: Prisma.InventoryMovementWhereInput = {}
 
     if (productId) where.productId = productId
-    if (type) where.type = type
+    // incoming 'type' is a string - cast to Prisma enum
+    if (type) where.type = type as MovementType
     
     if (locationId) {
       where.OR = [
@@ -36,11 +37,14 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     }
 
     if (startDate) {
-      where.createdAt = { ...(where.createdAt || {}), gte: new Date(startDate) }
+      // Build proper DateTimeFilter
+      const current = where.createdAt as Prisma.DateTimeFilter | undefined
+      where.createdAt = { ...(current || {}), gte: new Date(startDate) }
     }
 
     if (endDate) {
-      where.createdAt = { ...(where.createdAt || {}), lte: new Date(endDate) }
+      const current = where.createdAt as Prisma.DateTimeFilter | undefined
+      where.createdAt = { ...(current || {}), lte: new Date(endDate) }
     }
 
     const [movements, total] = await Promise.all([
@@ -67,10 +71,10 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
         totalPages: Math.ceil(total / limit)
       }
     })
-  } catch (error: any) {
-    console.error('Error fetching movements:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error fetching movements:', error)
     return NextResponse.json(
-      { error: 'Erro ao buscar movimentações', details: error.message },
+      { error: 'Erro ao buscar movimentações', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -138,7 +142,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     }
 
     // Create movement in transaction
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Create movement
       const movement = await tx.inventoryMovement.create({
         data: {
@@ -212,12 +216,12 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     if ((totalStock._sum.quantity || 0) <= product.minStock) {
       // Create notification for managers
       const managers = await prisma.user.findMany({
-        where: { role: { in: ['ADMIN', 'MANAGER'] }, isActive: true },
+        where: { role: { in: ['ADMIN', 'MANAGER'] as Role[] }, isActive: true },
         select: { id: true }
       })
 
       await prisma.notification.createMany({
-        data: managers.map((m: any) => ({
+          data: managers.map((m: { id: string }) => ({
           userId: m.id,
           title: 'Alerta de Estoque Baixo',
           message: `O produto ${product.name} (${product.code}) está com estoque abaixo do mínimo`,
@@ -227,10 +231,10 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     }
 
     return NextResponse.json(result, { status: 201 })
-  } catch (error: any) {
-    console.error('Error creating movement:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error creating movement:', error)
     return NextResponse.json(
-      { error: 'Erro ao criar movimentação', details: error.message },
+      { error: 'Erro ao criar movimentação', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

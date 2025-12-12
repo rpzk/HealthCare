@@ -140,8 +140,9 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
       const data = await response.json()
       setCareTeam(data.careTeam || [])
       setResponsibleDoctor(data.responsibleDoctor || null)
-    } catch (error) {
-      console.error('Error loading care team:', error)
+    } catch (error: unknown) {
+      if (error instanceof Error) console.error('Error loading care team:', error)
+      else console.error('Error loading care team:', String(error))
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar a equipe de atendimento',
@@ -174,8 +175,9 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
       setSearchResults(
         (data.users || data).filter((u: User) => !existingIds.includes(u.id))
       )
-    } catch (error) {
-      console.error('Error searching users:', error)
+    } catch (error: unknown) {
+      if (error instanceof Error) console.error('Error searching users:', error)
+      else console.error('Error searching users:', String(error))
     } finally {
       setSearchLoading(false)
     }
@@ -226,12 +228,12 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
       setValidUntil('')
       setIsPrimary(false)
       loadCareTeam()
-    } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message,
-        variant: 'destructive'
-      })
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      } else {
+        toast({ title: 'Erro', description: String(error), variant: 'destructive' })
+      }
     } finally {
       setSubmitting(false)
     }
@@ -261,12 +263,12 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
       setRemoveDialogOpen(false)
       setSelectedMember(null)
       loadCareTeam()
-    } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message,
-        variant: 'destructive'
-      })
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      } else {
+        toast({ title: 'Erro', description: String(error), variant: 'destructive' })
+      }
     } finally {
       setSubmitting(false)
     }
@@ -302,12 +304,12 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
       setSelectedUser(null)
       setSearchTerm('')
       loadCareTeam()
-    } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message,
-        variant: 'destructive'
-      })
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      } else {
+        toast({ title: 'Erro', description: String(error), variant: 'destructive' })
+      }
     } finally {
       setSubmitting(false)
     }

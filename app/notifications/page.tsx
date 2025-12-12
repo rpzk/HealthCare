@@ -32,7 +32,7 @@ interface Notification {
   createdAt: string
   read: boolean
   priority: string
-  metadata?: any
+  metadata?: unknown
 }
 
 export default function NotificationsPage() {

@@ -59,10 +59,9 @@ export default function SettingsPage() {
         .then(data => {
           if (Array.isArray(data)) {
             const newConfig = { ...emailConfig }
-            data.forEach((setting: any) => {
+            data.forEach((setting: { key: string; value: string }) => {
               if (Object.prototype.hasOwnProperty.call(newConfig, setting.key)) {
-                // @ts-ignore
-                newConfig[setting.key] = setting.value
+                newConfig[setting.key as keyof typeof newConfig] = setting.value
               }
             })
             setEmailConfig(newConfig)
@@ -70,7 +69,7 @@ export default function SettingsPage() {
         })
         .catch(err => console.error('Failed to load settings', err))
     }
-  }, [activeTab])
+  }, [activeTab, emailConfig])
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -120,9 +119,10 @@ export default function SettingsPage() {
       
       await Promise.all(promises)
       toast({ title: 'Sucesso', description: 'Configurações de email salvas com sucesso!' })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error)
-      toast({ title: 'Erro', description: `Erro ao salvar: ${error.message || 'Erro desconhecido'}`, variant: 'destructive' })
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      toast({ title: 'Erro', description: `Erro ao salvar: ${message}`, variant: 'destructive' })
     }
   }
 
@@ -158,9 +158,10 @@ export default function SettingsPage() {
       } else {
         throw new Error(data.error || 'Falha no envio')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error)
-      toast({ title: 'Erro', description: `Erro ao enviar e-mail de teste: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, variant: 'destructive' })
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      toast({ title: 'Erro', description: `Erro ao enviar e-mail de teste: ${message}`, variant: 'destructive' })
     } finally {
       setTestingEmail(false)
     }

@@ -20,14 +20,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
-import { Loader2, UserPlus, Link2, Search, User, Calendar, Phone } from 'lucide-react'
+import { Loader2, UserPlus, Link2, Search, User, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
 interface LinkPatientDialogProps {
   userId: string
   userName: string
-  userEmail: string
+  userEmail?: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
@@ -44,7 +44,6 @@ interface ExistingPatient {
 export function LinkPatientDialog({
   userId,
   userName,
-  userEmail,
   open,
   onOpenChange,
   onSuccess
@@ -153,10 +152,11 @@ export function LinkPatientDialog({
 
       onOpenChange(false)
       onSuccess?.()
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Não foi possível completar a operação.'
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível completar a operação.',
+        description: message,
         variant: 'destructive'
       })
     } finally {
@@ -173,7 +173,7 @@ export function LinkPatientDialog({
             Vincular Cadastro de Paciente
           </DialogTitle>
           <DialogDescription>
-            Vincule este usuário a um cadastro de paciente para que ele possa acessar a área "Minha Saúde".
+            Vincule este usuário a um cadastro de paciente para que ele possa acessar a área 'Minha Saúde'.
           </DialogDescription>
         </DialogHeader>
 
@@ -244,7 +244,7 @@ export function LinkPatientDialog({
                 </div>
                 <div>
                   <Label>Gênero</Label>
-                  <Select value={formData.gender} onValueChange={(v) => setFormData({ ...formData, gender: v as any })}>
+                  <Select value={formData.gender} onValueChange={(v: 'MALE' | 'FEMALE' | 'OTHER') => setFormData({ ...formData, gender: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

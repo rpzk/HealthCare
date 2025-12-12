@@ -7,16 +7,19 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { DollarSign, TrendingUp, TrendingDown, Plus } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Plus, CreditCard } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from '@/hooks/use-toast'
+import { PaymentDialog } from './payment-dialog'
 
 export function FinancialDashboard() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null)
   const [newTransaction, setNewTransaction] = useState({
     type: 'INCOME',
     amount: '',
@@ -198,14 +201,37 @@ export function FinancialDashboard() {
             <div className="space-y-8">
               {data?.transactions?.slice(0, 5).map((t: any) => (
                 <div key={t.id} className="flex items-center">
-                  <div className={`ml-4 space-y-1 ${t.type === 'INCOME' ? 'border-l-4 border-green-500 pl-2' : 'border-l-4 border-red-500 pl-2'}`}>
+                  <div className={`ml-4 space-y-1 flex-1 ${t.type === 'INCOME' ? 'border-l-4 border-green-500 pl-2' : 'border-l-4 border-red-500 pl-2'}`}>
                     <p className="text-sm font-medium leading-none">{t.description}</p>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(t.dueDate), 'dd/MM/yyyy')} • {t.category}
+                      {t.status === 'PENDING' && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          Pendente
+                        </Badge>
+                      )}
+                      {t.status === 'PAID' && (
+                        <Badge variant="default" className="ml-2 text-xs bg-green-600">
+                          Pago
+                        </Badge>
+                      )}
                     </p>
                   </div>
-                  <div className={`ml-auto font-medium ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                    {t.type === 'INCOME' ? '+' : '-'} R$ {Number(t.amount).toFixed(2)}
+                  <div className="flex items-center gap-2">
+                    <div className={`font-medium ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                      {t.type === 'INCOME' ? '+' : '-'} R$ {Number(t.amount).toFixed(2)}
+                    </div>
+                    {t.type === 'INCOME' && t.status === 'PENDING' && (
+                      <Button
+                        onClick={() => setSelectedTransaction(t)}
+                        size="sm"
+                        variant="outline"
+                        className="ml-2"
+                      >
+                        <CreditCard className="h-4 w-4 mr-1" />
+                        Cobrar
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -213,6 +239,18 @@ export function FinancialDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Pagamento */}
+      {selectedTransaction && (
+        <PaymentDialog
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+          onSuccess={() => {
+            fetchData()
+            setSelectedTransaction(null)
+          }}
+        />
+      )}
     </div>
   )
 }

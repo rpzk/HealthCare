@@ -82,7 +82,7 @@ describe('Create Appointment Schema', () => {
     const result = createAppointmentSchema.safeParse({
       patientId: 'patient123',
       doctorId: 'doctor123',
-      scheduledAt: '2024-01-15T10:00:00.000Z',
+      scheduledDate: '2024-01-15T10:00:00.000Z',
       type: 'ROUTINE'
     })
     expect(result.success).toBe(true)
@@ -99,7 +99,7 @@ describe('Create Appointment Schema', () => {
     const result = createAppointmentSchema.safeParse({
       patientId: 'patient123',
       doctorId: 'doctor123',
-      scheduledAt: 'invalid-date'
+      scheduledDate: 'invalid-date'
     })
     expect(result.success).toBe(false)
   })
@@ -110,7 +110,7 @@ describe('Create Appointment Schema', () => {
       const result = createAppointmentSchema.safeParse({
         patientId: 'p1',
         doctorId: 'd1',
-        scheduledAt: '2024-01-15T10:00:00.000Z',
+        scheduledDate: '2024-01-15T10:00:00.000Z',
         type
       })
       expect(result.success).toBe(true)

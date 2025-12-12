@@ -1,5 +1,5 @@
 import React from 'react'
-import { headers, cookies } from 'next/headers'
+import { cookies } from 'next/headers'
 import { ClientLogger } from './ClientLogger'
 import { SecurityDashboardClient } from './SecurityDashboardClient'
 import { Header } from '@/components/layout/header'

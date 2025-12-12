@@ -1,7 +1,6 @@
-import { notFound } from 'next/navigation'
 import { PrismaClient } from '@prisma/client'
 import { RegistrationForm } from './registration-form'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 // Instância própria do Prisma para evitar problemas de bundling em Server Components
 const globalForRegisterPage = globalThis as typeof globalThis & {

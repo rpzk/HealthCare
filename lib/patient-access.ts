@@ -58,39 +58,39 @@ export async function checkPatientAccess(
     }
   }
 
-  // Verificar se é o médico responsável do paciente
-  const patient = await prisma.patient.findUnique({
-    where: { id: patientId },
-    select: { 
-      primaryDoctorId: true,
-      // Buscar equipe de atendimento ativa
-      careTeam: {
-        where: {
-          userId: userId,
-          isActive: true,
-          OR: [
-            { validUntil: null },
-            { validUntil: { gte: new Date() } }
-          ]
-        },
-        select: {
-          accessLevel: true,
-          isPrimary: true,
-          validUntil: true
-        }
-      }
-    }
-  })
-
-  if (!patient) {
+  // Verificar existência do paciente
+  const patientExists = await prisma.patient.findUnique({ where: { id: patientId }, select: { id: true } })
+  if (!patientExists) {
     return {
       hasAccess: false,
       reason: 'Paciente não encontrado'
     }
   }
 
-  // Se é o médico responsável, tem acesso total
-  if (patient.primaryDoctorId === userId) {
+  // Buscar se existe um membro primário na equipe e se o usuário é membro ativo
+  const primary = await prisma.patientCareTeam.findFirst({
+    where: { patientId, isPrimary: true, isActive: true }
+  })
+
+  const careTeam = await prisma.patientCareTeam.findMany({
+    where: {
+      patientId,
+      userId,
+      isActive: true,
+      OR: [
+        { validUntil: null },
+        { validUntil: { gte: new Date() } }
+      ]
+    },
+    select: {
+      accessLevel: true,
+      isPrimary: true,
+      validUntil: true
+    }
+  })
+
+  // Se é o médico responsável (primary) tem acesso total
+  if (primary?.userId === userId) {
     return {
       hasAccess: true,
       accessLevel: 'FULL',
@@ -100,7 +100,7 @@ export async function checkPatientAccess(
   }
 
   // Verificar se está na equipe de atendimento
-  const careTeamMember = patient.careTeam[0]
+  const careTeamMember = careTeam[0]
   
   if (careTeamMember) {
     const isEmergencyAccess = careTeamMember.accessLevel === 'EMERGENCY'
@@ -186,18 +186,22 @@ export async function getAccessiblePatients(
     }))
   }
 
-  // Buscar pacientes onde o usuário é médico responsável
-  const primaryPatients = await prisma.patient.findMany({
+  // Buscar pacientes onde o usuário é médico responsável (via care team isPrimary)
+  const primaryPatients = await prisma.patientCareTeam.findMany({
     where: {
-      primaryDoctorId: userId,
+      userId: userId,
+      isPrimary: true,
+      isActive: true,
       ...(options?.search ? {
-        OR: [
-          { name: { contains: options.search, mode: 'insensitive' } },
-          { cpf: { contains: options.search } }
-        ]
+        patient: {
+          OR: [
+            { name: { contains: options.search, mode: 'insensitive' } },
+            { cpf: { contains: options.search } }
+          ]
+        }
       } : {})
     },
-    select: { id: true }
+    select: { patientId: true }
   })
 
   // Buscar participações na equipe de atendimento
@@ -235,8 +239,8 @@ export async function getAccessiblePatients(
 
   // Adicionar pacientes onde é médico responsável (maior prioridade)
   for (const p of primaryPatients) {
-    accessMap.set(p.id, {
-      patientId: p.id,
+    accessMap.set(p.patientId, {
+      patientId: p.patientId,
       accessLevel: 'FULL',
       isPrimary: true
     })
@@ -388,8 +392,8 @@ export function getPatientAccessFilter(userId: string, userRole?: string) {
 
   return {
     OR: [
-      // É o médico responsável
-      { primaryDoctorId: userId },
+      // É o médico responsável (via care team isPrimary)
+      { careTeam: { some: { userId: userId, isPrimary: true } } },
       // Está na equipe de atendimento ativa
       {
         careTeam: {

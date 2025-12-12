@@ -50,7 +50,9 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
         const res = await fetch('/api/tele/config')
         const json = await res.json().catch(() => null)
         if (json?.iceServers) setIceServers(json.iceServers)
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to load ICE config', e)
+      }
     })()
   }, [])
 
@@ -65,7 +67,13 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { cleanup() }
+    return () => {
+      try {
+        cleanup()
+      } catch (e) {
+        console.warn('Error during cleanup', e)
+      }
+    }
   }, [])
 
   const cleanup = useCallback(() => {
@@ -76,7 +84,9 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
       }
       pcRef.current?.close()
       esRef.current?.close()
-    } catch {}
+    } catch (e) {
+      console.warn('Cleanup error', e)
+    }
   }, [])
 
   async function join() {
@@ -121,7 +131,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
       const es = new EventSource(`/api/tele/rooms/${roomId}/events?clientId=${encodeURIComponent(clientId)}`)
       esRef.current = es
       
-      es.addEventListener('signal', async (ev: any) => {
+      es.addEventListener('signal', async (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data)
           if (data.type === 'offer') {
@@ -135,9 +145,15 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
           } else if (data.type === 'answer' && !pc.currentRemoteDescription) {
             await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
           } else if (data.type === 'candidate' && data.candidate) {
-            try { await pc.addIceCandidate(data.candidate) } catch {}
+            try {
+              await pc.addIceCandidate(data.candidate)
+            } catch (e) {
+              console.warn('Failed to add ICE candidate', e)
+            }
           }
-        } catch {}
+        } catch (e) {
+          console.error('Signaling error:', e)
+        }
       })
 
       pc.onicecandidate = (ev) => {
@@ -158,9 +174,13 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
 
       setJoined(true)
       setStatus('connecting')
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('idle')
-      setError(err.name === 'NotAllowedError' ? 'Permita câmera e microfone' : err.message || 'Erro')
+      if (err instanceof Error) {
+        setError(err.name === 'NotAllowedError' ? 'Permita câmera e microfone' : err.message || 'Erro')
+      } else {
+        setError(String(err) || 'Erro')
+      }
     }
   }
 
@@ -209,7 +229,9 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
           }
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('toggleScreenShare failed', e)
+    }
   }
 
   function endCall() {

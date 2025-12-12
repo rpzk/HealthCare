@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { FileText, Search, Calendar, User, ArrowLeft, Filter, Eye } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { FileText, Search, Calendar, User, Filter, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -29,7 +28,6 @@ interface MedicalRecord {
 }
 
 export default function RecordsSearchPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [searchTerm, setSearchTerm] = useState('')

@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 
 // Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient, type Prisma } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
@@ -22,7 +22,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     const page = parseInt(url.searchParams.get('page') || '1')
     const limit = parseInt(url.searchParams.get('limit') || '50')
 
-    const where: any = {}
+    const where: Prisma.ProductWhereInput = {}
 
     if (search) {
       where.OR = [
@@ -61,9 +61,9 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     ])
 
     // Calculate total stock and check low stock
-    const productsWithStock = products.map((p: any) => {
-      const totalStock = p.inventory.reduce((sum: number, i: any) => sum + i.quantity, 0)
-      const availableStock = p.inventory.reduce((sum: number, i: any) => sum + (i.quantity - i.reservedQty), 0)
+    const productsWithStock = products.map((p) => {
+      const totalStock = p.inventory.reduce((sum, i) => sum + i.quantity, 0)
+      const availableStock = p.inventory.reduce((sum, i) => sum + (i.quantity - i.reservedQty), 0)
       const isLowStock = totalStock <= p.minStock
       
       return {
@@ -88,10 +88,10 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
         totalPages: Math.ceil((lowStock ? finalProducts.length : total) / limit)
       }
     })
-  } catch (error: any) {
-    console.error('Error fetching products:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error fetching products:', error)
     return NextResponse.json(
-      { error: 'Erro ao buscar produtos', details: error.message },
+      { error: 'Erro ao buscar produtos', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -160,10 +160,10 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     })
 
     return NextResponse.json(product, { status: 201 })
-  } catch (error: any) {
-    console.error('Error creating product:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) console.error('Error creating product:', error)
     return NextResponse.json(
-      { error: 'Erro ao criar produto', details: error.message },
+      { error: 'Erro ao criar produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

@@ -53,7 +53,7 @@ export async function POST(
 
     // Calcular scores se houver scoring logic
     const scoringLogic = questionnaire.template.scoringLogic as any
-    let scores: Record<string, number> = {}
+    const scores: Record<string, number> = {}
 
     // Initialize scores based on scoring logic type
     if (scoringLogic?.dimensions) {

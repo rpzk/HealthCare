@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 
 // Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
 const prisma = globalForPrisma.prisma ?? new PrismaClient()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
@@ -28,7 +28,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       // Total appointments today
       prisma.consultation.count({
         where: {
-          scheduledAt: {
+          scheduledDate: {
             gte: today,
             lt: tomorrow
           }
@@ -38,8 +38,8 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       // Patients waiting (checked-in or waiting status)
       prisma.consultation.count({
         where: {
-          status: { in: ['WAITING'] },
-          scheduledAt: {
+          status: { in: ['SCHEDULED'] },
+          scheduledDate: {
             gte: today,
             lt: tomorrow
           }
@@ -57,7 +57,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       prisma.consultation.count({
         where: {
           status: 'COMPLETED',
-          scheduledAt: {
+          scheduledDate: {
             gte: today,
             lt: tomorrow
           }
@@ -71,10 +71,19 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       inProgressConsultations,
       completedToday
     })
-  } catch (error: any) {
-    console.error('Error fetching reception stats:', error)
+  } catch (error: unknown) {
+    // Narrow unknown error to preserve typing while providing useful logs
+    if (error instanceof Error) {
+      console.error('Error fetching reception stats:', error.message)
+      return NextResponse.json(
+        { error: 'Erro ao buscar estatísticas', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    console.error('Error fetching reception stats:', String(error))
     return NextResponse.json(
-      { error: 'Erro ao buscar estatísticas', details: error.message },
+      { error: 'Erro ao buscar estatísticas' },
       { status: 500 }
     )
   }

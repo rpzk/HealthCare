@@ -251,7 +251,7 @@ export function RoleSwitcher() {
       const res = await fetch('/api/user/roles')
       
       if (!res.ok) {
-        const userRole = (session?.user as any)?.role || 'DOCTOR'
+        const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'
         setAvailableRoles([{ role: userRole, isPrimary: true }])
         if (!activeRole) setActiveRole(userRole)
         return
@@ -273,7 +273,7 @@ export function RoleSwitcher() {
       }
     } catch (error) {
       console.error('Erro ao buscar papéis:', error)
-      const userRole = (session?.user as any)?.role || 'DOCTOR'
+      const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'
       setAvailableRoles([{ role: userRole, isPrimary: true }])
       if (!activeRole) setActiveRole(userRole)
     } finally {

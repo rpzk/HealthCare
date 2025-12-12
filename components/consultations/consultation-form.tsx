@@ -29,7 +29,18 @@ interface AvailableSlot {
 
 interface ConsultationFormProps {
   patient?: Patient | null
-  onSubmit: (data: any) => Promise<void>
+  onSubmit: (
+    data: Partial<{
+      patientId: string
+      doctorId: string
+      scheduledDate: string
+      type: 'ROUTINE' | 'URGENT' | 'EMERGENCY' | 'FOLLOW_UP' | 'PREVENTIVE'
+      description: string
+      notes: string
+      duration: number
+      status: string
+    }>
+  ) => Promise<void>
   onCancel: () => void
   loading?: boolean
 }
@@ -41,12 +52,23 @@ export function ConsultationForm({
   loading = false 
 }: ConsultationFormProps) {
   const { data: session } = useSession()
-  const [formData, setFormData] = useState({
+  type ConsultationFormData = {
+    patientId: string
+    doctorId: string
+    scheduledDate: string
+    scheduledTime: string
+    type: 'ROUTINE' | 'URGENT' | 'EMERGENCY' | 'FOLLOW_UP' | 'PREVENTIVE'
+    description: string
+    notes: string
+    duration: number
+  }
+
+  const [formData, setFormData] = useState<ConsultationFormData>({
     patientId: patient?.id || '',
     doctorId: session?.user?.id || '', // Usar ID do usuário logado
     scheduledDate: '',
     scheduledTime: '',
-    type: 'ROUTINE' as const,
+    type: 'ROUTINE',
     description: '',
     notes: '',
     duration: 60
@@ -71,8 +93,8 @@ export function ConsultationForm({
   useEffect(() => {
     if (session?.user?.id && !formData.doctorId) {
       // Se o usuário logado é médico, pré-selecionar ele
-      const userRole = (session.user as any).role
-      if (['DOCTOR', 'NURSE', 'ADMIN'].includes(userRole)) {
+      const userRole = session.user?.role
+      if (userRole && ['DOCTOR', 'NURSE', 'ADMIN'].includes(userRole)) {
         setFormData(prev => ({
           ...prev,
           doctorId: session.user.id
@@ -86,6 +108,7 @@ export function ConsultationForm({
     if (formData.scheduledDate && formData.doctorId) {
       fetchAvailableSlots()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.scheduledDate, formData.doctorId])
 
   const fetchPatients = async () => {
@@ -159,8 +182,9 @@ export function ConsultationForm({
       }
 
       await onSubmit(submitData)
-    } catch (error: any) {
-      setError(error.message || 'Erro ao agendar consulta')
+    } catch (error) {
+      const err = error as Error
+      setError(err.message || 'Erro ao agendar consulta')
     }
   }
 
@@ -315,7 +339,7 @@ export function ConsultationForm({
               <label className="text-sm font-medium text-foreground">Tipo de Consulta *</label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as 'ROUTINE' | 'URGENT' | 'EMERGENCY' | 'FOLLOW_UP' | 'PREVENTIVE' }))}
                 className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 required
               >
@@ -402,8 +426,9 @@ export function ConsultationForm({
                       status: 'IN_PROGRESS'
                     };
                     await onSubmit(submitData);
-                  } catch (error: any) {
-                    setError(error.message || 'Erro ao iniciar consulta');
+                  } catch (error) {
+                    const err = error as Error
+                    setError(err.message || 'Erro ao iniciar consulta');
                   }
                 }}
               >

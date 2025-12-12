@@ -53,7 +53,7 @@ export const appointmentQuerySchema = paginationQuerySchema.extend({
 export const createAppointmentSchema = z.object({
   patientId: z.string().min(1, 'ID do paciente é obrigatório'),
   doctorId: z.string().min(1, 'ID do médico é obrigatório'),
-  scheduledAt: z.string().datetime({ message: 'Data de agendamento inválida' }),
+  scheduledDate: z.string().datetime({ message: 'Data de agendamento inválida' }),
   type: consultationTypeSchema.default('ROUTINE'),
   duration: z.number().int().min(5).max(480).default(30),
   notes: z.string().max(2000).optional(),
