@@ -410,6 +410,30 @@ export class ACSService {
       throw error
     }
   }
+
+  /**
+   * Bulk assign ACS to areas
+   */
+  async bulkAssignACS(
+    assignments: ACSAssignmentInput[]
+  ): Promise<{ successful: number; failed: number; errors: Array<{ index: number; error: string }> }> {
+    const results = { successful: 0, failed: 0, errors: [] as Array<{ index: number; error: string }> }
+
+    for (let i = 0; i < assignments.length; i++) {
+      try {
+        await this.assignACSToArea(assignments[i])
+        results.successful++
+      } catch (error) {
+        results.failed++
+        results.errors.push({
+          index: i,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    return results
+  }
 }
 
 export default new ACSService()

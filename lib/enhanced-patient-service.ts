@@ -422,6 +422,40 @@ export class EnhancedPatientService {
       throw error
     }
   }
+
+  /**
+   * Bulk enroll patients in PSF
+   */
+  async bulkEnrollInPSF(
+    enrollments: Array<{
+      patientId: string
+      areaId: string
+      familyGroupNumber?: string
+      notes?: string
+    }>
+  ): Promise<{ successful: number; failed: number; errors: Array<{ index: number; error: string }> }> {
+    const results = { successful: 0, failed: 0, errors: [] as Array<{ index: number; error: string }> }
+
+    for (let i = 0; i < enrollments.length; i++) {
+      try {
+        await this.enrollInPSF(
+          enrollments[i].patientId,
+          enrollments[i].areaId,
+          enrollments[i].familyGroupNumber,
+          enrollments[i].notes
+        )
+        results.successful++
+      } catch (error) {
+        results.failed++
+        results.errors.push({
+          index: i,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    return results
+  }
 }
 
 export default new EnhancedPatientService()
