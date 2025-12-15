@@ -249,6 +249,12 @@ docker stats
 - ❌ Log aggregation (ELK, Datadog, etc)
 - ❌ Distributed tracing (Jaeger, Tempo)
 
+**Recomendações imediatas (pra produzir):**
+- Enviar traces para Tempo/Jaeger usando o OTLP exporter já scaffoldeado (ativar OTEL via env e apontar endpoint).
+- Enviar logs estruturados para Loki/ELK/Datadog (sidecar Fluent Bit ou agent).
+- Publicar métricas Prometheus (Next.js custom + Node.js) e criar dashboard básico (p95 latency, error rate, queue length, DB connections, Ollama latency).
+- Alerts mínimos: HTTP 5xx rate, latency p95, saturação de CPU, erro de fila IA, falha de upload S3, espaço em disco, falha de backup.
+
 **Implementação Rápida (30 min):**
 
 ```yaml
@@ -266,11 +272,67 @@ grafana:
     - "3001:3000"
   environment:
     GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+   # Adicione datasources Loki/Tempo conforme ambiente
+
+tempo:
+   image: grafana/tempo:latest
+   ports:
+      - "3200:3200" # OTLP http
+
+loki:
+   image: grafana/loki:latest
+   ports:
+      - "3100:3100"
+
+fluent-bit:
+   image: fluent/fluent-bit:latest
+   volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+   depends_on:
+      - loki
 ```
+
+**Variáveis de ambiente sugeridas (habilitar OTEL/Logs):**
+```env
+OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:3200
+OTEL_SERVICE_NAME=healthcare-app
+LOG_EXPORTER_LOKI_URL=http://loki:3100/loki/api/v1/push
+```
+
+**Código:** aproveitar o `OpenTelemetry scaffolding` já existente em `instrumentation.ts` e enviar spans de API/IA; adicionar middleware para logar falhas de upload (ver seção Uploads).
 
 ---
 
-### 3. Backup & Disaster Recovery ⚠️ (Em Progresso)
+### 3. Uploads & Armazenamento de Arquivos ⚠️ (Decisão: S3)
+
+**Contexto atual:** uploads locais em `/uploads` servem para desenvolvimento, mas não são adequados para produção.
+
+**Decisão para produção:** usar S3 ou compatível (MinIO/Wasabi) com URLs assinadas para upload/download.
+
+**Configurar variáveis:**
+```env
+UPLOADS_PROVIDER=s3
+UPLOADS_S3_BUCKET=healthcare-uploads
+UPLOADS_S3_REGION=us-east-1
+UPLOADS_S3_ENDPOINT= # opcional para MinIO
+UPLOADS_S3_ACCESS_KEY_ID=...
+UPLOADS_S3_SECRET_ACCESS_KEY=...
+UPLOADS_MAX_SIZE_MB=10
+```
+
+**Padrão de objetos:** `patient-documents/{patientId}/{uuid}/{filename}` com SSE ativado e política de bucket privada.
+
+**Passos:**
+1) Criar bucket com versioning, encryption e lifecycle para expurgo opcional de rascunhos.
+2) Habilitar API de upload usando presigned PUT (bloqueia execução pública).
+3) Servir downloads via GET assinado ou CDN privado.
+4) Registrar falhas de upload nos logs e métricas (alerta se taxa de erro > 1%).
+
+**Fallback:** se S3 indisponível, negar upload em produção e exibir mensagem; não persistir em disco local.
+
+---
+
+### 4. Backup & Disaster Recovery ⚠️ (Em Progresso)
 
 **Implementado:**
 - ✅ Docker volumes persistentes
@@ -298,7 +360,7 @@ aws s3 cp "$BACKUP_DIR/db.sql.gz" s3://healthcare-backups/
 
 ---
 
-### 4. Secrets Management ⚠️ (Básico)
+### 5. Secrets Management ⚠️ (Básico)
 
 **Atual:**
 - ⚠️ Variáveis em `.env` (Docker)
@@ -333,7 +395,7 @@ secrets:
 
 ---
 
-### 5. Testes Adicionais Recomendados ⚠️
+### 6. Testes Adicionais Recomendados ⚠️
 
 **Faltam:**
 - ❌ E2E tests (Cypress/Playwright)

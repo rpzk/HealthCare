@@ -147,6 +147,34 @@ export class NpsService {
   }
 
   /**
+   * Alias para compatibilidade
+   */
+  static async submitResponse(data: NpsData) {
+    return this.recordResponse(data)
+  }
+
+  /**
+   * Obter resposta NPS por consulta
+   */
+  static async getResponseByConsultation(consultationId: string) {
+    return await prisma.npsResponse.findUnique({
+      where: { consultationId },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    })
+  }
+
+  /**
+   * Alias para cron
+   */
+  static async sendAutomaticSurveys() {
+    const sent = await this.sendPendingSurveys()
+    return { sent, failed: 0, total: sent, message: `Enviadas ${sent} pesquisas` }
+  }
+
+  /**
    * Envia pesquisa NPS via WhatsApp
    */
   static async sendNpsSurvey(consultationId: string): Promise<boolean> {
@@ -389,5 +417,90 @@ Leva apenas 30 segundos! 😊`
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
       .map(([tag, count]) => ({ tag, count }))
+  }
+
+  /**
+   * Obter estatísticas completas de NPS
+   */
+  static async getStats(doctorId?: string, periodInDays: number = 30) {
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - periodInDays)
+
+      const where: any = {
+        respondedAt: { gte: startDate },
+      }
+
+      if (doctorId) where.doctorId = doctorId
+
+      const responses = await prisma.npsResponse.findMany({
+        where,
+        include: {
+          patient: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          respondedAt: 'desc',
+        },
+      })
+
+      const totalResponses = responses.length
+
+      if (totalResponses === 0) {
+        return {
+          totalResponses: 0,
+          npsScore: 0,
+          promoters: 0,
+          passives: 0,
+          detractors: 0,
+          promotersPercentage: 0,
+          passivesPercentage: 0,
+          detractorsPercentage: 0,
+          averageScore: 0,
+          recentDetractors: [],
+        }
+      }
+
+      // Calcular categorias
+      const promoters = responses.filter((r) => r.score >= 9).length
+      const passives = responses.filter((r) => r.score >= 7 && r.score <= 8).length
+      const detractors = responses.filter((r) => r.score <= 6).length
+
+      // Calcular NPS
+      const promotersPercentage = (promoters / totalResponses) * 100
+      const passivesPercentage = (passives / totalResponses) * 100
+      const detractorsPercentage = (detractors / totalResponses) * 100
+      const npsScore = promotersPercentage - detractorsPercentage
+
+      // Calcular média
+      const totalScore = responses.reduce((sum, r) => sum + r.score, 0)
+      const averageScore = totalScore / totalResponses
+
+      // Detratores recentes
+      const recentDetractors = responses
+        .filter((r) => r.score <= 6)
+        .slice(0, 10)
+        .map((r) => ({
+          id: r.id,
+          patientName: r.patient.name,
+          score: r.score,
+          feedback: r.feedback,
+          respondedAt: r.respondedAt,
+        }))
+
+      return {
+        totalResponses,
+        npsScore: Math.round(npsScore),
+        promoters,
+        passives,
+        detractors,
+        promotersPercentage: Math.round(promotersPercentage),
+        passivesPercentage: Math.round(passivesPercentage),
+        detractorsPercentage: Math.round(detractorsPercentage),
+        averageScore: Math.round(averageScore * 10) / 10,
+        recentDetractors,
+      }
   }
 }

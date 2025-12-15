@@ -4,6 +4,8 @@
 **🎯 Objetivo:** Explorar todas as funcionalidades do Healthcare  
 **✅ Pré-requisito:** Docker e Node.js instalados
 
+📚 Para encontrar qualquer guia rapidamente, consulte o índice: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
+
 ---
 
 ## 📍 Você está aqui
