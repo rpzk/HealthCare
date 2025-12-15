@@ -88,7 +88,18 @@ model User {
   // Assinatura Digital
   digitalCertificates    DigitalCertificate[] @relation("UserDigitalCertificates")
   signedDocuments        SignedDocument[] @relation("UserSignedDocuments")
+  
+  // ACS (Agente Comunitário de Saúde) Management
+  acsAssignedMicroAreaId String?
+  acsAssignedMicroArea   MicroArea?     @relation("ACSMicroArea", fields: [acsAssignedMicroAreaId], references: [id], onDelete: SetNull)
+  
+  assignedAreaId         String?
+  assignedArea           Area?          @relation("AssignedArea", fields: [assignedAreaId], references: [id], onDelete: SetNull)
+  
+  acsHistory             ACSHistory[]   @relation("ACSHistoryEntries")
 
+  @@index([acsAssignedMicroAreaId])
+  @@index([assignedAreaId])
   @@map("users")
 }
 
@@ -280,26 +291,76 @@ model Patient {
   
   // NPS enviados
   npsResponses          NpsResponse[]
+  
+  // Wellness Dashboard - Patient Experience
+  moodLogs              PatientMoodLog[]        @relation("PatientMoodLogs")
+  aptitudes             PatientAptitude[]       @relation("PatientAptitudes")
+  badges                PatientBadge[]          @relation("PatientBadges")
+  wellnessDevelopmentPlans PatientDevelopmentPlan[] @relation("PatientWellnessDevelopmentPlans")
+  healthEvents          PatientHealthEvent[]    @relation("PatientHealthEvents")
+  wellnessScores        PatientWellnessScore[]  @relation("PatientWellnessScores")
+  journals              PatientJournal[]        @relation("PatientJournals")
+  
+  // PSF/Família Integration
+  rg                    String?                 // RG or equivalent ID
+  rgState               String?                 // State where RG was issued
+  fatherName            String?
+  
+  familyNumber          String?                 // PSF format: "001.0001.0001"
+  sequenceInFamily      Int?                    // Order in family (1, 2, 3...)
+  
+  // Social Assessment
+  socialVulnerability   String?                 // LOW, MEDIUM, HIGH
+  economicClass         String?                 // A, B, C, D, E
+  monthlyFamilyIncome   Float?                  // In BRL
+  
+  // Location preference
+  preferredAddressId    String?
+  preferredAddress      Address?                @relation("PreferredAddress", fields: [preferredAddressId], references: [id], onDelete: SetNull)
 
+  @@index([familyNumber, sequenceInFamily])
+  @@index([preferredAddressId])
+  @@index([socialVulnerability])
   @@map("patients")
 }
 
 model Household {
-  id           String    @id @default(cuid())
-  name         String
-  address      String
-  number       String?
-  complement   String?
-  neighborhood String?
-  city         String?
-  state        String?
-  zipCode      String?
-  microArea    String?
-  familyType   String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  members      Patient[]
+  id              String    @id @default(cuid())
+  name            String
+  address         String
+  number          String?
+  complement      String?
+  neighborhood    String?
+  city            String?
+  state           String?
+  zipCode         String?
+  microArea       String?                   // Keep for backward compatibility
+  familyType      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Geographic hierarchy (new)
+  microAreaId     String?
+  microAreaObj    MicroArea?                @relation(fields: [microAreaId], references: [id], onDelete: SetNull)
+  
+  areaId          String?
+  area            Area?                     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  
+  // Social indicators
+  monthlyIncome   Float?
+  economicClass   String?                   // A, B, C, D, E
+  numberOfRooms   Int?
+  hasWater        Boolean?                  @default(false)
+  hasElectricity  Boolean?                  @default(false)
+  hasSewage       Boolean?                  @default(false)
+  hasGarbage      Boolean?                  @default(false)
+  vulnerabilityScore Float?                 // 0-100 scale
+  
+  members         Patient[]
 
+  @@index([microAreaId])
+  @@index([areaId])
+  @@index([vulnerabilityScore])
   @@map("households")
 }
 
@@ -585,25 +646,58 @@ model Address {
   street       String
   number       String?
   complement   String?
-  neighborhood String?
-  city         String
-  state        String
+  neighborhood String?         // Keep for backward compatibility
+  city         String          // Keep for backward compatibility
+  state        String          // Keep for backward compatibility
   zipCode      String?
   latitude     Float?
   longitude    Float?
   isPrimary    Boolean         @default(false)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  
+  // Old references (backward compatibility)
   patientId    String?
   microAreaId  String?
-  microArea    MicroArea?      @relation(fields: [microAreaId], references: [id])
+  
+  // New geographic hierarchy (all optional for backward compatibility)
+  countryId    String?
+  stateId      String?
+  cityId       String?
+  zoneId       String?
+  districtId   String?
+  subprefectureId String?
+  neighborhoodId String?       // Different from string field above
+  areaId       String?
+  
+  // Relations - old
   patient      Patient?        @relation(fields: [patientId], references: [id])
+  microArea    MicroArea?      @relation(fields: [microAreaId], references: [id])
   residents    PersonAddress[]
   Place        Place[]
+  patientsPreferring Patient[]  @relation("PreferredAddress")
+  
+  // Relations - new geographic
+  country      Country?        @relation(fields: [countryId], references: [code], onDelete: SetNull)
+  stateObj     State?          @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  cityObj      City?           @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  zone         Zone?           @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  district     District?       @relation(fields: [districtId], references: [id], onDelete: SetNull)
+  subprefecture Subprefecture? @relation(fields: [subprefectureId], references: [id], onDelete: SetNull)
+  neighborhoodObj Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  area         Area?           @relation(fields: [areaId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([microAreaId])
+  @@index([countryId])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([zoneId])
+  @@index([districtId])
+  @@index([neighborhoodId])
+  @@index([areaId])
   @@index([latitude, longitude])
+  @@index([cityId, zoneId, districtId])
   @@map("addresses")
 }
 
@@ -640,10 +734,21 @@ model MicroArea {
   maxLng      Float?
   minLat      Float?
   minLng      Float?
+  
+  // Geographic hierarchy
+  areaId      String?
+  area        Area?               @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  
+  // ACS assignments
+  acsUsers    User[]              @relation("ACSMicroArea")
+  acsHistory  ACSHistory[]        @relation("ACSHistory")
+  households  Household[]
+  
   addresses   Address[]
   revisions   MicroAreaRevision[]
   places      Place[]
 
+  @@index([areaId])
   @@index([centroidLat, centroidLng])
   @@index([minLat, maxLat])
   @@index([minLng, maxLng])
@@ -1665,13 +1770,16 @@ enum InsuranceType {
 
 model SystemSetting {
   key         String   @id
-  value       String
+  value       String   @db.Text // Suporte a valores grandes
   description String?
-  category    String   @default("GENERAL") // EMAIL, SECURITY, SYSTEM
+  category    String   @default("GENERAL") // EMAIL, SECURITY, SYSTEM, STORAGE, WHATSAPP, REDIS, WEBRTC
   isPublic    Boolean  @default(false)
+  encrypted   Boolean  @default(false) // Se o valor está criptografado
+  updatedBy   String?  // ID do usuário que atualizou
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([category])
   @@map("system_settings")
 }
 
@@ -2175,8 +2283,9 @@ model PrescriptionItem {
   quantity     Int?
   instructions String?
 
-  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  medication   Medication?  @relation(fields: [medicationId], references: [id])
+  prescription   Prescription       @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication     Medication?        @relation(fields: [medicationId], references: [id])
+  medicationTakings MedicationTaking[] // Histórico de tomadas
 
   createdAt DateTime @default(now())
 
@@ -3647,4 +3756,373 @@ enum AlertStatus {
   RESOLVED
   FALSE_POSITIVE
   IGNORED
+}
+
+// ============================================================================
+// WELLNESS DASHBOARD - Patient Experience Models
+// ============================================================================
+
+model PatientMoodLog {
+  id            String      @id @default(cuid())
+  patientId     String
+  mood          Int         @db.SmallInt // 1-5 (😢😐🙂😊🤗)
+  energy        Int         @db.SmallInt // 1-5
+  stress        Int         @db.SmallInt // 1-5
+  sleep         Int         @db.SmallInt // 1-5
+  notes         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  patient       Patient     @relation("PatientMoodLogs", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, createdAt])
+  @@map("patient_mood_logs")
+}
+
+model PatientAptitude {
+  id            String      @id @default(cuid())
+  patientId     String
+  name          String      // "Coração Estável", "Ativo e Dedicado"
+  description   String      @db.Text
+  icon          String      // "heart", "flame", "target"
+  category      String      // "health", "behavior", "emotional"
+  score         Float       @default(0) // 0-100
+  discoveredAt  DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  patient       Patient     @relation("PatientAptitudes", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, category])
+  @@index([patientId, score])
+  @@map("patient_aptitudes")
+}
+
+model PatientBadge {
+  id            String      @id @default(cuid())
+  patientId     String
+  name          String      // "Iniciante", "Comprometido", "Épico"
+  rarity        BadgeRarity @default(COMMON)
+  icon          String      // "sprout", "star", "trophy"
+  description   String?     @db.Text
+  progress      Float       @default(0) // 0-100
+  unlockedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  patient       Patient     @relation("PatientBadges", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, rarity])
+  @@index([patientId, unlockedAt])
+  @@map("patient_badges")
+}
+
+model PatientDevelopmentPlan {
+  id            String      @id @default(cuid())
+  patientId     String
+  title         String      // "Seu plano de 90 dias"
+  description   String      @db.Text
+  startDate     DateTime
+  targetDate    DateTime
+  phases        Json        // Array de fases com metas
+  currentPhase  Int         @default(1)
+  progress      Float       @default(0) // 0-100
+  status        WellnessPlanStatus  @default(ACTIVE)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  patient       Patient     @relation("PatientWellnessDevelopmentPlans", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, status])
+  @@index([patientId, targetDate])
+  @@map("patient_development_plans")
+}
+
+model PatientHealthEvent {
+  id            String      @id @default(cuid())
+  patientId     String
+  title         String
+  description   String      @db.Text
+  type          EventType   // "medication", "consultation", "exam", "vital", "milestone"
+  eventDate     DateTime
+  impact        String?     // "PA melhorou 12%", "Nova aptitude descoberta"
+  causalite     String?     @db.Text // Linkage: "Desde medicação ajustada..."
+  vitalsSnapshot Json?      // Snapshot de dados na hora do evento
+  metadata      Json?       // Dados adicionais
+  createdAt     DateTime    @default(now())
+  
+  patient       Patient     @relation("PatientHealthEvents", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, eventDate])
+  @@index([patientId, type])
+  @@map("patient_health_events")
+}
+
+model PatientWellnessScore {
+  id                  String      @id @default(cuid())
+  patientId           String
+  score               Float       // 0-100
+  moodComponent       Float       // % do score vindo do mood
+  adherenceComponent  Float       // % do score vindo da adesão
+  vitalComponent      Float       // % do score vindo dos vitais
+  emotionalComponent  Float       // % do score vindo do emocional
+  calculatedAt        DateTime    @default(now())
+  
+  patient             Patient     @relation("PatientWellnessScores", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, calculatedAt])
+  @@map("patient_wellness_scores")
+}
+
+model PatientJournal {
+  id            String      @id @default(cuid())
+  patientId     String
+  weekStarting  DateTime    // Data do início da semana
+  reflection    String      @db.Text
+  insights      String?     @db.Text
+  goals         Json?       // Array de metas para próxima semana
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  patient       Patient     @relation("PatientJournals", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([patientId, weekStarting])
+  @@map("patient_journals")
+}
+
+// Enums para Wellness Dashboard
+
+enum BadgeRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum WellnessPlanStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum EventType {
+  MEDICATION
+  CONSULTATION
+  EXAM
+  VITAL
+  MILESTONE
+  APPOINTMENT
+  DIAGNOSIS
+  TREATMENT
+}
+
+// ============================================
+// GEOGRAPHIC HIERARCHY MODELS (SSF Integration)
+// Hierarquia: Country → State → City → Zone → District → Subprefecture → Neighborhood → Area → MicroArea
+// ============================================
+
+model Country {
+  id        String   @id @default(cuid())
+  code      String   @unique // ISO 3166-1 alpha-2 (BR)
+  name      String   @unique
+  states    State[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("countries")
+}
+
+model State {
+  id        String   @id @default(cuid())
+  code      String   @unique // UF code (SP, RJ, MG, etc)
+  name      String   @unique
+  region    String?  // Região (Sul, Sudeste, Nordeste, etc)
+  
+  countryId String   @default("br") // FK to Country (always Brazil for now)
+  country   Country  @relation(fields: [countryId], references: [code], onDelete: Cascade)
+  
+  cities    City[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([countryId])
+  @@map("states")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  ibgeCode  String   @unique // IBGE 7-digit code
+  name      String
+  
+  stateId   String
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  
+  zones     Zone[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([stateId, name])
+  @@index([stateId])
+  @@index([ibgeCode])
+  @@map("cities")
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  code      String?  // Optional external code
+  name      String
+  
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  
+  districts District[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([cityId, name])
+  @@index([cityId])
+  @@map("zones")
+}
+
+model District {
+  id        String   @id @default(cuid())
+  code      String?
+  name      String
+  
+  zoneId    String
+  zone      Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  
+  subprefectures Subprefecture[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([zoneId, name])
+  @@index([zoneId])
+  @@map("districts")
+}
+
+model Subprefecture {
+  id        String   @id @default(cuid())
+  code      String?
+  name      String
+  
+  districtId String
+  district  District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  
+  neighborhoods Neighborhood[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@map("subprefectures")
+}
+
+model Neighborhood {
+  id        String   @id @default(cuid())
+  code      String?
+  name      String
+  
+  subprefectureId String
+  subprefecture   Subprefecture @relation(fields: [subprefectureId], references: [id], onDelete: Cascade)
+  
+  areas     Area[]
+  addresses Address[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([subprefectureId, name])
+  @@index([subprefectureId])
+  @@map("neighborhoods")
+}
+
+model Area {
+  id        String   @id @default(cuid())
+  code      String?
+  name      String
+  description String?
+  
+  neighborhoodId String
+  neighborhood   Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  
+  microAreas MicroArea[]
+  addresses  Address[]
+  acsUsers   User[]         @relation("AssignedArea")
+  acsHistory ACSHistory[]
+  households Household[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([neighborhoodId, name])
+  @@index([neighborhoodId])
+  @@map("areas")
+}
+
+// ACS (Agente Comunitário de Saúde) Management
+model ACSHistory {
+  id              String   @id @default(cuid())
+  
+  userId          String
+  user            User     @relation("ACSHistoryEntries", fields: [userId], references: [id], onDelete: Cascade)
+  
+  microAreaId     String?
+  microArea       MicroArea? @relation("ACSHistory", fields: [microAreaId], references: [id], onDelete: SetNull)
+  
+  areaId          String?
+  area            Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  
+  assignedAt      DateTime @default(now())
+  unassignedAt    DateTime?
+  assignmentReason String?
+  assignedByUserId String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([userId, assignedAt])
+  @@index([microAreaId])
+  @@index([areaId])
+  @@map("acs_history")
+}
+
+// ============================================
+// END GEOGRAPHIC HIERARCHY MODELS
+// ============================================
+
+model MedicationTaking {
+  id                 String           @id @default(cuid())
+  
+  // Relacionamento com item de prescrição
+  prescriptionItemId String
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  
+  // Dados da tomada
+  takenAt            DateTime         // Quando foi tomado
+  dosage             String           // Dosagem confirmada
+  missed             Boolean          @default(false) // Se foi perdido/esquecido
+  notes              String?          // Notas do paciente
+  
+  // Controle
+  recordedBy         String           // ID do usuário que registrou
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  
+  @@index([prescriptionItemId])
+  @@index([takenAt])
+  @@map("medication_takings")
 }
