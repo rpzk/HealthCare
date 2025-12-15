@@ -411,6 +411,30 @@ export class HouseholdService {
       throw error
     }
   }
+
+  /**
+   * Bulk create households
+   */
+  async bulkCreateHouseholds(
+    households: HouseholdInput[]
+  ): Promise<{ successful: number; failed: number; errors: Array<{ index: number; error: string }> }> {
+    const results = { successful: 0, failed: 0, errors: [] as Array<{ index: number; error: string }> }
+
+    for (let i = 0; i < households.length; i++) {
+      try {
+        await this.createHousehold(households[i])
+        results.successful++
+      } catch (error) {
+        results.failed++
+        results.errors.push({
+          index: i,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    return results
+  }
 }
 
 export default new HouseholdService()

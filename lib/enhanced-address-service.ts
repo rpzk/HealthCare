@@ -425,6 +425,68 @@ export class EnhancedAddressService {
       throw error
     }
   }
+
+  /**
+   * Get patient addresses
+   */
+  async getPatientAddresses(patientId: string) {
+    try {
+      const addresses = await prisma.address.findMany({
+        where: { patientId },
+        include: {
+          country: true,
+          state: true,
+          city: true,
+          area: true,
+          microArea: true
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      return addresses
+    } catch (error) {
+      console.error('Error getting patient addresses:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete address
+   */
+  async deleteAddress(addressId: string): Promise<void> {
+    try {
+      await prisma.address.delete({
+        where: { id: addressId }
+      })
+    } catch (error) {
+      console.error('Error deleting address:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Bulk create addresses
+   */
+  async bulkCreateAddresses(
+    addresses: Array<any>
+  ): Promise<{ successful: number; failed: number; errors: Array<{ index: number; error: string }> }> {
+    const results = { successful: 0, failed: 0, errors: [] as Array<{ index: number; error: string }> }
+
+    for (let i = 0; i < addresses.length; i++) {
+      try {
+        await this.createAddress(addresses[i].patientId, addresses[i])
+        results.successful++
+      } catch (error) {
+        results.failed++
+        results.errors.push({
+          index: i,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    return results
+  }
 }
 
 export default new EnhancedAddressService()
