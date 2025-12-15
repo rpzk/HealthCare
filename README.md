@@ -2,6 +2,10 @@
 
 Um sistema completo de prontuário eletrônico com inteligência artificial embarcada, desenvolvido com as mais modernas tecnologias web.
 
+📚 **Índice & Tracking:**
+- [Índice Completo](docs/DOCUMENTATION_INDEX.md)
+- [Features Não Implementadas](docs/INCOMPLETE_FEATURES.md) - O que ainda falta
+
 ## ✨ Características Principais
 
 ### 🤖 Inteligência Artificial Integrada

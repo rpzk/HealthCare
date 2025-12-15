@@ -1,5 +1,7 @@
 # Medical Records API - Test Suite
 
+Note: For manual end-to-end UI flows, refer to TESTE_INTERATIVO.md. This document focuses on API integration coverage.
+
 This directory contains comprehensive integration tests for the Medical Records API endpoints.
 
 ## Test Files

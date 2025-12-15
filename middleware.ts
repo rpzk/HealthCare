@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
 
-// Simple in-memory rate limiter for middleware
+// Fallback in-memory rate limiter (used if Redis is unavailable)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
 function getClientKey(request: NextRequest): string {
@@ -10,7 +10,8 @@ function getClientKey(request: NextRequest): string {
   return `ip:${ip}`
 }
 
-function checkRateLimit(request: NextRequest): { allowed: boolean; remaining: number } {
+// In-memory rate limiter (fallback)
+function checkRateLimitMemory(request: NextRequest): { allowed: boolean; remaining: number } {
   const key = getClientKey(request)
   const now = Date.now()
   const windowMs = 60 * 1000 // 1 minute
@@ -64,8 +65,9 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Apply rate limiting
-  const { allowed, remaining } = checkRateLimit(request)
+  // Apply rate limiting (using in-memory fallback in middleware)
+  // For API routes, use the Redis rate limiter directly in the route handler
+  const { allowed, remaining } = checkRateLimitMemory(request)
   
   if (!allowed) {
     return new NextResponse(
