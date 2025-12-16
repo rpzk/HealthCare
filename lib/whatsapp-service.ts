@@ -26,30 +26,34 @@ interface WhatsAppConfig {
  * WHATSAPP_API_KEY=your_api_key
  * WHATSAPP_INSTANCE_ID=your_instance_id
  */
+import { SystemSettingsService } from './system-settings-service'
+
 export class WhatsAppService {
-  private static config: WhatsAppConfig = {
-    apiUrl: process.env.WHATSAPP_API_URL || '',
-    apiKey: process.env.WHATSAPP_API_KEY || '',
-    instanceId: process.env.WHATSAPP_INSTANCE_ID || ''
+  private static async getConfig(): Promise<WhatsAppConfig> {
+    return await SystemSettingsService.getWhatsAppConfig() as WhatsAppConfig
   }
 
-  private static provider = process.env.WHATSAPP_PROVIDER || 'evolution'
+  private static async getProvider(): Promise<string> {
+    return await SystemSettingsService.get('WHATSAPP_PROVIDER', 'evolution') || 'evolution'
+  }
 
-  static isConfigured(): boolean {
-    return !!(this.config.apiUrl && this.config.apiKey)
+  static async isConfigured(): Promise<boolean> {
+    const config = await this.getConfig()
+    return !!(config.apiUrl && config.apiKey)
   }
 
   /**
    * Send a text message via WhatsApp
    */
   static async sendMessage(data: WhatsAppMessage): Promise<boolean> {
-    if (!this.isConfigured()) {
+    if (!(await this.isConfigured())) {
       console.warn('WhatsApp not configured. Message not sent:', data.message)
       return false
     }
 
     try {
-      switch (this.provider) {
+      const provider = await this.getProvider()
+      switch (provider) {
         case 'evolution':
           return await this.sendViaEvolution(data)
         case 'twilio':
@@ -57,7 +61,7 @@ export class WhatsAppService {
         case 'zenvia':
           return await this.sendViaZenvia(data)
         default:
-          console.error('Unknown WhatsApp provider:', this.provider)
+          console.error('Unknown WhatsApp provider:', provider)
           return false
       }
     } catch (error) {
@@ -163,8 +167,9 @@ _Mensagem automática - HealthCare System_`
   // Provider-specific implementations
 
   private static async sendViaEvolution(data: WhatsAppMessage): Promise<boolean> {
+    const config = await this.getConfig()
     const response = await axios.post(
-      `${this.config.apiUrl}/message/sendText/${this.config.instanceId}`,
+      `${config.apiUrl}/message/sendText/${config.instanceId}`,
       {
         number: data.to,
         text: data.message
@@ -172,7 +177,7 @@ _Mensagem automática - HealthCare System_`
       {
         headers: {
           'Content-Type': 'application/json',
-          'apikey': this.config.apiKey
+          'apikey': config.apiKey
         }
       }
     )
@@ -181,9 +186,10 @@ _Mensagem automática - HealthCare System_`
   }
 
   private static async sendViaTwilio(data: WhatsAppMessage): Promise<boolean> {
+    const config = await this.getConfig()
     // Twilio uses HTTP Basic Auth with Account SID and Auth Token
-    const accountSid = this.config.instanceId
-    const authToken = this.config.apiKey
+    const accountSid = config.instanceId
+    const authToken = config.apiKey
     
     const response = await axios.post(
       `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
@@ -204,8 +210,9 @@ _Mensagem automática - HealthCare System_`
   }
 
   private static async sendViaZenvia(data: WhatsAppMessage): Promise<boolean> {
+    const config = await this.getConfig()
     const response = await axios.post(
-      `${this.config.apiUrl}/v2/channels/whatsapp/messages`,
+      `${config.apiUrl}/v2/channels/whatsapp/messages`,
       {
         from: process.env.ZENVIA_WHATSAPP_SENDER || 'your-sender',
         to: data.to,
@@ -219,7 +226,7 @@ _Mensagem automática - HealthCare System_`
       {
         headers: {
           'Content-Type': 'application/json',
-          'X-API-TOKEN': this.config.apiKey
+          'X-API-TOKEN': config.apiKey
         }
       }
     )

@@ -66,7 +66,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
 // GET - Check WhatsApp configuration status
 export const GET = withAuth(async (req: NextRequest, { user }) => {
-  const configured = WhatsAppService.isConfigured()
+  const configured = await WhatsAppService.isConfigured()
   
   return NextResponse.json({
     configured,

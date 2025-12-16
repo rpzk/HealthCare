@@ -29,12 +29,13 @@ async function main() {
     update: {},
     create: {
       email: 'admin@healthcare.com',
-  name: 'Dr. Admin Sistema',
-  role: Role.ADMIN,
-  speciality: 'Administração',
-  crmNumber: 'CRM-ADM-001',
-  phone: '(11) 99999-9999',
-  password: await bcrypt.hash('admin123', 12)
+      name: 'Dr. Admin Sistema',
+      role: Role.ADMIN,
+      speciality: 'Administração',
+      crmNumber: 'CRM-ADM-001',
+      phone: '(11) 99999-9999',
+      password: await bcrypt.hash('admin123', 12)
+      // ACS fields will be populated in Phase 2
     },
   })
 
