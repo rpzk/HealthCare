@@ -46,7 +46,7 @@ model User {
   developmentPlans       DevelopmentPlan[]      @relation("UserDevelopmentPlans")
 
   // Passkeys / WebAuthn credentials
-  webauthnCredentials    WebAuthnCredential[]
+  webauthnCredentials WebAuthnCredential[]
 
   // HR Management relations
   leaveRequests         LeaveRequest[]   @relation("UserLeaveRequests")
@@ -55,56 +55,76 @@ model User {
   scheduleEntries       ScheduleEntry[]  @relation("ScheduleEntries")
   timeBank              TimeBank[]
   vacationBalance       VacationBalance?
-  
+
   // Convites de pacientes enviados
-  patientInvites        PatientInvite[]
-  
+  patientInvites PatientInvite[]
+
   // Fila de espera (médicos)
-  waitingLists          WaitingList[]
-  
+  waitingLists WaitingList[]
+
   // Questionários integrativos
   questionnaireTemplates QuestionnaireTemplate[]
-  sentQuestionnaires     PatientQuestionnaire[] @relation("SentQuestionnaires")
-  
-  // Equipe de cuidado
-  careTeamMemberships    PatientCareTeam[]
-  
-  // Combos de exames criados
-  examCombos             ExamCombo[]
-  
-  // Papéis atribuídos (permite que um usuário tenha múltiplos papéis)
-  assignedRoles          UserAssignedRole[]
-  
-  // Telemedicina - Gravações como médico
-  doctorRecordings       TelemedicineRecording[] @relation("DoctorRecordings")
-  recordingAccessTokens  RecordingAccessToken[]
-  
-  // Atestados médicos emitidos
-  medicalCertificates    MedicalCertificate[] @relation("DoctorCertificates")
-  
-  // NPS recebidos
-  npsResponses           NpsResponse[] @relation("DoctorNpsResponses")
-  
-  // Assinatura Digital
-  digitalCertificates    DigitalCertificate[] @relation("UserDigitalCertificates")
-  signedDocuments        SignedDocument[] @relation("UserSignedDocuments")
+  sentQuestionnaires     PatientQuestionnaire[]  @relation("SentQuestionnaires")
 
+  // Equipe de cuidado
+  careTeamMemberships PatientCareTeam[]
+
+  // Combos de exames criados
+  examCombos ExamCombo[]
+
+  // Papéis atribuídos (permite que um usuário tenha múltiplos papéis)
+  assignedRoles UserAssignedRole[]
+
+  // Telemedicina - Gravações como médico
+  doctorRecordings      TelemedicineRecording[] @relation("DoctorRecordings")
+  recordingAccessTokens RecordingAccessToken[]
+
+  // Atestados médicos emitidos
+  medicalCertificates MedicalCertificate[] @relation("DoctorCertificates")
+
+  // NPS recebidos
+  npsResponses NpsResponse[] @relation("DoctorNpsResponses")
+
+  // Assinatura Digital
+  digitalCertificates DigitalCertificate[] @relation("UserDigitalCertificates")
+  signedDocuments     SignedDocument[]     @relation("UserSignedDocuments")
+
+  // ACS (Agente Comunitário de Saúde) Management
+  acsAssignedMicroAreaId String?
+  acsAssignedMicroArea   MicroArea? @relation("ACSMicroArea", fields: [acsAssignedMicroAreaId], references: [id], onDelete: SetNull)
+
+  assignedAreaId String?
+  assignedArea   Area?   @relation("AssignedArea", fields: [assignedAreaId], references: [id], onDelete: SetNull)
+
+  acsHistory ACSHistory[] @relation("ACSHistoryEntries")
+
+  // SUS Reports
+  dailyProductionReports DailyProductionReport[] @relation("DailyProductionReportProfessional")
+
+  // Vaccination Management
+  vaccinationsApplied Vaccination[] @relation("VaccinationProfessional")
+
+  // Referrals as destination doctor
+  destinationReferrals Referral[] @relation("ReferralDestinationDoctor")
+
+  @@index([acsAssignedMicroAreaId])
+  @@index([assignedAreaId])
   @@map("users")
 }
 
 model WebAuthnCredential {
-  id                      String   @id @default(cuid())
+  id                      String    @id @default(cuid())
   userId                  String
-  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  credentialId            String   @unique
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId            String    @unique
   publicKey               String
-  counter                 Int      @default(0)
+  counter                 Int       @default(0)
   deviceType              String?
-  backedUp                Boolean  @default(false)
+  backedUp                Boolean   @default(false)
   transports              String?
   authenticatorAttachment String?
   nickname                String?
-  createdAt               DateTime @default(now())
+  createdAt               DateTime  @default(now())
   lastUsedAt              DateTime?
 
   @@index([userId])
@@ -114,14 +134,14 @@ model WebAuthnCredential {
 // Tabela para papéis atribuídos a um usuário
 // Permite que administradores atribuam papéis adicionais
 model UserAssignedRole {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        Role     // Papel atribuído (ADMIN, DOCTOR, etc.)
-  isPrimary   Boolean  @default(false) // Se é o papel principal
-  assignedAt  DateTime @default(now())
-  assignedBy  String?  // ID do admin que atribuiu
-  
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role // Papel atribuído (ADMIN, DOCTOR, etc.)
+  isPrimary  Boolean  @default(false) // Se é o papel principal
+  assignedAt DateTime @default(now())
+  assignedBy String? // ID do admin que atribuiu
+
   @@unique([userId, role]) // Um usuário não pode ter o mesmo papel duas vezes
   @@map("user_assigned_roles")
 }
@@ -248,44 +268,86 @@ model Patient {
   vitalSigns            VitalSigns[]
   strengthAssessments   StrengthAssessment[]   @relation("PatientStrengthAssessments")
   developmentPlans      DevelopmentPlan[]      @relation("PatientDevelopmentPlans")
-  
+
   // Dispositivos de saúde conectados
-  connectedDevices      ConnectedDevice[]
-  deviceReadings        DeviceReading[]
-  readingThresholds     ReadingThreshold[]
-  deviceSyncSessions    DeviceSyncSession[]
-  
+  connectedDevices   ConnectedDevice[]
+  deviceReadings     DeviceReading[]
+  readingThresholds  ReadingThreshold[]
+  deviceSyncSessions DeviceSyncSession[]
+
   // Consentimentos de biometria (LGPD)
-  biometricConsents     PatientBiometricConsent[]
-  consentAuditLogs      ConsentAuditLog[]
-  patientInvite         PatientInvite?
-  
+  biometricConsents PatientBiometricConsent[]
+  consentAuditLogs  ConsentAuditLog[]
+  patientInvite     PatientInvite?
+
   // Questionários integrativos recebidos
-  questionnaires        PatientQuestionnaire[]
-  
+  questionnaires PatientQuestionnaire[]
+
   // Equipe de cuidado do paciente
-  careTeam              PatientCareTeam[]
-  
+  careTeam PatientCareTeam[]
+
   // Convênios médicos do paciente
-  insurances            PatientInsurance[]
-  
+  insurances PatientInsurance[]
+
   // Fila de espera
-  waitingLists          WaitingList[]
-  
+  waitingLists WaitingList[]
+
   // Gravações de teleconsulta
   telemedicineRecordings TelemedicineRecording[]
-  
-  // Atestados médicos
-  medicalCertificates   MedicalCertificate[]
-  
-  // NPS enviados
-  npsResponses          NpsResponse[]
 
+  // Atestados médicos
+  medicalCertificates MedicalCertificate[]
+
+  // NPS enviados
+  npsResponses NpsResponse[]
+
+  // Wellness Dashboard - Patient Experience
+  moodLogs                 PatientMoodLog[]         @relation("PatientMoodLogs")
+  aptitudes                PatientAptitude[]        @relation("PatientAptitudes")
+  badges                   PatientBadge[]           @relation("PatientBadges")
+  wellnessDevelopmentPlans PatientDevelopmentPlan[] @relation("PatientWellnessDevelopmentPlans")
+  healthEvents             PatientHealthEvent[]     @relation("PatientHealthEvents")
+  wellnessScores           PatientWellnessScore[]   @relation("PatientWellnessScores")
+  journals                 PatientJournal[]         @relation("PatientJournals")
+
+  // ============================================
+  // SSF INTEGRATION - New Relations
+  // ============================================
+  // Vaccination
+  vaccinations Vaccination[]
+
+  // Pregnancy
+  pregnancies Pregnancy[]
+
+  // Gynecological History
+  gynecologicalHistory GynecologicalHistory[]
+  // ============================================
+
+  // PSF/Família Integration
+  rg         String? // RG or equivalent ID
+  rgState    String? // State where RG was issued
+  fatherName String?
+
+  familyNumber     String? // PSF format: "001.0001.0001"
+  sequenceInFamily Int? // Order in family (1, 2, 3...)
+
+  // Social Assessment
+  socialVulnerability String? // LOW, MEDIUM, HIGH
+  economicClass       String? // A, B, C, D, E
+  monthlyFamilyIncome Float? // In BRL
+
+  // Location preference
+  preferredAddressId String?
+  preferredAddress   Address? @relation("PreferredAddress", fields: [preferredAddressId], references: [id], onDelete: SetNull)
+
+  @@index([familyNumber, sequenceInFamily])
+  @@index([preferredAddressId])
+  @@index([socialVulnerability])
   @@map("patients")
 }
 
 model Household {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   address      String
   number       String?
@@ -294,29 +356,87 @@ model Household {
   city         String?
   state        String?
   zipCode      String?
-  microArea    String?
+  microArea    String? // Keep for backward compatibility
   familyType   String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  members      Patient[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  // Geographic hierarchy (new)
+  microAreaId  String?
+  microAreaObj MicroArea? @relation(fields: [microAreaId], references: [id], onDelete: SetNull)
+
+  areaId String?
+  area   Area?   @relation(fields: [areaId], references: [id], onDelete: SetNull)
+
+  // Social indicators
+  monthlyIncome      Float?
+  economicClass      String? // A, B, C, D, E
+  numberOfRooms      Int?
+  hasWater           Boolean? @default(false)
+  hasElectricity     Boolean? @default(false)
+  hasSewage          Boolean? @default(false)
+  hasGarbage         Boolean? @default(false)
+  vulnerabilityScore Float? // 0-100 scale
+
+  members Patient[]
+
+  @@index([microAreaId])
+  @@index([areaId])
+  @@index([vulnerabilityScore])
   @@map("households")
 }
 
 model Referral {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   patientId   String
   doctorId    String
   specialty   String
   description String
-  priority    String   @default("NORMAL")
-  status      String   @default("PENDING")
+  priority    String  @default("NORMAL")
+  status      String  @default("PENDING")
   notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  doctor      User     @relation(fields: [doctorId], references: [id])
-  patient     Patient  @relation(fields: [patientId], references: [id])
 
+  // ============================================
+  // ENHANCED REFERRAL (SSF Integration)
+  // ============================================
+  // Consulta de origem
+  consultationId String?
+  consultation   Consultation? @relation("OriginReferral", fields: [consultationId], references: [id])
+
+  // Unidade de destino
+  destinationUnitId String?
+  destinationUnit   HealthUnit? @relation("ReferralDestinationUnit", fields: [destinationUnitId], references: [id])
+
+  // Profissional de destino
+  destinationDoctorId String?
+  destinationDoctor   User?   @relation("ReferralDestinationDoctor", fields: [destinationDoctorId], references: [id])
+
+  // Agendamento
+  scheduledDate DateTime?
+  attendedDate  DateTime?
+
+  // Urgência detalhada
+  urgencyLevel String? // ROUTINE, URGENT, EMERGENCY
+
+  // Contra-referência
+  counterReferralId String?   @unique
+  counterReferral   Referral? @relation("CounterReferral", fields: [counterReferralId], references: [id])
+  originReferral    Referral? @relation("CounterReferral")
+
+  // Resultado do encaminhamento
+  outcome      String? // ATTENDED, NO_SHOW, CANCELLED, RESOLVED
+  outcomeNotes String?
+  // ============================================
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  doctor    User     @relation(fields: [doctorId], references: [id])
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([consultationId])
+  @@index([destinationUnitId])
+  @@index([scheduledDate])
+  @@index([status])
   @@map("referrals")
 }
 
@@ -422,21 +542,34 @@ model Consultation {
   financialTransaction FinancialTransaction?
   prescriptions        Prescription[]
   vitalSigns           VitalSigns[]
-  
+
   // Questionários associados a esta consulta
-  questionnaires       PatientQuestionnaire[]
-  
+  questionnaires PatientQuestionnaire[]
+
   // Fila de espera atendida
-  waitingList          WaitingList?
-  
+  waitingList WaitingList?
+
   // Gravações de telemedicina
   telemedicineRecordings TelemedicineRecording[]
-  
+
   // Atestados emitidos
-  medicalCertificates  MedicalCertificate[]
-  
+  medicalCertificates MedicalCertificate[]
+
   // NPS da consulta
-  npsResponse          NpsResponse?
+  npsResponse NpsResponse?
+
+  // ============================================
+  // SSF INTEGRATION - New Relations
+  // ============================================
+  // Prenatal consultation
+  prenatalConsultation PreNatalConsultation?
+
+  // Gynecological history
+  gynecologicalHistory GynecologicalHistory[]
+
+  // Referrals originated from this consultation
+  originReferrals Referral[] @relation("OriginReferral")
+  // ============================================
 
   @@map("consultations")
 }
@@ -490,24 +623,46 @@ model ExamRequest {
 }
 
 model VitalSigns {
-  id               String        @id @default(cuid())
+  id               String @id @default(cuid())
   systolicBP       Int?
   diastolicBP      Int?
   heartRate        Int?
   respiratoryRate  Int?
   temperature      Float?
-  weight           Float?
-  height           Float?
-  bmi              Float?
+  weight           Float? // Peso em kg
+  height           Float? // Altura em cm
+  bmi              Float? // IMC calculado
   oxygenSaturation Int?
   bloodGlucose     Int?
-  notes            String?
-  recordedAt       DateTime      @default(now())
-  createdAt        DateTime      @default(now())
-  patientId        String
-  consultationId   String?
-  consultation     Consultation? @relation(fields: [consultationId], references: [id])
-  patient          Patient       @relation(fields: [patientId], references: [id])
+
+  // ============================================
+  // ANTHROPOMETRIC MEASUREMENTS (SSF Integration)
+  // ============================================
+  waistCircumference Float? // Circunferência da cintura (cm)
+  hipCircumference   Float? // Circunferência do quadril (cm)
+  headCircumference  Float? // Perímetro cefálico (cm) - pediatria
+  armCircumference   Float? // Circunferência do braço (cm)
+
+  // BMI Classification
+  bmiClassification String? // UNDERWEIGHT, NORMAL, OVERWEIGHT, OBESE_I, OBESE_II, OBESE_III
+
+  // Pediatric specific
+  breastfeeding String? // EXCLUSIVE, PREDOMINANT, COMPLEMENTARY, NONE
+  weightForAge  String? // Classificação peso/idade (OMS)
+  heightForAge  String? // Classificação altura/idade (OMS)
+  bmiForAge     String? // Classificação IMC/idade (OMS)
+
+  // Nutritional assessment
+  nutritionalStatus String? // NORMAL, MILD_MALNUTRITION, MODERATE_MALNUTRITION, SEVERE_MALNUTRITION, OVERWEIGHT, OBESITY
+  // ============================================
+
+  notes          String?
+  recordedAt     DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  patientId      String
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+  patient        Patient       @relation(fields: [patientId], references: [id])
 
   @@map("vital_signs")
 }
@@ -581,29 +736,62 @@ model ExamResult {
 }
 
 model Address {
-  id           String          @id @default(cuid())
+  id           String   @id @default(cuid())
   street       String
   number       String?
   complement   String?
-  neighborhood String?
-  city         String
-  state        String
+  neighborhood String? // Keep for backward compatibility
+  city         String // Keep for backward compatibility
+  state        String // Keep for backward compatibility
   zipCode      String?
   latitude     Float?
   longitude    Float?
-  isPrimary    Boolean         @default(false)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  patientId    String?
-  microAreaId  String?
-  microArea    MicroArea?      @relation(fields: [microAreaId], references: [id])
-  patient      Patient?        @relation(fields: [patientId], references: [id])
-  residents    PersonAddress[]
-  Place        Place[]
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Old references (backward compatibility)
+  patientId   String?
+  microAreaId String?
+
+  // New geographic hierarchy (all optional for backward compatibility)
+  countryId       String?
+  stateId         String?
+  cityId          String?
+  zoneId          String?
+  districtId      String?
+  subprefectureId String?
+  neighborhoodId  String? // Different from string field above
+  areaId          String?
+
+  // Relations - old
+  patient            Patient?        @relation(fields: [patientId], references: [id])
+  microArea          MicroArea?      @relation(fields: [microAreaId], references: [id])
+  residents          PersonAddress[]
+  Place              Place[]
+  patientsPreferring Patient[]       @relation("PreferredAddress")
+
+  // Relations - new geographic
+  country         Country?       @relation(fields: [countryId], references: [code], onDelete: SetNull)
+  stateObj        State?         @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  cityObj         City?          @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  zone            Zone?          @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  district        District?      @relation(fields: [districtId], references: [id], onDelete: SetNull)
+  subprefecture   Subprefecture? @relation(fields: [subprefectureId], references: [id], onDelete: SetNull)
+  neighborhoodObj Neighborhood?  @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  area            Area?          @relation(fields: [areaId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([microAreaId])
+  @@index([countryId])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([zoneId])
+  @@index([districtId])
+  @@index([neighborhoodId])
+  @@index([areaId])
   @@index([latitude, longitude])
+  @@index([cityId, zoneId, districtId])
   @@map("addresses")
 }
 
@@ -627,23 +815,34 @@ model Place {
 }
 
 model MicroArea {
-  id          String              @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  code        String?             @unique
+  code        String?  @unique
   description String?
   polygonGeo  String?
   centroidLat Float?
   centroidLng Float?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   maxLat      Float?
   maxLng      Float?
   minLat      Float?
   minLng      Float?
-  addresses   Address[]
-  revisions   MicroAreaRevision[]
-  places      Place[]
 
+  // Geographic hierarchy
+  areaId String?
+  area   Area?   @relation(fields: [areaId], references: [id], onDelete: SetNull)
+
+  // ACS assignments
+  acsUsers   User[]       @relation("ACSMicroArea")
+  acsHistory ACSHistory[] @relation("ACSHistory")
+  households Household[]
+
+  addresses Address[]
+  revisions MicroAreaRevision[]
+  places    Place[]
+
+  @@index([areaId])
   @@index([centroidLat, centroidLng])
   @@index([minLat, maxLat])
   @@index([minLng, maxLng])
@@ -1293,7 +1492,7 @@ model FinancialTransaction {
   paymentMethod  String?
   patientId      String?
   consultationId String?           @unique
-  insuranceId    String?           // Link to insurance/convenio
+  insuranceId    String? // Link to insurance/convenio
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   consultation   Consultation?     @relation(fields: [consultationId], references: [id])
@@ -1305,7 +1504,7 @@ model FinancialTransaction {
 
 model HealthInsurance {
   id                 String                 @id @default(cuid())
-  name               String                 // Nome do convênio (ex: Unimed, SulAmérica)
+  name               String // Nome do convênio (ex: Unimed, SulAmérica)
   type               InsuranceType          @default(PRIVATE)
   code               String?                @unique // Código ANS
   contactPhone       String?
@@ -1324,17 +1523,17 @@ model HealthInsurance {
 }
 
 model PatientInsurance {
-  id              String          @id @default(cuid())
-  patientId       String
-  insuranceId     String
-  cardNumber      String?         // Número da carteirinha
-  validUntil      DateTime?       // Validade
-  plan            String?         // Tipo de plano
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  insurance       HealthInsurance @relation(fields: [insuranceId], references: [id])
+  id          String          @id @default(cuid())
+  patientId   String
+  insuranceId String
+  cardNumber  String? // Número da carteirinha
+  validUntil  DateTime? // Validade
+  plan        String? // Tipo de plano
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  patient     Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  insurance   HealthInsurance @relation(fields: [insuranceId], references: [id])
 
   @@unique([patientId, insuranceId])
   @@map("patient_insurances")
@@ -1657,21 +1856,24 @@ enum TransactionStatus {
 }
 
 enum InsuranceType {
-  PRIVATE     // Convênio particular
-  SUS         // Sistema Único de Saúde
-  CORPORATE   // Convênio empresarial
+  PRIVATE // Convênio particular
+  SUS // Sistema Único de Saúde
+  CORPORATE // Convênio empresarial
   OTHER
 }
 
 model SystemSetting {
   key         String   @id
-  value       String
+  value       String   @db.Text // Suporte a valores grandes
   description String?
-  category    String   @default("GENERAL") // EMAIL, SECURITY, SYSTEM
+  category    String   @default("GENERAL") // EMAIL, SECURITY, SYSTEM, STORAGE, WHATSAPP, REDIS, WEBRTC
   isPublic    Boolean  @default(false)
+  encrypted   Boolean  @default(false) // Se o valor está criptografado
+  updatedBy   String? // ID do usuário que atualizou
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([category])
   @@map("system_settings")
 }
 
@@ -2175,8 +2377,9 @@ model PrescriptionItem {
   quantity     Int?
   instructions String?
 
-  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  medication   Medication?  @relation(fields: [medicationId], references: [id])
+  prescription      Prescription       @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication        Medication?        @relation(fields: [medicationId], references: [id])
+  medicationTakings MedicationTaking[] // Histórico de tomadas
 
   createdAt DateTime @default(now())
 
@@ -2188,7 +2391,7 @@ model PrescriptionItem {
 // =====================================================
 
 model FormulaTemplate {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String // Nome da fórmula
   category    String // Categoria (Endocrinologia, Gastrointestinal, etc)
   ingredients String // Ingredientes com doses (Vitamina D3 10.000 UI | K2 120 mcg)
@@ -2203,11 +2406,11 @@ model FormulaTemplate {
   interactions      String? // Interações medicamentosas
   monitoring        String? // Exames/monitoramento recomendado
   duration          String? // Duração sugerida do tratamento
-  
+
   // Metadados
-  source      String? // Fonte (Singularis, Vitalis, CSV, etc)
-  pharmacy    String? // Farmácia recomendada
-  
+  source   String? // Fonte (Singularis, Vitalis, CSV, etc)
+  pharmacy String? // Farmácia recomendada
+
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2500,85 +2703,85 @@ enum ProtocolCategory {
 
 // Tipo de dispositivo de saúde
 enum HealthDeviceType {
-  BLOOD_PRESSURE   // Medidor de pressão
-  GLUCOMETER       // Glicosímetro
-  PULSE_OXIMETER   // Oxímetro de pulso
-  THERMOMETER      // Termômetro
-  SCALE            // Balança
-  HEART_RATE       // Monitor cardíaco
-  ECG              // Eletrocardiograma
-  STETHOSCOPE      // Estetoscópio digital
-  OTOSCOPE         // Otoscópio digital
-  DERMATOSCOPE     // Dermatoscópio
-  SPIROMETER       // Espirômetro
-  SLEEP_TRACKER    // Monitor de sono
+  BLOOD_PRESSURE // Medidor de pressão
+  GLUCOMETER // Glicosímetro
+  PULSE_OXIMETER // Oxímetro de pulso
+  THERMOMETER // Termômetro
+  SCALE // Balança
+  HEART_RATE // Monitor cardíaco
+  ECG // Eletrocardiograma
+  STETHOSCOPE // Estetoscópio digital
+  OTOSCOPE // Otoscópio digital
+  DERMATOSCOPE // Dermatoscópio
+  SPIROMETER // Espirômetro
+  SLEEP_TRACKER // Monitor de sono
   ACTIVITY_TRACKER // Monitor de atividade
-  CGM              // Monitor contínuo de glicose
-  SMARTWATCH       // Relógio inteligente
-  FITNESS_BAND     // Pulseira fitness
-  OTHER            // Outro
+  CGM // Monitor contínuo de glicose
+  SMARTWATCH // Relógio inteligente
+  FITNESS_BAND // Pulseira fitness
+  OTHER // Outro
 }
 
 // Fonte de dados do dispositivo
 enum DeviceDataSource {
-  APPLE_HEALTHKIT    // Apple HealthKit (iOS)
-  GOOGLE_FIT         // Google Fit (Android)
-  HEALTH_CONNECT     // Health Connect (Android 14+)
-  DIRECT_BLUETOOTH   // Conexão Bluetooth direta
-  DIRECT_WIFI        // Conexão WiFi direta
-  MANUAL_ENTRY       // Entrada manual
-  API_INTEGRATION    // Integração via API do fabricante
-  FHIR               // Padrão FHIR
-  OPEN_MHEALTH       // Padrão Open mHealth
+  APPLE_HEALTHKIT // Apple HealthKit (iOS)
+  GOOGLE_FIT // Google Fit (Android)
+  HEALTH_CONNECT // Health Connect (Android 14+)
+  DIRECT_BLUETOOTH // Conexão Bluetooth direta
+  DIRECT_WIFI // Conexão WiFi direta
+  MANUAL_ENTRY // Entrada manual
+  API_INTEGRATION // Integração via API do fabricante
+  FHIR // Padrão FHIR
+  OPEN_MHEALTH // Padrão Open mHealth
 }
 
 // Status de conexão do dispositivo
 enum DeviceConnectionStatus {
-  CONNECTED       // Conectado e sincronizando
-  DISCONNECTED    // Desconectado
-  PAIRING         // Em processo de pareamento
-  ERROR           // Erro de conexão
-  NEEDS_AUTH      // Precisa reautorização
+  CONNECTED // Conectado e sincronizando
+  DISCONNECTED // Desconectado
+  PAIRING // Em processo de pareamento
+  ERROR // Erro de conexão
+  NEEDS_AUTH // Precisa reautorização
 }
 
 // Dispositivo de saúde conectado
 model ConnectedDevice {
-  id                String                 @id @default(cuid())
-  patientId         String
-  patient           Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
   // Identificação do dispositivo
-  deviceType        HealthDeviceType
-  deviceName        String                 // Nome do dispositivo (ex: "Apple Watch Series 9")
-  manufacturer      String?                // Fabricante (ex: "Apple", "Omron")
-  model             String?                // Modelo específico
-  serialNumber      String?                // Número de série
-  firmwareVersion   String?                // Versão do firmware
-  
+  deviceType      HealthDeviceType
+  deviceName      String // Nome do dispositivo (ex: "Apple Watch Series 9")
+  manufacturer    String? // Fabricante (ex: "Apple", "Omron")
+  model           String? // Modelo específico
+  serialNumber    String? // Número de série
+  firmwareVersion String? // Versão do firmware
+
   // Conexão
-  dataSource        DeviceDataSource
-  connectionStatus  DeviceConnectionStatus @default(DISCONNECTED)
-  lastSyncAt        DateTime?              // Última sincronização
-  syncFrequency     Int?                   // Frequência de sync em minutos
-  
+  dataSource       DeviceDataSource
+  connectionStatus DeviceConnectionStatus @default(DISCONNECTED)
+  lastSyncAt       DateTime? // Última sincronização
+  syncFrequency    Int? // Frequência de sync em minutos
+
   // Autenticação (para APIs de fabricantes)
-  accessToken       String?                // Token de acesso (criptografado)
-  refreshToken      String?                // Token de refresh (criptografado)
-  tokenExpiresAt    DateTime?              // Expiração do token
-  
+  accessToken    String? // Token de acesso (criptografado)
+  refreshToken   String? // Token de refresh (criptografado)
+  tokenExpiresAt DateTime? // Expiração do token
+
   // Configurações
-  isActive          Boolean                @default(true)
-  autoSync          Boolean                @default(true)
-  notifyOnAbnormal  Boolean                @default(true) // Alertar valores anormais
-  
+  isActive         Boolean @default(true)
+  autoSync         Boolean @default(true)
+  notifyOnAbnormal Boolean @default(true) // Alertar valores anormais
+
   // Metadados
-  metadata          Json?                  // Dados extras específicos do dispositivo
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  
+  metadata  Json? // Dados extras específicos do dispositivo
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relações
-  readings          DeviceReading[]
-  
+  readings DeviceReading[]
+
   @@unique([patientId, serialNumber])
   @@index([patientId])
   @@index([deviceType])
@@ -2587,45 +2790,45 @@ model ConnectedDevice {
 
 // Leitura/medição de um dispositivo
 model DeviceReading {
-  id              String          @id @default(cuid())
-  deviceId        String?
-  device          ConnectedDevice? @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  patientId       String
-  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
+  id        String           @id @default(cuid())
+  deviceId  String?
+  device    ConnectedDevice? @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
   // Tipo de medição
-  readingType     ReadingType
-  
+  readingType ReadingType
+
   // Valores (usando campos genéricos para flexibilidade)
-  primaryValue    Float           // Valor principal (ex: glicose, SpO2, peso)
-  secondaryValue  Float?          // Valor secundário (ex: pressão diastólica)
-  tertiaryValue   Float?          // Valor terciário (se necessário)
-  unit            String          // Unidade (ex: "mg/dL", "mmHg", "kg")
-  
+  primaryValue   Float // Valor principal (ex: glicose, SpO2, peso)
+  secondaryValue Float? // Valor secundário (ex: pressão diastólica)
+  tertiaryValue  Float? // Valor terciário (se necessário)
+  unit           String // Unidade (ex: "mg/dL", "mmHg", "kg")
+
   // Contexto da medição
-  measuredAt      DateTime        // Quando a medição foi feita
-  syncedAt        DateTime        @default(now()) // Quando foi sincronizado
-  
+  measuredAt DateTime // Quando a medição foi feita
+  syncedAt   DateTime @default(now()) // Quando foi sincronizado
+
   // Metadados da medição
-  context         ReadingContext? // Contexto (jejum, pós-refeição, etc)
-  notes           String?         // Observações
-  isManual        Boolean         @default(false) // Entrada manual vs automática
-  
+  context  ReadingContext? // Contexto (jejum, pós-refeição, etc)
+  notes    String? // Observações
+  isManual Boolean         @default(false) // Entrada manual vs automática
+
   // Qualidade/confiabilidade
-  confidence      Float?          // Score de confiança (0-1)
-  isValid         Boolean         @default(true)
-  invalidReason   String?         // Motivo se inválido
-  
+  confidence    Float? // Score de confiança (0-1)
+  isValid       Boolean @default(true)
+  invalidReason String? // Motivo se inválido
+
   // Alertas
-  isAbnormal      Boolean         @default(false)
-  alertSeverity   AlertSeverity?  // Severidade se anormal
-  alertTriggered  Boolean         @default(false)
-  
+  isAbnormal     Boolean        @default(false)
+  alertSeverity  AlertSeverity? // Severidade se anormal
+  alertTriggered Boolean        @default(false)
+
   // Dados brutos do dispositivo
-  rawData         Json?           // Dados originais do dispositivo
-  
-  createdAt       DateTime        @default(now())
-  
+  rawData Json? // Dados originais do dispositivo
+
+  createdAt DateTime @default(now())
+
   @@index([patientId, readingType])
   @@index([deviceId, measuredAt])
   @@index([measuredAt])
@@ -2636,122 +2839,122 @@ model DeviceReading {
 // Tipo de leitura/medição
 enum ReadingType {
   // Cardiovascular
-  BLOOD_PRESSURE_SYSTOLIC   // Pressão sistólica
-  BLOOD_PRESSURE_DIASTOLIC  // Pressão diastólica
-  BLOOD_PRESSURE            // Pressão (combinado)
-  HEART_RATE                // Frequência cardíaca
-  HEART_RATE_VARIABILITY    // Variabilidade cardíaca
-  ECG_RHYTHM                // Ritmo ECG
-  
+  BLOOD_PRESSURE_SYSTOLIC // Pressão sistólica
+  BLOOD_PRESSURE_DIASTOLIC // Pressão diastólica
+  BLOOD_PRESSURE // Pressão (combinado)
+  HEART_RATE // Frequência cardíaca
+  HEART_RATE_VARIABILITY // Variabilidade cardíaca
+  ECG_RHYTHM // Ritmo ECG
+
   // Respiratório
-  OXYGEN_SATURATION         // SpO2
-  RESPIRATORY_RATE          // Frequência respiratória
-  PEAK_FLOW                 // Pico de fluxo
-  FEV1                      // Volume expiratório forçado
-  
+  OXYGEN_SATURATION // SpO2
+  RESPIRATORY_RATE // Frequência respiratória
+  PEAK_FLOW // Pico de fluxo
+  FEV1 // Volume expiratório forçado
+
   // Metabólico
-  BLOOD_GLUCOSE             // Glicemia
-  BLOOD_GLUCOSE_FASTING     // Glicemia em jejum
-  BLOOD_GLUCOSE_POSTMEAL    // Glicemia pós-prandial
-  KETONES                   // Cetonas
-  
+  BLOOD_GLUCOSE // Glicemia
+  BLOOD_GLUCOSE_FASTING // Glicemia em jejum
+  BLOOD_GLUCOSE_POSTMEAL // Glicemia pós-prandial
+  KETONES // Cetonas
+
   // Composição corporal
-  WEIGHT                    // Peso
-  BMI                       // IMC
-  BODY_FAT                  // % gordura corporal
-  MUSCLE_MASS               // Massa muscular
-  BONE_MASS                 // Massa óssea
-  WATER_PERCENTAGE          // % água corporal
-  VISCERAL_FAT              // Gordura visceral
-  
+  WEIGHT // Peso
+  BMI // IMC
+  BODY_FAT // % gordura corporal
+  MUSCLE_MASS // Massa muscular
+  BONE_MASS // Massa óssea
+  WATER_PERCENTAGE // % água corporal
+  VISCERAL_FAT // Gordura visceral
+
   // Temperatura
-  BODY_TEMPERATURE          // Temperatura corporal
-  SKIN_TEMPERATURE          // Temperatura da pele
-  
+  BODY_TEMPERATURE // Temperatura corporal
+  SKIN_TEMPERATURE // Temperatura da pele
+
   // Sono
-  SLEEP_DURATION            // Duração do sono
-  SLEEP_DEEP                // Sono profundo
-  SLEEP_REM                 // Sono REM
-  SLEEP_LIGHT               // Sono leve
-  SLEEP_AWAKE               // Tempo acordado
-  SLEEP_SCORE               // Score de qualidade
-  
+  SLEEP_DURATION // Duração do sono
+  SLEEP_DEEP // Sono profundo
+  SLEEP_REM // Sono REM
+  SLEEP_LIGHT // Sono leve
+  SLEEP_AWAKE // Tempo acordado
+  SLEEP_SCORE // Score de qualidade
+
   // Atividade física
-  STEPS                     // Passos
-  DISTANCE                  // Distância
-  CALORIES_BURNED           // Calorias queimadas
-  ACTIVE_MINUTES            // Minutos ativos
-  FLOORS_CLIMBED            // Andares subidos
-  EXERCISE_DURATION         // Duração exercício
-  
+  STEPS // Passos
+  DISTANCE // Distância
+  CALORIES_BURNED // Calorias queimadas
+  ACTIVE_MINUTES // Minutos ativos
+  FLOORS_CLIMBED // Andares subidos
+  EXERCISE_DURATION // Duração exercício
+
   // Estresse/Mental
-  STRESS_LEVEL              // Nível de estresse
-  MINDFULNESS_MINUTES       // Minutos de mindfulness
-  
+  STRESS_LEVEL // Nível de estresse
+  MINDFULNESS_MINUTES // Minutos de mindfulness
+
   // Áudio/Exame
-  HEART_SOUND               // Som cardíaco (estetoscópio)
-  LUNG_SOUND                // Som pulmonar
-  EAR_IMAGE                 // Imagem do ouvido (otoscópio)
-  SKIN_IMAGE                // Imagem da pele (dermatoscópio)
-  
+  HEART_SOUND // Som cardíaco (estetoscópio)
+  LUNG_SOUND // Som pulmonar
+  EAR_IMAGE // Imagem do ouvido (otoscópio)
+  SKIN_IMAGE // Imagem da pele (dermatoscópio)
+
   // Outros
-  HYDRATION                 // Hidratação
-  MENSTRUAL_CYCLE           // Ciclo menstrual
-  MEDICATION_TAKEN          // Medicação tomada
-  OTHER                     // Outro
+  HYDRATION // Hidratação
+  MENSTRUAL_CYCLE // Ciclo menstrual
+  MEDICATION_TAKEN // Medicação tomada
+  OTHER // Outro
 }
 
 // Contexto da medição
 enum ReadingContext {
-  FASTING           // Em jejum
-  BEFORE_MEAL       // Antes da refeição
-  AFTER_MEAL        // Depois da refeição
-  BEFORE_EXERCISE   // Antes do exercício
-  AFTER_EXERCISE    // Depois do exercício
-  RESTING           // Em repouso
-  ACTIVE            // Em atividade
-  SLEEPING          // Dormindo
-  WAKING            // Ao acordar
-  BEDTIME           // Ao deitar
-  STRESSED          // Estressado
-  RELAXED           // Relaxado
-  ILL               // Doente
-  MEDICATED         // Após medicação
+  FASTING // Em jejum
+  BEFORE_MEAL // Antes da refeição
+  AFTER_MEAL // Depois da refeição
+  BEFORE_EXERCISE // Antes do exercício
+  AFTER_EXERCISE // Depois do exercício
+  RESTING // Em repouso
+  ACTIVE // Em atividade
+  SLEEPING // Dormindo
+  WAKING // Ao acordar
+  BEDTIME // Ao deitar
+  STRESSED // Estressado
+  RELAXED // Relaxado
+  ILL // Doente
+  MEDICATED // Após medicação
 }
 
 // Severidade de alerta
 enum AlertSeverity {
-  LOW       // Atenção
-  MEDIUM    // Moderado
-  HIGH      // Alto
-  CRITICAL  // Crítico
+  LOW // Atenção
+  MEDIUM // Moderado
+  HIGH // Alto
+  CRITICAL // Crítico
 }
 
 // Limites de referência para alertas
 model ReadingThreshold {
-  id              String      @id @default(cuid())
-  patientId       String?     // Se null, é padrão global
-  patient         Patient?    @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
-  readingType     ReadingType
-  
+  id        String   @id @default(cuid())
+  patientId String? // Se null, é padrão global
+  patient   Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  readingType ReadingType
+
   // Limites
-  criticalLow     Float?      // Abaixo = crítico
-  warningLow      Float?      // Abaixo = atenção
-  normalMin       Float?      // Início da faixa normal
-  normalMax       Float?      // Fim da faixa normal
-  warningHigh     Float?      // Acima = atenção
-  criticalHigh    Float?      // Acima = crítico
-  
+  criticalLow  Float? // Abaixo = crítico
+  warningLow   Float? // Abaixo = atenção
+  normalMin    Float? // Início da faixa normal
+  normalMax    Float? // Fim da faixa normal
+  warningHigh  Float? // Acima = atenção
+  criticalHigh Float? // Acima = crítico
+
   // Aplicabilidade
-  context         ReadingContext? // Contexto específico (ex: jejum para glicose)
-  ageMin          Int?        // Idade mínima
-  ageMax          Int?        // Idade máxima
-  
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
+  context ReadingContext? // Contexto específico (ex: jejum para glicose)
+  ageMin  Int? // Idade mínima
+  ageMax  Int? // Idade máxima
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([patientId, readingType, context])
   @@index([readingType])
   @@map("reading_thresholds")
@@ -2759,22 +2962,22 @@ model ReadingThreshold {
 
 // Sessão de sincronização
 model DeviceSyncSession {
-  id              String          @id @default(cuid())
-  patientId       String
-  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
-  dataSource      DeviceDataSource
-  startedAt       DateTime        @default(now())
-  completedAt     DateTime?
-  
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  dataSource  DeviceDataSource
+  startedAt   DateTime         @default(now())
+  completedAt DateTime?
+
   // Estatísticas
-  readingsImported Int            @default(0)
-  readingsSkipped  Int            @default(0)
-  errors          Int             @default(0)
-  
-  status          SyncStatus      @default(IN_PROGRESS)
-  errorMessage    String?
-  
+  readingsImported Int @default(0)
+  readingsSkipped  Int @default(0)
+  errors           Int @default(0)
+
+  status       SyncStatus @default(IN_PROGRESS)
+  errorMessage String?
+
   @@index([patientId])
   @@map("device_sync_sessions")
 }
@@ -2792,62 +2995,62 @@ enum SyncStatus {
 
 // Tipos de dados biométricos que podem ser compartilhados
 enum BiometricDataType {
-  HEART_RATE           // Frequência cardíaca
-  BLOOD_PRESSURE       // Pressão arterial
-  OXYGEN_SATURATION    // Saturação de oxigênio
-  BLOOD_GLUCOSE        // Glicemia
-  BODY_TEMPERATURE     // Temperatura
-  WEIGHT               // Peso
-  BODY_COMPOSITION     // Composição corporal (gordura, massa muscular)
-  STEPS                // Passos
-  DISTANCE             // Distância percorrida
-  CALORIES             // Calorias
-  ACTIVITY             // Atividade física
-  SLEEP                // Dados de sono
-  HEART_SOUNDS         // Sons cardíacos (estetoscópio)
-  RESPIRATORY          // Dados respiratórios
-  ECG                  // Eletrocardiograma
-  OTHER                // Outros
+  HEART_RATE // Frequência cardíaca
+  BLOOD_PRESSURE // Pressão arterial
+  OXYGEN_SATURATION // Saturação de oxigênio
+  BLOOD_GLUCOSE // Glicemia
+  BODY_TEMPERATURE // Temperatura
+  WEIGHT // Peso
+  BODY_COMPOSITION // Composição corporal (gordura, massa muscular)
+  STEPS // Passos
+  DISTANCE // Distância percorrida
+  CALORIES // Calorias
+  ACTIVITY // Atividade física
+  SLEEP // Dados de sono
+  HEART_SOUNDS // Sons cardíacos (estetoscópio)
+  RESPIRATORY // Dados respiratórios
+  ECG // Eletrocardiograma
+  OTHER // Outros
 }
 
 // Convite para paciente com opções de consentimento
 model PatientInvite {
-  id              String        @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Dados do convite
-  email           String
-  phone           String?       // Para envio via WhatsApp
-  patientName     String        // Nome do paciente
-  token           String        @unique
-  expiresAt       DateTime
-  status          InviteStatus  @default(PENDING)
-  
+  email       String
+  phone       String? // Para envio via WhatsApp
+  patientName String // Nome do paciente
+  token       String       @unique
+  expiresAt   DateTime
+  status      InviteStatus @default(PENDING)
+
   // Quem enviou
-  invitedById     String
-  invitedBy       User          @relation(fields: [invitedById], references: [id])
-  
+  invitedById String
+  invitedBy   User   @relation(fields: [invitedById], references: [id])
+
   // Dados pré-preenchidos (opcional)
-  birthDate       DateTime?
-  cpf             String?
-  
+  birthDate DateTime?
+  cpf       String?
+
   // Mensagem personalizada
-  customMessage   String?
-  
+  customMessage String?
+
   // Consentimento aceito
   consentAcceptedAt DateTime?
-  consentIpAddress  String?     // IP do aceite (auditoria)
-  consentUserAgent  String?     // Navegador usado (auditoria)
-  
+  consentIpAddress  String? // IP do aceite (auditoria)
+  consentUserAgent  String? // Navegador usado (auditoria)
+
   // Relação com consentimentos
   biometricConsents PatientBiometricConsent[]
-  
+
   // Paciente criado (após aceite)
-  patientId       String?       @unique
-  patient         Patient?      @relation(fields: [patientId], references: [id])
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  patientId String?  @unique
+  patient   Patient? @relation(fields: [patientId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([email])
   @@index([token])
   @@map("patient_invites")
@@ -2855,35 +3058,35 @@ model PatientInvite {
 
 // Consentimento individual para cada tipo de dado biométrico
 model PatientBiometricConsent {
-  id              String            @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relacionamentos
-  patientId       String?
-  patient         Patient?          @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  inviteId        String?
-  invite          PatientInvite?    @relation(fields: [inviteId], references: [id], onDelete: Cascade)
-  
+  patientId String?
+  patient   Patient?       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  inviteId  String?
+  invite    PatientInvite? @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
   // Tipo de dado
-  dataType        BiometricDataType
-  
+  dataType BiometricDataType
+
   // Consentimento
-  isGranted       Boolean           @default(false)
-  grantedAt       DateTime?
-  revokedAt       DateTime?
-  
+  isGranted Boolean   @default(false)
+  grantedAt DateTime?
+  revokedAt DateTime?
+
   // Finalidade explicada ao paciente
-  purpose         String            // "Monitoramento de pressão arterial para acompanhamento de hipertensão"
-  
+  purpose String // "Monitoramento de pressão arterial para acompanhamento de hipertensão"
+
   // Auditoria
-  ipAddress       String?
-  userAgent       String?
-  
+  ipAddress String?
+  userAgent String?
+
   // Validade (opcional - para consentimentos temporários)
-  validUntil      DateTime?
-  
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([patientId, dataType])
   @@index([patientId])
   @@index([inviteId])
@@ -2892,23 +3095,23 @@ model PatientBiometricConsent {
 
 // Histórico de alterações de consentimento (auditoria LGPD)
 model ConsentAuditLog {
-  id              String            @id @default(cuid())
-  
-  patientId       String
-  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
-  dataType        BiometricDataType
-  action          ConsentAction     // GRANTED, REVOKED, MODIFIED
-  previousValue   Boolean?
-  newValue        Boolean
-  
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  dataType      BiometricDataType
+  action        ConsentAction // GRANTED, REVOKED, MODIFIED
+  previousValue Boolean?
+  newValue      Boolean
+
   // Auditoria
-  ipAddress       String?
-  userAgent       String?
-  reason          String?           // Motivo da alteração (opcional)
-  
-  createdAt       DateTime          @default(now())
-  
+  ipAddress String?
+  userAgent String?
+  reason    String? // Motivo da alteração (opcional)
+
+  createdAt DateTime @default(now())
+
   @@index([patientId])
   @@map("consent_audit_logs")
 }
@@ -2927,7 +3130,7 @@ enum ConsentAction {
 enum TherapeuticSystem {
   AYURVEDA
   HOMEOPATHY
-  TCM              // Traditional Chinese Medicine
+  TCM // Traditional Chinese Medicine
   ANTHROPOSOPHY
   NATUROPATHY
   FUNCTIONAL
@@ -2937,206 +3140,206 @@ enum TherapeuticSystem {
 
 // Tipos de pergunta (questionários integrativos)
 enum IntakeQuestionType {
-  SINGLE_CHOICE     // Uma opção
-  MULTIPLE_CHOICE   // Múltiplas opções
-  SCALE             // Escala numérica (1-10, etc)
-  TEXT              // Texto livre
-  IMAGE_CHOICE      // Escolha com imagens
-  YES_NO            // Sim/Não
-  BODY_MAP          // Mapa corporal (clique em região)
+  SINGLE_CHOICE // Uma opção
+  MULTIPLE_CHOICE // Múltiplas opções
+  SCALE // Escala numérica (1-10, etc)
+  TEXT // Texto livre
+  IMAGE_CHOICE // Escolha com imagens
+  YES_NO // Sim/Não
+  BODY_MAP // Mapa corporal (clique em região)
 }
 
 // Status do questionário enviado
 enum QuestionnaireStatus {
-  PENDING           // Enviado, aguardando
-  IN_PROGRESS       // Paciente começou
-  COMPLETED         // Finalizado
-  EXPIRED           // Expirou sem resposta
-  CANCELLED         // Cancelado
+  PENDING // Enviado, aguardando
+  IN_PROGRESS // Paciente começou
+  COMPLETED // Finalizado
+  EXPIRED // Expirou sem resposta
+  CANCELLED // Cancelado
 }
 
 // Template de questionário (criado pelo profissional)
 model QuestionnaireTemplate {
-  id                String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Metadados
-  name              String              // "Avaliação de Prakriti - Ayurveda"
-  description       String?             // Descrição para o profissional
-  patientIntro      String?             // Texto de introdução para o paciente
-  therapeuticSystem TherapeuticSystem   @default(GENERAL)
-  
+  name              String // "Avaliação de Prakriti - Ayurveda"
+  description       String? // Descrição para o profissional
+  patientIntro      String? // Texto de introdução para o paciente
+  therapeuticSystem TherapeuticSystem @default(GENERAL)
+
   // Organização
-  categories        IntakeCategory[]
-  
+  categories IntakeCategory[]
+
   // Configurações
-  estimatedMinutes  Int                 @default(15)
-  allowPause        Boolean             @default(true)  // Paciente pode pausar
-  showProgress      Boolean             @default(true)  // Mostrar barra de progresso
-  randomizeQuestions Boolean            @default(false) // Aleatorizar ordem
-  
+  estimatedMinutes   Int     @default(15)
+  allowPause         Boolean @default(true) // Paciente pode pausar
+  showProgress       Boolean @default(true) // Mostrar barra de progresso
+  randomizeQuestions Boolean @default(false) // Aleatorizar ordem
+
   // Estilo visual
-  themeColor        String?             // Cor tema (#hex)
-  iconEmoji         String?             // Emoji do questionário 🌿
-  
+  themeColor String? // Cor tema (#hex)
+  iconEmoji  String? // Emoji do questionário 🌿
+
   // Template público ou privado
-  isPublic          Boolean             @default(false) // Disponível para outros profissionais
-  isBuiltIn         Boolean             @default(false) // Template do sistema
-  
+  isPublic  Boolean @default(false) // Disponível para outros profissionais
+  isBuiltIn Boolean @default(false) // Template do sistema
+
   // Criador
-  createdById       String?
-  createdBy         User?               @relation(fields: [createdById], references: [id])
-  
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
   // Questionários enviados baseados neste template
   sentQuestionnaires PatientQuestionnaire[]
-  
+
   // Análise IA
-  aiAnalysisPrompt  String?             // Prompt customizado para análise IA
-  scoringLogic      Json?               // Lógica de pontuação (doshas, temperamentos)
-  
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  aiAnalysisPrompt String? // Prompt customizado para análise IA
+  scoringLogic     Json? // Lógica de pontuação (doshas, temperamentos)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("questionnaire_templates")
 }
 
 // Categoria/Seção dentro do questionário
 model IntakeCategory {
-  id                String              @id @default(cuid())
-  
-  templateId        String
-  template          QuestionnaireTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  
-  name              String              // "Características Físicas"
-  description       String?             // Breve explicação
-  order             Int                 @default(0)
-  iconEmoji         String?             // 🏃 para seção física
-  
-  questions         IntakeQuestion[]
-  
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  id String @id @default(cuid())
+
+  templateId String
+  template   QuestionnaireTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  name        String // "Características Físicas"
+  description String? // Breve explicação
+  order       Int     @default(0)
+  iconEmoji   String? // 🏃 para seção física
+
+  questions IntakeQuestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([templateId])
   @@map("intake_categories")
 }
 
 // Pergunta individual
 model IntakeQuestion {
-  id                String              @id @default(cuid())
-  
-  categoryId        String
-  category          IntakeCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
+  id String @id @default(cuid())
+
+  categoryId String
+  category   IntakeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   // Conteúdo
-  text              String              // "Como é sua digestão habitualmente?"
-  helpText          String?             // Texto de ajuda/explicação
-  imageUrl          String?             // Imagem ilustrativa
-  
+  text     String // "Como é sua digestão habitualmente?"
+  helpText String? // Texto de ajuda/explicação
+  imageUrl String? // Imagem ilustrativa
+
   // Tipo e configuração
-  type              IntakeQuestionType  @default(SINGLE_CHOICE)
-  isRequired        Boolean             @default(true)
-  order             Int                 @default(0)
-  
+  type       IntakeQuestionType @default(SINGLE_CHOICE)
+  isRequired Boolean            @default(true)
+  order      Int                @default(0)
+
   // Para escala
-  scaleMin          Int?                // Ex: 1
-  scaleMax          Int?                // Ex: 10
-  scaleMinLabel     String?             // "Muito lenta"
-  scaleMaxLabel     String?             // "Muito rápida"
-  
+  scaleMin      Int? // Ex: 1
+  scaleMax      Int? // Ex: 10
+  scaleMinLabel String? // "Muito lenta"
+  scaleMaxLabel String? // "Muito rápida"
+
   // Opções de resposta
-  options           IntakeQuestionOption[]
-  
+  options IntakeQuestionOption[]
+
   // Respostas dos pacientes
-  answers           PatientAnswer[]
-  
+  answers PatientAnswer[]
+
   // Mapeamento para análise (ex: dosha, temperamento)
-  analysisMapping   Json?               // { "vata": 0, "pitta": 2, "kapha": 1 }
-  
+  analysisMapping Json? // { "vata": 0, "pitta": 2, "kapha": 1 }
+
   // Lógica condicional (mostrar só se...)
-  conditionalLogic  Json?               // { "showIf": { "questionId": "xxx", "value": "sim" } }
-  
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  conditionalLogic Json? // { "showIf": { "questionId": "xxx", "value": "sim" } }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([categoryId])
   @@map("intake_questions")
 }
 
 // Opção de resposta (para choice questions)
 model IntakeQuestionOption {
-  id                String              @id @default(cuid())
-  
-  questionId        String
-  question          IntakeQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  
-  text              String              // "Rápida e irregular"
-  description       String?             // Explicação adicional
-  imageUrl          String?             // Imagem/ícone
-  emoji             String?             // 🔥
-  order             Int                 @default(0)
-  
+  id String @id @default(cuid())
+
+  questionId String
+  question   IntakeQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  text        String // "Rápida e irregular"
+  description String? // Explicação adicional
+  imageUrl    String? // Imagem/ícone
+  emoji       String? // 🔥
+  order       Int     @default(0)
+
   // Pontuação para análise
-  scoreValue        Json?               // { "vata": 2, "pitta": 0, "kapha": 0 }
-  
+  scoreValue Json? // { "vata": 2, "pitta": 0, "kapha": 0 }
+
   // Respostas que selecionaram esta opção
-  selectedIn        PatientAnswer[]
-  
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  selectedIn PatientAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([questionId])
   @@map("intake_question_options")
 }
 
 // Questionário enviado para um paciente específico
 model PatientQuestionnaire {
-  id                String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Template usado
-  templateId        String
-  template          QuestionnaireTemplate @relation(fields: [templateId], references: [id])
-  
+  templateId String
+  template   QuestionnaireTemplate @relation(fields: [templateId], references: [id])
+
   // Paciente
-  patientId         String
-  patient           Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
   // Profissional que enviou
-  sentById          String
-  sentBy            User                @relation("SentQuestionnaires", fields: [sentById], references: [id])
-  
+  sentById String
+  sentBy   User   @relation("SentQuestionnaires", fields: [sentById], references: [id])
+
   // Status
-  status            QuestionnaireStatus @default(PENDING)
-  
+  status QuestionnaireStatus @default(PENDING)
+
   // Token para acesso (link público)
-  accessToken       String              @unique @default(cuid())
-  
+  accessToken String @unique @default(cuid())
+
   // Datas
-  sentAt            DateTime            @default(now())
-  startedAt         DateTime?           // Quando começou a responder
-  completedAt       DateTime?           // Quando finalizou
-  expiresAt         DateTime?           // Data limite
-  
+  sentAt      DateTime  @default(now())
+  startedAt   DateTime? // Quando começou a responder
+  completedAt DateTime? // Quando finalizou
+  expiresAt   DateTime? // Data limite
+
   // Progresso
-  lastQuestionId    String?             // Última pergunta respondida (para retomar)
-  progressPercent   Int                 @default(0)
-  
+  lastQuestionId  String? // Última pergunta respondida (para retomar)
+  progressPercent Int     @default(0)
+
   // Respostas
-  answers           PatientAnswer[]
-  
+  answers PatientAnswer[]
+
   // Análise IA
-  aiAnalysis        Json?               // Resultado da análise automática
-  aiAnalyzedAt      DateTime?
-  
+  aiAnalysis   Json? // Resultado da análise automática
+  aiAnalyzedAt DateTime?
+
   // Notas do profissional
   professionalNotes String?
-  
+
   // Associar a uma consulta (opcional)
-  consultationId    String?
-  consultation      Consultation?       @relation(fields: [consultationId], references: [id])
-  
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([patientId])
   @@index([templateId])
   @@index([accessToken])
@@ -3145,33 +3348,33 @@ model PatientQuestionnaire {
 
 // Resposta individual do paciente
 model PatientAnswer {
-  id                String              @id @default(cuid())
-  
-  questionnaireId   String
-  questionnaire     PatientQuestionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-  
-  questionId        String
-  question          IntakeQuestion      @relation(fields: [questionId], references: [id])
-  
+  id String @id @default(cuid())
+
+  questionnaireId String
+  questionnaire   PatientQuestionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   IntakeQuestion @relation(fields: [questionId], references: [id])
+
   // Resposta (dependendo do tipo)
-  textValue         String?             // Para TEXT
-  numericValue      Float?              // Para SCALE
-  booleanValue      Boolean?            // Para YES_NO
-  
+  textValue    String? // Para TEXT
+  numericValue Float? // Para SCALE
+  booleanValue Boolean? // Para YES_NO
+
   // Para SINGLE/MULTIPLE_CHOICE
-  selectedOptionId  String?
-  selectedOption    IntakeQuestionOption? @relation(fields: [selectedOptionId], references: [id])
-  
+  selectedOptionId String?
+  selectedOption   IntakeQuestionOption? @relation(fields: [selectedOptionId], references: [id])
+
   // Para MULTIPLE_CHOICE (múltiplas seleções)
-  selectedOptionIds String[]            // Array de IDs
-  
+  selectedOptionIds String[] // Array de IDs
+
   // Para BODY_MAP
-  bodyMapData       Json?               // { "region": "head", "x": 50, "y": 30, "note": "dor" }
-  
+  bodyMapData Json? // { "region": "head", "x": 50, "y": 30, "note": "dor" }
+
   // Metadados
-  answeredAt        DateTime            @default(now())
-  timeSpentSeconds  Int?                // Tempo gasto na pergunta
-  
+  answeredAt       DateTime @default(now())
+  timeSpentSeconds Int? // Tempo gasto na pergunta
+
   @@unique([questionnaireId, questionId])
   @@index([questionnaireId])
   @@map("patient_answers")
@@ -3184,35 +3387,35 @@ model PatientAnswer {
 
 // Relaciona pacientes aos profissionais que podem acessá-los
 model PatientCareTeam {
-  id              String          @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Paciente
-  patientId       String
-  patient         Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
   // Profissional da equipe
-  userId          String
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Nível de acesso: FULL, CONSULTATION, LIMITED, EMERGENCY, VIEW_ONLY
-  accessLevel     String          @default("CONSULTATION")
-  
+  accessLevel String @default("CONSULTATION")
+
   // Quem adicionou à equipe
-  addedById       String?
-  
+  addedById String?
+
   // Motivo/observação
-  reason          String?         // Ex: "Consulta agendada", "Médico de família"
-  
+  reason String? // Ex: "Consulta agendada", "Médico de família"
+
   // Controle
-  isActive        Boolean         @default(true)
-  isPrimary       Boolean         @default(false)
-  
+  isActive  Boolean @default(true)
+  isPrimary Boolean @default(false)
+
   // Validade do acesso (null = permanente)
-  validUntil      DateTime?
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([patientId, userId])
   @@index([patientId])
   @@index([userId])
@@ -3225,44 +3428,44 @@ model PatientCareTeam {
 // ========================================
 
 model WaitingList {
-  id              String            @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Paciente
-  patientId       String
-  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
   // Médico/Especialidade desejada
-  doctorId        String?           // Médico específico (opcional)
-  doctor          User?             @relation(fields: [doctorId], references: [id])
-  specialty       String?           // Especialidade genérica
-  
+  doctorId  String? // Médico específico (opcional)
+  doctor    User?   @relation(fields: [doctorId], references: [id])
+  specialty String? // Especialidade genérica
+
   // Preferências de horário
-  preferredDays   String[]          // ["MON", "WED", "FRI"]
-  preferredTimes  String[]          // ["MORNING", "AFTERNOON", "EVENING"]
-  
+  preferredDays  String[] // ["MON", "WED", "FRI"]
+  preferredTimes String[] // ["MORNING", "AFTERNOON", "EVENING"]
+
   // Prioridade (1-10, quanto maior mais urgente)
-  priority        Int               @default(5)
-  urgencyReason   String?           // Motivo da urgência
-  
+  priority      Int     @default(5)
+  urgencyReason String? // Motivo da urgência
+
   // Status
-  status          WaitingListStatus @default(ACTIVE)
-  
+  status WaitingListStatus @default(ACTIVE)
+
   // Notificações enviadas
-  notificationsSent Int             @default(0)
-  lastNotifiedAt  DateTime?
-  
+  notificationsSent Int       @default(0)
+  lastNotifiedAt    DateTime?
+
   // Quando foi atendido
-  appointmentId   String?           @unique
-  appointment     Consultation?     @relation(fields: [appointmentId], references: [id])
-  
+  appointmentId String?       @unique
+  appointment   Consultation? @relation(fields: [appointmentId], references: [id])
+
   // Observações
-  notes           String?
-  
+  notes String?
+
   // Controle
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  expiresAt       DateTime?         // Data limite para atendimento
-  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // Data limite para atendimento
+
   @@index([patientId])
   @@index([doctorId])
   @@index([status])
@@ -3271,11 +3474,11 @@ model WaitingList {
 }
 
 enum WaitingListStatus {
-  ACTIVE        // Aguardando vaga
-  NOTIFIED      // Paciente foi notificado de vaga disponível
-  SCHEDULED     // Consulta agendada
-  EXPIRED       // Prazo expirou
-  CANCELLED     // Paciente cancelou
+  ACTIVE // Aguardando vaga
+  NOTIFIED // Paciente foi notificado de vaga disponível
+  SCHEDULED // Consulta agendada
+  EXPIRED // Prazo expirou
+  CANCELLED // Paciente cancelou
 }
 
 // =====================================
@@ -3291,45 +3494,45 @@ enum RecordingStatus {
 }
 
 model TelemedicineRecording {
-  id                String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relacionamentos
-  consultationId    String
-  consultation      Consultation        @relation(fields: [consultationId], references: [id], onDelete: Cascade)
-  
-  doctorId          String
-  doctor            User                @relation("DoctorRecordings", fields: [doctorId], references: [id])
-  
-  patientId         String
-  patient           Patient             @relation(fields: [patientId], references: [id])
-  
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  doctorId String
+  doctor   User   @relation("DoctorRecordings", fields: [doctorId], references: [id])
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
   // Dados da gravação
-  status            RecordingStatus     @default(RECORDING)
-  startedAt         DateTime            @default(now())
-  endedAt           DateTime?
-  duration          Int?                // Duração em segundos
-  
+  status    RecordingStatus @default(RECORDING)
+  startedAt DateTime        @default(now())
+  endedAt   DateTime?
+  duration  Int? // Duração em segundos
+
   // Arquivo
-  filePath          String?
-  fileName          String?
-  fileSize          Int?                // Tamanho em bytes
-  fileHash          String?             // SHA-256 para integridade
-  format            String              @default("webm")
-  
+  filePath String?
+  fileName String?
+  fileSize Int? // Tamanho em bytes
+  fileHash String? // SHA-256 para integridade
+  format   String  @default("webm")
+
   // LGPD - Consentimento
-  patientConsent    Boolean             @default(false)
-  consentTimestamp  DateTime?
-  
+  patientConsent   Boolean   @default(false)
+  consentTimestamp DateTime?
+
   // Soft delete
-  deletedAt         DateTime?
-  
+  deletedAt DateTime?
+
   // Timestamps
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relações
-  accessTokens      RecordingAccessToken[]
-  
+  accessTokens RecordingAccessToken[]
+
   @@index([consultationId])
   @@index([doctorId])
   @@index([patientId])
@@ -3338,19 +3541,19 @@ model TelemedicineRecording {
 }
 
 model RecordingAccessToken {
-  id              String                @id @default(cuid())
-  
-  recordingId     String
-  recording       TelemedicineRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
-  
-  userId          String
-  user            User                  @relation(fields: [userId], references: [id])
-  
-  token           String                @unique
-  expiresAt       DateTime
-  
-  createdAt       DateTime              @default(now())
-  
+  id String @id @default(cuid())
+
+  recordingId String
+  recording   TelemedicineRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  token     String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
   @@index([recordingId])
   @@index([userId])
   @@index([token])
@@ -3362,64 +3565,78 @@ model RecordingAccessToken {
 // =====================================
 
 enum CertificateType {
-  MEDICAL_LEAVE      // Atestado de afastamento
-  FITNESS            // Atestado de aptidão física
-  ACCOMPANIMENT      // Atestado de acompanhante
-  TIME_OFF           // Atestado de comparecimento
-  CUSTOM             // Atestado personalizado
+  MEDICAL_LEAVE // Atestado de afastamento (Afastamento)
+  FITNESS // Atestado de aptidão física
+  ACCOMPANIMENT // Atestado de acompanhante (Comparecimento)
+  TIME_OFF // Atestado de comparecimento simples
+  CUSTOM // Atestado personalizado
+
+  // ============================================
+  // SSF LEGACY CERTIFICATE TYPES
+  // ============================================
+  SHIFT_LEAVE // Atestado de Turno
+  MUNICIPAL_TRANSPORT // Passe Livre Municipal
+  INTERSTATE_TRANSPORT // Passe Livre Intermunicipal
+  MEDICAL_EVALUATION // Perícia Médica
+  MATERNITY_LEAVE // Licença Maternidade
+  ADDITIONAL // Atestado Adicional
+  PERIODIC_EXAM // Exame Periódico
+  DISMISSAL_EXAM // Exame Demissional
+  HEALTH_CERTIFICATE // Atestado de Saúde
+  // ============================================
 }
 
 model MedicalCertificate {
-  id                String            @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Numeração sequencial obrigatória
-  sequenceNumber    Int               @unique
-  year              Int               // Ano da emissão (para reiniciar numeração)
-  
+  sequenceNumber Int @unique
+  year           Int // Ano da emissão (para reiniciar numeração)
+
   // Relacionamentos
-  patientId         String
-  patient           Patient           @relation(fields: [patientId], references: [id])
-  
-  doctorId          String
-  doctor            User              @relation("DoctorCertificates", fields: [doctorId], references: [id])
-  
-  consultationId    String?
-  consultation      Consultation?     @relation(fields: [consultationId], references: [id])
-  
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  doctorId String
+  doctor   User   @relation("DoctorCertificates", fields: [doctorId], references: [id])
+
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+
   // Dados do atestado
-  type              CertificateType   @default(MEDICAL_LEAVE)
-  days              Int?              // Dias de afastamento (null se não aplicável)
-  startDate         DateTime          // Data inicial do afastamento/validade
-  endDate           DateTime?         // Data final (calculada: startDate + days)
-  
+  type      CertificateType @default(MEDICAL_LEAVE)
+  days      Int? // Dias de afastamento (null se não aplicável)
+  startDate DateTime // Data inicial do afastamento/validade
+  endDate   DateTime? // Data final (calculada: startDate + days)
+
   // CID-10 (opcional - não obrigatório em atestados)
-  includeCid        Boolean           @default(false)
-  cidCode           String?
-  cidDescription    String?
-  
+  includeCid     Boolean @default(false)
+  cidCode        String?
+  cidDescription String?
+
   // Texto do atestado
-  title             String            @default("ATESTADO MÉDICO")
-  content           String            // Texto livre do atestado
-  observations      String?           // Observações adicionais
-  
+  title        String  @default("ATESTADO MÉDICO")
+  content      String // Texto livre do atestado
+  observations String? // Observações adicionais
+
   // PDF e assinatura
-  pdfPath           String?           // Caminho do PDF gerado
-  pdfHash           String?           // Hash SHA-256 do PDF
-  qrCodeData        String?           // Dados do QR Code para validação
-  
+  pdfPath    String? // Caminho do PDF gerado
+  pdfHash    String? // Hash SHA-256 do PDF
+  qrCodeData String? // Dados do QR Code para validação
+
   // Assinatura digital (futuro)
-  digitalSignature  String?           // Base64 da assinatura digital ICP-Brasil
-  certificateChain  String?           // Cadeia de certificados
-  timestamp         DateTime?         // Timestamp da assinatura
-  
+  digitalSignature String? // Base64 da assinatura digital ICP-Brasil
+  certificateChain String? // Cadeia de certificados
+  timestamp        DateTime? // Timestamp da assinatura
+
   // Controle
-  issuedAt          DateTime          @default(now())
-  revokedAt         DateTime?
-  revokedReason     String?
-  
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
+  issuedAt      DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([patientId])
   @@index([doctorId])
   @@index([consultationId])
@@ -3432,47 +3649,47 @@ model MedicalCertificate {
 // =====================================
 
 enum NpsScore {
-  DETRACTOR       // 0-6
-  PASSIVE         // 7-8
-  PROMOTER        // 9-10
+  DETRACTOR // 0-6
+  PASSIVE // 7-8
+  PROMOTER // 9-10
 }
 
 model NpsResponse {
-  id                String        @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relacionamentos
-  patientId         String
-  patient           Patient       @relation(fields: [patientId], references: [id])
-  
-  consultationId    String        @unique
-  consultation      Consultation  @relation(fields: [consultationId], references: [id])
-  
-  doctorId          String
-  doctor            User          @relation("DoctorNpsResponses", fields: [doctorId], references: [id])
-  
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  consultationId String       @unique
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+
+  doctorId String
+  doctor   User   @relation("DoctorNpsResponses", fields: [doctorId], references: [id])
+
   // Score NPS (0-10)
-  score             Int           // 0-10
-  category          NpsScore      // Calculado automaticamente
-  
+  score    Int // 0-10
+  category NpsScore // Calculado automaticamente
+
   // Feedback
-  feedback          String?       // Comentário opcional
-  wouldRecommend    Boolean       @default(true)
-  
+  feedback       String? // Comentário opcional
+  wouldRecommend Boolean @default(true)
+
   // Categorização de feedback
-  tags              String[]      @default([]) // Ex: ["atendimento", "tempo_espera", "limpeza"]
-  sentiment         String?       // POSITIVE, NEUTRAL, NEGATIVE (análise de IA)
-  
+  tags      String[] @default([]) // Ex: ["atendimento", "tempo_espera", "limpeza"]
+  sentiment String? // POSITIVE, NEUTRAL, NEGATIVE (análise de IA)
+
   // Controle
-  sentAt            DateTime?     // Quando foi enviada a pesquisa
-  respondedAt       DateTime      @default(now())
-  
+  sentAt      DateTime? // Quando foi enviada a pesquisa
+  respondedAt DateTime  @default(now())
+
   // WhatsApp integration
-  sentViaWhatsApp   Boolean       @default(false)
+  sentViaWhatsApp   Boolean @default(false)
   whatsAppMessageId String?
-  
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([patientId])
   @@index([doctorId])
   @@index([consultationId])
@@ -3483,41 +3700,41 @@ model NpsResponse {
 
 // Assinatura Digital (ICP-Brasil)
 model DigitalCertificate {
-  id                String    @id @default(cuid())
-  userId            String
-  user              User      @relation("UserDigitalCertificates", fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("UserDigitalCertificates", fields: [userId], references: [id], onDelete: Cascade)
+
   // Dados do certificado
-  certificateType   CertificateAuthority // A1, A3, A4
-  issuer            String    // Autoridade Certificadora (ex: Serasa, Certisign)
-  subject           String    // CN do certificado
-  serialNumber      String    @unique
-  notBefore         DateTime  // Início da validade
-  notAfter          DateTime  // Fim da validade
-  
+  certificateType CertificateAuthority // A1, A3, A4
+  issuer          String // Autoridade Certificadora (ex: Serasa, Certisign)
+  subject         String // CN do certificado
+  serialNumber    String               @unique
+  notBefore       DateTime // Início da validade
+  notAfter        DateTime // Fim da validade
+
   // Armazenamento
-  certificatePem    String    @db.Text // Certificado em formato PEM
-  publicKeyPem      String    @db.Text // Chave pública
-  
+  certificatePem String @db.Text // Certificado em formato PEM
+  publicKeyPem   String @db.Text // Chave pública
+
   // A3/A4: Token físico (não armazenar chave privada)
-  isHardwareToken   Boolean   @default(false)
-  tokenSerialNumber String?   // Identificador do token A3
-  
+  isHardwareToken   Boolean @default(false)
+  tokenSerialNumber String? // Identificador do token A3
+
   // Status
-  isActive          Boolean   @default(true)
-  revokedAt         DateTime?
-  revokedReason     String?
-  
+  isActive      Boolean   @default(true)
+  revokedAt     DateTime?
+  revokedReason String?
+
   // Uso
-  lastUsedAt        DateTime?
-  usageCount        Int       @default(0)
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
+  lastUsedAt DateTime?
+  usageCount Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relações
-  signedDocuments   SignedDocument[]
-  
+  signedDocuments SignedDocument[]
+
   @@index([userId])
   @@index([notAfter])
   @@index([isActive])
@@ -3525,42 +3742,42 @@ model DigitalCertificate {
 
 // Documento assinado digitalmente
 model SignedDocument {
-  id                  String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Tipo de documento
-  documentType        SignedDocumentType
-  documentId          String              // ID do prontuário, atestado, prescrição, etc.
-  
+  documentType SignedDocumentType
+  documentId   String // ID do prontuário, atestado, prescrição, etc.
+
   // Assinatura
-  certificateId       String
-  certificate         DigitalCertificate  @relation(fields: [certificateId], references: [id])
-  signerId            String              // userId do assinante
-  signer              User                @relation("UserSignedDocuments", fields: [signerId], references: [id])
-  
+  certificateId String
+  certificate   DigitalCertificate @relation(fields: [certificateId], references: [id])
+  signerId      String // userId do assinante
+  signer        User               @relation("UserSignedDocuments", fields: [signerId], references: [id])
+
   // Dados da assinatura
-  signatureAlgorithm  String              // SHA256withRSA, etc.
-  signatureValue      String              @db.Text // Base64 da assinatura
-  signatureHash       String              // Hash SHA-256 do documento original
-  
+  signatureAlgorithm String // SHA256withRSA, etc.
+  signatureValue     String @db.Text // Base64 da assinatura
+  signatureHash      String // Hash SHA-256 do documento original
+
   // Timestamp (carimbo de tempo)
-  timestampAuthority  String?             // URL da TSA (Time Stamping Authority)
-  timestampToken      String?             @db.Text // Token de tempo RFC 3161
-  timestampedAt       DateTime?
-  
+  timestampAuthority String? // URL da TSA (Time Stamping Authority)
+  timestampToken     String?   @db.Text // Token de tempo RFC 3161
+  timestampedAt      DateTime?
+
   // Metadados
-  ipAddress           String?
-  userAgent           String?
-  geolocation         String?             // Lat,Long (opcional)
-  
+  ipAddress   String?
+  userAgent   String?
+  geolocation String? // Lat,Long (opcional)
+
   // Validação
-  isValid             Boolean             @default(true)
-  validatedAt         DateTime?
-  validationResult    String?             @db.Text // Resultado da última validação
-  
+  isValid          Boolean   @default(true)
+  validatedAt      DateTime?
+  validationResult String?   @db.Text // Resultado da última validação
+
   // Auditoria
-  signedAt            DateTime            @default(now())
-  createdAt           DateTime            @default(now())
-  
+  signedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
   @@index([documentType, documentId])
   @@index([signerId])
   @@index([certificateId])
@@ -3568,59 +3785,59 @@ model SignedDocument {
 }
 
 enum CertificateAuthority {
-  A1  // Chave privada armazenada em software (1 ano)
-  A3  // Chave privada em token/smartcard (3 anos)
-  A4  // Chave privada em token/smartcard (3 anos, alta segurança)
+  A1 // Chave privada armazenada em software (1 ano)
+  A3 // Chave privada em token/smartcard (3 anos)
+  A4 // Chave privada em token/smartcard (3 anos, alta segurança)
 }
 
 enum SignedDocumentType {
-  MEDICAL_RECORD      // Prontuário
+  MEDICAL_RECORD // Prontuário
   MEDICAL_CERTIFICATE // Atestado médico
-  PRESCRIPTION        // Prescrição/receita
-  EXAM_REQUEST        // Solicitação de exame
-  EXAM_RESULT         // Resultado de exame
-  REFERRAL            // Encaminhamento
-  CONSENT_FORM        // Termo de consentimento
-  TELECONSULTATION    // Relatório de teleconsulta
-  DISCHARGE_SUMMARY   // Sumário de alta
+  PRESCRIPTION // Prescrição/receita
+  EXAM_REQUEST // Solicitação de exame
+  EXAM_RESULT // Resultado de exame
+  REFERRAL // Encaminhamento
+  CONSENT_FORM // Termo de consentimento
+  TELECONSULTATION // Relatório de teleconsulta
+  DISCHARGE_SUMMARY // Sumário de alta
 }
 
 // Alerta de auditoria (anomalias, tentativas de acesso, etc.)
 model AuditAlert {
-  id              String          @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Tipo de alerta
-  alertType       AuditAlertType
-  severity        AlertSeverity   @default(MEDIUM)
-  
+  alertType AuditAlertType
+  severity  AlertSeverity  @default(MEDIUM)
+
   // Detalhes
-  title           String
-  description     String          @db.Text
-  
+  title       String
+  description String @db.Text
+
   // Origem
-  userId          String?
-  ipAddress       String?
-  resourceType    String?
-  resourceId      String?
-  
+  userId       String?
+  ipAddress    String?
+  resourceType String?
+  resourceId   String?
+
   // Evidências
-  auditLogIds     String[]        // Array de IDs de AuditLog relacionados
-  metadata        Json?           // Dados adicionais
-  
+  auditLogIds String[] // Array de IDs de AuditLog relacionados
+  metadata    Json? // Dados adicionais
+
   // Status
-  status          AlertStatus     @default(OPEN)
-  assignedTo      String?         // Admin/Manager responsável
+  status          AlertStatus @default(OPEN)
+  assignedTo      String? // Admin/Manager responsável
   resolvedBy      String?
   resolvedAt      DateTime?
-  resolutionNotes String?         @db.Text
-  
+  resolutionNotes String?     @db.Text
+
   // Notificação
-  notifiedAt      DateTime?
-  notifiedVia     String?         // email, slack, sms
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
+  notifiedAt  DateTime?
+  notifiedVia String? // email, slack, sms
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([alertType])
   @@index([severity])
   @@index([status])
@@ -3629,16 +3846,16 @@ model AuditAlert {
 }
 
 enum AuditAlertType {
-  FAILED_LOGIN_ATTEMPTS       // Múltiplas tentativas de login falhadas
-  UNAUTHORIZED_ACCESS         // Acesso a recurso sem permissão
-  DATA_EXPORT_BULK            // Exportação em massa de dados
-  ROLE_PRIVILEGE_ESCALATION   // Tentativa de elevar privilégios
-  AFTER_HOURS_ACCESS          // Acesso fora do horário
-  UNUSUAL_ACTIVITY_PATTERN    // Padrão anômalo de acesso
-  SENSITIVE_DATA_ACCESS       // Acesso a dados sensíveis (HIV, psiquiatria)
-  GDPR_DATA_DELETION          // Solicitação LGPD de exclusão
-  FAILED_AUDIT_VALIDATION     // Inconsistências em auditoria
-  CRITICAL_ERROR              // Erro crítico do sistema
+  FAILED_LOGIN_ATTEMPTS // Múltiplas tentativas de login falhadas
+  UNAUTHORIZED_ACCESS // Acesso a recurso sem permissão
+  DATA_EXPORT_BULK // Exportação em massa de dados
+  ROLE_PRIVILEGE_ESCALATION // Tentativa de elevar privilégios
+  AFTER_HOURS_ACCESS // Acesso fora do horário
+  UNUSUAL_ACTIVITY_PATTERN // Padrão anômalo de acesso
+  SENSITIVE_DATA_ACCESS // Acesso a dados sensíveis (HIV, psiquiatria)
+  GDPR_DATA_DELETION // Solicitação LGPD de exclusão
+  FAILED_AUDIT_VALIDATION // Inconsistências em auditoria
+  CRITICAL_ERROR // Erro crítico do sistema
 }
 
 enum AlertStatus {
@@ -3647,4 +3864,1104 @@ enum AlertStatus {
   RESOLVED
   FALSE_POSITIVE
   IGNORED
+}
+
+// ============================================================================
+// WELLNESS DASHBOARD - Patient Experience Models
+// ============================================================================
+
+model PatientMoodLog {
+  id        String   @id @default(cuid())
+  patientId String
+  mood      Int      @db.SmallInt // 1-5 (😢😐🙂😊🤗)
+  energy    Int      @db.SmallInt // 1-5
+  stress    Int      @db.SmallInt // 1-5
+  sleep     Int      @db.SmallInt // 1-5
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient @relation("PatientMoodLogs", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@map("patient_mood_logs")
+}
+
+model PatientAptitude {
+  id           String   @id @default(cuid())
+  patientId    String
+  name         String // "Coração Estável", "Ativo e Dedicado"
+  description  String   @db.Text
+  icon         String // "heart", "flame", "target"
+  category     String // "health", "behavior", "emotional"
+  score        Float    @default(0) // 0-100
+  discoveredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  patient Patient @relation("PatientAptitudes", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, category])
+  @@index([patientId, score])
+  @@map("patient_aptitudes")
+}
+
+model PatientBadge {
+  id          String      @id @default(cuid())
+  patientId   String
+  name        String // "Iniciante", "Comprometido", "Épico"
+  rarity      BadgeRarity @default(COMMON)
+  icon        String // "sprout", "star", "trophy"
+  description String?     @db.Text
+  progress    Float       @default(0) // 0-100
+  unlockedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  patient Patient @relation("PatientBadges", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, rarity])
+  @@index([patientId, unlockedAt])
+  @@map("patient_badges")
+}
+
+model PatientDevelopmentPlan {
+  id           String             @id @default(cuid())
+  patientId    String
+  title        String // "Seu plano de 90 dias"
+  description  String             @db.Text
+  startDate    DateTime
+  targetDate   DateTime
+  phases       Json // Array de fases com metas
+  currentPhase Int                @default(1)
+  progress     Float              @default(0) // 0-100
+  status       WellnessPlanStatus @default(ACTIVE)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  patient Patient @relation("PatientWellnessDevelopmentPlans", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@index([patientId, targetDate])
+  @@map("patient_development_plans")
+}
+
+model PatientHealthEvent {
+  id             String    @id @default(cuid())
+  patientId      String
+  title          String
+  description    String    @db.Text
+  type           EventType // "medication", "consultation", "exam", "vital", "milestone"
+  eventDate      DateTime
+  impact         String? // "PA melhorou 12%", "Nova aptitude descoberta"
+  causalite      String?   @db.Text // Linkage: "Desde medicação ajustada..."
+  vitalsSnapshot Json? // Snapshot de dados na hora do evento
+  metadata       Json? // Dados adicionais
+  createdAt      DateTime  @default(now())
+
+  patient Patient @relation("PatientHealthEvents", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, eventDate])
+  @@index([patientId, type])
+  @@map("patient_health_events")
+}
+
+model PatientWellnessScore {
+  id                 String   @id @default(cuid())
+  patientId          String
+  score              Float // 0-100
+  moodComponent      Float // % do score vindo do mood
+  adherenceComponent Float // % do score vindo da adesão
+  vitalComponent     Float // % do score vindo dos vitais
+  emotionalComponent Float // % do score vindo do emocional
+  calculatedAt       DateTime @default(now())
+
+  patient Patient @relation("PatientWellnessScores", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, calculatedAt])
+  @@map("patient_wellness_scores")
+}
+
+model PatientJournal {
+  id           String   @id @default(cuid())
+  patientId    String
+  weekStarting DateTime // Data do início da semana
+  reflection   String   @db.Text
+  insights     String?  @db.Text
+  goals        Json? // Array de metas para próxima semana
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  patient Patient @relation("PatientJournals", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, weekStarting])
+  @@map("patient_journals")
+}
+
+// Enums para Wellness Dashboard
+
+enum BadgeRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum WellnessPlanStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum EventType {
+  MEDICATION
+  CONSULTATION
+  EXAM
+  VITAL
+  MILESTONE
+  APPOINTMENT
+  DIAGNOSIS
+  TREATMENT
+}
+
+// ============================================
+// GEOGRAPHIC HIERARCHY MODELS (SSF Integration)
+// Hierarquia: Country → State → City → Zone → District → Subprefecture → Neighborhood → Area → MicroArea
+// ============================================
+
+model Country {
+  id        String    @id @default(cuid())
+  code      String    @unique // ISO 3166-1 alpha-2 (BR)
+  name      String    @unique
+  states    State[]
+  addresses Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("countries")
+}
+
+model State {
+  id     String  @id @default(cuid())
+  code   String  @unique // UF code (SP, RJ, MG, etc)
+  name   String  @unique
+  region String? // Região (Sul, Sudeste, Nordeste, etc)
+
+  countryId String  @default("br") // FK to Country (always Brazil for now)
+  country   Country @relation(fields: [countryId], references: [code], onDelete: Cascade)
+
+  cities    City[]
+  addresses Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([countryId])
+  @@map("states")
+}
+
+model City {
+  id       String @id @default(cuid())
+  ibgeCode String @unique // IBGE 7-digit code
+  name     String
+
+  stateId String
+  state   State  @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  zones       Zone[]
+  addresses   Address[]
+  healthUnits HealthUnit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([stateId, name])
+  @@index([stateId])
+  @@index([ibgeCode])
+  @@map("cities")
+}
+
+model Zone {
+  id   String  @id @default(cuid())
+  code String? // Optional external code
+  name String
+
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  districts District[]
+  addresses Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cityId, name])
+  @@index([cityId])
+  @@map("zones")
+}
+
+model District {
+  id   String  @id @default(cuid())
+  code String?
+  name String
+
+  zoneId String
+  zone   Zone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  subprefectures Subprefecture[]
+  addresses      Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([zoneId, name])
+  @@index([zoneId])
+  @@map("districts")
+}
+
+model Subprefecture {
+  id   String  @id @default(cuid())
+  code String?
+  name String
+
+  districtId String
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  neighborhoods Neighborhood[]
+  addresses     Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@map("subprefectures")
+}
+
+model Neighborhood {
+  id   String  @id @default(cuid())
+  code String?
+  name String
+
+  subprefectureId String
+  subprefecture   Subprefecture @relation(fields: [subprefectureId], references: [id], onDelete: Cascade)
+
+  areas     Area[]
+  addresses Address[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([subprefectureId, name])
+  @@index([subprefectureId])
+  @@map("neighborhoods")
+}
+
+model Area {
+  id          String  @id @default(cuid())
+  code        String?
+  name        String
+  description String?
+
+  neighborhoodId String
+  neighborhood   Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  microAreas MicroArea[]
+  addresses  Address[]
+  acsUsers   User[]       @relation("AssignedArea")
+  acsHistory ACSHistory[]
+  households Household[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([neighborhoodId, name])
+  @@index([neighborhoodId])
+  @@map("areas")
+}
+
+// ACS (Agente Comunitário de Saúde) Management
+model ACSHistory {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation("ACSHistoryEntries", fields: [userId], references: [id], onDelete: Cascade)
+
+  microAreaId String?
+  microArea   MicroArea? @relation("ACSHistory", fields: [microAreaId], references: [id], onDelete: SetNull)
+
+  areaId String?
+  area   Area?   @relation(fields: [areaId], references: [id], onDelete: SetNull)
+
+  assignedAt       DateTime  @default(now())
+  unassignedAt     DateTime?
+  assignmentReason String?
+  assignedByUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, assignedAt])
+  @@index([microAreaId])
+  @@index([areaId])
+  @@map("acs_history")
+}
+
+// ============================================
+// END GEOGRAPHIC HIERARCHY MODELS
+// ============================================
+
+model MedicationTaking {
+  id String @id @default(cuid())
+
+  // Relacionamento com item de prescrição
+  prescriptionItemId String
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+
+  // Dados da tomada
+  takenAt DateTime // Quando foi tomado
+  dosage  String // Dosagem confirmada
+  missed  Boolean  @default(false) // Se foi perdido/esquecido
+  notes   String? // Notas do paciente
+
+  // Controle
+  recordedBy String // ID do usuário que registrou
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([prescriptionItemId])
+  @@index([takenAt])
+  @@map("medication_takings")
+}
+
+// ============================================
+// HEALTH UNIT / ESTABELECIMENTO DE SAÚDE
+// ============================================
+
+model HealthUnit {
+  id String @id @default(cuid())
+
+  // Identificação
+  name String
+  type String // "UBS", "USF", "UPA", "HOSPITAL", "CLINICA", "LABORATORIO", "FARMACIA"
+
+  // CNES - Cadastro Nacional de Estabelecimentos de Saúde
+  cnesCode String? @unique
+
+  // Endereço
+  address String?
+  cityId  String?
+  city    City?   @relation(fields: [cityId], references: [id])
+
+  // Localização
+  latitude  Float?
+  longitude Float?
+
+  // Contato
+  phone   String?
+  email   String?
+  manager String? // Gestor
+
+  // Operacional
+  isActive   Boolean @default(true)
+  staffCount Int     @default(0)
+  beds       Int? // Para hospitais
+
+  // Relatórios
+  dailyReports           DailyProductionReport[]
+  monthlyReports         MonthlyProductionReport[]
+  stratifiedReports      StratifiedProductionReport[]
+  healthSituationReports HealthSituationReport[]
+  pregnancyReports       PregnancyReport[]
+  pediatricReports       PediatricHealthReport[]
+  epidemiologyReports    EpidemiologyReport[]
+
+  // ============================================
+  // SSF INTEGRATION - New Relations
+  // ============================================
+  // Vaccination
+  vaccinations Vaccination[] @relation("VaccinationHealthUnit")
+
+  // Referrals
+  destinationReferrals Referral[] @relation("ReferralDestinationUnit")
+  // ============================================
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cnesCode])
+  @@index([cityId])
+  @@index([isActive])
+  @@map("health_units")
+}
+
+// ============================================
+// SUS/SIAB PRODUCTION REPORTS
+// ============================================
+
+// Produção Diária (SIAB-AD)
+model DailyProductionReport {
+  id String @id @default(cuid())
+
+  // Período
+  reportDate DateTime // Data do relatório
+  month      Int
+  year       Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Profissional
+  professionalId String?
+  professional   User?   @relation("DailyProductionReportProfessional", fields: [professionalId], references: [id])
+
+  // Consultas por tipo
+  clinicConsultations    Int @default(0)
+  preNatalConsultations  Int @default(0)
+  pediatricConsultations Int @default(0)
+  urgencyConsultations   Int @default(0)
+  homeVisits             Int @default(0)
+  groupActivities        Int @default(0)
+
+  // Total
+  totalConsultations Int @default(0)
+
+  // Equipe
+  acsActive       Int @default(0)
+  acsVisits       Int @default(0)
+  familiesVisited Int @default(0)
+
+  // Qualidade
+  flagged Boolean @default(false)
+  notes   String?
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, reportDate, professionalId])
+  @@index([healthUnitId])
+  @@index([reportDate])
+  @@index([month, year])
+  @@index([professionalId])
+  @@map("daily_production_reports")
+}
+
+// Produção Mensal (SIAB-PM)
+model MonthlyProductionReport {
+  id String @id @default(cuid())
+
+  // Período
+  month Int
+  year  Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Agregação geral
+  totalConsultations Int @default(0)
+  totalPatients      Int @default(0)
+  newPatients        Int @default(0)
+  totalFamilies      Int @default(0)
+  populationCovered  Int @default(0)
+
+  // Consultas por tipo
+  clinicConsultations    Int @default(0)
+  preNatalConsultations  Int @default(0)
+  pediatricConsultations Int @default(0)
+  urgencyConsultations   Int @default(0)
+
+  // Por faixa etária
+  consultationsUnder1 Int @default(0)
+  consultations1to4   Int @default(0)
+  consultations5to9   Int @default(0)
+  consultations10to14 Int @default(0)
+  consultations15to19 Int @default(0)
+  consultations20to49 Int @default(0)
+  consultations50to59 Int @default(0)
+  consultations60plus Int @default(0)
+
+  // Equipe
+  acsCount        Int @default(0)
+  familiesVisited Int @default(0)
+  homeVisits      Int @default(0)
+
+  // Indicadores
+  coveragePercentage  Float @default(0)
+  vaccinationCoverage Float @default(0)
+  preNatalCoverage    Float @default(0)
+  pediatricCoverage   Float @default(0)
+
+  // Referências
+  referralsIssued          Int @default(0)
+  counterReferralsReceived Int @default(0)
+
+  // Status
+  validated   Boolean   @default(false)
+  submittedAt DateTime?
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, month, year])
+  @@index([healthUnitId])
+  @@index([month, year])
+  @@index([validated])
+  @@map("monthly_production_reports")
+}
+
+// Produção Estratificada (SIAB-PE)
+model StratifiedProductionReport {
+  id String @id @default(cuid())
+
+  // Período
+  month Int
+  year  Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Dimensões de estratificação
+  ageGroup String // "under1", "1to4", "5to9", etc
+  gender   String? // "M", "F", "O"
+  type     String // "clinic", "prenatal", "pediatric", "urgency"
+
+  // Dados estratificados
+  consultationCount Int @default(0)
+  patientCount      Int @default(0)
+  newPatients       Int @default(0)
+
+  // Indicadores específicos
+  vaccinated    Int @default(0)
+  referrals     Int @default(0)
+  complications Int @default(0)
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, month, year, ageGroup, gender, type])
+  @@index([healthUnitId])
+  @@index([month, year])
+  @@index([ageGroup])
+  @@index([type])
+  @@map("stratified_production_reports")
+}
+
+// Relatório de Situação de Saúde (SIAB-SS)
+model HealthSituationReport {
+  id String @id @default(cuid())
+
+  // Período
+  month Int
+  year  Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Doenças/Condições (Agregadas)
+  diabeticCases         Int @default(0)
+  hypertensiveCases     Int @default(0)
+  tuberculosisCases     Int @default(0)
+  leprousCases          Int @default(0)
+  hivCases              Int @default(0)
+  syphilisCases         Int @default(0)
+  pregnantWomen         Int @default(0)
+  malnourishedChildren  Int @default(0)
+  domesticViolenceCases Int @default(0)
+  substanceAbuseCases   Int @default(0)
+
+  // Indicadores
+  followedDiabetics    Int @default(0)
+  followedHypertensive Int @default(0)
+  followedTuberculosis Int @default(0)
+
+  // Status de saúde crítico
+  criticalRiskCases  Int @default(0)
+  medicalEmergencies Int @default(0)
+  hospitalizations   Int @default(0)
+  deaths             Int @default(0)
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, month, year])
+  @@index([healthUnitId])
+  @@index([month, year])
+  @@map("health_situation_reports")
+}
+
+// Relatório de Gestantes (SIAB-AG)
+model PregnancyReport {
+  id String @id @default(cuid())
+
+  // Período
+  month Int
+  year  Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Gestantes
+  enrolledPregnancies Int @default(0)
+  activeFollowUps     Int @default(0)
+
+  // Acompanhamento
+  preNatalConsultations Int @default(0)
+  bloodPressureChecks   Int @default(0)
+  urineTests            Int @default(0)
+  bloodTests            Int @default(0)
+
+  // Imunização
+  tetanusCoverage   Int @default(0)
+  influenzaCoverage Int @default(0)
+
+  // Complicações
+  gestationalDiabetes Int @default(0)
+  preeclampsia        Int @default(0)
+  highRiskCases       Int @default(0)
+  referrals           Int @default(0)
+
+  // Desfecho
+  livebirths     Int @default(0)
+  stillbirths    Int @default(0)
+  maternalDeaths Int @default(0)
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, month, year])
+  @@index([healthUnitId])
+  @@index([month, year])
+  @@map("pregnancy_reports")
+}
+
+// Relatório de Crianças (SIAB-AC)
+model PediatricHealthReport {
+  id String @id @default(cuid())
+
+  // Período
+  month Int
+  year  Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Crianças
+  childrenUnder1  Int @default(0)
+  childrenUnder5  Int @default(0)
+  activeFollowUps Int @default(0)
+
+  // Acompanhamento
+  healthConsultations    Int @default(0)
+  growthAssessments      Int @default(0)
+  developmentAssessments Int @default(0)
+
+  // Imunização
+  vaccinationCoverage Float @default(0)
+  completeCalendar    Int   @default(0)
+  incompleteCalendar  Int   @default(0)
+
+  // Nutrição
+  breastfeedingRate  Float @default(0)
+  malnourished       Int   @default(0)
+  severeMalnourished Int   @default(0)
+
+  // Triagem
+  neonatalTriaging      Int @default(0)
+  developmentDeviations Int @default(0)
+
+  // Desfecho
+  preventableDeaths Int @default(0)
+  accidents         Int @default(0)
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, month, year])
+  @@index([healthUnitId])
+  @@index([month, year])
+  @@map("pediatric_health_reports")
+}
+
+// Relatório de Vigilância Epidemiológica (SIAB-VE)
+model EpidemiologyReport {
+  id String @id @default(cuid())
+
+  // Período
+  week  Int
+  month Int
+  year  Int
+
+  // Unidade
+  healthUnitId String
+  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
+
+  // Doença notificável
+  diseaseCode String // Código SINAN
+  diseaseName String
+
+  // Casos
+  suspectedCases Int @default(0)
+  probableCases  Int @default(0)
+  confirmedCases Int @default(0)
+
+  // Desfecho
+  recovered Int @default(0)
+  deaths    Int @default(0)
+  abandoned Int @default(0)
+
+  // Status de notificação
+  notified   Boolean   @default(false)
+  notifiedAt DateTime?
+
+  // Auditoria
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([healthUnitId, month, year, diseaseCode])
+  @@index([healthUnitId])
+  @@index([week, year])
+  @@index([diseaseCode])
+  @@index([notified])
+  @@map("epidemiology_reports")
+}
+
+// ============================================
+// END SUS/SIAB PRODUCTION REPORTS
+// ============================================
+
+// ============================================
+// VACCINATION CALENDAR (Calendário Vacinal)
+// ============================================
+
+model Vaccine {
+  id String @id @default(cuid())
+
+  // Identificação
+  name         String // Nome da vacina
+  code         String? @unique // Código PNI
+  manufacturer String?
+
+  // Doenças cobertas
+  diseasesCovered String[] // Array de doenças (Poliomielite, Sarampo, etc.)
+
+  // Administração
+  dosesRequired      Int // Número de doses necessárias
+  intervalDays       Int? // Intervalo em dias entre doses
+  boosterRequired    Boolean @default(false)
+  boosterAfterMonths Int? // Reforço após X meses
+
+  // Faixas etárias recomendadas
+  ageGroups    String[] // ["0-2m", "2-4m", "6m", "12m", "15m", etc.]
+  minAgeMonths Int? // Idade mínima em meses
+  maxAgeMonths Int? // Idade máxima em meses (null = sem limite)
+
+  // Informações adicionais
+  description       String?
+  contraindications String?
+  sideEffects       String?
+
+  // Status
+  active      Boolean @default(true)
+  pniIncluded Boolean @default(true) // Se está no PNI
+
+  // Relacionamentos
+  vaccinations    Vaccination[]
+  scheduleEntries VaccineScheduleEntry[]
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([active])
+  @@index([pniIncluded])
+  @@map("vaccines")
+}
+
+model Vaccination {
+  id String @id @default(cuid())
+
+  // Relacionamentos principais
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  vaccineId String
+  vaccine   Vaccine @relation(fields: [vaccineId], references: [id])
+
+  // Dados da aplicação
+  applicationDate DateTime @default(now())
+  doseNumber      Int // Qual dose (1ª, 2ª, 3ª, reforço)
+
+  // Lote e validade
+  lot        String?
+  expiryDate DateTime?
+
+  // Local de aplicação
+  healthUnitId String?
+  healthUnit   HealthUnit? @relation("VaccinationHealthUnit", fields: [healthUnitId], references: [id])
+
+  // Profissional que aplicou
+  professionalId String?
+  professional   User?   @relation("VaccinationProfessional", fields: [professionalId], references: [id])
+
+  // Reação adversa
+  adverseReaction Boolean @default(false)
+  reactionDetails String?
+
+  // Status
+  status String @default("APPLIED") // APPLIED, SCHEDULED, MISSED, CONTRAINDICATED
+
+  // Observações
+  notes String?
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([vaccineId])
+  @@index([applicationDate])
+  @@index([healthUnitId])
+  @@index([status])
+  @@map("vaccinations")
+}
+
+model VaccineScheduleEntry {
+  id String @id @default(cuid())
+
+  // Vacina
+  vaccineId String
+  vaccine   Vaccine @relation(fields: [vaccineId], references: [id], onDelete: Cascade)
+
+  // Idade recomendada
+  ageMonths Int // Idade em meses (0, 2, 4, 6, 12, 15, etc.)
+  ageLabel  String // Label legível ("Ao nascer", "2 meses", etc.)
+
+  // Dose
+  doseNumber Int
+  doseType   String // INITIAL, BOOSTER, REINFORCEMENT
+
+  // Detalhes
+  description String?
+  isOptional  Boolean @default(false)
+  priority    Int     @default(1) // 1=alta, 2=média, 3=baixa
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vaccineId, ageMonths, doseNumber])
+  @@index([vaccineId])
+  @@index([ageMonths])
+  @@map("vaccine_schedule_entries")
+}
+
+// ============================================
+// END VACCINATION CALENDAR
+// ============================================
+
+// ============================================
+// PRENATAL CONSULTATION (Consulta Pré-Natal)
+// ============================================
+
+model PreNatalConsultation {
+  id String @id @default(cuid())
+
+  // Relacionamentos
+  consultationId String       @unique
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  pregnancyId String?
+  pregnancy   Pregnancy? @relation(fields: [pregnancyId], references: [id])
+
+  // Trimestre
+  trimester      Int // 1, 2, 3
+  gestationalAge Int? // Idade gestacional em semanas
+
+  // Medidas obstétricas
+  uterineHeight  Int? // Altura uterina em cm
+  fetalHeartRate Int? // Batimento cardíaco fetal (bpm)
+  fetalMovements Boolean? // Movimentos fetais presentes
+
+  // Testes laboratoriais
+  syphilisTest      Boolean @default(false)
+  vdrlTest          Boolean @default(false)
+  urineTest         Boolean @default(false)
+  glucoseTest       Boolean @default(false)
+  hemoglobinTest    Boolean @default(false)
+  hematocritTest    Boolean @default(false)
+  hivTest           Boolean @default(false)
+  hepatitisBTest    Boolean @default(false)
+  toxoplasmosisTest Boolean @default(false)
+
+  // Resultados dos testes (opcional)
+  testResults Json?
+
+  // Vacinação
+  tetanusDose1     Boolean @default(false)
+  tetanusDose2     Boolean @default(false)
+  tetanusBooster   Boolean @default(false)
+  tetanusImmune    Boolean @default(false)
+  influenzaVaccine Boolean @default(false)
+
+  // Classificação de risco
+  riskLevel   String? // LOW_RISK, HIGH_RISK
+  riskFactors String[] @default([])
+
+  // Complicações
+  gestationalDiabetes Boolean @default(false)
+  preeclampsia        Boolean @default(false)
+  hemorrhage          Boolean @default(false)
+  prematureLabor      Boolean @default(false)
+
+  // Orientações
+  nutritionalGuidance Boolean @default(false)
+  physicalActivity    Boolean @default(false)
+  breastfeedingPrep   Boolean @default(false)
+
+  // Próxima consulta
+  nextConsultDate DateTime?
+
+  // Observações
+  notes String?
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pregnancyId])
+  @@index([consultationId])
+  @@index([trimester])
+  @@index([riskLevel])
+  @@map("prenatal_consultations")
+}
+
+model Pregnancy {
+  id String @id @default(cuid())
+
+  // Paciente
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Dados da gestação
+  estimatedDueDate    DateTime // Data provável do parto
+  lastMenstrualPeriod DateTime? // DUM
+  gestationalAge      Int? // Idade gestacional em semanas
+
+  // Status
+  status String @default("ACTIVE") // ACTIVE, COMPLETED, INTERRUPTED
+
+  // Histórico obstétrico
+  gravidity Int? // Número de gestações (incluindo atual)
+  parity    Int? // Número de partos
+  abortions Int? // Número de abortos
+  cesareans Int? // Número de cesáreas
+
+  // Desfecho
+  deliveryDate     DateTime?
+  deliveryType     String? // VAGINAL, CESAREAN, FORCEPS
+  deliveryLocation String? // HOSPITAL, HOME, OTHER
+
+  // Recém-nascido
+  birthWeight    Float? // Peso ao nascer (gramas)
+  birthLength    Float? // Comprimento (cm)
+  apgarScore1min Int? // Apgar 1 minuto
+  apgarScore5min Int? // Apgar 5 minutos
+
+  outcome String? // LIVE_BIRTH, STILLBIRTH
+
+  // Puerpério
+  postpartumVisit Boolean @default(false)
+  complications   String?
+
+  // Relacionamentos
+  prenatalConsultations PreNatalConsultation[]
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+  @@index([estimatedDueDate])
+  @@map("pregnancies")
+}
+
+// ============================================
+// END PRENATAL CONSULTATION
+// ============================================
+
+// ============================================
+// ANTHROPOMETRIC MEASUREMENTS (Medidas Antropométricas)
+// ============================================
+
+// Expandir VitalSigns para incluir antropometria
+// (será feito via alteração do modelo existente)
+
+// ============================================
+// GYNECOLOGICAL HISTORY (História Ginecológica)
+// ============================================
+
+model GynecologicalHistory {
+  id String @id @default(cuid())
+
+  // Paciente
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Consulta relacionada (opcional)
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+
+  // Data do evento
+  eventDate DateTime
+
+  // Tipo de evento
+  eventType String // MENARCHE, SEXARCHE, CONTRACEPTION, MENOPAUSE, PREGNANCY, ABORTION
+
+  // Idade no evento
+  ageAtEvent Int?
+
+  // Detalhes específicos
+  contraceptionMethod    String? // Para CONTRACEPTION
+  contraceptionStartDate DateTime?
+  contraceptionEndDate   DateTime?
+
+  // Descrição
+  description String?
+
+  // Observações médicas
+  clinicalNotes String?
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([consultationId])
+  @@index([eventType])
+  @@index([eventDate])
+  @@map("gynecological_history")
 }

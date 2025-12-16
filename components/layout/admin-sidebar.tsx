@@ -166,6 +166,14 @@ const adminMenuItems: MenuItem[] = [
     ]
   },
   {
+    title: 'Assinaturas Digitais',
+    icon: Key,
+    href: '/admin/digital-signatures',
+    submenu: [
+      { title: 'Certificados & Assinaturas', href: '/admin/digital-signatures' },
+    ]
+  },
+  {
     title: 'Sistema',
     icon: Server,
     href: '/system',
