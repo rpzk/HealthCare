@@ -29,10 +29,23 @@ I built **HealthCare** from scratch to be the tool I always wanted. It focuses o
 | **DevOps** | Docker & Docker Compose | Containerization for consistent environments. |
 | **Infra** | UmbrelOS / Linux | Running on a dedicated MiniPC server. |
 
-## 📸 Screenshots
-*(Placeholders - Please upload images to an 'images' folder and link them here)*
-<!-- ![Dashboard Screenshot](./images/dashboard.png) -->
-<!-- ![Prescription Module](./images/prescription.png) -->
+## 📸 Interface Preview
+
+### Administrative & Clinical Management
+> The command center for hospital administration, featuring Role-Based Access Control (RBAC) and real-time metrics.
+
+| Executive Dashboard | Role-Based Access Control (RBAC) |
+| :---: | :---: |
+| <img src="./dashboard-admin.png" alt="Admin Dashboard showing KPIs" width="100%"> | <img src="./roles-rbac.png" alt="Granular User Permissions" width="100%"> |
+| **Real-time KPIs & Occupancy Rates** | **Granular Permissions (Doctors, Nurses, Multidisciplinary Team)** |
+
+### Patient Portal (Mobile First)
+> A dedicated interface for patients to track their wellness index, view prescriptions, and schedule appointments.
+
+| Secure Login | Patient Wellness Hub |
+| :---: | :---: |
+| <img src="./login-screen.png" alt="Secure Auth Screen" width="100%"> | <img src="./patient-portal.png" alt="Patient Health Summary" width="100%"> |
+| **Secure Authentication with JWT** | **Holistic Health Overview & Wellness Index** |
 
 ## 🚀 How to Run (Local Dev)
 
