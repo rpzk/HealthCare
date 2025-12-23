@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 import { updateProfileSchema } from '@/lib/validation-schemas-api'
 
+export const dynamic = 'force-dynamic'
+
 // Direct PrismaClient instantiation to avoid bundling issues
 const globalForPrisma = globalThis as unknown as { profilePrisma: PrismaClient }
 

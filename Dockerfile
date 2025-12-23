@@ -1,10 +1,11 @@
-# Use Node.js 20 slim for better compatibility with native deps
-FROM node:20-slim AS base
+# Use Node.js 22 slim to align with lockfile resolution and engine ranges
+FROM node:22-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates openssl && rm -rf /var/lib/apt/lists/*
+RUN npm install -g npm@11.6.4
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager

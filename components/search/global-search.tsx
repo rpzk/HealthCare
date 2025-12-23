@@ -27,43 +27,8 @@ interface SearchResult {
   href: string
 }
 
-const mockSearchResults: SearchResult[] = [
-  {
-    id: '1',
-    title: 'Maria Santos',
-    description: 'Paciente - 45 anos',
-    type: 'patient',
-    href: '/patients/1'
-  },
-  {
-    id: '2',
-    title: 'Consulta de Rotina - Cardiologia',
-    description: 'Dr. João Silva - 15/01/2024',
-    type: 'consultation',
-    href: '/consultations/1'
-  },
-  {
-    id: '3',
-    title: 'Prontuário - Hipertensão',
-    description: 'Maria Santos - 15/01/2024',
-    type: 'record',
-    href: '/records/1'
-  },
-  {
-    id: '4',
-    title: 'Prescrição - Losartana',
-    description: 'Dr. João Silva - 15/01/2024',
-    type: 'prescription',
-    href: '/prescriptions/1'
-  },
-  {
-    id: '5',
-    title: 'Hemograma Completo',
-    description: 'Maria Santos - 15/01/2024',
-    type: 'exam',
-    href: '/exams/1'
-  }
-]
+// TODO: Implement real search API integration
+const mockSearchResults: SearchResult[] = []
 
 const getTypeLabel = (type: string) => {
   const labels = {

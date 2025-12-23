@@ -15,13 +15,8 @@ export const metadata: Metadata = {
 }
 
 export default function PatientAgentPage({ params }: PatientAgentPageProps) {
-  // Em uma implementação real, você buscaria os dados do paciente pelo ID
-  const mockPatientData = {
-    id: params.id,
-    name: 'Maria Santos',
-    age: 45,
-    diagnosis: 'Hipertensão Arterial',
-  }
+  // Em produção, os dados do paciente serão buscados pela API usando o ID
+  const patientId = params.id
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,7 +31,7 @@ export default function PatientAgentPage({ params }: PatientAgentPageProps) {
                   Agente Médico IA
                 </h1>
                 <p className="text-gray-600 mt-2">
-                  Análise inteligente do histórico médico de <span className="font-semibold">{mockPatientData.name}</span>
+                  Análise inteligente do histórico médico
                 </p>
               </div>
               <div className="bg-blue-50 px-4 py-2 rounded-lg">
@@ -55,24 +50,19 @@ export default function PatientAgentPage({ params }: PatientAgentPageProps) {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Nome</label>
-                  <p className="text-lg font-semibold text-gray-900">{mockPatientData.name}</p>
+                  <label className="text-sm font-medium text-gray-500">ID do Paciente</label>
+                  <p className="text-lg font-semibold text-gray-900">{patientId}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Idade</label>
-                  <p className="text-lg font-semibold text-gray-900">{mockPatientData.age} anos</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Diagnóstico Principal</label>
-                  <p className="text-lg font-semibold text-gray-900">{mockPatientData.diagnosis}</p>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <p className="text-lg font-semibold text-gray-900">Carregando...</p>
                 </div>
               </div>
             </div>
 
             {/* Painel do Agente Médico */}
             <MedicalAgentPanel 
-              patientId={params.id}
-              patientName={mockPatientData.name}
+              patientId={patientId}
             />
 
             {/* Instruções de Uso */}

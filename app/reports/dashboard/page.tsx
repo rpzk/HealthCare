@@ -75,44 +75,37 @@ export default function DashboardReportsPage() {
   })
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const data: DashboardData = {
-        totalPatients: 156,
-        newPatientsThisMonth: 12,
-        totalConsultations: 423,
-        consultationsThisMonth: 45,
-        totalExams: 178,
-        examsThisMonth: 23,
-        totalRecords: 341,
-        recordsThisMonth: 38,
-        pendingExams: 8,
-        cancelledConsultations: 5,
-        averageConsultationsPerDay: 3.2,
-        patientGrowthRate: 8.5,
-        monthlyRevenue: 45230,
-        popularSpecialties: [
-          { name: 'Clínica Geral', count: 89 },
-          { name: 'Cardiologia', count: 45 },
-          { name: 'Dermatologia', count: 32 },
-          { name: 'Ortopedia', count: 28 },
-            { name: 'Pediatria', count: 24 }
-        ],
-        ageDistribution: [
-          { range: '0-18', count: 23 },
-          { range: '19-35', count: 45 },
-          { range: '36-50', count: 38 },
-          { range: '51-65', count: 32 },
-          { range: '65+', count: 18 }
-        ],
-        genderDistribution: [
-          { gender: 'Feminino', count: 89 },
-          { gender: 'Masculino', count: 67 }
-        ]
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch('/api/reports/stats')
+        if (response.ok) {
+          const data = await response.json()
+          setDashboardData({
+            totalPatients: data.totalPatients || 0,
+            newPatientsThisMonth: data.newPatientsThisMonth || 0,
+            totalConsultations: data.totalConsultations || 0,
+            consultationsThisMonth: data.consultationsThisMonth || 0,
+            totalExams: data.totalExams || 0,
+            examsThisMonth: data.examsThisMonth || 0,
+            totalRecords: data.totalRecords || 0,
+            recordsThisMonth: data.recordsThisMonth || 0,
+            pendingExams: 0,
+            cancelledConsultations: 0,
+            averageConsultationsPerDay: 0,
+            patientGrowthRate: 0,
+            monthlyRevenue: 0,
+            popularSpecialties: [],
+            ageDistribution: [],
+            genderDistribution: []
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error)
+      } finally {
+        setLoading(false)
       }
-      setDashboardData(data)
-      setLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
+    }
+    fetchDashboardData()
   }, [])
 
   const kpiCards: KPI[] = [

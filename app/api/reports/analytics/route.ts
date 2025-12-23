@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { startOfMonth, endOfMonth, startOfYear, subMonths, format } from 'date-fns'
+export const dynamic = 'force-dynamic'
+
 
 export const GET = withAuth(async (req: NextRequest, { user }) => {
   const { searchParams } = new URL(req.url)
@@ -145,14 +147,8 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       return acc
     }, {} as Record<string, { name: string; count: number; speciality: string }>)
 
-    // Patient satisfaction (mock data - implement real survey later)
-    const satisfactionScores = [
-      { aspect: 'Atendimento', score: 4.5 },
-      { aspect: 'Instalações', score: 4.2 },
-      { aspect: 'Tempo de Espera', score: 3.8 },
-      { aspect: 'Profissionalismo', score: 4.7 },
-      { aspect: 'Custo-Benefício', score: 4.1 }
-    ]
+    // Patient satisfaction - implementar com dados reais de pesquisa
+    const satisfactionScores: Array<{ aspect: string; score: number }> = []
 
     return NextResponse.json({
       period: {

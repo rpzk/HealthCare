@@ -427,7 +427,7 @@ export function StaffManagement() {
                 <label className="text-sm font-medium">Email</label>
                 <Input
                   type="email"
-                  placeholder="email@exemplo.com"
+                  placeholder="usuario@dominio.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                 />

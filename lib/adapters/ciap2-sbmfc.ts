@@ -28,7 +28,7 @@ export const ciap2SbmfcAdapter: ExternalFetchAdapter<Ciap2Row> = {
       if (parsed.errors.length) throw new Error('CIAP2 CSV parse: ' + parsed.errors[0].message)
       return parsed.data
     }
-    return [{ Codigo: 'A01', Titulo: 'Dor generalizada (CIAP2 fallback)' }]
+    throw new Error('CIAP2_CSV_URL environment variable not configured')
   },
   mapRecord(row) {
     const code = row.Codigo || row.Code

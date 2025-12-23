@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { BIService } from '@/lib/bi-service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/bi/patients-risk
  * Retorna distribuição de pacientes por nível de risco

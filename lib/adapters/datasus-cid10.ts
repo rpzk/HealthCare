@@ -42,7 +42,7 @@ export const datasusCid10Adapter: ExternalFetchAdapter<DatasusRow> = {
       const json = XLSX.utils.sheet_to_json<DatasusRow>(sheet, { defval: undefined })
       return json
     }
-    return [{ Codigo: 'A00', Descricao: 'Cholera (Datasus fallback)' }]
+    throw new Error('DATASUS_CSV_URL or DATASUS_XLSX_URL environment variable not configured')
   },
   mapRecord(row) {
     const code = row.Codigo || row.COD || row.codigo

@@ -89,31 +89,7 @@ export default function AdminAppointmentsPage() {
         const data = await response.json()
         setAppointments(data.appointments || [])
       } else {
-        // Mock data
-        setAppointments([
-          {
-            id: '1',
-            patientName: 'Maria Silva',
-            patientId: 'p1',
-            doctorName: 'Dr. João Santos',
-            doctorId: 'd1',
-            specialty: 'Clínica Geral',
-            scheduledDate: new Date().toISOString(),
-            status: 'SCHEDULED',
-            type: 'Consulta'
-          },
-          {
-            id: '2',
-            patientName: 'José Oliveira',
-            patientId: 'p2',
-            doctorName: 'Dra. Ana Costa',
-            doctorId: 'd2',
-            specialty: 'Cardiologia',
-            scheduledDate: new Date().toISOString(),
-            status: 'CONFIRMED',
-            type: 'Retorno'
-          }
-        ])
+        setAppointments([])
       }
     } catch (error) {
       console.error('Erro:', error)

@@ -20,61 +20,14 @@ const getHandler = withAdminAuthUnlimited(async (request) => {
   const offset = parseInt(searchParams.get('offset') || '0')
 
   try {
-    // Mock de documentos processados
-    const mockDocuments = [
-      {
-        id: '1',
-        filename: 'exame_hemograma_maria.pdf',
-        originalName: 'exame_hemograma_maria.pdf',
-        mimeType: 'application/pdf',
-        size: 245760,
-        status: 'PROCESSED',
-        analysis: {
-          documentType: 'EXAM_RESULT',
-          confidence: 0.95,
-          extractedData: {
-            patientName: 'Maria Santos',
-            examDate: '2024-01-15',
-            results: {
-              hemoglobina: '14.2 g/dL',
-              hematocrito: '42%',
-              leucocitos: '7200/mm³'
-            }
-          }
-        },
-        createdAt: new Date('2024-01-15T09:00:00Z'),
-        updatedAt: new Date('2024-01-15T09:05:00Z')
-      },
-      {
-        id: '2',
-        filename: 'receita_losartana.pdf',
-        originalName: 'receita_losartana.pdf',
-        mimeType: 'application/pdf',
-        size: 128000,
-        status: 'PROCESSING',
-        analysis: null,
-        createdAt: new Date('2024-01-15T10:00:00Z'),
-        updatedAt: new Date('2024-01-15T10:00:00Z')
-      }
-    ]
-
-    // Aplicar filtros
-    let filteredDocuments = mockDocuments
-    if (status) {
-      filteredDocuments = filteredDocuments.filter(doc => doc.status === status.toUpperCase())
-    }
-
-    // Aplicar paginação
-    const documents = filteredDocuments.slice(offset, offset + limit)
-    const total = filteredDocuments.length
-
+    // Em produção: retornar lista vazia, documentos só com dados reais do banco
     return NextResponse.json({
-      documents,
+      documents: [],
       pagination: {
-        total,
+        total: 0,
         limit,
         offset,
-        hasMore: offset + limit < total
+        hasMore: false
       }
     })
   } catch (error) {
@@ -89,8 +42,8 @@ const getHandler = withAdminAuthUnlimited(async (request) => {
 // POST - Upload e processamento de documento
 const postHandler = withAdminAuthUnlimited(async (request) => {
   try {
-  const formData = await request.formData()
-  const file = formData.get('file') as File
+    const formData = await request.formData()
+    const file = formData.get('file') as File
     const patientId = formData.get('patientId') as string
 
     if (!file) {
@@ -100,47 +53,16 @@ const postHandler = withAdminAuthUnlimited(async (request) => {
       )
     }
 
-    // Mock de processamento de documento
-    const mockDocument = {
-      id: Date.now().toString(),
-      filename: file.name,
-      originalName: file.name,
-      mimeType: file.type,
-      size: file.size,
-      status: 'PROCESSING',
-      analysis: null,
-      patientId: patientId || null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-
-    // Simular processamento assíncrono
-    setTimeout(async () => {
-      try {
-        // Mock de análise com IA
-        const mockAnalysis = {
-          documentType: 'EXAM_RESULT',
-          confidence: 0.87,
-          extractedData: {
-            patientName: 'Paciente Mock',
-            examDate: new Date().toISOString().split('T')[0],
-            results: {
-              status: 'Normal',
-              observacoes: 'Exame processado com sucesso'
-            }
-          }
-        }
-
-        console.log(`Documento ${mockDocument.id} processado com sucesso`)
-      } catch (error) {
-        console.error(`Erro ao processar documento ${mockDocument.id}:`, error)
-      }
-    }, 2000)
-
+    // ⚠️ APENAS UPLOAD REAL - REMOVER MOCKS
+    // Implementar salvamento real no banco de dados
     return NextResponse.json({
-      document: mockDocument,
-      message: 'Documento enviado para processamento'
-    }, { status: 201 })
+      error: 'Funcionalidade sob implementação. Use APIs de dados reais.',
+      file: {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      }
+    }, { status: 501 })
 
   } catch (error) {
     console.error('Erro ao processar documento:', error)
