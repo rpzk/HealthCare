@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
+export const dynamic = 'force-dynamic'
+
 
 function parseIceEnv(v?: string) {
   if (!v) return [{ urls: 'stun:stun.l.google.com:19302' }]

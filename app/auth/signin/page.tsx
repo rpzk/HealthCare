@@ -158,15 +158,6 @@ export default function SignIn() {
             {passkeyLoading ? 'Autenticando...' : 'Entrar com Passkey'}
           </Button>
         </form>
-
-        <div className="text-center space-y-2">
-          <div className="text-sm text-gray-500">
-            Credenciais de teste:
-          </div>
-          <div className="text-xs text-gray-400 font-mono bg-gray-50 p-2 rounded">
-            admin@healthcare.com / admin123
-          </div>
-        </div>
       </Card>
     </div>
   )

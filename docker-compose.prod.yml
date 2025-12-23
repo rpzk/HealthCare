@@ -56,13 +56,6 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - healthcare-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
       interval: 10s
@@ -87,7 +80,6 @@ services:
       # ICE servers for WebRTC (format: url,username,credential;url2,username2,credential2)
       NEXT_PUBLIC_ICE: ${NEXT_PUBLIC_ICE:-turn:turn:3478,teleuser,telepass;stun:stun.l.google.com:19302,,}
       NODE_ENV: production
-      SEED_AUTH: "1"
     depends_on:
       postgres:
         condition: service_healthy

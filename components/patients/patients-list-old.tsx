@@ -118,41 +118,8 @@ export function PatientsList() {
       setPagination(pageMeta)
     } catch (err) {
       console.error('Erro ao carregar pacientes:', err)
-      setError('Erro ao carregar pacientes. Mostrando dados de exemplo.')
-      
-      // Fallback para dados estáticos
-      setPatients([
-        {
-          id: '1',
-          name: 'Maria Santos',
-          age: 45,
-          gender: 'Feminino',
-          phone: '(11) 98765-4321',
-          email: 'maria.santos@email.com',
-          bloodType: 'A+',
-          allergies: ['Penicilina'],
-          chronicDiseases: ['Hipertensão'],
-          isActive: true,
-          totalConsultations: 5,
-          totalPrescriptions: 3,
-          totalRecords: 8
-        },
-        {
-          id: '2',
-          name: 'João Silva',
-          age: 62,
-          gender: 'Masculino',
-          phone: '(11) 91234-5678',
-          email: 'joao.silva@email.com',
-          bloodType: 'O-',
-          allergies: [],
-          chronicDiseases: ['Diabetes Tipo 2'],
-          isActive: true,
-          totalConsultations: 12,
-          totalPrescriptions: 8,
-          totalRecords: 15
-        }
-      ])
+      setError('Erro ao carregar pacientes.')
+      setPatients([])
     } finally {
       setLoading(false)
     }

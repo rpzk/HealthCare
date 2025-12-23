@@ -103,33 +103,7 @@ export default function AdminUnitsPage() {
         const data = await response.json()
         setUnits(data.units || [])
       } else {
-        // Dados de exemplo se a API não existir
-        setUnits([
-          {
-            id: '1',
-            name: 'UBS Central',
-            type: 'UBS',
-            address: 'Rua Principal, 100',
-            city: 'São Paulo',
-            state: 'SP',
-            phone: '(11) 3333-4444',
-            isActive: true,
-            staffCount: 12,
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: '2',
-            name: 'USF Vila Nova',
-            type: 'USF',
-            address: 'Av. das Flores, 500',
-            city: 'São Paulo',
-            state: 'SP',
-            phone: '(11) 3333-5555',
-            isActive: true,
-            staffCount: 8,
-            createdAt: new Date().toISOString()
-          }
-        ])
+        setUnits([])
       }
     } catch (error) {
       console.error('Erro:', error)

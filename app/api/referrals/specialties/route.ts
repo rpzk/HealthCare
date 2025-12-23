@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 // Lista de especialidades médicas comuns no SUS/Brasil
 const SPECIALTIES = [
   { code: 'CARDIO', name: 'Cardiologia', description: 'Doenças do coração e sistema cardiovascular' },

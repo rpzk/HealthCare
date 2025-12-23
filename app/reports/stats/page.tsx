@@ -97,86 +97,61 @@ export default function StatsPage() {
     }
   })
 
-  const fetchStatistics = useCallback(() => {
+  const fetchStatistics = useCallback(async () => {
     setLoading(true)
-    // Simular carregamento de dados com base no período selecionado
-    const timer = setTimeout(() => {
-      const multiplier = timeRange === '7days' ? 0.25 : timeRange === '30days' ? 1 : timeRange === '90days' ? 3 : 12
-
-      setStatsData({
-        patientStats: {
-          total: 156,
-          newThisPeriod: Math.round(12 * multiplier),
-          growthRate: 8.5,
-          averageAge: 42.3,
-          genderDistribution: { male: 67, female: 89, other: 0 },
-          topAgeGroups: [
-            { range: '31-50', count: Math.round(38 * multiplier), percentage: 24.4 },
-            { range: '19-35', count: Math.round(45 * multiplier), percentage: 28.8 },
-            { range: '51-65', count: Math.round(32 * multiplier), percentage: 20.5 },
-            { range: '0-18', count: Math.round(23 * multiplier), percentage: 14.7 },
-            { range: '65+', count: Math.round(18 * multiplier), percentage: 11.5 }
-          ]
-        },
-        consultationStats: {
-          total: Math.round(423 * multiplier),
-          completed: Math.round(389 * multiplier),
-          cancelled: Math.round(28 * multiplier),
-          noShow: Math.round(6 * multiplier),
-          averagePerDay: 3.2,
-          completionRate: 92.0,
-          specialtyBreakdown: [
-            { specialty: 'Clínica Geral', count: Math.round(89 * multiplier), percentage: 21.0 },
-            { specialty: 'Cardiologia', count: Math.round(67 * multiplier), percentage: 15.8 },
-            { specialty: 'Dermatologia', count: Math.round(54 * multiplier), percentage: 12.8 },
-            { specialty: 'Ortopedia', count: Math.round(43 * multiplier), percentage: 10.2 },
-            { specialty: 'Pediatria', count: Math.round(38 * multiplier), percentage: 9.0 }
-          ]
-        },
-        examStats: {
-          total: Math.round(178 * multiplier),
-          completed: Math.round(156 * multiplier),
-          pending: Math.round(18 * multiplier),
-          urgent: Math.round(4 * multiplier),
-          averageCompletionTime: 2.5,
-          topExamTypes: [
-            { type: 'Exame de Sangue', count: Math.round(45 * multiplier) },
-            { type: 'Radiografia', count: Math.round(32 * multiplier) },
-            { type: 'Ultrassom', count: Math.round(28 * multiplier) },
-            { type: 'Eletrocardiograma', count: Math.round(23 * multiplier) },
-            { type: 'Tomografia', count: Math.round(18 * multiplier) }
-          ]
-        },
-        performanceMetrics: {
-          patientSatisfaction: 4.7,
-          averageWaitTime: 18.5,
-          systemUptime: 99.8,
-          dataAccuracy: 99.2,
-          responseTime: 1.2
-        },
-        trends: {
-          patientsOverTime: Array.from({ length: 12 }, (_, i) => ({
-            month: new Date(2025, i, 1).toLocaleDateString('pt-BR', { month: 'short' }),
-            count: Math.round(10 + Math.random() * 20)
-          })),
-          consultationsOverTime: Array.from({ length: 12 }, (_, i) => ({
-            month: new Date(2025, i, 1).toLocaleDateString('pt-BR', { month: 'short' }),
-            count: Math.round(25 + Math.random() * 40)
-          })),
-          examsOverTime: Array.from({ length: 12 }, (_, i) => ({
-            month: new Date(2025, i, 1).toLocaleDateString('pt-BR', { month: 'short' }),
-            count: Math.round(10 + Math.random() * 25)
-          }))
-        }
-      })
+    try {
+      const response = await fetch('/api/reports/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStatsData({
+          patientStats: {
+            total: data.totalPatients || 0,
+            newThisPeriod: data.newPatientsThisMonth || 0,
+            growthRate: 0,
+            averageAge: 0,
+            genderDistribution: { male: 0, female: 0, other: 0 },
+            topAgeGroups: []
+          },
+          consultationStats: {
+            total: data.totalConsultations || 0,
+            completed: 0,
+            cancelled: 0,
+            noShow: 0,
+            averagePerDay: 0,
+            completionRate: 0,
+            specialtyBreakdown: []
+          },
+          examStats: {
+            total: data.totalExams || 0,
+            completed: 0,
+            pending: 0,
+            urgent: 0,
+            averageCompletionTime: 0,
+            topExamTypes: []
+          },
+          performanceMetrics: {
+            patientSatisfaction: 0,
+            averageWaitTime: 0,
+            systemUptime: 0,
+            dataAccuracy: 0,
+            responseTime: 0
+          },
+          trends: {
+            patientsOverTime: [],
+            consultationsOverTime: [],
+            examsOverTime: []
+          }
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch statistics:', error)
+    } finally {
       setLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
+    }
   }, [timeRange])
 
   useEffect(() => {
-    const cleanup = fetchStatistics()
-    return cleanup
+    fetchStatistics()
   }, [fetchStatistics])
 
   const timeRangeOptions: Array<{ value: StatsTimeRange; label: string }> = [

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Session } from "next-auth";
 
+export const dynamic = 'force-dynamic';
+
 type Priority = {
   type: "medication" | "appointment" | "goal" | "exam";
   priority: number;

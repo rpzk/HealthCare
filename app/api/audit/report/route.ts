@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { advancedAuditService } from '@/lib/advanced-audit-service';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/audit/report
  * Relatório de auditoria (apenas ADMIN)

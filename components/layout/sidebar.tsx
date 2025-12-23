@@ -91,6 +91,15 @@ const menuItems: MenuItem[] = [
     href: '/prescriptions',
   },
   {
+    title: 'Atestados',
+    icon: FileText,
+    href: '/certificates',
+    submenu: [
+      { title: 'Meus Atestados', href: '/certificates' },
+      { title: 'Novo', href: '/certificates?tab=create' },
+    ]
+  },
+  {
     title: 'Sinais Vitais',
     icon: Activity,
     href: '/vitals',

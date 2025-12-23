@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
+export const dynamic = 'force-dynamic'
+
 
 // Direct Prisma client to avoid bundling issues
 import { PrismaClient } from '@prisma/client'

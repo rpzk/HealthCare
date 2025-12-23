@@ -3,6 +3,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = 'force-dynamic'
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NpsService } from "@/lib/nps-service";
