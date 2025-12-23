@@ -1,4 +1,4 @@
-// Global instrumentation to capture crashes in both Node and Edge runtimes
+// Global instrumentation with OpenTelemetry distributed tracing
 export async function register() {
   // Guard against double registration
   if ((globalThis as any).__hcInstr) return
@@ -9,6 +9,37 @@ export async function register() {
 
   try {
     if (isNode) {
+      // Initialize OpenTelemetry tracing
+      if (process.env.OTEL_ENABLED === 'true') {
+        const { NodeSDK } = await import('@opentelemetry/sdk-trace-node')
+        const { getNodeAutoInstrumentations } = await import('@opentelemetry/auto-instrumentations-node')
+        const { OTLPTraceExporter } = await import('@opentelemetry/exporter-trace-otlp-http')
+        const { Resource } = await import('@opentelemetry/resources')
+        const { SemanticResourceAttributes } = await import('@opentelemetry/semantic-conventions')
+
+        const sdk = new NodeSDK({
+          resource: new Resource({
+            [SemanticResourceAttributes.SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'healthcare-app',
+            [SemanticResourceAttributes.SERVICE_VERSION]: process.env.npm_package_version || '1.0.0',
+          }),
+          traceExporter: new OTLPTraceExporter({
+            url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+          }),
+          instrumentations: [getNodeAutoInstrumentations()],
+        })
+
+        sdk.start()
+        // eslint-disable-next-line no-console
+        console.log('[tracing] OpenTelemetry SDK initialized')
+
+        process.on('SIGTERM', () => {
+          sdk.shutdown()
+            .then(() => console.log('[tracing] SDK shut down'))
+            .catch((error) => console.error('[tracing] Shutdown error', error))
+        })
+      }
+
+      // Error handlers
       process.on('unhandledRejection', (reason: any) => {
         // eslint-disable-next-line no-console
         console.error('[instr] UnhandledRejection:', reason?.message || reason, reason?.stack)
