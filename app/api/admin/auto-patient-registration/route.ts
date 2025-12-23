@@ -34,33 +34,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Mock de criação de paciente
-    const mockPatient = {
-      id: Date.now().toString(),
-      name: registrationData.nome,
-      email: registrationData.email || `paciente-${Date.now()}@email.com`,
-      phone: registrationData.telefone || null,
-      cpf: registrationData.cpf ? encrypt(registrationData.cpf) : null,
-      birthDate: registrationData.dataNascimento ? new Date(registrationData.dataNascimento) : null,
-      gender: registrationData.sexo || 'UNKNOWN',
-      address: registrationData.endereco || null,
-      // Use available fields from PatientRegistrationData
-      medicalHistory: registrationData.observacoes || null,
-      allergies: registrationData.alergias || [],
-      currentMedications: registrationData.medicamentosUso || [],
-      emergencyContact: registrationData.contatoEmergencia || null,
-      insuranceNumber: registrationData.convenio?.numero || null,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-
+    // ⚠️ APENAS ANÁLISE - NÃO CRIAR PACIENTES AUTOMATICAMENTE
+    // Em produção, enviar para revisão manual antes de criar
     return NextResponse.json({
-      success: true,
-      patient: mockPatient,
+      success: false,
+      message: 'Função de criação automática desativada. Revisar e criar manualmente.',
       extractedData: registrationData,
-      message: 'Paciente criado com sucesso via IA'
-    })
+      action: 'MANUAL_REVIEW_REQUIRED'
+    }, { status: 400 })
 
   } catch (error) {
     console.error('Erro no cadastro automático:', error)

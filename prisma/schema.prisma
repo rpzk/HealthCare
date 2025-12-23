@@ -213,6 +213,16 @@ model Professional {
   @@map("professionals")
 }
 
+model Branding {
+  id         String   @id @default(cuid())
+  clinicName String?
+  logoUrl    String?
+  headerUrl  String?
+  footerText String?
+  updatedAt  DateTime @updatedAt
+  @@map("branding")
+}
+
 model SystemModule {
   id          String   @id @default(cuid())
   key         String   @unique
@@ -3624,7 +3634,11 @@ model MedicalCertificate {
   pdfHash    String? // Hash SHA-256 do PDF
   qrCodeData String? // Dados do QR Code para validação
 
-  // Assinatura digital (futuro)
+  // Assinatura digital - PKI Local (auto-assinado)
+  signature        String?  // Base64 da assinatura (SHA-256 + RSA)
+  signatureMethod  String   @default("NONE")  // NONE, PKI_LOCAL, ICP_BRASIL
+  
+  // Assinatura digital - ICP-Brasil (futuro)
   digitalSignature String? // Base64 da assinatura digital ICP-Brasil
   certificateChain String? // Cadeia de certificados
   timestamp        DateTime? // Timestamp da assinatura
@@ -3642,6 +3656,49 @@ model MedicalCertificate {
   @@index([consultationId])
   @@index([sequenceNumber, year])
   @@index([issuedAt])
+}
+
+// =====================================
+// EXTERNAL SYSTEM INTEGRATIONS
+// =====================================
+
+model IntegrationLog {
+  id String @id @default(cuid())
+
+  // Integration identifier
+  integrationName String // CARTORIO, SUS, GOVERNMENT_PROTOCOL
+  
+  // Related certificate
+  certificateId String
+  
+  // Submission status
+  status String // SUBMITTED, PROCESSING, APPROVED, REJECTED, ERROR
+  
+  // Request and response data
+  requestPayload  String // JSON payload sent to external system
+  responseData    String // Response from external system or error details
+  
+  // Protocol/Reference numbers from external systems
+  externalProtocolId String? // e.g., Cartório protocol, SUS record ID, etc.
+  externalReference  String? // Additional reference from external system
+  
+  // Tracking
+  submittedAt DateTime @default(now())
+  lastCheckedAt DateTime?
+  resolvedAt DateTime?
+  
+  // Error tracking
+  errorCount Int @default(0)
+  lastError String?
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([certificateId])
+  @@index([integrationName])
+  @@index([status])
+  @@index([submittedAt])
 }
 
 // =====================================

@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { BIService } from '@/lib/bi-service';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/bi/consultations-trend
  * Retorna tendência de consultas dos últimos 6 meses

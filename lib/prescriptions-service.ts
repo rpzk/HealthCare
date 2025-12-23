@@ -172,29 +172,7 @@ export class PrescriptionsServiceDb {
 
   static async create(data: PrescriptionCreateData) {
     try {
-      // Bypass-friendly: ensure doctor exists (or create a minimal stub) if ALLOW_TEST_BYPASS
-      let doctorId = data.doctorId
-      if (process.env.ALLOW_TEST_BYPASS === 'true') {
-        try {
-          const existing = await prisma.user.findUnique({ where: { id: data.doctorId } })
-          if (!existing) {
-            const email = `bypass_doctor_${data.doctorId}@local.test`
-            const created = await prisma.user.upsert({
-              where: { id: data.doctorId },
-              update: {},
-              create: {
-                id: data.doctorId,
-                email,
-                name: 'Dr. Bypass',
-                role: 'DOCTOR',
-              },
-            })
-            doctorId = created.id
-          }
-        } catch (inner) {
-          console.warn('Bypass doctor ensure failed', inner)
-        }
-      }
+      const doctorId = data.doctorId
 
       const med = this.fromApiToDb({ medications: data.medications })
       const created = await prisma.prescription.create({

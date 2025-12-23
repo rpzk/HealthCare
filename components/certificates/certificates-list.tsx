@@ -180,21 +180,28 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
             {/* Actions */}
             {!cert.revokedAt && (
               <div className="flex flex-col gap-2 ml-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // TODO: Gerar PDF
-                    toast({
-                      title: 'Em breve',
-                      description: 'Geração de PDF em desenvolvimento'
-                    })
-                  }}
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  PDF
-                </Button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`/api/certificates/${cert.id}/pdf`);
+                        if (!res.ok) throw new Error('Falha ao gerar PDF');
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `atestado_${cert.sequenceNumber}_${cert.year}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                  >
+                    Baixar PDF
+                  </button>
                 <Button
                   size="sm"
                   variant="outline"

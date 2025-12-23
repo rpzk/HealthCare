@@ -17,11 +17,7 @@ export const icd10WhoAdapter: ExternalFetchAdapter<ICD10Row> = {
   },
   async fetchList() {
     if (!ICD10_SOURCE_URL) {
-      // Fallback minimal dataset (avoid hard failure in dev)
-      return [
-        { Code: 'A00', Title: 'Cholera', Description: 'Cholera (fallback small set)' },
-        { Code: 'A00.0', Title: 'Cholera due to V. cholerae 01', Parent: 'A00' }
-      ]
+      throw new Error('ICD10_CSV_URL environment variable not configured')
     }
     const buf = await fetchRawToBuffer(ICD10_SOURCE_URL)
     const text = buf.toString('utf8')

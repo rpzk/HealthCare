@@ -24,19 +24,28 @@ export default function ReportsPage() {
   })
 
   useEffect(() => {
-    // Simular carregamento de dados
-    setTimeout(() => {
-      setStats({
-        totalPatients: 156,
-        totalConsultations: 423,
-        totalExams: 178,
-        totalRecords: 341,
-        consultationsThisMonth: 45,
-        examsThisMonth: 23,
-        newPatientsThisMonth: 12
-      })
-      setLoading(false)
-    }, 1000)
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/reports/stats')
+        if (response.ok) {
+          const data = await response.json()
+          setStats({
+            totalPatients: data.totalPatients || 0,
+            totalConsultations: data.totalConsultations || 0,
+            totalExams: data.totalExams || 0,
+            totalRecords: data.totalRecords || 0,
+            consultationsThisMonth: data.consultationsThisMonth || 0,
+            examsThisMonth: data.examsThisMonth || 0,
+            newPatientsThisMonth: data.newPatientsThisMonth || 0
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
   }, [])
 
   const reports = [

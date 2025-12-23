@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { BIService } from '@/lib/bi-service'
+export const dynamic = 'force-dynamic'
+
 
 export const GET = withAuth(async (req, { user }) => {
   // Only ADMIN or MANAGER roles should access BI

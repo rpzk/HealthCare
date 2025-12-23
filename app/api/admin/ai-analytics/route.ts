@@ -129,32 +129,12 @@ async function getRealTimeThreats() {
   
   return {
     activeThreats: [
-      // Simulando ameaças para demonstração
-      {
-        id: 'threat-001',
-        type: 'RATE_SPIKE',
-        severity: 'HIGH',
-        source: '192.168.1.100',
-        description: 'Pico anômalo de requisições detectado',
-        timestamp: Date.now() - (5 * 60 * 1000),
-        status: 'ACTIVE',
-        action: 'AUTO_BLOCKED'
-      },
-      {
-        id: 'threat-002', 
-        type: 'SUSPICIOUS_IP',
-        severity: 'MEDIUM',
-        source: '10.0.0.45',
-        description: 'IP com padrão de botnet detectado',
-        timestamp: Date.now() - (15 * 60 * 1000),
-        status: 'MONITORING',
-        action: 'INCREASED_MONITORING'
-      }
+      // Ameaças reais detectadas pelo sistema de rate limiting
     ],
     threatSummary: {
       critical: 0,
-      high: 1,
-      medium: 1,
+      high: 0,
+      medium: 0,
       low: 0,
       totalBlocked: redisStats.blockedUsers
     },
