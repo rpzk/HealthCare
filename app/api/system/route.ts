@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { withAdminAuth } from '@/lib/with-auth'
 import { PrismaClient } from '@prisma/client'
 import os from 'os'
+export const dynamic = 'force-dynamic'
+
 
 const globalForSystem = globalThis as unknown as { systemPrisma: PrismaClient }
 

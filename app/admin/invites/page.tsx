@@ -107,7 +107,7 @@ export default function InvitesPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="exemplo@email.com"
+                  placeholder="usuario@dominio.com"
                   className="pl-9"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

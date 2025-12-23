@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+export const dynamic = 'force-dynamic'
+
 
 export const GET = withAuth(async (req: NextRequest, { user }) => {
   const { searchParams } = new URL(req.url)

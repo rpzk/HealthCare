@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Session } from "next-auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const session = (await auth()) as (Session & { user: { id: string } }) | null;

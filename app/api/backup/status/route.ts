@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/backup/status
  * Lista backups existentes

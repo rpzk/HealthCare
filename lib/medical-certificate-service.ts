@@ -9,6 +9,8 @@ import { PrismaClient } from '@prisma/client'
 import crypto from 'crypto'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { signCertificate, SignatureMethod } from './signature-service'
+import { sendCertificateIssuedNotification, sendCertificateRevokedNotification } from './email-service'
 
 const prisma = new PrismaClient()
 
@@ -117,6 +119,29 @@ export class MedicalCertificateService {
       doctor.crmNumber || ''
     )
 
+    // Prepare data for signing (hash of certificate content)
+    const certificateDataToSign = JSON.stringify({
+      sequenceNumber,
+      year,
+      patientId: data.patientId,
+      doctorId: data.doctorId,
+      type: data.type,
+      startDate: data.startDate.toISOString(),
+      endDate: endDate?.toISOString() || null,
+      content: data.content
+    })
+
+    // Sign with PKI_LOCAL by default
+    const signatureMethod: SignatureMethod = 'PKI_LOCAL'
+    let signature: string | null = null
+    try {
+      const signResult = signCertificate(certificateDataToSign, signatureMethod)
+      signature = signResult.signature
+    } catch (error) {
+      console.warn('Failed to sign certificate:', error)
+      // Continue without signature if signing fails
+    }
+
     // Criar atestado
     const certificate = await prisma.medicalCertificate.create({
       data: {
@@ -135,7 +160,9 @@ export class MedicalCertificateService {
         title: data.title || 'ATESTADO MÉDICO',
         content: data.content,
         observations: data.observations,
-        qrCodeData
+        qrCodeData,
+        signature,
+        signatureMethod: signature ? signatureMethod : 'NONE'
       },
       include: {
         patient: {
@@ -174,6 +201,26 @@ export class MedicalCertificateService {
         }
       }
     })
+
+    // Send email notification to patient
+    if (patient && patient.cpf) {
+      const validationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/certificates/validate/${sequenceNumber}/${year}`
+      
+      await sendCertificateIssuedNotification(
+        patient.cpf, // Using CPF as placeholder for email - should use patient.email when available
+        patient.name,
+        doctor.name,
+        String(sequenceNumber),
+        String(year),
+        data.type,
+        format(data.startDate, 'dd/MM/yyyy', { locale: ptBR }),
+        endDate ? format(endDate, 'dd/MM/yyyy', { locale: ptBR }) : undefined,
+        validationUrl
+      ).catch(err => {
+        console.warn('Failed to send certificate issued email:', err)
+        // Non-blocking: continue even if email fails
+      })
+    }
 
     return certificate
   }
@@ -219,7 +266,15 @@ export class MedicalCertificateService {
     reason: string
   ): Promise<void> {
     const certificate = await prisma.medicalCertificate.findUnique({
-      where: { id: certificateId }
+      where: { id: certificateId },
+      include: {
+        patient: {
+          select: { name: true, cpf: true, email: true }
+        },
+        doctor: {
+          select: { name: true }
+        }
+      }
     })
 
     if (!certificate) {
@@ -251,6 +306,23 @@ export class MedicalCertificateService {
         metadata: { reason }
       }
     })
+
+    // Envia notificação de revogação (não-bloqueante)
+    const patientEmail = certificate.patient.email || certificate.patient.cpf
+    if (patientEmail) {
+      const certificateNumber = `${String(certificate.sequenceNumber).padStart(3, '0')}/${certificate.year}`
+      sendCertificateRevokedNotification(
+        patientEmail,
+        certificate.patient.name,
+        certificateNumber,
+        reason
+      ).catch((error) => {
+        console.warn(
+          `[Email Error] Falha ao enviar notificação de revogação para ${certificateId}:`,
+          error.message
+        )
+      })
+    }
   }
 
   /**

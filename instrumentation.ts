@@ -1,13 +1,13 @@
 // Global instrumentation to capture crashes in both Node and Edge runtimes
 export async function register() {
+  // Guard against double registration
+  if ((globalThis as any).__hcInstr) return
+  ;(globalThis as any).__hcInstr = true
+
+  const isNode = typeof process !== 'undefined' && typeof (process as any).on === 'function'
+  const hasAddEvent = typeof (globalThis as any).addEventListener === 'function'
+
   try {
-    // Guard against double registration
-    if ((globalThis as any).__hcInstr) return
-    ;(globalThis as any).__hcInstr = true
-
-    const isNode = typeof process !== 'undefined' && typeof (process as any).on === 'function'
-    const hasAddEvent = typeof (globalThis as any).addEventListener === 'function'
-
     if (isNode) {
       process.on('unhandledRejection', (reason: any) => {
         // eslint-disable-next-line no-console
@@ -53,3 +53,4 @@ export async function register() {
     console.error('[instr] Failed to register instrumentation:', (e as any)?.message)
   }
 }
+

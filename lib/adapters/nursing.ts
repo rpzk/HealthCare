@@ -5,13 +5,9 @@ interface NursingItem { code: string; title: string; description?: string; paren
 export const nursingClassificationAdapter: ExternalFetchAdapter<NursingItem> = {
   name: 'NURSING-CLASSIFICATION',
   sourceType: 'NURSING',
-  async version() { return 'mock-nursing-v1' },
+  async version() { throw new Error('Nursing classification adapter not configured') },
   async fetchList() {
-    // TODO integrate with e.g. CIPE / NANDA / NIC / NOC depending on licensing
-    return [
-      { code: 'N001', title: 'Ansiedade' },
-      { code: 'N002', title: 'Dor aguda' }
-    ]
+    throw new Error('Nursing classification data source not configured. Please configure appropriate environment variable.')
   },
   mapRecord(r) { return { code: r.code, display: r.title, description: r.description, parentCode: r.parent } }
 }

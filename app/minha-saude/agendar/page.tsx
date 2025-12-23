@@ -183,25 +183,7 @@ export default function AgendarConsultaPage() {
         }
       }
       
-      // Fallback: horários padrão se não houver agenda configurada
-      const defaultSlots: TimeSlot[] = [
-        { time: '08:00', available: true },
-        { time: '08:30', available: true },
-        { time: '09:00', available: true },
-        { time: '09:30', available: true },
-        { time: '10:00', available: true },
-        { time: '10:30', available: true },
-        { time: '11:00', available: true },
-        { time: '11:30', available: true },
-        { time: '14:00', available: true },
-        { time: '14:30', available: true },
-        { time: '15:00', available: true },
-        { time: '15:30', available: true },
-        { time: '16:00', available: true },
-        { time: '16:30', available: true },
-        { time: '17:00', available: true },
-      ]
-      setAvailableSlots(defaultSlots)
+      setAvailableSlots([])
     } catch (err) {
       console.error('Erro ao carregar horários:', err)
     } finally {

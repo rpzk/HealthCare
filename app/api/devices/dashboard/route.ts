@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma, ReadingType } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Dashboard de vitais com estatísticas e tendências
 export async function GET(request: NextRequest) {
   try {

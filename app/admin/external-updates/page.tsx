@@ -54,7 +54,7 @@ export default function ExternalUpdatesAdminPage() {
         <label className="flex items-center gap-2"><input type="checkbox" checked={dryRun} onChange={e=> setDryRun(e.target.checked)} /> Dry Run</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={retireMissing} onChange={e=> setRetireMissing(e.target.checked)} /> Retire Missing</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={preview} onChange={e=> setPreview(e.target.checked)} /> Preview</label>
-        <button disabled={running} onClick={runUpdate} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50">{running ? 'Running...' : 'Run Mock ICD10 Update'}</button>
+        <button disabled={running} onClick={runUpdate} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50">{running ? 'Running...' : 'Run ICD10 Update'}</button>
       </div>
       <div className="mt-4 flex items-center gap-3">
         <input type="file" onChange={e=> setFile(e?.target?.files?.[0])} />

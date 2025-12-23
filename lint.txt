@@ -1,4 +1,0 @@
-
-> healthcare-medical-records@1.0.0 lint
-> next lint
-

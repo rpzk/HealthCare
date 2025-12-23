@@ -228,8 +228,110 @@ export class EmailService {
     return result.success
   }
 
+  /**   * Template: Atestado Médico Emitido (para paciente)
+   */
+  public async sendCertificateIssuedNotification(
+    patientEmail: string,
+    patientName: string,
+    doctorName: string,
+    certificateNumber: string,
+    certificateYear: number,
+    certificateType: string,
+    startDate: string,
+    endDate?: string,
+    validationUrl?: string
+  ): Promise<boolean> {
+    const typeLabel = {
+      MEDICAL_LEAVE: 'Afastamento',
+      FITNESS: 'Aptidão',
+      ACCOMPANIMENT: 'Acompanhante',
+      TIME_OFF: 'Dispensa',
+      CUSTOM: 'Personalizado'
+    }[certificateType] || certificateType
+
+    const result = await this.sendEmail({
+      to: patientEmail,
+      subject: `📋 Novo Atestado Médico - ${doctorName}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+          <div style="background: #3B82F6; padding: 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">📋 Novo Atestado Médico</h1>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 25px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <p>Olá, <strong>${patientName}</strong>!</p>
+            
+            <p>Você recebeu um novo atestado médico de <strong>${doctorName}</strong>.</p>
+            
+            <div style="background: white; border-left: 4px solid #3B82F6; padding: 15px; margin: 15px 0;">
+              <p style="margin: 5px 0;"><strong>Nº do Atestado:</strong> ${String(certificateNumber).padStart(3, '0')}/${certificateYear}</p>
+              <p style="margin: 5px 0;"><strong>Tipo:</strong> ${typeLabel}</p>
+              <p style="margin: 5px 0;"><strong>Data Inicial:</strong> ${startDate}</p>
+              ${endDate ? `<p style="margin: 5px 0;"><strong>Data Final:</strong> ${endDate}</p>` : ''}
+            </div>
+            
+            ${validationUrl ? `
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${validationUrl}" style="display: inline-block; background: #3B82F6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                ✓ Validar Atestado
+              </a>
+            </div>
+            ` : ''}
+            
+            <p style="font-size: 12px; color: #666; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+              Este é um email automático. Por favor, não responda. Se tiver dúvidas, entre em contato com a clínica.
+            </p>
+          </div>
+        </div>
+      `,
+      text: `Novo Atestado: ${String(certificateNumber).padStart(3, '0')}/${certificateYear} - ${typeLabel} - ${startDate} a ${endDate || 'sem data final'}`
+    })
+    return result.success
+  }
+
   /**
-   * Template: Questionário de Saúde
+   * Template: Atestado Revogado (para paciente)
+   */
+  public async sendCertificateRevokedNotification(
+    patientEmail: string,
+    patientName: string,
+    certificateNumber: string,
+    reason?: string
+  ): Promise<boolean> {
+    const result = await this.sendEmail({
+      to: patientEmail,
+      subject: `⚠️ Atestado Revogado - ${String(certificateNumber).padStart(3, '0')}`,
+      html: `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+          <div style="background: #EF4444; padding: 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">⚠️ Atestado Revogado</h1>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 25px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <p>Olá, <strong>${patientName}</strong>!</p>
+            
+            <p>O atestado nº <strong>${String(certificateNumber).padStart(3, '0')}</strong> foi <strong>revogado</strong>.</p>
+            
+            ${reason ? `
+            <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; margin: 15px 0;">
+              <p style="margin: 0;"><strong>Motivo:</strong> ${reason}</p>
+            </div>
+            ` : ''}
+            
+            <p style="margin-top: 20px;">Se você tiver dúvidas, entre em contato com a clínica imediatamente.</p>
+            
+            <p style="font-size: 12px; color: #666; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+              Este é um email automático. Por favor, não responda.
+            </p>
+          </div>
+        </div>
+      `,
+      text: `Atestado ${String(certificateNumber).padStart(3, '0')} foi revogado. ${reason ? `Motivo: ${reason}` : ''}`
+    })
+    return result.success
+  }
+
+  /**   * Template: Questionário de Saúde
    */
   public async sendQuestionnaireEmail(
     to: string, 
@@ -335,3 +437,42 @@ export class EmailService {
 }
 
 export const emailService = EmailService.getInstance()
+
+// Certificate-specific email functions
+export async function sendCertificateIssuedNotification(
+  patientEmail: string,
+  patientName: string,
+  doctorName: string,
+  certificateNumber: string,
+  certificateYear: number,
+  certificateType: string,
+  startDate: string,
+  endDate?: string,
+  validationUrl?: string
+): Promise<boolean> {
+  return emailService.sendCertificateIssuedNotification(
+    patientEmail,
+    patientName,
+    doctorName,
+    certificateNumber,
+    certificateYear,
+    certificateType,
+    startDate,
+    endDate,
+    validationUrl
+  )
+}
+
+export async function sendCertificateRevokedNotification(
+  patientEmail: string,
+  patientName: string,
+  certificateNumber: string,
+  reason?: string
+): Promise<boolean> {
+  return emailService.sendCertificateRevokedNotification(
+    patientEmail,
+    patientName,
+    certificateNumber,
+    reason
+  )
+}

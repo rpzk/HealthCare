@@ -102,38 +102,6 @@ export default function AutoPatientRegistration() {
     }
   }
 
-  // 🎨 Exemplo de documento para demonstração
-  const loadExample = () => {
-    const exemplo = `HOSPITAL NOSSA SENHORA DA SAÚDE
-FICHA DE CADASTRO DE PACIENTE
-
-DADOS PESSOAIS
-Nome: Maria Clara Santos Silva
-CPF: 123.456.789-10
-Data de Nascimento: 15/03/1985
-Sexo: Feminino
-
-CONTATO
-Telefone: (11) 3456-7890
-Celular: (11) 98765-4321
-E-mail: maria.clara@email.com
-
-ENDEREÇO
-Rua das Flores, 123, Apto 45
-Jardim Primavera - São Paulo - SP
-CEP: 01234-567
-
-DADOS MÉDICOS
-Tipo Sanguíneo: A+
-Alergias: Penicilina, Dipirona
-Convênio: Amil Saúde - 123456789012
-
-CONTATO DE EMERGÊNCIA
-João Carlos Silva (Esposo): (11) 99876-5432`
-
-    setDocumentContent(exemplo)
-  }
-
   return (
     <div className="space-y-6">
       {/* 📤 Interface de Upload */}
@@ -149,13 +117,7 @@ João Carlos Silva (Esposo): (11) 99876-5432`
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Conteúdo do Documento Cadastral</label>
-              <Button variant="outline" size="sm" onClick={loadExample}>
-                <FileText className="h-4 w-4 mr-2" />
-                Carregar Exemplo
-              </Button>
-            </div>
+            <label className="text-sm font-medium">Conteúdo do Documento Cadastral</label>
             <Textarea
               placeholder="Cole aqui o conteúdo de uma ficha de cadastro, formulário de paciente, ou exportação de sistema..."
               value={documentContent}
