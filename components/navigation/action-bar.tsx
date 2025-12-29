@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArrowLeft, MoreVertical, Edit2, Copy, Download, Trash2, Print, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeft, MoreVertical, Edit2, Copy, Download, Trash2, Printer, CheckCircle, XCircle } from 'lucide-react'
 
 export interface ActionItem {
   label: string
@@ -103,7 +103,7 @@ export function ActionBar({
   if (canPrint && onPrint) {
     secondaryActions.push({
       label: 'Imprimir',
-      icon: <Print className="h-4 w-4" />,
+      icon: <Printer className="h-4 w-4" />,
       onClick: onPrint,
     })
   }

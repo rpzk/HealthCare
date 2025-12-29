@@ -1550,15 +1550,20 @@ model PatientInsurance {
 }
 
 model DoctorSchedule {
-  id           String   @id @default(cuid())
-  doctorId     String
-  dayOfWeek    Int
-  startTime    String
-  endTime      String
-  slotDuration Int      @default(30)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  doctor       User     @relation(fields: [doctorId], references: [id])
+  id                    String   @id @default(cuid())
+  doctorId              String
+  dayOfWeek             Int
+  startTime             String
+  endTime               String
+  slotDuration          Int      @default(30)
+  // Patient booking settings
+  allowPatientBooking   Boolean  @default(false)
+  maxBookingDaysAhead   Int      @default(30)    // Quantos dias antes permite agendar
+  minBookingHoursAhead  Int      @default(24)    // Quantas horas antes permite agendar
+  autoConfirmBooking    Boolean  @default(false) // Confirma automaticamente ou requer aprovação
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  doctor                User     @relation(fields: [doctorId], references: [id])
 
   @@unique([doctorId, dayOfWeek])
   @@map("doctor_schedules")
@@ -1568,13 +1573,24 @@ model ScheduleException {
   id          String   @id @default(cuid())
   doctorId    String
   date        DateTime
-  isAvailable Boolean  @default(false)
+  blockType   BlockType @default(UNAVAILABLE) // Tipo de bloqueio
   reason      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   doctor      User     @relation(fields: [doctorId], references: [id])
 
+  @@index([doctorId, date])
   @@map("schedule_exceptions")
+}
+
+enum BlockType {
+  UNAVAILABLE    // Indisponível geral
+  ON_CALL        // Plantão (em outro serviço)
+  VACATION       // Férias
+  SICK_LEAVE     // Licença médica
+  MAINTENANCE    // Manutenção/admin
+  TRAINING       // Treinamento
+  MEETING        // Reunião/conferência
 }
 
 model Notification {
