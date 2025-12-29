@@ -249,7 +249,7 @@ export function RoleSwitcher() {
     try {
       setLoading(true)
       
-      // Primeiro tentar pegar da sess\u00e3o (que agora tem availableRoles)
+      // Primeiro tentar pegar da sessão (que agora tem availableRoles)
       const sessionRoles = (session?.user as any)?.availableRoles
       if (sessionRoles && Array.isArray(sessionRoles) && sessionRoles.length > 0) {
         const roles = sessionRoles.map((role: string) => ({
@@ -258,7 +258,7 @@ export function RoleSwitcher() {
         }))
         setAvailableRoles(roles)
         
-        // Se n\u00e3o tem papel ativo salvo, usar o da URL ou o da sess\u00e3o
+        // Se não tem papel ativo salvo, usar o da URL ou o da sessão
         if (!activeRole) {
           const savedRole = getCookie('active_role')
           if (savedRole && sessionRoles.includes(savedRole)) {
@@ -268,7 +268,44 @@ export function RoleSwitcher() {
           } else {
             setActiveRole(session?.user?.role || 'DOCTOR')
           }
-        }\n        setLoading(false)\n        return\n      }\n      \n      // Fallback: buscar da API se n\u00e3o tiver na sess\u00e3o\n      const res = await fetch('/api/user/roles')\n      \n      if (!res.ok) {\n        const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'\n        setAvailableRoles([{ role: userRole, isPrimary: true }])\n        if (!activeRole) setActiveRole(userRole)\n        return\n      }\n      \n      const data = await res.json()\n      setAvailableRoles(data.roles || [])\n      \n      // Se não tem papel ativo salvo, usar o da URL ou o primário\n      if (!activeRole) {\n        const savedRole = getCookie('active_role')\n        if (savedRole) {\n          setActiveRole(savedRole)\n        } else if (pathname?.startsWith('/admin')) {\n          setActiveRole('ADMIN')\n        } else {\n          setActiveRole(data.primaryRole || 'DOCTOR')\n        }\n      }\n    } catch (error) {\n      console.error('Erro ao buscar papéis:', error)\n      const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'\n      setAvailableRoles([{ role: userRole, isPrimary: true }])\n      if (!activeRole) setActiveRole(userRole)\n    } finally {\n      setLoading(false)\n    }\n  }
+        }
+        setLoading(false)
+        return
+      }
+      
+      // Fallback: buscar da API se não tiver na sessão
+      const res = await fetch('/api/user/roles')
+      
+      if (!res.ok) {
+        const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'
+        setAvailableRoles([{ role: userRole, isPrimary: true }])
+        if (!activeRole) setActiveRole(userRole)
+        return
+      }
+      
+      const data = await res.json()
+      setAvailableRoles(data.roles || [])
+      
+      // Se não tem papel ativo salvo, usar o da URL ou o primário
+      if (!activeRole) {
+        const savedRole = getCookie('active_role')
+        if (savedRole) {
+          setActiveRole(savedRole)
+        } else if (pathname?.startsWith('/admin')) {
+          setActiveRole('ADMIN')
+        } else {
+          setActiveRole(data.primaryRole || 'DOCTOR')
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar papéis:', error)
+      const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'
+      setAvailableRoles([{ role: userRole, isPrimary: true }])
+      if (!activeRole) setActiveRole(userRole)
+    } finally {
+      setLoading(false)
+    }
+  }
   
   const handleRoleClick = (role: string) => {
     const config = ROLE_CONFIGS[role]
