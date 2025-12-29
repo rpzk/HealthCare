@@ -1,854 +1,651 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import type { FormEvent } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/navigation/page-header'
-import { User, Shield, Bell, Database, Save, Eye, EyeOff } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  User,
+  Shield,
+  Bell,
+  FileSignature,
+  Save,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+} from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { UploadA1Certificate } from '@/components/upload-a1-certificate'
 
 export default function SettingsPage() {
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === 'ADMIN'
-  
-  const [activeTab, setActiveTab] = useState('profile')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [testingEmail, setTestingEmail] = useState(false)
-  
-  const [profileData, setProfileData] = useState({
-    name: 'Admin Healthcare',
-    email: 'admin@healthcare.com',
-    phone: '(11) 99999-9999',
-    specialty: 'Administração',
-    crm: '',
+
+  // Dados do perfil
+  const [profile, setProfile] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    specialty: '',
+    crmNumber: '',
+  })
+
+  // Senha
+  const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
 
-  const [systemSettings, setSystemSettings] = useState({
-    enableNotifications: true,
-    enableSMS: false,
-    enableEmail: true,
-    sessionTimeout: 30,
-    maxLoginAttempts: 3,
-    backupFrequency: 'daily',
-    maintenanceMode: false
+  // Certificados digitais
+  const [certificates, setCertificates] = useState<any[]>([])
+  const [certificatesLoading, setCertificatesLoading] = useState(false)
+
+  // Notificações
+  const [notifications, setNotifications] = useState({
+    email: true,
+    push: false,
+    newPatient: true,
+    appointment: true,
+    prescription: true,
+    examResults: true,
   })
 
-  const [emailConfig, setEmailConfig] = useState({
-    EMAIL_ENABLED: 'false',
-    EMAIL_PROVIDER: 'console',
-    SMTP_HOST: 'smtp.gmail.com',
-    SMTP_PORT: '587',
-    SMTP_USER: '',
-    SMTP_PASS: '',
-    SMTP_SECURE: 'false',
-    EMAIL_FROM: ''
-  })
-
+  // Carregar dados
   useEffect(() => {
-    if (activeTab === 'system') {
-      fetch('/api/settings?category=EMAIL')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            const newConfig = { ...emailConfig }
-            data.forEach((setting: { key: string; value: string }) => {
-              if (Object.prototype.hasOwnProperty.call(newConfig, setting.key)) {
-                newConfig[setting.key as keyof typeof newConfig] = setting.value
-              }
-            })
-            setEmailConfig(newConfig)
-          }
-        })
-        .catch(err => console.error('Failed to load settings', err))
-    }
-  }, [activeTab, emailConfig])
+    loadProfile()
+    loadCertificates()
+    loadNotifications()
+  }, [])
 
-  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const loadProfile = async () => {
     try {
+      const response = await fetch('/api/profile')
+      if (response.ok) {
+        const data = await response.json()
+        setProfile({
+          name: data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          specialty: data.specialty || '',
+          crmNumber: data.crmNumber || '',
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadCertificates = async () => {
+    try {
+      setCertificatesLoading(true)
+      const response = await fetch('/api/certificates/upload-a1')
+      if (response.ok) {
+        const data = await response.json()
+        setCertificates(data.certificates || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar certificados:', error)
+    } finally {
+      setCertificatesLoading(false)
+    }
+  }
+
+  const loadNotifications = () => {
+    // TODO: Carregar do banco
+    const saved = localStorage.getItem('notifications')
+    if (saved) {
+      setNotifications(JSON.parse(saved))
+    }
+  }
+
+  const saveProfile = async () => {
+    try {
+      setSaving(true)
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: profileData.name,
-          phone: profileData.phone,
-          specialty: profileData.specialty
-        })
+        body: JSON.stringify(profile),
       })
+
       if (!response.ok) throw new Error('Falha ao salvar')
-      toast({ title: 'Sucesso', description: 'Perfil atualizado com sucesso!' })
+
+      toast({
+        title: 'Salvo com sucesso!',
+        description: 'Suas informações foram atualizadas',
+      })
     } catch (error) {
-      toast({ title: 'Erro', description: 'Não foi possível atualizar o perfil', variant: 'destructive' })
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível atualizar suas informações',
+        variant: 'destructive',
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
-  const handleSystemSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    toast({ title: 'Sucesso', description: 'Configurações do sistema atualizadas!' })
-  }
-
-  const handleEmailConfigSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const promises = Object.entries(emailConfig).map(([key, value]) => 
-        fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            key,
-            value,
-            category: 'EMAIL',
-            description: 'Email Configuration'
-          })
-        }).then(async res => {
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}))
-            throw new Error(data.error || `Erro ${res.status}`)
-          }
-          return res
-        })
-      )
-      
-      await Promise.all(promises)
-      toast({ title: 'Sucesso', description: 'Configurações de email salvas com sucesso!' })
-    } catch (error: unknown) {
-      console.error(error)
-      const message = error instanceof Error ? error.message : 'Erro desconhecido'
-      toast({ title: 'Erro', description: `Erro ao salvar: ${message}`, variant: 'destructive' })
-    }
-  }
-
-  const handleTestEmail = async () => {
-    if (!emailConfig.EMAIL_ENABLED || emailConfig.EMAIL_ENABLED === 'false') {
-      toast({ title: 'Atenção', description: 'Habilite o envio de e-mails e SALVE as configurações antes de testar.', variant: 'destructive' })
+  const savePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: 'Senhas não conferem',
+        description: 'A nova senha e a confirmação devem ser iguais',
+        variant: 'destructive',
+      })
       return
     }
 
-    const testAddress = prompt('Digite o e-mail para receber o teste (certifique-se de ter SALVADO as configurações antes):', emailConfig.SMTP_USER || '')
-    if (!testAddress) return
-
-    if (emailConfig.EMAIL_PROVIDER === 'smtp' && !emailConfig.SMTP_HOST) {
-      toast({ title: 'Erro', description: 'O campo Host SMTP é obrigatório.', variant: 'destructive' })
+    if (passwordData.newPassword.length < 8) {
+      toast({
+        title: 'Senha muito curta',
+        description: 'A senha deve ter pelo menos 8 caracteres',
+        variant: 'destructive',
+      })
       return
     }
 
-    setTestingEmail(true)
     try {
-      const response = await fetch('/api/settings/test-email', {
-        method: 'POST',
+      setSaving(true)
+      const response = await fetch('/api/profile/password', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          to: testAddress,
-          config: emailConfig
-        })
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
       })
 
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        toast({ title: 'Sucesso', description: 'E-mail de teste enviado! Verifique sua caixa de entrada.' })
-      } else {
-        throw new Error(data.error || 'Falha no envio')
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Falha ao alterar senha')
       }
-    } catch (error: unknown) {
-      console.error(error)
-      const message = error instanceof Error ? error.message : 'Erro desconhecido'
-      toast({ title: 'Erro', description: `Erro ao enviar e-mail de teste: ${message}`, variant: 'destructive' })
+
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      })
+
+      toast({
+        title: 'Senha alterada!',
+        description: 'Sua senha foi atualizada com sucesso',
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro ao alterar senha',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      })
     } finally {
-      setTestingEmail(false)
+      setSaving(false)
     }
   }
 
-  const tabs = useMemo(() => {
-    const baseTabs = [
-      { id: 'profile', label: 'Perfil', icon: User },
-      { id: 'security', label: 'Segurança', icon: Shield },
-      { id: 'notifications', label: 'Notificações', icon: Bell },
-    ]
-    // Apenas administradores veem a aba Sistema
-    if (isAdmin) {
-      baseTabs.push({ id: 'system', label: 'Sistema', icon: Database })
-    }
-    return baseTabs
-  }, [isAdmin])
+  const saveNotifications = () => {
+    localStorage.setItem('notifications', JSON.stringify(notifications))
+    toast({
+      title: 'Preferências salvas',
+      description: 'Suas preferências de notificação foram atualizadas',
+    })
+  }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="flex pt-32">
+  if (loading) {
+    return (
+      <div className="flex h-screen">
         <Sidebar />
-        <main className="flex-1 ml-64 p-6 space-y-6">
-      <PageHeader
-        title="Configurações"
-        description="Gerencie suas preferências e configurações do sistema"
-        breadcrumbs={[
-          { label: 'Configurações' }
-        ]}
-        showBackButton={true}
-        showHomeButton={true}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Menu lateral */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Configurações</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2">
-            <nav className="space-y-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  <span className="text-sm font-medium">{tab.label}</span>
-                </button>
-              ))}
-            </nav>
-          </CardContent>
-        </Card>
-
-        {/* Conteúdo */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Perfil */}
-          {activeTab === 'profile' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Informações do Perfil</CardTitle>
-                <CardDescription>
-                  Atualize suas informações pessoais e profissionais
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleProfileSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Nome Completo
-                      </label>
-                      <Input
-                        value={profileData.name}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Seu nome completo"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Email
-                      </label>
-                      <Input
-                        type="email"
-                        value={profileData.email}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Telefone
-                      </label>
-                      <Input
-                        value={profileData.phone}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Especialidade
-                      </label>
-                      <Input
-                        value={profileData.specialty}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, specialty: e.target.value }))}
-                        placeholder="Sua especialidade"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        CRM (opcional)
-                      </label>
-                      <Input
-                        value={profileData.crm}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, crm: e.target.value }))}
-                        placeholder="000000/SP"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button type="submit" className="flex items-center space-x-2">
-                      <Save className="h-4 w-4" />
-                      <span>Salvar Alterações</span>
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Segurança */}
-          {activeTab === 'security' && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Alterar Senha</CardTitle>
-                  <CardDescription>
-                    Mantenha sua conta segura com uma senha forte
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Senha Atual
-                      </label>
-                      <div className="relative">
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
-                          value={profileData.currentPassword}
-                          onChange={(e) => setProfileData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                          placeholder="Digite sua senha atual"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Nova Senha
-                      </label>
-                      <Input
-                        type="password"
-                        value={profileData.newPassword}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, newPassword: e.target.value }))}
-                        placeholder="Digite a nova senha"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1">
-                        Confirmar Nova Senha
-                      </label>
-                      <Input
-                        type="password"
-                        value={profileData.confirmPassword}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        placeholder="Confirme a nova senha"
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button className="flex items-center space-x-2">
-                        <Shield className="h-4 w-4" />
-                        <span>Alterar Senha</span>
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Autenticação de Dois Fatores</CardTitle>
-                  <CardDescription>
-                    Adicione uma camada extra de segurança à sua conta
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">Autenticação por SMS</p>
-                        <p className="text-sm text-muted-foreground">Receba códigos via SMS</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Configurar
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">App Autenticador</p>
-                        <p className="text-sm text-muted-foreground">Use Google Authenticator ou similar</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Configurar
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Notificações */}
-          {activeTab === 'notifications' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferências de Notificação</CardTitle>
-                <CardDescription>
-                  Configure como e quando receber notificações
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Notificações no Sistema</p>
-                        <p className="text-sm text-muted-foreground">Notificações dentro da plataforma</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={systemSettings.enableNotifications}
-                        onChange={(e) => setSystemSettings(prev => ({ 
-                          ...prev, 
-                          enableNotifications: e.target.checked 
-                        }))}
-                        className="rounded"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Notificações por Email</p>
-                        <p className="text-sm text-muted-foreground">Receber emails sobre atividades importantes</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={systemSettings.enableEmail}
-                        onChange={(e) => setSystemSettings(prev => ({ 
-                          ...prev, 
-                          enableEmail: e.target.checked 
-                        }))}
-                        className="rounded"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Notificações por SMS</p>
-                        <p className="text-sm text-muted-foreground">Mensagens de texto para alertas críticos</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={systemSettings.enableSMS}
-                        onChange={(e) => setSystemSettings(prev => ({ 
-                          ...prev, 
-                          enableSMS: e.target.checked 
-                        }))}
-                        className="rounded"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button className="flex items-center space-x-2">
-                      <Bell className="h-4 w-4" />
-                      <span>Salvar Preferências</span>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sistema */}
-          {activeTab === 'system' && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações do Sistema</CardTitle>
-                  <CardDescription>
-                    Configurações gerais do sistema (apenas para administradores)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSystemSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                          Timeout de Sessão (minutos)
-                        </label>
-                        <Input
-                          type="number"
-                          value={systemSettings.sessionTimeout}
-                          onChange={(e) => setSystemSettings(prev => ({ 
-                            ...prev, 
-                            sessionTimeout: parseInt(e.target.value) 
-                          }))}
-                          min="5"
-                          max="480"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                          Máximo de Tentativas de Login
-                        </label>
-                        <Input
-                          type="number"
-                          value={systemSettings.maxLoginAttempts}
-                          onChange={(e) => setSystemSettings(prev => ({ 
-                            ...prev, 
-                            maxLoginAttempts: parseInt(e.target.value) 
-                          }))}
-                          min="1"
-                          max="10"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                          Frequência de Backup
-                        </label>
-                        <select
-                          value={systemSettings.backupFrequency}
-                          onChange={(e) => setSystemSettings(prev => ({ 
-                            ...prev, 
-                            backupFrequency: e.target.value 
-                          }))}
-                          className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
-                        >
-                          <option value="hourly">A cada hora</option>
-                          <option value="daily">Diário</option>
-                          <option value="weekly">Semanal</option>
-                          <option value="monthly">Mensal</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                        <div>
-                          <p className="font-medium">Modo Manutenção</p>
-                          <p className="text-sm text-muted-foreground">Bloquear acesso de usuários para manutenção</p>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={systemSettings.maintenanceMode}
-                          onChange={(e) => setSystemSettings(prev => ({ 
-                            ...prev, 
-                            maintenanceMode: e.target.checked 
-                          }))}
-                          className="rounded"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="submit" className="flex items-center space-x-2">
-                        <Database className="h-4 w-4" />
-                        <span>Salvar Configurações</span>
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configuração de E-mail (SMTP)</CardTitle>
-                  <CardDescription>Configure o servidor de e-mail para envio de convites e notificações</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleEmailConfigSave} className="space-y-4">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <input
-                        type="checkbox"
-                        id="emailEnabled"
-                        checked={emailConfig.EMAIL_ENABLED === 'true'}
-                        onChange={(e) => setEmailConfig({ ...emailConfig, EMAIL_ENABLED: e.target.checked ? 'true' : 'false' })}
-                        className="rounded border-gray-300"
-                      />
-                      <label htmlFor="emailEnabled" className="text-sm font-medium">Habilitar envio de e-mails</label>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Provedor</label>
-                        <select
-                          value={emailConfig.EMAIL_PROVIDER}
-                          onChange={(e) => setEmailConfig({ ...emailConfig, EMAIL_PROVIDER: e.target.value })}
-                          className="w-full px-3 py-2 border rounded-md bg-background"
-                        >
-                          <option value="console">Console (Log apenas)</option>
-                          <option value="smtp">SMTP (Gmail, Outlook, etc)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Remetente (From)</label>
-                        <Input
-                          value={emailConfig.EMAIL_FROM}
-                          onChange={(e) => setEmailConfig({ ...emailConfig, EMAIL_FROM: e.target.value })}
-                          placeholder="noreply@healthcare.com"
-                        />
-                      </div>
-                    </div>
-
-                    {emailConfig.EMAIL_PROVIDER === 'smtp' && (
-                      <div className="space-y-4 border-t pt-4 mt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Host SMTP</label>
-                            <Input
-                              value={emailConfig.SMTP_HOST}
-                              onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_HOST: e.target.value })}
-                              placeholder="smtp.gmail.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Porta</label>
-                            <Input
-                              value={emailConfig.SMTP_PORT}
-                              onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_PORT: e.target.value })}
-                              placeholder="587"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Usuário</label>
-                            <Input
-                              value={emailConfig.SMTP_USER}
-                              onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_USER: e.target.value })}
-                              placeholder="seu-email@gmail.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Senha</label>
-                            <div className="relative">
-                              <Input
-                                type={showPassword ? "text" : "password"}
-                                value={emailConfig.SMTP_PASS}
-                                onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_PASS: e.target.value })}
-                                placeholder="Senha de app"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                              >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id="smtpSecure"
-                            checked={emailConfig.SMTP_SECURE === 'true'}
-                            onChange={(e) => setEmailConfig({ ...emailConfig, SMTP_SECURE: e.target.checked ? 'true' : 'false' })}
-                            className="rounded border-gray-300"
-                          />
-                          <label htmlFor="smtpSecure" className="text-sm font-medium">Usar SSL/TLS (Secure)</label>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex justify-end space-x-3">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleTestEmail}
-                        disabled={testingEmail}
-                      >
-                        {testingEmail ? 'Enviando...' : 'Testar Configuração'}
-                      </Button>
-                      <Button type="submit" className="flex items-center space-x-2">
-                        <Save className="h-4 w-4" />
-                        <span>Salvar Configurações de E-mail</span>
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informações do Sistema</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <p><strong>Versão:</strong> 1.0.0</p>
-                      <p><strong>Banco de Dados:</strong> PostgreSQL</p>
-                      <p><strong>Última Atualização:</strong> 24/08/2025</p>
-                    </div>
-                    <div className="space-y-2">
-                      <p><strong>Status:</strong> Online</p>
-                      <p><strong>Último Backup:</strong> Hoje, 03:00</p>
-                      <p><strong>Uptime:</strong> 15 dias</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Configurações de Email */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações de Email</CardTitle>
-                  <CardDescription>
-                    Configure como o sistema envia emails
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleEmailConfigSave} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                          Habilitar Email
-                        </label>
-                        <select
-                          value={emailConfig.EMAIL_ENABLED}
-                          onChange={(e) => setEmailConfig(prev => ({ 
-                            ...prev, 
-                            EMAIL_ENABLED: e.target.value 
-                          }))}
-                          className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
-                        >
-                          <option value="true">Sim</option>
-                          <option value="false">Não</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                          Provedor de Email
-                        </label>
-                        <select
-                          value={emailConfig.EMAIL_PROVIDER}
-                          onChange={(e) => setEmailConfig(prev => ({ 
-                            ...prev, 
-                            EMAIL_PROVIDER: e.target.value 
-                          }))}
-                          className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
-                        >
-                          <option value="console">Console</option>
-                          <option value="smtp">SMTP</option>
-                        </select>
-                      </div>
-
-                      {emailConfig.EMAIL_PROVIDER === 'smtp' && (
-                        <>
-                          <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                              Host SMTP
-                            </label>
-                            <Input
-                              value={emailConfig.SMTP_HOST}
-                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_HOST: e.target.value }))}
-                              placeholder="smtp.seudominio.com"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                              Porta SMTP
-                            </label>
-                            <Input
-                              type="number"
-                              value={emailConfig.SMTP_PORT}
-                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_PORT: e.target.value }))}
-                              min="1"
-                              max="65535"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                              Usuário SMTP
-                            </label>
-                            <Input
-                              value={emailConfig.SMTP_USER}
-                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_USER: e.target.value }))}
-                              placeholder="seu-usuario"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                              Senha SMTP
-                            </label>
-                            <Input
-                              type="password"
-                              value={emailConfig.SMTP_PASS}
-                              onChange={(e) => setEmailConfig(prev => ({ ...prev, SMTP_PASS: e.target.value }))}
-                              placeholder="sua-senha"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1">
-                              Segurança SMTP
-                            </label>
-                            <select
-                              value={emailConfig.SMTP_SECURE}
-                              onChange={(e) => setEmailConfig(prev => ({ 
-                                ...prev, 
-                                SMTP_SECURE: e.target.value 
-                              }))}
-                              className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background"
-                            >
-                              <option value="true">SSL/TLS</option>
-                              <option value="false">Nenhuma</option>
-                            </select>
-                          </div>
-                        </>
-                      )}
-
-                      <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                          Email Remetente
-                        </label>
-                        <Input
-                          value={emailConfig.EMAIL_FROM}
-                          onChange={(e) => setEmailConfig(prev => ({ ...prev, EMAIL_FROM: e.target.value }))}
-                          placeholder="noreply@seudominio.com"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="submit" className="flex items-center space-x-2">
-                        <Save className="h-4 w-4" />
-                        <span>Salvar Configurações de Email</span>
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 p-8 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </main>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Header */}
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+              <p className="text-muted-foreground mt-2">
+                Gerencie suas preferências e configurações da conta
+              </p>
+            </div>
+
+            <Tabs defaultValue="profile" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="profile">
+                  <User className="mr-2 h-4 w-4" />
+                  Perfil
+                </TabsTrigger>
+                <TabsTrigger value="security">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Segurança
+                </TabsTrigger>
+                <TabsTrigger value="certificates">
+                  <FileSignature className="mr-2 h-4 w-4" />
+                  Certificados
+                </TabsTrigger>
+                <TabsTrigger value="notifications">
+                  <Bell className="mr-2 h-4 w-4" />
+                  Notificações
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Aba Perfil */}
+              <TabsContent value="profile" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informações Pessoais</CardTitle>
+                    <CardDescription>
+                      Atualize seus dados pessoais e profissionais
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nome Completo</Label>
+                        <Input
+                          id="name"
+                          value={profile.name}
+                          onChange={(e) =>
+                            setProfile({ ...profile, name: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={profile.email}
+                          disabled
+                          className="bg-muted"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Email não pode ser alterado
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Telefone</Label>
+                        <Input
+                          id="phone"
+                          value={profile.phone}
+                          onChange={(e) =>
+                            setProfile({ ...profile, phone: e.target.value })
+                          }
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="specialty">Especialidade</Label>
+                        <Input
+                          id="specialty"
+                          value={profile.specialty}
+                          onChange={(e) =>
+                            setProfile({ ...profile, specialty: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="crm">CRM</Label>
+                        <Input
+                          id="crm"
+                          value={profile.crmNumber}
+                          onChange={(e) =>
+                            setProfile({ ...profile, crmNumber: e.target.value })
+                          }
+                          placeholder="12345/UF"
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-end">
+                      <Button onClick={saveProfile} disabled={saving}>
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Salvar Alterações
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba Segurança */}
+              <TabsContent value="security" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Alterar Senha</CardTitle>
+                    <CardDescription>
+                      Mantenha sua conta segura com uma senha forte
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Senha Atual</Label>
+                      <div className="relative">
+                        <Input
+                          id="current-password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={passwordData.currentPassword}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              currentPassword: e.target.value,
+                            })
+                          }
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">Nova Senha</Label>
+                      <Input
+                        id="new-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={passwordData.newPassword}
+                        onChange={(e) =>
+                          setPasswordData({
+                            ...passwordData,
+                            newPassword: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+                      <Input
+                        id="confirm-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={passwordData.confirmPassword}
+                        onChange={(e) =>
+                          setPasswordData({
+                            ...passwordData,
+                            confirmPassword: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        A senha deve ter pelo menos 8 caracteres e incluir letras e
+                        números
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="flex justify-end">
+                      <Button onClick={savePassword} disabled={saving}>
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Alterar Senha
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba Certificados */}
+              <TabsContent value="certificates" className="space-y-4">
+                {/* Upload de novo certificado */}
+                <UploadA1Certificate onSuccess={loadCertificates} />
+
+                {/* Lista de certificados */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Meus Certificados</CardTitle>
+                    <CardDescription>
+                      Certificados digitais ativos na sua conta
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {certificatesLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : certificates.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileSignature className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Nenhum certificado cadastrado</p>
+                        <p className="text-sm mt-2">
+                          Faça upload do seu certificado A1 acima
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {certificates.map((cert) => (
+                          <div
+                            key={cert.id}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">{cert.subject}</h4>
+                                {cert.isActive && (
+                                  <Badge variant="default">Ativo</Badge>
+                                )}
+                                {new Date(cert.notAfter) < new Date() && (
+                                  <Badge variant="destructive">Expirado</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {cert.issuer}
+                              </p>
+                              <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                                <span>
+                                  Válido até:{' '}
+                                  {new Date(cert.notAfter).toLocaleDateString('pt-BR')}
+                                </span>
+                                <span>
+                                  Usado {cert.usageCount} vezes
+                                </span>
+                                {cert.lastUsedAt && (
+                                  <span>
+                                    Última vez:{' '}
+                                    {new Date(cert.lastUsedAt).toLocaleDateString(
+                                      'pt-BR'
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {cert.isActive && new Date(cert.notAfter) > new Date() && (
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba Notificações */}
+              <TabsContent value="notifications" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Preferências de Notificação</CardTitle>
+                    <CardDescription>
+                      Escolha como deseja receber notificações
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h4 className="font-medium mb-4">Canais</h4>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="email-notifications">
+                              Notificações por Email
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Receba atualizações no seu email
+                            </p>
+                          </div>
+                          <Switch
+                            id="email-notifications"
+                            checked={notifications.email}
+                            onCheckedChange={(checked) =>
+                              setNotifications({ ...notifications, email: checked })
+                            }
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="push-notifications">
+                              Notificações Push
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Receba alertas no navegador
+                            </p>
+                          </div>
+                          <Switch
+                            id="push-notifications"
+                            checked={notifications.push}
+                            onCheckedChange={(checked) =>
+                              setNotifications({ ...notifications, push: checked })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <h4 className="font-medium mb-4">Eventos</h4>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="new-patient">Novo Paciente</Label>
+                          <Switch
+                            id="new-patient"
+                            checked={notifications.newPatient}
+                            onCheckedChange={(checked) =>
+                              setNotifications({
+                                ...notifications,
+                                newPatient: checked,
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="appointment">Consultas Agendadas</Label>
+                          <Switch
+                            id="appointment"
+                            checked={notifications.appointment}
+                            onCheckedChange={(checked) =>
+                              setNotifications({
+                                ...notifications,
+                                appointment: checked,
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="prescription">Prescrições</Label>
+                          <Switch
+                            id="prescription"
+                            checked={notifications.prescription}
+                            onCheckedChange={(checked) =>
+                              setNotifications({
+                                ...notifications,
+                                prescription: checked,
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="exam-results">
+                            Resultados de Exames
+                          </Label>
+                          <Switch
+                            id="exam-results"
+                            checked={notifications.examResults}
+                            onCheckedChange={(checked) =>
+                              setNotifications({
+                                ...notifications,
+                                examResults: checked,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-end">
+                      <Button onClick={saveNotifications}>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salvar Preferências
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </main>
       </div>
     </div>

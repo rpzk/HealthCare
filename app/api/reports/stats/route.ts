@@ -28,8 +28,8 @@ export const GET = withAuth(async (req: NextRequest) => {
       prisma.consultation.count({
         where: { scheduledDate: { gte: monthStart, lte: monthEnd } }
       }),
-      prisma.labExam.count(),
-      prisma.labExam.count({
+      prisma.examRequest.count(),
+      prisma.examRequest.count({
         where: { createdAt: { gte: monthStart, lte: monthEnd } }
       }),
       prisma.medicalRecord.count()
@@ -52,4 +52,4 @@ export const GET = withAuth(async (req: NextRequest) => {
       { status: 500 }
     )
   }
-}, { requiredRole: 'ADMIN' })
+}, { requireRole: ['ADMIN'] })

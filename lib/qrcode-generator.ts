@@ -13,16 +13,15 @@ export async function generateCertificateQRCode(
 ): Promise<Buffer> {
   const opts = {
     errorCorrectionLevel: options?.errorCorrectionLevel || 'H',
-    type: 'image/png',
     width: options?.width || 200,
     margin: 1,
     color: {
       dark: '#000000',
       light: '#FFFFFF',
     },
-  }
+  } as any
 
-  return QRCode.toBuffer(validationUrl, opts)
+  return (await QRCode.toBuffer(validationUrl, opts)) as Buffer
 }
 
 /**
@@ -31,10 +30,9 @@ export async function generateCertificateQRCode(
 export async function generateCertificateQRCodeDataUrl(
   validationUrl: string
 ): Promise<string> {
-  return QRCode.toDataURL(validationUrl, {
+  return await QRCode.toDataURL(validationUrl, {
     errorCorrectionLevel: 'H',
-    type: 'image/png',
     width: 200,
     margin: 1,
-  })
+  } as any)
 }

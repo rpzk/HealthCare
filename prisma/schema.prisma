@@ -3772,6 +3772,10 @@ model DigitalCertificate {
   // Armazenamento
   certificatePem String @db.Text // Certificado em formato PEM
   publicKeyPem   String @db.Text // Chave pública
+  
+  // A1: Arquivo .pfx criptografado (apenas para A1)
+  pfxFilePath    String? // Caminho do arquivo .pfx no servidor
+  pfxPasswordHash String? // Hash da senha (para validação)
 
   // A3/A4: Token físico (não armazenar chave privada)
   isHardwareToken   Boolean @default(false)

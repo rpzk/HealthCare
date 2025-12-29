@@ -211,7 +211,7 @@ export class MedicalCertificateService {
         patient.name,
         doctor.name,
         String(sequenceNumber),
-        String(year),
+        year,
         data.type,
         format(data.startDate, 'dd/MM/yyyy', { locale: ptBR }),
         endDate ? format(endDate, 'dd/MM/yyyy', { locale: ptBR }) : undefined,

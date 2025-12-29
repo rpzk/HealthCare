@@ -148,3 +148,33 @@
     margin-left: 4rem; /* w-16 */
   }
 }
+
+/* Print-friendly styles for clinical documents */
+@media print {
+  /* Hide navigation and chrome */
+  header, nav, aside, .ml-64, .sidebar-content .fixed, .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Use full width for main content */
+  main {
+    margin: 0 !important;
+    padding: 0.5in 0.75in !important;
+    width: 100% !important;
+  }
+
+  /* Improve readability */
+  h1, h2, h3, h4 { color: #000 !important; }
+  a { color: #000 !important; text-decoration: none !important; }
+
+  /* Avoid page breaks inside key sections */
+  .card, .section, .document-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
