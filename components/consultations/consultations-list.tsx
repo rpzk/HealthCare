@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
-import { Search, Plus, Filter, Calendar, Clock, User, Phone, Play, CheckCircle, XCircle, UserX, Edit, X } from 'lucide-react'
+import { Plus, Calendar, Clock, User, Play, CheckCircle, XCircle, UserX, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/navigation/page-header'
+import { SearchFilter } from '@/components/search/search-filter'
 import { ConsultationForm } from './consultation-form'
 
 interface Consultation {
@@ -48,19 +49,6 @@ interface ConsultationListResponse {
 }
 
 export function ConsultationsList() {
-  // Botão destacado no topo
-  const TopBar = () => (
-    <div className="flex items-center justify-end mb-6">
-      <Button
-        onClick={() => {
-          setEditingConsultation(null)
-          setShowForm(true)
-        }}
-      >
-        <Plus className="h-4 w-4 mr-2" /> Nova Consulta
-      </Button>
-    </div>
-  )
   const searchParams = useSearchParams()
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
@@ -219,242 +207,245 @@ export function ConsultationsList() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Carregando consultas...</p>
-      </div>
+      <>
+        <PageHeader
+          title="Consultas"
+          description="Gerencie todas as consultas médicas do sistema"
+          breadcrumbs={[
+            { label: 'Dashboard', href: '/' },
+            { label: 'Consultas', href: '/consultations' }
+          ]}
+          actions={<Button disabled><Plus className="h-4 w-4 mr-2" />Nova Consulta</Button>}
+        />
+        <div className="grid gap-4 mt-6">
+          {[...Array(5)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  <div className="h-5 bg-muted rounded w-1/3"></div>
+                  <div className="h-4 bg-muted rounded w-2/3"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* TopBar com botão Nova Consulta */}
-      <TopBar />
+      <PageHeader
+        title="Consultas"
+        description="Gerencie todas as consultas médicas do sistema"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Consultas', href: '/consultations' }
+        ]}
+        actions={
+          <Button onClick={() => { setEditingConsultation(null); setShowForm(true) }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Consulta
+          </Button>
+        }
+      />
 
       {/* Banner de erro se houver */}
       {error && (
-        <div className="p-4 border border-destructive/50 bg-destructive/10 rounded-lg">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button 
-                onClick={fetchConsultations}
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardContent className="p-4">
+            <p className="text-sm text-destructive mb-2">{error}</p>
+            <Button onClick={fetchConsultations} variant="outline" size="sm">
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={[
+          {
+            name: 'status',
+            label: 'Status',
+            options: [
+              { label: 'Todos os status', value: 'all' },
+              { label: 'Agendadas', value: 'SCHEDULED' },
+              { label: 'Em andamento', value: 'IN_PROGRESS' },
+              { label: 'Concluídas', value: 'COMPLETED' },
+              { label: 'Canceladas', value: 'CANCELLED' },
+              { label: 'Faltaram', value: 'NO_SHOW' }
+            ]
+          },
+          {
+            name: 'type',
+            label: 'Tipo',
+            options: [
+              { label: 'Todos os tipos', value: 'all' },
+              { label: 'Rotina', value: 'ROUTINE' },
+              { label: 'Urgente', value: 'URGENT' },
+              { label: 'Emergência', value: 'EMERGENCY' },
+              { label: 'Retorno', value: 'FOLLOW_UP' },
+              { label: 'Preventiva', value: 'PREVENTIVE' }
+            ]
+          }
+        ]}
+        filterValues={{ status: statusFilter, type: typeFilter }}
+        onFilterChange={(name, value) => {
+          if (name === 'status') setStatusFilter(value)
+          if (name === 'type') setTypeFilter(value)
+        }}
+        onClear={() => {
+          setSearchTerm('')
+          setStatusFilter('all')
+          setTypeFilter('all')
+        }}
+        loading={loading}
+        placeholder="Buscar consultas..."
+      />
+
+      {/* Lista de consultas ou Empty State */}
+      {consultations.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Nenhuma consulta encontrada
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+                ? 'Não há consultas correspondentes aos filtros aplicados.'
+                : 'Comece agendando sua primeira consulta médica.'}
+            </p>
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' ? 'Nova' : 'Primeira'} Consulta
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4">
+            {consultations.map((consultation) => {
+              const { date, time } = formatDateTime(consultation.scheduledDate)
+              return (
+                <Card 
+                  key={consultation.id} 
+                  className="hover:shadow-md transition-all duration-300 cursor-pointer"
+                  onClick={() => router.push(`/consultations/${consultation.id}`)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Calendar className="h-6 w-6 text-primary" />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 flex-wrap">
+                            <h3 className="text-lg font-semibold text-foreground truncate">
+                              {consultation.patient.name}
+                            </h3>
+                            <Badge variant="outline" className={getStatusColor(consultation.status)}>
+                              {getStatusText(consultation.status)}
+                            </Badge>
+                            <Badge variant="secondary">
+                              {getTypeText(consultation.type)}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-4 w-4" />
+                              <span>{date}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-4 w-4" />
+                              <span>{time} ({consultation.duration}min)</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <User className="h-4 w-4" />
+                              <span>Dr. {consultation.doctor.name}</span>
+                            </div>
+                          </div>
+                          
+                          {consultation.description && (
+                            <div className="mt-2">
+                              <span className="text-sm text-muted-foreground line-clamp-1">
+                                <strong>Motivo:</strong> {consultation.description}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        {consultation.status === 'SCHEDULED' && (
+                          <Button
+                            onClick={() => handleUpdateConsultation(consultation.id, 'start')}
+                            disabled={formLoading}
+                            size="sm"
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Iniciar
+                          </Button>
+                        )}
+                        
+                        {consultation.status === 'IN_PROGRESS' && (
+                          <Button
+                            onClick={() => handleUpdateConsultation(consultation.id, 'complete')}
+                            disabled={formLoading}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Finalizar
+                          </Button>
+                        )}
+                        
+                        <Button 
+                          onClick={() => router.push(`/consultations/${consultation.id}`)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Paginação */}
+          {(pagination?.pages ?? 0) > 1 && (
+            <div className="flex justify-center items-center gap-2">
+              <Button
+                disabled={(pagination?.page ?? 1) === 1 || loading}
+                onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
                 variant="outline"
-                className="mt-2"
+                size="sm"
               >
-                Tentar novamente
+                Anterior
+              </Button>
+              <span className="px-4 py-2 text-sm text-muted-foreground">
+                Página {pagination?.page ?? 1} de {pagination?.pages ?? 0}
+              </span>
+              <Button
+                disabled={(pagination?.page ?? 1) === (pagination?.pages ?? 0) || loading}
+                onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
+                variant="outline"
+                size="sm"
+              >
+                Próxima
               </Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filtros e ações */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            <div className="flex flex-1 items-center space-x-2">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar consultas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">Todos os status</option>
-                <option value="SCHEDULED">Agendadas</option>
-                <option value="IN_PROGRESS">Em andamento</option>
-                <option value="COMPLETED">Concluídas</option>
-                <option value="CANCELLED">Canceladas</option>
-                <option value="NO_SHOW">Faltaram</option>
-              </select>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">Todos os tipos</option>
-                <option value="ROUTINE">Rotina</option>
-                <option value="URGENT">Urgente</option>
-                <option value="EMERGENCY">Emergência</option>
-                <option value="FOLLOW_UP">Retorno</option>
-                <option value="PREVENTIVE">Preventiva</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de consultas */}
-      <div className="grid gap-6">
-        {consultations.map((consultation) => {
-          const { date, time } = formatDateTime(consultation.scheduledDate)
-          return (
-            <Card key={consultation.id} className="hover:shadow-md transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-primary" />
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="text-lg font-semibold text-primary">
-                          {consultation.patient.name}
-                        </h3>
-                        <Badge variant="outline" className={getStatusColor(consultation.status)}>
-                          {getStatusText(consultation.status)}
-                        </Badge>
-                        <Badge variant="secondary">
-                          {getTypeText(consultation.type)}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>{date}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{time} ({consultation.duration}min)</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <User className="h-4 w-4" />
-                          <span>Dr. {consultation.doctor.name}</span>
-                        </div>
-                      </div>
-                      
-                      {consultation.patient.phone && (
-                        <div className="flex items-center space-x-1 mt-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{consultation.patient.phone}</span>
-                        </div>
-                      )}
-                      
-                      {consultation.description && (
-                        <div className="mt-2">
-                          <span className="text-sm text-muted-foreground">
-                            <strong className="text-primary">Motivo:</strong> {consultation.description}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {consultation.status === 'SCHEDULED' && (
-                      <>
-                        <Button
-                          onClick={() => handleUpdateConsultation(consultation.id, 'start')}
-                          disabled={formLoading}
-                          size="sm"
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Iniciar
-                        </Button>
-                        <Button
-                          onClick={() => handleUpdateConsultation(consultation.id, 'cancel', 'Cancelada pelo médico')}
-                          disabled={formLoading}
-                          variant="destructive"
-                          size="sm"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Cancelar
-                        </Button>
-                      </>
-                    )}
-                    
-                    {consultation.status === 'IN_PROGRESS' && (
-                      <Button
-                        onClick={() => handleUpdateConsultation(consultation.id, 'complete')}
-                        disabled={formLoading}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Finalizar
-                      </Button>
-                    )}
-                    
-                    {consultation.status === 'SCHEDULED' && (
-                      <Button
-                        onClick={() => handleUpdateConsultation(consultation.id, 'no-show', 'Paciente não compareceu')}
-                        disabled={formLoading}
-                        variant="outline"
-                        size="sm"
-                        className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:border-orange-900/50 dark:hover:bg-orange-900/20"
-                      >
-                        <UserX className="h-4 w-4 mr-1" />
-                        Faltou
-                      </Button>
-                    )}
-                    
-                    <Button 
-                      onClick={() => router.push(`/consultations/${consultation.id}`)}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Ver Detalhes
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Paginação */}
-      {(pagination?.pages ?? 0) > 1 && (
-        <div className="flex justify-center space-x-2 p-4">
-          <Button
-            disabled={(pagination?.page ?? 1) === 1}
-            onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
-            variant="outline"
-          >
-            Anterior
-          </Button>
-          <span className="flex items-center px-4 text-muted-foreground">
-            Página {pagination?.page ?? 1} de {pagination?.pages ?? 0}
-          </span>
-          <Button
-            disabled={(pagination?.page ?? 1) === (pagination?.pages ?? 0)}
-            onClick={() => setPagination(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
-            variant="outline"
-          >
-            Próxima
-          </Button>
-        </div>
-      )}
-
-      {consultations.length === 0 && !loading && (
-        <div className="p-12 text-center">
-          <div className="text-muted-foreground mb-4">
-            <Calendar className="h-12 w-12 mx-auto text-primary" />
-          </div>
-          <h3 className="text-lg font-medium text-primary mb-2">
-            Nenhuma consulta encontrada
-          </h3>
-          <p className="text-muted-foreground">
-            {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
-              ? 'Tente ajustar os filtros ou pesquisar por outros termos.' 
-              : 'Ainda não há consultas agendadas.'
-            }
-          </p>
-          <Button className="mt-4" onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agendar Primeira Consulta
-          </Button>
-        </div>
+          )}
+        </>
       )}
 
       {/* Formulário de consulta */}
