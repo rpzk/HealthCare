@@ -40,6 +40,7 @@ import {
 import { toast } from 'sonner'
 import { UploadA1Certificate } from '@/components/upload-a1-certificate'
 import { PatientBookingConfig } from '@/components/patient-booking-config'
+import { ScheduleBlockingConfig } from '@/components/schedule-blocking-config'
 
 export default function SettingsPage() {
   const { data: session } = useSession()
@@ -775,6 +776,8 @@ export default function SettingsPage() {
               {/* Aba Agendamento */}
               <TabsContent value="scheduling" className="space-y-4">
                 <PatientBookingConfig />
+                <Separator className="my-6" />
+                <ScheduleBlockingConfig />
               </TabsContent>
 
               {/* Aba E-mail/SMTP */}

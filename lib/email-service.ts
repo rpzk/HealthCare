@@ -476,3 +476,159 @@ export async function sendCertificateRevokedNotification(
     reason
   )
 }
+
+// ===== APPOINTMENT NOTIFICATIONS =====
+
+interface AppointmentConfirmationData {
+  patientEmail: string
+  patientName: string
+  doctorName: string
+  date: string
+  time: string
+  reason: string
+  status: 'CONFIRMED' | 'SCHEDULED'
+}
+
+export async function sendAppointmentConfirmationEmail(
+  data: AppointmentConfirmationData
+): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 0 0 5px 5px; }
+        .appointment-info { background: white; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 3px; font-weight: bold; }
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Confirmação de Agendamento</h1>
+          <p>Sua consulta foi agendada com sucesso!</p>
+        </div>
+        <div class="content">
+          <p>Olá <strong>${data.patientName}</strong>,</p>
+          <p>Sua consulta foi agendada com sucesso em nosso sistema. Confira os detalhes abaixo:</p>
+          
+          <div class="appointment-info">
+            <h3>📋 Detalhes da Consulta</h3>
+            <p><strong>Profissional:</strong> ${data.doctorName}</p>
+            <p><strong>Data:</strong> ${data.date}</p>
+            <p><strong>Horário:</strong> ${data.time}</p>
+            <p><strong>Motivo:</strong> ${data.reason}</p>
+            <p>
+              <strong>Status:</strong> 
+              <span class="status-badge ${
+                data.status === 'CONFIRMED' ? 'status-confirmed' : 'status-pending'
+              }">
+                ${data.status === 'CONFIRMED' ? '✓ Confirmada' : '⏳ Aguardando Aprovação'}
+              </span>
+            </p>
+          </div>
+
+          ${
+            data.status === 'SCHEDULED'
+              ? `
+            <div class="appointment-info" style="background: #e7f3ff; border-left-color: #0066cc;">
+              <p>⚠️ <strong>Aguardando Aprovação</strong></p>
+              <p>Seu agendamento foi recebido e está aguardando aprovação do profissional. Você receberá uma notificação quando for confirmado.</p>
+            </div>
+          `
+              : `
+            <div class="appointment-info" style="background: #e8f5e9; border-left-color: #4caf50;">
+              <p>✓ <strong>Confirmado!</strong></p>
+              <p>Sua consulta foi confirmada. Apresente-se 10 minutos antes do horário agendado.</p>
+            </div>
+          `
+          }
+
+          <p style="margin-top: 20px;">Se você precisa cancelar ou remarcar, entre em contato conosco com antecedência.</p>
+
+          <div class="footer">
+            <p>Este é um email automático, por favor não responda.</p>
+            <p>&copy; ${new Date().getFullYear()} HealthCare - Sistema de Agendamento</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return emailService.sendEmail({
+    to: data.patientEmail,
+    subject: `Agendamento confirmado - ${data.doctorName}`,
+    html,
+  }).then(result => result.success)
+}
+
+interface AppointmentCancellationData {
+  patientEmail: string
+  patientName: string
+  doctorName: string
+  date: string
+  time: string
+  reason?: string
+}
+
+export async function sendAppointmentCancellationEmail(
+  data: AppointmentCancellationData
+): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f93b1d 0%, #ea1e63 100%); color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 0 0 5px 5px; }
+        .appointment-info { background: white; padding: 15px; border-left: 4px solid #f93b1d; margin: 15px 0; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Agendamento Cancelado</h1>
+          <p>Sua consulta foi cancelada</p>
+        </div>
+        <div class="content">
+          <p>Olá <strong>${data.patientName}</strong>,</p>
+          <p>Seu agendamento foi cancelado. Confira os detalhes abaixo:</p>
+          
+          <div class="appointment-info">
+            <h3>📋 Detalhes do Cancelamento</h3>
+            <p><strong>Profissional:</strong> ${data.doctorName}</p>
+            <p><strong>Data (cancelada):</strong> ${data.date}</p>
+            <p><strong>Horário (cancelado):</strong> ${data.time}</p>
+            ${data.reason ? `<p><strong>Motivo:</strong> ${data.reason}</p>` : ''}
+          </div>
+
+          <p>Se deseja remarcar, acesse nosso portal de agendamentos para escolher uma nova data.</p>
+
+          <div class="footer">
+            <p>Este é um email automático, por favor não responda.</p>
+            <p>&copy; ${new Date().getFullYear()} HealthCare - Sistema de Agendamento</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return emailService.sendEmail({
+    to: data.patientEmail,
+    subject: `Agendamento cancelado - ${data.doctorName}`,
+    html,
+  }).then(result => result.success)
+}
