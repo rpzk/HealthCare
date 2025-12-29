@@ -401,11 +401,3 @@ export default function ReferralDetailPage() {
   )
 }
 
-          <div className="mt-6 p-6 border rounded-lg bg-card">
-            <ReferralDetails id={id} />
-          </div>
-        </main>
-      </div>
-    </div>
-  )
-}

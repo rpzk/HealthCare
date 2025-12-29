@@ -14,13 +14,6 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   User,
   Shield,
   Bell,
@@ -31,12 +24,8 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Mail,
-  Server,
-  Send,
-  Settings as SettingsIcon,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 import { UploadA1Certificate } from '@/components/upload-a1-certificate'
 
 export default function SettingsPage() {
@@ -44,7 +33,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [testingEmail, setTestingEmail] = useState(false)
 
   // Dados do perfil
   const [profile, setProfile] = useState({
@@ -66,18 +54,6 @@ export default function SettingsPage() {
   const [certificates, setCertificates] = useState<any[]>([])
   const [certificatesLoading, setCertificatesLoading] = useState(false)
 
-  // Configurações de Email/SMTP
-  const [emailConfig, setEmailConfig] = useState({
-    EMAIL_ENABLED: 'false',
-    EMAIL_PROVIDER: 'smtp',
-    SMTP_HOST: '',
-    SMTP_PORT: '587',
-    SMTP_USER: '',
-    SMTP_PASSWORD: '',
-    SMTP_FROM: '',
-    SMTP_FROM_NAME: 'HealthCare',
-  })
-
   // Notificações
   const [notifications, setNotifications] = useState({
     email: true,
@@ -93,7 +69,6 @@ export default function SettingsPage() {
     loadProfile()
     loadCertificates()
     loadNotifications()
-    loadEmailConfig()
   }, [])
 
   const loadProfile = async () => {
@@ -132,29 +107,10 @@ export default function SettingsPage() {
   }
 
   const loadNotifications = () => {
+    // TODO: Carregar do banco
     const saved = localStorage.getItem('notifications')
     if (saved) {
       setNotifications(JSON.parse(saved))
-    }
-  }
-
-  const loadEmailConfig = async () => {
-    try {
-      const response = await fetch('/api/system/settings')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.settings) {
-          const emailSettings: any = {}
-          data.settings.forEach((s: any) => {
-            if (s.key.startsWith('EMAIL') || s.key.startsWith('SMTP')) {
-              emailSettings[s.key] = s.value
-            }
-          })
-          setEmailConfig((prev) => ({ ...prev, ...emailSettings }))
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações de e-mail:', error)
     }
   }
 
@@ -169,12 +125,15 @@ export default function SettingsPage() {
 
       if (!response.ok) throw new Error('Falha ao salvar')
 
-      toast.success('Salvo com sucesso!', {
+      toast({
+        title: 'Salvo com sucesso!',
         description: 'Suas informações foram atualizadas',
       })
     } catch (error) {
-      toast.error('Erro ao salvar', {
+      toast({
+        title: 'Erro ao salvar',
         description: 'Não foi possível atualizar suas informações',
+        variant: 'destructive',
       })
     } finally {
       setSaving(false)
@@ -183,15 +142,19 @@ export default function SettingsPage() {
 
   const savePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Senhas não conferem', {
+      toast({
+        title: 'Senhas não conferem',
         description: 'A nova senha e a confirmação devem ser iguais',
+        variant: 'destructive',
       })
       return
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast.error('Senha muito curta', {
+      toast({
+        title: 'Senha muito curta',
         description: 'A senha deve ter pelo menos 8 caracteres',
+        variant: 'destructive',
       })
       return
     }
@@ -218,101 +181,25 @@ export default function SettingsPage() {
         confirmPassword: '',
       })
 
-      toast.success('Senha alterada!', {
+      toast({
+        title: 'Senha alterada!',
         description: 'Sua senha foi atualizada com sucesso',
       })
     } catch (error) {
-      toast.error('Erro ao alterar senha', {
+      toast({
+        title: 'Erro ao alterar senha',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
       })
     } finally {
       setSaving(false)
-    }
-  }
-
-  const saveEmailConfig = async () => {
-    try {
-      setSaving(true)
-      const promises = Object.entries(emailConfig).map(([key, value]) =>
-        fetch('/api/system/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            key,
-            value,
-            category: 'EMAIL',
-            encrypted: key.includes('PASSWORD'),
-          }),
-        })
-      )
-
-      await Promise.all(promises)
-
-      toast.success('Configurações de e-mail salvas!', {
-        description: 'As configurações SMTP foram atualizadas',
-      })
-    } catch (error) {
-      toast.error('Erro ao salvar configurações de e-mail')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleTestEmail = async () => {
-    if (!emailConfig.EMAIL_ENABLED || emailConfig.EMAIL_ENABLED === 'false') {
-      toast.error('E-mail desabilitado', {
-        description: 'Ative o envio de e-mails antes de testar',
-      })
-      return
-    }
-
-    const testAddress = prompt(
-      'Digite o e-mail para receber o teste (certifique-se de ter SALVADO as configurações antes):',
-      emailConfig.SMTP_USER || ''
-    )
-    if (!testAddress) return
-
-    if (emailConfig.EMAIL_PROVIDER === 'smtp' && !emailConfig.SMTP_HOST) {
-      toast.error('Configuração incompleta', {
-        description: 'Configure o servidor SMTP antes de testar',
-      })
-      return
-    }
-
-    try {
-      setTestingEmail(true)
-      const response = await fetch('/api/settings/test-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: testAddress,
-          config: emailConfig,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        toast.success('E-mail de teste enviado!', {
-          description: `Verifique a caixa de entrada de ${testAddress}`,
-        })
-      } else {
-        toast.error('Falha ao enviar e-mail', {
-          description: data.error || 'Erro desconhecido',
-        })
-      }
-    } catch (error) {
-      toast.error('Erro ao enviar e-mail de teste', {
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-      })
-    } finally {
-      setTestingEmail(false)
     }
   }
 
   const saveNotifications = () => {
     localStorage.setItem('notifications', JSON.stringify(notifications))
-    toast.success('Preferências salvas', {
+    toast({
+      title: 'Preferências salvas',
       description: 'Suas preferências de notificação foram atualizadas',
     })
   }
@@ -331,8 +218,6 @@ export default function SettingsPage() {
     )
   }
 
-  const isAdmin = session?.user?.role === 'ADMIN'
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
@@ -344,12 +229,12 @@ export default function SettingsPage() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
               <p className="text-muted-foreground mt-2">
-                Gerencie suas preferências pessoais e configurações do sistema
+                Gerencie suas preferências e configurações da conta
               </p>
             </div>
 
             <Tabs defaultValue="profile" className="space-y-6">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="profile">
                   <User className="mr-2 h-4 w-4" />
                   Perfil
@@ -366,16 +251,6 @@ export default function SettingsPage() {
                   <Bell className="mr-2 h-4 w-4" />
                   Notificações
                 </TabsTrigger>
-                <TabsTrigger value="email">
-                  <Mail className="mr-2 h-4 w-4" />
-                  E-mail
-                </TabsTrigger>
-                {isAdmin && (
-                  <TabsTrigger value="system">
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    Sistema
-                  </TabsTrigger>
-                )}
               </TabsList>
 
               {/* Aba Perfil */}
@@ -569,8 +444,10 @@ export default function SettingsPage() {
 
               {/* Aba Certificados */}
               <TabsContent value="certificates" className="space-y-4">
+                {/* Upload de novo certificado */}
                 <UploadA1Certificate onSuccess={loadCertificates} />
 
+                {/* Lista de certificados */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Meus Certificados</CardTitle>
@@ -616,7 +493,9 @@ export default function SettingsPage() {
                                   Válido até:{' '}
                                   {new Date(cert.notAfter).toLocaleDateString('pt-BR')}
                                 </span>
-                                <span>Usado {cert.usageCount} vezes</span>
+                                <span>
+                                  Usado {cert.usageCount} vezes
+                                </span>
                                 {cert.lastUsedAt && (
                                   <span>
                                     Última vez:{' '}
@@ -765,217 +644,6 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              {/* Aba E-mail/SMTP */}
-              <TabsContent value="email" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Configuração de E-mail (SMTP)</CardTitle>
-                    <CardDescription>
-                      Configure o servidor SMTP para envio de e-mails do sistema
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-enabled">Habilitar envio de e-mails</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Ative para permitir o envio de e-mails
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-enabled"
-                        checked={emailConfig.EMAIL_ENABLED === 'true'}
-                        onCheckedChange={(checked) =>
-                          setEmailConfig({
-                            ...emailConfig,
-                            EMAIL_ENABLED: checked ? 'true' : 'false',
-                          })
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <Label htmlFor="smtp-host">Servidor SMTP</Label>
-                      <Input
-                        id="smtp-host"
-                        placeholder="smtp.gmail.com"
-                        value={emailConfig.SMTP_HOST}
-                        onChange={(e) =>
-                          setEmailConfig({ ...emailConfig, SMTP_HOST: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="smtp-port">Porta</Label>
-                        <Input
-                          id="smtp-port"
-                          placeholder="587"
-                          value={emailConfig.SMTP_PORT}
-                          onChange={(e) =>
-                            setEmailConfig({
-                              ...emailConfig,
-                              SMTP_PORT: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="smtp-user">Usuário</Label>
-                        <Input
-                          id="smtp-user"
-                          placeholder="seu@email.com"
-                          value={emailConfig.SMTP_USER}
-                          onChange={(e) =>
-                            setEmailConfig({
-                              ...emailConfig,
-                              SMTP_USER: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="smtp-password">Senha ou App Password</Label>
-                      <Input
-                        id="smtp-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={emailConfig.SMTP_PASSWORD}
-                        onChange={(e) =>
-                          setEmailConfig({
-                            ...emailConfig,
-                            SMTP_PASSWORD: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="smtp-from">E-mail remetente</Label>
-                        <Input
-                          id="smtp-from"
-                          placeholder="noreply@healthcare.com"
-                          value={emailConfig.SMTP_FROM}
-                          onChange={(e) =>
-                            setEmailConfig({
-                              ...emailConfig,
-                              SMTP_FROM: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="smtp-from-name">Nome remetente</Label>
-                        <Input
-                          id="smtp-from-name"
-                          placeholder="HealthCare"
-                          value={emailConfig.SMTP_FROM_NAME}
-                          onChange={(e) =>
-                            setEmailConfig({
-                              ...emailConfig,
-                              SMTP_FROM_NAME: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <Alert>
-                      <Server className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Gmail:</strong> Use smtp.gmail.com (porta 587) e gere uma
-                        senha de aplicativo em https://myaccount.google.com/apppasswords
-                      </AlertDescription>
-                    </Alert>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={handleTestEmail}
-                        disabled={testingEmail}
-                      >
-                        {testingEmail ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="mr-2 h-4 w-4" />
-                            Enviar E-mail de Teste
-                          </>
-                        )}
-                      </Button>
-
-                      <Button onClick={saveEmailConfig} disabled={saving}>
-                        {saving ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Salvando...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Salvar Configurações
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Aba Sistema (Admin only) */}
-              {isAdmin && (
-                <TabsContent value="system" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Configurações do Sistema</CardTitle>
-                      <CardDescription>
-                        Gerenciar configurações avançadas do sistema (Admin)
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>
-                            Para configurações avançadas de sistema (Redis, Storage,
-                            WebRTC, etc.), acesse{' '}
-                            <a
-                              href="/admin/settings"
-                              className="font-medium underline"
-                            >
-                              Painel de Administração → Configurações
-                            </a>
-                          </AlertDescription>
-                        </Alert>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => (window.location.href = '/admin/settings')}
-                          >
-                            <Server className="mr-2 h-4 w-4" />
-                            Ir para Configurações Avançadas
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              )}
             </Tabs>
           </div>
         </main>
