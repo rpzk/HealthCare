@@ -8,6 +8,7 @@ import { ClientErrorLogger } from '@/components/client-error-logger'
 import { DebugOverlay } from '@/components/debug-overlay'
 import '@/lib/server-instrumentation'
 import '@/lib/prisma-warmup'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -79,6 +80,7 @@ export default function RootLayout({
         <Providers>
           <ClientErrorLogger />
           {/* <DebugOverlay /> - Desabilitado em produção */}
+          <Toaster richColors position="top-right" closeButton />
           {children}
         </Providers>
       </body>

@@ -56,24 +56,63 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export function useToast() {
   const context = React.useContext(toastContext)
-  if (!context) throw new Error('useToast must be used within a ToastProvider')
+  // Fallback gracefully if provider is not mounted
+  if (!context) {
+    const shim = (props: ToastProps) => {
+      const type = props.variant === 'destructive' ? 'error' : 'success'
+      const message = props.title || props.description || ''
+      const desc = props.title && props.description ? props.description : undefined
+      switch (type) {
+        case 'error':
+          sonnerToast.error(message, { description: desc })
+          break
+        default:
+          sonnerToast.success(message, { description: desc })
+      }
+    }
+    return {
+      toast: shim,
+      success: (t: string, d?: string) => sonnerToast.success(t, { description: d }),
+      error: (t: string, d?: string) => sonnerToast.error(t, { description: d }),
+      info: (t: string, d?: string) => sonnerToast.info(t, { description: d }),
+      warning: (t: string, d?: string) => sonnerToast.warning(t, { description: d }),
+    }
+  }
   return context
 }
 
-export const toast = (type: ToastType, title: string, description?: string) => {
-  switch (type) {
-    case 'success':
-      sonnerToast.success(title, { description })
-      break
-    case 'error':
-      sonnerToast.error(title, { description })
-      break
-    case 'warning':
-      sonnerToast.warning(title, { description })
-      break
-    case 'info':
-      sonnerToast.info(title, { description })
-      break
+// Backwards-compatible export: accepts either object props or (type, title, description)
+export const toast = (
+  arg1: ToastProps | ToastType,
+  title?: string,
+  description?: string
+) => {
+  if (typeof arg1 === 'string') {
+    const type = arg1 as ToastType
+    switch (type) {
+      case 'success':
+        sonnerToast.success(title || '', { description })
+        break
+      case 'error':
+        sonnerToast.error(title || '', { description })
+        break
+      case 'warning':
+        sonnerToast.warning(title || '', { description })
+        break
+      case 'info':
+        sonnerToast.info(title || '', { description })
+        break
+    }
+    return
+  }
+  const props = arg1 as ToastProps
+  const type = props.variant === 'destructive' ? 'error' : 'success'
+  const message = props.title || props.description || ''
+  const desc = props.title && props.description ? props.description : undefined
+  if (type === 'error') {
+    sonnerToast.error(message, { description: desc })
+  } else {
+    sonnerToast.success(message, { description: desc })
   }
 }
 

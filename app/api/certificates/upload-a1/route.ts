@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Salvar arquivo .pfx no servidor
-    const uploadsDir = path.join(process.cwd(), 'private', 'certificates')
+    // Salvar arquivo .pfx no servidor (usar volume persistente /uploads)
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'certificates')
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true })
     }
