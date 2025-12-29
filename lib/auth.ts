@@ -160,17 +160,48 @@ const providers: NextAuthOptions['providers'] = [
 export const authOptions: NextAuthOptions = {
   providers,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.role = user.role
         token.id = user.id
       }
+      
+      // Buscar papéis atribuídos (UserAssignedRole) quando o token é criado ou atualizado
+      if (token.id && (trigger === 'signIn' || trigger === 'update' || !token.availableRoles)) {
+        try {
+          const prisma = await getPrisma()
+          const assignedRoles = await prisma.userAssignedRole.findMany({
+            where: { userId: token.id as string },
+            select: { role: true, isPrimary: true },
+            orderBy: [{ isPrimary: 'desc' }, { assignedAt: 'asc' }]
+          })
+          
+          if (assignedRoles.length > 0) {
+            token.availableRoles = assignedRoles.map(r => r.role)
+            const primary = assignedRoles.find(r => r.isPrimary)
+            if (primary) {
+              token.role = primary.role
+            }
+          } else {
+            // Fallback: se não tem roles atribuídas, usar o role do User
+            token.availableRoles = [token.role as string]
+          }
+        } catch (error) {
+          console.error('Erro ao buscar papéis atribuídos:', error)
+          token.availableRoles = [token.role as string]
+        }
+      }
+      
       return token
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string
         session.user.role = token.role as string
+        // Adicionar availableRoles à sessão
+        if (token.availableRoles) {
+          (session.user as any).availableRoles = token.availableRoles
+        }
       }
       return session
     }
