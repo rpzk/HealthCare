@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { NotificationCenter } from '@/components/ui/notification-center'
 import { useActiveRole } from '@/hooks/use-active-role'
 import {
   DropdownMenu,
@@ -97,10 +98,7 @@ export function AdminHeader() {
           <RoleSwitcher />
 
           {/* Notificações */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
-          </Button>
+          <NotificationCenter />
 
           {/* Tema */}
           <ThemeToggle />
