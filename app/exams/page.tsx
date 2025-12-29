@@ -259,7 +259,12 @@ export default function ExamsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() => router.push(`/exams/requests/${exam.id}`)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">

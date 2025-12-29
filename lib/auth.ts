@@ -24,9 +24,8 @@ function getLoginKey(email: string, ip?: string) {
   return `${(email || '').toLowerCase()}|${ip || 'unknown'}`
 }
 
-export const authOptions: NextAuthOptions = {
-  providers: [
-    CredentialsProvider({
+const providers: NextAuthOptions['providers'] = [
+  CredentialsProvider({
       id: "passkey",
       name: "Passkey",
       credentials: {
@@ -70,7 +69,7 @@ export const authOptions: NextAuthOptions = {
         }
       }
     }),
-    CredentialsProvider({
+  CredentialsProvider({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -156,7 +155,10 @@ export const authOptions: NextAuthOptions = {
         }
       }
     })
-  ],
+]
+
+export const authOptions: NextAuthOptions = {
+  providers,
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
