@@ -501,7 +501,6 @@ export function RoleSwitcher() {
                       <span className="text-xs font-medium text-primary">Ativo</span>
                     </div>
                   )}
-                  )}
                 </div>
               </DropdownMenuItem>
             )

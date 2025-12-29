@@ -35,9 +35,11 @@ import {
   Server,
   Send,
   Settings as SettingsIcon,
+  Calendar,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UploadA1Certificate } from '@/components/upload-a1-certificate'
+import { PatientBookingConfig } from '@/components/patient-booking-config'
 
 export default function SettingsPage() {
   const { data: session } = useSession()
@@ -349,7 +351,7 @@ export default function SettingsPage() {
             </div>
 
             <Tabs defaultValue="profile" className="space-y-6">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
+              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-7' : 'grid-cols-6'}`}>
                 <TabsTrigger value="profile">
                   <User className="mr-2 h-4 w-4" />
                   Perfil
@@ -365,6 +367,10 @@ export default function SettingsPage() {
                 <TabsTrigger value="notifications">
                   <Bell className="mr-2 h-4 w-4" />
                   Notificações
+                </TabsTrigger>
+                <TabsTrigger value="scheduling">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Agendamento
                 </TabsTrigger>
                 <TabsTrigger value="email">
                   <Mail className="mr-2 h-4 w-4" />
@@ -764,6 +770,11 @@ export default function SettingsPage() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Aba Agendamento */}
+              <TabsContent value="scheduling" className="space-y-4">
+                <PatientBookingConfig />
               </TabsContent>
 
               {/* Aba E-mail/SMTP */}
