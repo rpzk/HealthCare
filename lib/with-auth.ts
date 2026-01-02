@@ -147,3 +147,19 @@ export async function validateRequestBody<T>(
     }
   }
 }
+
+/**
+ * Extract and validate the authenticated user from a request
+ * 
+ * @param request - Next.js request object
+ * @returns The authenticated user or throws an error
+ */
+export async function getCurrentUser(request: NextRequest): Promise<AuthenticatedUser> {
+  const authResult = await authMiddleware(request)
+  
+  if (!authResult.user) {
+    throw new Error('User not authenticated')
+  }
+  
+  return authResult.user
+}

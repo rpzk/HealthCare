@@ -6,11 +6,13 @@ import path from 'path'
  * Signature Service - Digital signing for medical certificates
  * 
  * Supports:
- * - PKI_LOCAL: Self-signed RSA 2048 certificates (ready now)
- * - ICP_BRASIL: Official ICP-Brasil certificates (hooks for future)
+ * - PKI_LOCAL: Self-signed RSA 2048 certificates (testing/development)
+ * - NONE: No signature (for testing only)
+ * 
+ * NOTE: For production digital signatures, integrate with your certificate provider
  */
 
-export type SignatureMethod = 'NONE' | 'PKI_LOCAL' | 'ICP_BRASIL'
+export type SignatureMethod = 'NONE' | 'PKI_LOCAL'
 
 interface SignatureResult {
   signature: string
@@ -101,17 +103,12 @@ export function verifyWithPKILocal(
 }
 
 // ============================================
-// ICP-BRASIL: Hooks for official certificates
+// ICP-BRASIL: Placeholder for future implementation
 // ============================================
 
 /**
- * Hook for future ICP-Brasil signing
- * Placeholder - implement when hardware/SDK is available
- * 
- * Options:
- * 1. Hardware token (A3) via PKCS#11 API
- * 2. Software certificate (A1) via Java SignerLib or similar
- * 3. Cloud signing service integration
+ * Placeholder for ICP-Brasil signing
+ * Implement based on your certificate provider's requirements
  */
 export function signWithICPBrasil(
   data: string,
@@ -119,15 +116,13 @@ export function signWithICPBrasil(
   password?: string
 ): SignatureResult {
   throw new Error(
-    'ICP-Brasil signing not yet implemented. ' +
-    'Requires: certificate hardware/software, PKCS#11 driver, or cloud signing API. ' +
-    'Using PKI_LOCAL for now.'
+    'ICP-Brasil signing not implemented. ' +
+    'Integrate with your certificate provider.'
   )
 }
 
 /**
- * Hook for future ICP-Brasil verification
- * Validates against official ICP-Brasil certificate chain
+ * Placeholder for ICP-Brasil verification
  */
 export function verifyWithICPBrasil(
   data: string,
@@ -136,8 +131,8 @@ export function verifyWithICPBrasil(
 ): VerificationResult {
   return {
     valid: false,
-    method: 'ICP_BRASIL',
-    message: 'ICP-Brasil verification not yet implemented',
+    method: 'PKI_LOCAL',
+    message: 'ICP-Brasil verification not implemented',
   }
 }
 
@@ -160,8 +155,6 @@ export function signCertificate(
   switch (method) {
     case 'PKI_LOCAL':
       return signWithPKILocal(data, options?.privateKeyPath)
-    case 'ICP_BRASIL':
-      return signWithICPBrasil(data, options?.certificatePath, options?.password)
     case 'NONE':
       return {
         signature: '',
@@ -187,8 +180,6 @@ export function verifyCertificate(
   switch (method) {
     case 'PKI_LOCAL':
       return verifyWithPKILocal(data, signature, options?.publicCertPath)
-    case 'ICP_BRASIL':
-      return verifyWithICPBrasil(data, signature, options?.publicCertPath)
     case 'NONE':
       return {
         valid: true,

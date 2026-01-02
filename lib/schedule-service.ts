@@ -51,13 +51,13 @@ export class ScheduleService {
     })
   }
 
-  static async addException(doctorId: string, date: Date, isAvailable: boolean, reason?: string) {
+  static async addException(doctorId: string, date: Date, blockType: 'UNAVAILABLE' | 'ON_CALL' | 'VACATION' | 'SICK_LEAVE' | 'MAINTENANCE' | 'TRAINING' | 'MEETING' = 'UNAVAILABLE', reason?: string) {
     const prisma = getSchedulePrisma()
     return prisma.scheduleException.create({
       data: {
         doctorId,
         date,
-        isAvailable,
+        blockType,
         reason
       }
     })
@@ -82,7 +82,7 @@ export class ScheduleService {
     })
 
     if (exception) {
-      return { available: exception.isAvailable, reason: exception.reason }
+      return { available: false, blockType: exception.blockType, reason: exception.reason }
     }
 
     // Check regular schedule

@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast'
 import { FileText, Calendar, Clock, Download, QrCode, Loader2, Ban } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { A1SignButton } from '@/components/a1-sign-button'
 
 interface CertificatesListProps {
   patientId?: string
@@ -179,7 +180,7 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
 
             {/* Actions */}
             {!cert.revokedAt && (
-              <div className="flex flex-col gap-2 ml-4">
+              <div className="flex flex-col gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
                   <button
                     className="btn btn-secondary"
                     onClick={async () => {
@@ -215,6 +216,16 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
                   <QrCode className="w-4 h-4 mr-1" />
                   QR Code
                 </Button>
+                {/* Assinatura ICP-Brasil A1 se ainda não assinado */}
+                {(!cert.signature || cert.signatureMethod !== 'ICP_BRASIL') && (
+                  <A1SignButton
+                    certificateId={cert.id}
+                    onSuccess={() => {
+                      // reload list after successful signing
+                      loadCertificates()
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>

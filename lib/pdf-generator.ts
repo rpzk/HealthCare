@@ -33,7 +33,7 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     }
   }
   return await new Promise<Buffer>((resolve, reject) => {
-    doc.on('data', (d) => chunks.push(Buffer.from(d)));
+    doc.on('data', (d: any) => chunks.push(Buffer.from(d)));
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
 

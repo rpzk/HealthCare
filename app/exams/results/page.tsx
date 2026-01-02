@@ -340,7 +340,8 @@ export default function ExamResultsPage() {
             {filteredExams.map((exam) => (
               <div
                 key={exam.id}
-                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => router.push(`/exams/results/${exam.id}`)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
@@ -405,6 +406,15 @@ export default function ExamResultsPage() {
                         <span>ID: {exam.id}</span>
                       </div>
                     </div>
+                  </div>
+                  <div className="ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); router.push(`/exams/results/${exam.id}`) }}
+                    >
+                      Ver detalhes
+                    </Button>
                   </div>
                 </div>
               </div>
