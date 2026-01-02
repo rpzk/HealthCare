@@ -12,7 +12,7 @@ export class QuestionnaireNotificationService {
   /**
    * Notificar quando um questionário é enviado
    */
-  static async notifyQuestionnaireS (doctorId: string, patientName: string, questionnaireName: string, questionnareId: string) {
+  static async notifyQuestionnaireSent(doctorId: string, patientName: string, questionnaireName: string, questionnaireId: string) {
     try {
       await prisma.notification.create({
         data: {
@@ -23,7 +23,7 @@ export class QuestionnaireNotificationService {
           metadata: {
             patientName,
             questionnaireName,
-            questionnaireId: questionnareId,
+            questionnaireId,
           } as any,
         },
       })
