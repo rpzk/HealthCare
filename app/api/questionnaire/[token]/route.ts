@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { QuestionnaireNotificationService } from '@/lib/questionnaire-notification-service'
 
 // GET - Obter questionário por token (acesso público para paciente)
 export async function GET(
@@ -216,14 +217,28 @@ export async function POST(
       }
 
       // Marcar como completo
-      await prisma.patientQuestionnaire.update({
+      const completedQuestionnaire = await prisma.patientQuestionnaire.update({
         where: { id: questionnaire.id },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
           progressPercent: 100
+        },
+        include: {
+          template: { select: { name: true } },
+          patient: { select: { name: true } },
+          sentBy: { select: { id: true } }
         }
       })
+
+      // Notificar profissional que questionário foi respondido
+      await QuestionnaireNotificationService.notifyQuestionnaireCompleted(
+        completedQuestionnaire.sentBy.id,
+        completedQuestionnaire.patient.name,
+        completedQuestionnaire.template.name,
+        completedQuestionnaire.id,
+        completedQuestionnaire.patientId
+      )
 
       return NextResponse.json({
         success: true,
