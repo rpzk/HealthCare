@@ -1,7 +1,5 @@
 /**
- * Componente: Botão de Assinatura com Gov.br
- * 
- * Permite que usuários assinem digitalmente documentos usando Gov.br
+ * Componente: Botão de Assinatura com Certificado ICP-Brasil
  */
 
 'use client'
@@ -10,7 +8,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react'
 
-interface GovBrSignatureButtonProps {
+interface IcpBrasilSignButtonProps {
   certificateId: string
   onSuccess?: (data: { certificateId: string }) => void
   onError?: (error: string) => void
@@ -18,13 +16,13 @@ interface GovBrSignatureButtonProps {
   className?: string
 }
 
-export function GovBrSignatureButton({
+export function IcpBrasilSignButton({
   certificateId,
   onSuccess,
   onError,
   disabled = false,
   className = ''
-}: GovBrSignatureButtonProps) {
+}: IcpBrasilSignButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -34,10 +32,9 @@ export function GovBrSignatureButton({
       setIsLoading(true)
       setError(null)
 
-      console.log('[GovBr Button] Iniciando assinatura para certificado:', certificateId)
+      console.log('[ICP-Brasil] Iniciando assinatura para certificado:', certificateId)
 
-      // Requisição para iniciar assinatura
-      const response = await fetch('/api/govbr/iniciar-assinatura', {
+      const response = await fetch('/api/certificates/sign', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -47,24 +44,22 @@ export function GovBrSignatureButton({
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Falha ao iniciar assinatura')
+        throw new Error(errorData.error || 'Falha ao assinar certificado')
       }
 
       const data = await response.json()
-      const redirectUrl = data.redirectUrl
 
-      if (!redirectUrl) {
-        throw new Error('URL de redirecionamento não retornada')
-      }
+      console.log('[ICP-Brasil] Assinatura concluída:', {
+        certificateId: data.certificateId,
+        method: data.method,
+        timestamp: data.timestamp
+      })
 
-      console.log('[GovBr Button] Redirecionando para Gov.br...')
-      console.log('[GovBr Button] URL:', redirectUrl.slice(0, 50) + '...')
-
-      // Redirecionar para Gov.br
-      window.location.href = redirectUrl
+      setSuccess(true)
+      onSuccess?.(data)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
-      console.error('[GovBr Button] Erro:', errorMessage)
+      console.error('[ICP-Brasil] Erro:', errorMessage)
       setError(errorMessage)
       onError?.(errorMessage)
     } finally {
@@ -76,22 +71,22 @@ export function GovBrSignatureButton({
     <div className={`flex flex-col gap-2 ${className}`}>
       <Button
         onClick={handleSignClick}
-        disabled={disabled || isLoading}
-        className="bg-blue-600 hover:bg-blue-700 text-white"
+        disabled={disabled || isLoading || success}
+        className="bg-green-600 hover:bg-green-700 text-white"
         size="lg"
       >
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Redirecionando...
+            Assinando...
           </>
         ) : success ? (
           <>
             <CheckCircle className="w-4 h-4 mr-2" />
-            Assinado com Gov.br
+            Assinado com ICP-Brasil A1
           </>
         ) : (
-          '🇧🇷 Assinar com Gov.br'
+          '🔐 Assinar com Certificado Digital'
         )}
       </Button>
 
@@ -103,7 +98,7 @@ export function GovBrSignatureButton({
       )}
 
       <p className="text-xs text-gray-600 mt-2">
-        Você será redirecionado para a plataforma Gov.br para autenticar e assinar
+        Assinatura digital com certificado ICP-Brasil A1 (local)
       </p>
     </div>
   )

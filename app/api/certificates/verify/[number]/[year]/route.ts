@@ -65,7 +65,7 @@ export async function GET(
   const result = verifyCertificate(
     certificateDataToSign,
     signatureParam,
-    cert.signatureMethod as 'PKI_LOCAL' | 'ICP_BRASIL' | 'NONE'
+    (cert.signatureMethod as any) || 'NONE'
   )
 
   return Response.json({

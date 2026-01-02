@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateCertificatePdf } from '@/lib/pdf-generator';
 import { getBranding } from '@/lib/branding-service';
+import { getCurrentUser } from '@/lib/with-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,18 +10,21 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const id = params.id;
-  const cert = await prisma.medicalCertificate.findUnique({
-    where: { id },
-    include: {
-      doctor: true,
-      patient: true,
-    },
-  });
+  try {
+    const user = await getCurrentUser(req)
+    
+    const id = params.id;
+    const cert = await prisma.medicalCertificate.findUnique({
+      where: { id },
+      include: {
+        doctor: true,
+        patient: true,
+      },
+    });
 
-  if (!cert) {
-    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
-  }
+    if (!cert) {
+      return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+    }
 
   const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_BASE_URL || '';
   const validationUrl = cert.qrCodeData
@@ -62,6 +66,9 @@ export async function GET(
         action: 'CERTIFICATE_PDF_GENERATED',
         resourceType: 'MedicalCertificate',
         resourceId: cert.id,
+        userId: user?.id || 'system',
+        userEmail: user?.email || 'system',
+        userRole: user?.role || 'SYSTEM',
         metadata: {
           sequenceNumber: cert.sequenceNumber,
           year: cert.year,
@@ -83,4 +90,8 @@ export async function GET(
       'Cache-Control': 'no-store',
     },
   });
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    return new Response(JSON.stringify({ error: 'Failed to generate PDF' }), { status: 500 })
+  }
 }

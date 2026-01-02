@@ -6,6 +6,7 @@ declare module "next-auth" {
     user: {
       id: string
       role: string
+      availableRoles?: string[]
       speciality?: string
       crmNumber?: string
     } & DefaultSession["user"]
@@ -21,6 +22,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role: string
+    availableRoles?: string[]
     speciality?: string
     crmNumber?: string
   }

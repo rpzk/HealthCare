@@ -13,10 +13,10 @@ export default function ConsultationsPage() {
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
-      <div className="flex pt-32">
+      <div className="flex pt-20">
         <Sidebar />
-        <main className="flex-1 ml-64 p-8">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 ml-64 p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
             {/* O conteúdo interativo foi movido para um Client Component */}
             <ConsultationsPageClient />
           </div>

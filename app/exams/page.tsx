@@ -6,13 +6,12 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
+import { SearchFilter } from '@/components/search/search-filter'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   TestTube,
-  Search,
   Plus,
   Calendar,
   User,
@@ -138,170 +137,208 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
-      <div className="flex pt-16">
+      <div className="flex pt-20">
         <Sidebar />
-        <main className="flex-1 ml-64 p-6 pt-24">
-          <PageHeader
-            title="Exames Médicos"
-            description="Gerencie solicitações e resultados de exames"
-            breadcrumbs={[
-              { label: 'Dashboard', href: '/' },
-              { label: 'Exames', href: '/exams' }
-            ]}
-            actions={(
-              <Button onClick={() => router.push('/exams/new')} className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Solicitar Exame
-              </Button>
-            )}
-          />
+        <main className="flex-1 ml-64 p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <PageHeader
+              title="Exames Médicos"
+              description="Gerencie solicitações e resultados de exames"
+              breadcrumbs={[
+                { label: 'Dashboard', href: '/' },
+                { label: 'Exames', href: '/exams' }
+              ]}
+              actions={(
+                <Button onClick={() => router.push('/exams/new')} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Solicitar Exame
+                </Button>
+              )}
+            />
 
-          <div className="space-y-6">
+            <SearchFilter
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              filters={[
+                {
+                  name: 'status',
+                  label: 'Status',
+                  options: [
+                    { label: 'Todos os Status', value: 'ALL' },
+                    { label: 'Solicitados', value: 'REQUESTED' },
+                    { label: 'Agendados', value: 'SCHEDULED' },
+                    { label: 'Em Andamento', value: 'IN_PROGRESS' },
+                    { label: 'Concluídos', value: 'COMPLETED' },
+                    { label: 'Cancelados', value: 'CANCELLED' }
+                  ]
+                },
+                {
+                  name: 'urgency',
+                  label: 'Urgência',
+                  options: [
+                    { label: 'Toda Urgência', value: 'ALL' },
+                    { label: 'Rotina', value: 'ROUTINE' },
+                    { label: 'Urgente', value: 'URGENT' },
+                    { label: 'Emergência', value: 'EMERGENCY' }
+                  ]
+                }
+              ]}
+              filterValues={{ status: filterStatus, urgency: filterUrgency }}
+              onFilterChange={(name, value) => {
+                if (name === 'status') setFilterStatus(value)
+                if (name === 'urgency') setFilterUrgency(value)
+              }}
+              onClear={() => {
+                setSearchTerm('')
+                setFilterStatus('ALL')
+                setFilterUrgency('ALL')
+              }}
+              loading={loading}
+              placeholder="Buscar por tipo de exame, paciente ou médico..."
+            />
 
-      {/* Filtros e Busca */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por tipo de exame, paciente ou médico..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="ALL">Todos os Status</option>
-                <option value="REQUESTED">Solicitados</option>
-                <option value="SCHEDULED">Agendados</option>
-                <option value="IN_PROGRESS">Em Andamento</option>
-                <option value="COMPLETED">Concluídos</option>
-                <option value="CANCELLED">Cancelados</option>
-              </select>
-              <select
-                value={filterUrgency}
-                onChange={(e) => setFilterUrgency(e.target.value)}
-                className="px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="ALL">Toda Urgência</option>
-                <option value="ROUTINE">Rotina</option>
-                <option value="URGENT">Urgente</option>
-                <option value="EMERGENCY">Emergência</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de Exames */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Exame</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Paciente</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Urgência</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-card divide-y divide-border">
-                {exams.map((exam) => (
-                  <tr key={exam.id} className="hover:bg-muted/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-foreground">{exam.examType}</div>
-                          <div className="text-sm text-muted-foreground">Dr. {exam.doctor.name}</div>
-                        </div>
+            {/* Lista de Exames */}
+            {loading ? (
+              <div className="grid gap-4">
+                {[...Array(5)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="space-y-3">
+                        <div className="h-5 bg-muted rounded w-1/3"></div>
+                        <div className="h-4 bg-muted rounded w-2/3"></div>
+                        <div className="h-4 bg-muted rounded w-1/2"></div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-foreground">{exam.patient.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Calendar className="mr-1.5 h-4 w-4" />
-                        {new Date(exam.requestDate).toLocaleDateString('pt-BR')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(exam.status)}`}>
-                        {exam.status === 'REQUESTED' && 'Solicitado'}
-                        {exam.status === 'SCHEDULED' && 'Agendado'}
-                        {exam.status === 'IN_PROGRESS' && 'Em Andamento'}
-                        {exam.status === 'COMPLETED' && 'Concluído'}
-                        {exam.status === 'CANCELLED' && 'Cancelado'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getUrgencyColor(exam.urgency)}`}>
-                        {exam.urgency === 'ROUTINE' && 'Rotina'}
-                        {exam.urgency === 'URGENT' && 'Urgente'}
-                        {exam.urgency === 'EMERGENCY' && 'Emergência'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                    </CardContent>
+                  </Card>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+            ) : exams.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <TestTube className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    Nenhum exame encontrado
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchTerm || filterStatus !== 'ALL' || filterUrgency !== 'ALL'
+                      ? 'Não há exames correspondentes aos filtros aplicados.'
+                      : 'Comece solicitando seu primeiro exame médico.'}
+                  </p>
+                  <Button onClick={() => router.push('/exams/new')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Solicitar {searchTerm || filterStatus !== 'ALL' || filterUrgency !== 'ALL' ? 'Novo' : 'Primeiro'} Exame
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Exame</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Paciente</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Data</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Urgência</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-card divide-y divide-border">
+                        {exams.map((exam) => (
+                          <tr 
+                            key={exam.id} 
+                            className="hover:bg-muted/50 cursor-pointer transition-colors"
+                            onClick={() => router.push(`/exams/requests/${exam.id}`)}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                  <TestTube className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-foreground">{exam.examType}</div>
+                                  <div className="text-sm text-muted-foreground">Dr. {exam.doctor.name}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-foreground">{exam.patient.name}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Calendar className="mr-1.5 h-4 w-4" />
+                                {new Date(exam.requestDate).toLocaleDateString('pt-BR')}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge variant="outline" className={getStatusColor(exam.status)}>
+                                {getStatusIcon(exam.status)}
+                                <span className="ml-1">{getStatusLabel(exam.status)}</span>
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge variant="outline" className={getUrgencyColor(exam.urgency)}>
+                                {exam.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                                {getUrgencyLabel(exam.urgency)}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-muted-foreground hover:text-primary"
+                                  onClick={() => router.push(`/exams/requests/${exam.id}`)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-muted-foreground hover:text-primary"
+                                  onClick={() => router.push(`/exams/requests/${exam.id}/edit`)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-          >
-            Anterior
-          </Button>
-          <span className="px-4 py-2 text-sm text-gray-600">
-            Página {currentPage} de {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Próxima
-          </Button>
-        </div>
-      )}
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1 || loading}
+                >
+                  Anterior
+                </Button>
+                <span className="px-4 py-2 text-sm text-muted-foreground">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages || loading}
+                >
+                  Próxima
+                </Button>
+              </div>
+            )}
           </div>
         </main>
       </div>
