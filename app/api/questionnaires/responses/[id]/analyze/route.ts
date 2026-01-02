@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { QuestionnaireNotificationService } from '@/lib/questionnaire-notification-service'
 
 // POST - Analisar respostas de um questionário com IA
 export async function POST(
@@ -200,13 +201,30 @@ export async function POST(
     // For now, just use rule-based analysis above
 
     // Save analysis
-    await prisma.patientQuestionnaire.update({
+    const updatedQuestionnaire = await prisma.patientQuestionnaire.update({
       where: { id: params.id },
       data: {
         aiAnalysis: analysis,
         aiAnalyzedAt: new Date()
+      },
+      include: {
+        template: { select: { name: true } },
+        patient: { select: { name: true } }
       }
     })
+
+    // Notificar profissional que análise está pronta
+    const hasConcerns = (analysis.concerns && analysis.concerns.length > 0) || 
+                        (analysis.patterns && analysis.patterns.some((p: any) => p.severity === 'high'))
+    
+    await QuestionnaireNotificationService.notifyAIAnalysisReady(
+      questionnaire.sentById,
+      updatedQuestionnaire.patient.name,
+      updatedQuestionnaire.template.name,
+      updatedQuestionnaire.id,
+      updatedQuestionnaire.patientId,
+      hasConcerns
+    )
 
     return NextResponse.json(analysis)
 

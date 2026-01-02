@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email-service'
+import { QuestionnaireNotificationService } from '@/lib/questionnaire-notification-service'
 
 // POST - Enviar questionário para um paciente
 export async function POST(
@@ -79,6 +80,14 @@ export async function POST(
         expiresAt
       )
     }
+
+    // Criar notificação para o profissional
+    await QuestionnaireNotificationService.notifyQuestionnaireSent(
+      session.user.id,
+      patient.name,
+      template.name,
+      questionnaire.id
+    )
 
     return NextResponse.json({
       ...questionnaire,

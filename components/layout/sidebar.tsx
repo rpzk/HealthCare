@@ -118,6 +118,10 @@ const menuItems: MenuItem[] = [
     title: 'Questionários',
     icon: ClipboardList,
     href: '/questionnaires',
+    submenu: [
+      { title: 'Listar', href: '/questionnaires' },
+      { title: 'Analytics', href: '/admin/questionnaire-analytics' },
+    ]
   },
   {
     title: 'Saúde da Família',
