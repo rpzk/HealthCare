@@ -3,33 +3,38 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { authOptions } from '@/lib/auth'
-import { ClientDashboard } from '@/components/dashboard/client-dashboard'
+import { LandingPage } from '@/components/landing/landing-page'
 
 export const metadata: Metadata = {
-  title: 'Dashboard - Sistema de Prontuário Eletrônico',
-  description: 'Painel principal do sistema médico',
+  title: 'HealthCare - Sistema Completo de Gestão em Saúde',
+  description: 'Plataforma integrada para gestão de prontuários eletrônicos, telemedicina, prescrições digitais e muito mais. Atendimento humanizado com tecnologia de ponta.',
 }
 
-export default async function DashboardPage() {
-  // Verificar sessão e redirecionar por role
+export default async function HomePage() {
+  // Verificar se usuário já está logado
   const session = await getServerSession(authOptions)
   
-  // Verificar se há um papel ativo definido pelo usuário (via RoleSwitcher)
-  const cookieStore = cookies()
-  const activeRole = cookieStore.get('active_role')?.value
-  
-  // Usar o papel ativo do cookie se existir, senão usar o papel da sessão
-  const effectiveRole = activeRole || session?.user?.role
-  
-  // Pacientes vão para área do paciente
-  if (effectiveRole === 'PATIENT') {
-    redirect('/minha-saude')
+  if (session) {
+    // Verificar se há um papel ativo definido pelo usuário (via RoleSwitcher)
+    const cookieStore = cookies()
+    const activeRole = cookieStore.get('active_role')?.value
+    
+    // Usar o papel ativo do cookie se existir, senão usar o papel da sessão
+    const effectiveRole = activeRole || session?.user?.role
+    
+    // Redirecionar usuários logados para suas respectivas áreas
+    if (effectiveRole === 'PATIENT') {
+      redirect('/minha-saude')
+    }
+    
+    if (effectiveRole === 'ADMIN') {
+      redirect('/admin')
+    }
+    
+    // Outros profissionais vão para dashboard
+    redirect('/appointments/dashboard')
   }
 
-  // Admins vão para painel administrativo (apenas se não escolheu outro papel)
-  if (effectiveRole === 'ADMIN') {
-    redirect('/admin')
-  }
-
-  return <ClientDashboard />
+  // Usuários não logados veem a landing page
+  return <LandingPage />
 }
