@@ -98,7 +98,15 @@ export function PatientsList() {
       const params = new URLSearchParams({ page: String(page), limit: '10', isActive: 'true' })
       if (search) params.set('search', search)
 
-      const response = await fetch(`/api/patients?${params}`)
+      // Adicionar timestamp para evitar cache
+      params.set('_t', Date.now().toString())
+
+      const response = await fetch(`/api/patients?${params}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       if (!response.ok) throw new Error('Erro ao carregar pacientes')
 
       const data = await response.json()
@@ -152,8 +160,12 @@ export function PatientsList() {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify(data),
+        cache: 'no-store'
       })
 
       if (!response.ok) {
@@ -163,7 +175,14 @@ export function PatientsList() {
 
       setShowForm(false)
       setEditingPatient(null)
-      fetchPatients(currentPage, searchTerm)
+      
+      // Forçar recarregamento imediato
+      await fetchPatients(currentPage, searchTerm)
+      
+      // Se estava editando, também fechar o modal de detalhes se estiver aberto
+      if (isEditing && selectedPatient?.id === editingPatient.id) {
+        setSelectedPatient(null)
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       alert(message || 'Erro ao salvar paciente')

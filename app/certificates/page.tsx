@@ -12,6 +12,8 @@ import { CertificatesList } from '@/components/certificates/certificates-list'
 import { Plus, FileText, Loader2, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
 
 interface Certificate {
   id: string
@@ -31,9 +33,17 @@ interface Certificate {
 
 export default function CertificatesPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-center">Carregando...</div>}>
-      <CertificatesContent />
-    </Suspense>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 ml-64">
+          <Suspense fallback={<div className="p-6 text-center">Carregando...</div>}>
+            <CertificatesContent />
+          </Suspense>
+        </main>
+      </div>
+    </div>
   )
 }
 
@@ -100,7 +110,7 @@ function CertificatesContent() {
   const canCreateCertificates = ['DOCTOR', 'ADMIN'].includes(userRole || '')
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Atestados Médicos</h1>

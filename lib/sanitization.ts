@@ -50,15 +50,34 @@ export function sanitizeText(input: string): string {
 
 /**
  * Sanitiza um nome (pessoa, medicamento, etc.)
+ * Normaliza: primeira letra de cada palavra em maiúscula
  */
 export function sanitizeName(input: string): string {
   if (!input || typeof input !== 'string') return ''
   
-  return sanitizeText(input)
+  const cleaned = sanitizeText(input)
     // Remove caracteres que não são letras, números, espaços ou pontuação básica
     .replace(/[^\p{L}\p{N}\s\-'.]/gu, '')
     // Limita tamanho
     .slice(0, 200)
+  
+  // Normalizar: primeira letra de cada palavra em maiúscula
+  return cleaned
+    .split(' ')
+    .map((word, index) => {
+      if (word.length === 0) return ''
+      
+      // Exceções para preposições e artigos comuns (exceto se for a primeira palavra)
+      const lowercase = ['de', 'da', 'do', 'dos', 'das', 'e', 'a', 'o', 'as', 'os']
+      if (index > 0 && lowercase.includes(word.toLowerCase()) && word.length <= 3) {
+        return word.toLowerCase()
+      }
+      
+      // Primeira letra maiúscula, resto minúscula
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .filter(Boolean)
+    .join(' ')
 }
 
 /**

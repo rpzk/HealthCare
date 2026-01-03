@@ -38,7 +38,18 @@ export async function GET(request: NextRequest) {
     const professionals = await prisma.user.findMany({
       where: {
         role: {
-          in: ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'NUTRITIONIST', 'DENTIST'],
+          in: [
+            'DOCTOR',
+            'NURSE',
+            'PHYSIOTHERAPIST',
+            'PSYCHOLOGIST',
+            'NUTRITIONIST',
+            'DENTIST',
+            'HEALTH_AGENT',
+            'TECHNICIAN',
+            'PHARMACIST',
+            'SOCIAL_WORKER'
+          ],
         },
       },
       select: {

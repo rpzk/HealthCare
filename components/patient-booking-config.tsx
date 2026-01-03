@@ -32,7 +32,21 @@ const DAY_LABELS: Record<number, string> = {
   6: 'Sábado',
 }
 
-const PROFESSIONAL_ROLES = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'NUTRITIONIST', 'DENTIST']
+// Todos os roles que são considerados profissionais de saúde
+const PROFESSIONAL_ROLES = [
+  'DOCTOR',
+  'NURSE',
+  'PHYSIOTHERAPIST',
+  'PSYCHOLOGIST',
+  'NUTRITIONIST',
+  'DENTIST',
+  'HEALTH_AGENT',
+  'TECHNICIAN',
+  'PHARMACIST',
+  'SOCIAL_WORKER',
+  'RECEPTIONIST',
+  'ADMIN'
+]
 
 export function PatientBookingConfig() {
   const { data: session } = useSession()

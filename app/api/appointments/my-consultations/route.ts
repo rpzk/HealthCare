@@ -3,17 +3,49 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 
-const PROFESSIONAL_ROLES = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'NUTRITIONIST', 'DENTIST']
+// Todos os roles que são considerados profissionais de saúde
+const PROFESSIONAL_ROLES = [
+  'DOCTOR',
+  'NURSE',
+  'PHYSIOTHERAPIST',
+  'PSYCHOLOGIST',
+  'NUTRITIONIST',
+  'DENTIST',
+  'HEALTH_AGENT',
+  'TECHNICIAN',
+  'PHARMACIST',
+  'SOCIAL_WORKER',
+  'RECEPTIONIST',
+  'ADMIN' // Admin também pode acessar
+]
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
+    console.log('[API my-consultations] Sessão:', JSON.stringify({
+      hasSession: !!session,
+      email: session?.user?.email,
+      role: session?.user?.role,
+      name: session?.user?.name
+    }))
+
     if (!session?.user?.email) {
+      console.log('[API my-consultations] Sem sessão ou email')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!PROFESSIONAL_ROLES.includes(session.user.role)) {
+    const userRole = session.user.role
+    const isProfessional = PROFESSIONAL_ROLES.includes(userRole)
+    
+    console.log('[API my-consultations] Verificação de role:', {
+      userRole,
+      isProfessional,
+      allowedRoles: PROFESSIONAL_ROLES
+    })
+
+    if (!isProfessional) {
+      console.log('[API my-consultations] Role não permitido:', userRole)
       return NextResponse.json({ error: 'Only professionals can access this' }, { status: 403 })
     }
 
