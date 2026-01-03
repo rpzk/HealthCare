@@ -1,0 +1,14 @@
+[Unit]
+Description=HealthCare Database Backup Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=umbrel
+ExecStart=/home/umbrel/HealthCare/scripts/backup-database.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
