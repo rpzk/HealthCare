@@ -14,8 +14,10 @@ import {
   ChevronRight,
   Activity,
   ClipboardList,
-  Bell
+  Bell,
+  AlertCircle
 } from 'lucide-react'
+import { PendingAppointmentsManager } from '@/components/admin/pending-appointments-manager'
 
 interface Appointment {
   id: string
@@ -44,10 +46,11 @@ interface NotificationItem {
 export default function ReceptionDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'agenda' | 'checkin' | 'patients'>('agenda')
+  const [activeTab, setActiveTab] = useState<'agenda' | 'checkin' | 'patients' | 'approvals'>('agenda')
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [waitingList, setWaitingList] = useState<Appointment[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [pendingCount, setPendingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -58,15 +61,17 @@ export default function ReceptionDashboard() {
     setLoading(true)
     
     try {
-      const [apptRes, statsRes, notifRes] = await Promise.all([
+      const [apptRes, statsRes, notifRes, pendingRes] = await Promise.all([
         fetch(`/api/appointments?date=${selectedDate}`).then(r => r.ok ? r.json() as Promise<{ data?: Appointment[] }> : { data: [] }),
         fetch('/api/reception/stats').then(r => r.ok ? r.json() : null),
-        fetch('/api/notifications?limit=5').then(r => r.ok ? r.json() as Promise<{ data?: NotificationItem[] }> : { data: [] })
+        fetch('/api/notifications?limit=5').then(r => r.ok ? r.json() as Promise<{ data?: NotificationItem[] }> : { data: [] }),
+        fetch('/api/appointments/pending').then(r => r.ok ? r.json() : { summary: { pending: 0 } })
       ])
       
       setAppointments(apptRes.data || [])
       setStats(statsRes)
       setNotifications(notifRes.data || [])
+      setPendingCount(pendingRes.summary?.pending || 0)
       
       // Filter waiting patients
       const waiting = (apptRes.data || []).filter((a) => 
@@ -253,6 +258,22 @@ export default function ReceptionDashboard() {
                     Agenda
                   </button>
                   <button
+                    onClick={() => setActiveTab('approvals')}
+                    className={`relative flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                      activeTab === 'approvals'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <AlertCircle className="h-5 w-5 inline mr-2" />
+                    Aprovações
+                    {pendingCount > 0 && (
+                      <span className="absolute top-2 right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
                     onClick={() => setActiveTab('checkin')}
                     className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
                       activeTab === 'checkin'
@@ -405,6 +426,13 @@ export default function ReceptionDashboard() {
                     <p className="text-center text-gray-500 py-8">
                       Digite para buscar pacientes cadastrados
                     </p>
+                  </div>
+                )}
+
+                {/* Approvals Tab */}
+                {activeTab === 'approvals' && (
+                  <div>
+                    <PendingAppointmentsManager />
                   </div>
                 )}
               </div>
