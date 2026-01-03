@@ -302,11 +302,15 @@ export function BackupManager() {
           <div className="mt-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-800 space-y-1">
             <p className="font-semibold">ℹ️ Sobre os Backups:</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>Inclui banco de dados PostgreSQL completo</li>
-              <li>Inclui certificados digitais (A1, A3, A4) do filesystem</li>
-              <li>Comprimidos com gzip para economizar espaço</li>
-              <li>Criados automaticamente diariamente às 02:00 AM</li>
-              <li>Armazenados em: /home/umbrel/backups/healthcare/</li>
+              <li>✅ Banco de dados PostgreSQL completo (pacientes, consultas, etc)</li>
+              <li>✅ TODAS as configurações críticas (.env, docker-compose, prisma)</li>
+              <li>✅ Configurações salvas no sistema (SMTP, email, segurança)</li>
+              <li>✅ Certificados digitais (A1, A3, A4) do filesystem</li>
+              <li>✅ Arquivo de fallback (data/settings.json)</li>
+              <li>✅ Comprimidos com gzip para economizar espaço</li>
+              <li>✅ Criados automaticamente diariamente às 02:00 AM</li>
+              <li>✅ Armazenados em: /home/umbrel/backups/healthcare/</li>
+              <li>📄 Cada backup inclui manifest.json com metadados</li>
             </ul>
           </div>
         </CardContent>
