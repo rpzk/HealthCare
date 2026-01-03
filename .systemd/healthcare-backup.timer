@@ -1,0 +1,16 @@
+[Unit]
+Description=HealthCare Database Backup Timer - Execute daily at 02:00 AM
+Requires=healthcare-backup.service
+After=network-online.target
+
+[Timer]
+# Executar diariamente às 02:00 AM
+OnCalendar=*-*-* 02:00:00
+# Persistir se sistema foi desligado
+Persistent=true
+# Se falhar, tentar novamente em 1 hora
+OnBootSec=10min
+OnUnitActiveSec=24h
+
+[Install]
+WantedBy=timers.target
