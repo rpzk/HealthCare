@@ -69,6 +69,17 @@ async function main() {
       }
     })
 
+    // IMPORTANTE: Criar a entrada em UserAssignedRole para que o admin tenha acesso às funções administrativas
+    await prisma.userAssignedRole.create({
+      data: {
+        id: `role_${Math.random().toString(36).substr(2, 9)}`,
+        userId: adminUser.id,
+        role: Role.ADMIN,
+        isPrimary: true,
+        assignedAt: new Date()
+      }
+    })
+
     console.log('\n✅ ADMIN criado com sucesso!\n')
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('📊 Dados de Acesso:')
