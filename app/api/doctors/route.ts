@@ -11,11 +11,22 @@ export async function GET() {
   }
 
   try {
-    // Buscar usuários com roles médicas
+    // Buscar usuários com roles médicas/profissionais de saúde
     const doctors = await prisma.user.findMany({
       where: {
         role: {
-          in: ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'DENTIST', 'NUTRITIONIST']
+          in: [
+            'DOCTOR',
+            'NURSE',
+            'PHYSIOTHERAPIST',
+            'PSYCHOLOGIST',
+            'DENTIST',
+            'NUTRITIONIST',
+            'HEALTH_AGENT',
+            'TECHNICIAN',
+            'PHARMACIST',
+            'SOCIAL_WORKER'
+          ]
         },
         isActive: true
       },

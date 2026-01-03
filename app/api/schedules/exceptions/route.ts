@@ -4,7 +4,21 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
-const PROFESSIONAL_ROLES = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'NUTRITIONIST', 'DENTIST']
+// Todos os roles que são considerados profissionais de saúde
+const PROFESSIONAL_ROLES = [
+  'DOCTOR',
+  'NURSE',
+  'PHYSIOTHERAPIST',
+  'PSYCHOLOGIST',
+  'NUTRITIONIST',
+  'DENTIST',
+  'HEALTH_AGENT',
+  'TECHNICIAN',
+  'PHARMACIST',
+  'SOCIAL_WORKER',
+  'RECEPTIONIST',
+  'ADMIN'
+]
 
 const exceptionSchema = z.object({
   startDate: z.string().datetime(),

@@ -1,12 +1,37 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { ConsultationForm } from '@/components/consultations/consultation-form'
 
 export default function NewConsultationContainer() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
+  const [patient, setPatient] = useState<any>(null)
+
+  useEffect(() => {
+    const patientId = searchParams?.get('patientId')
+    if (patientId) {
+      // Usar endpoint específico para preview do paciente
+      // Não requer estar na care team
+      fetch(`/api/consultations/patient-preview/${patientId}`)
+        .then(res => {
+          if (res.ok) return res.json()
+          // Se falhar, apenas retorna null
+          return null
+        })
+        .then(data => {
+          if (data) {
+            setPatient(data)
+          }
+        })
+        .catch(err => {
+          console.log('Paciente não carregado:', err)
+          // Continuar mesmo sem carregar os dados
+        })
+    }
+  }, [searchParams])
 
   type NewConsultationData = Partial<{
     patientId: string
@@ -39,6 +64,7 @@ export default function NewConsultationContainer() {
 
   return (
     <ConsultationForm
+      patient={patient}
       onSubmit={handleSubmit}
       onCancel={() => router.back()}
       loading={loading}

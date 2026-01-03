@@ -37,7 +37,21 @@ const BLOCK_TYPES = [
   { value: 'MEETING', label: 'Reunião profissional', color: 'bg-indigo-100' },
 ]
 
-const PROFESSIONAL_ROLES = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'NUTRITIONIST', 'DENTIST']
+// Todos os roles que são considerados profissionais de saúde
+const PROFESSIONAL_ROLES = [
+  'DOCTOR',
+  'NURSE',
+  'PHYSIOTHERAPIST',
+  'PSYCHOLOGIST',
+  'NUTRITIONIST',
+  'DENTIST',
+  'HEALTH_AGENT',
+  'TECHNICIAN',
+  'PHARMACIST',
+  'SOCIAL_WORKER',
+  'RECEPTIONIST',
+  'ADMIN'
+]
 
 export function ScheduleBlockingConfig() {
   const { data: session } = useSession()

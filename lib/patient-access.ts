@@ -38,7 +38,19 @@ export interface UserSession {
 const ADMIN_ROLES = ['ADMIN', 'MANAGER']
 
 // Roles que são profissionais de saúde (precisam estar na equipe para acessar)
-const HEALTHCARE_ROLES = ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'TECHNICIAN', 'PHARMACIST', 'NUTRITIONIST', 'PSYCHOLOGIST', 'PHYSIOTHERAPIST']
+const HEALTHCARE_ROLES = [
+  'DOCTOR',
+  'NURSE',
+  'RECEPTIONIST',
+  'TECHNICIAN',
+  'PHARMACIST',
+  'NUTRITIONIST',
+  'PSYCHOLOGIST',
+  'PHYSIOTHERAPIST',
+  'HEALTH_AGENT',
+  'SOCIAL_WORKER',
+  'DENTIST'
+]
 
 /**
  * Verifica se um usuário tem acesso a um paciente específico

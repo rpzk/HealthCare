@@ -226,7 +226,14 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
       }
     )
     
-  return NextResponse.json(applyPatientMasking(patient))
+    // Headers para evitar cache após atualização
+    return NextResponse.json(applyPatientMasking(patient), {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
   } catch (error: any) {
     auditLogger.logError(
       user.id,

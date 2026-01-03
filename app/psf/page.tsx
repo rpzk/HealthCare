@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Building, Users, MapPin, Calendar, Target } from "lucide-react"
 import Link from "next/link"
 import { MicroAreasOverlayMap } from "@/components/map/micro-areas-overlay"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
 
 interface MicroArea {
   id: string
@@ -38,15 +40,19 @@ export default function PSFPage() {
 
   const totalAreas = microAreas.length
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Saúde da Família (PSF)</h1>
-          <p className="text-muted-foreground">
-            Gestão de territórios, famílias e visitas domiciliares.
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Saúde da Família (PSF)</h1>
+              <p className="text-muted-foreground">
+                Gestão de territórios, famílias e visitas domiciliares.
+              </p>
+            </div>
+          </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -180,6 +186,8 @@ export default function PSFPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+        </main>
       </div>
     </div>
   )

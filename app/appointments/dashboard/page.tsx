@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -48,7 +48,21 @@ interface Stats {
   cancelled: number
 }
 
-const PROFESSIONAL_ROLES = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'NUTRITIONIST', 'DENTIST']
+// Todos os roles que são considerados profissionais de saúde
+const PROFESSIONAL_ROLES = [
+  'DOCTOR',
+  'NURSE',
+  'PHYSIOTHERAPIST',
+  'PSYCHOLOGIST',
+  'NUTRITIONIST',
+  'DENTIST',
+  'HEALTH_AGENT',
+  'TECHNICIAN',
+  'PHARMACIST',
+  'SOCIAL_WORKER',
+  'RECEPTIONIST',
+  'ADMIN' // Admin também pode acessar
+]
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   SCHEDULED: {
@@ -87,7 +101,21 @@ export default function AppointmentsDashboard() {
   const [activeStatus, setActiveStatus] = useState('SCHEDULED')
   const [processing, setProcessing] = useState<string | null>(null)
 
-  const isProfessional = session?.user?.role && PROFESSIONAL_ROLES.includes(session.user.role)
+  // Verificação melhorada de profissional de saúde
+  const isProfessional = React.useMemo(() => {
+    if (!session?.user?.role) {
+      console.log('[Dashboard] Sem role na sessão')
+      return false
+    }
+    
+    const userRole = session.user.role
+    const isProf = PROFESSIONAL_ROLES.includes(userRole)
+    
+    console.log('[Dashboard] Role do usuário:', userRole, '| É profissional?', isProf)
+    console.log('[Dashboard] Roles permitidos:', PROFESSIONAL_ROLES)
+    
+    return isProf
+  }, [session?.user?.role])
 
   useEffect(() => {
     if (isProfessional) {

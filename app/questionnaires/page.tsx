@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -142,28 +144,33 @@ function QuestionnairesPageContent() {
   const systems = [...new Set(templates.map(t => t.therapeuticSystem))]
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Banner de Paciente Selecionado */}
-      {patient && (
-        <Alert className="border-emerald-200 bg-emerald-50">
-          <User className="h-4 w-4 text-emerald-600" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>
-              Enviando questionário para: <strong>{patient.name}</strong> ({patient.email})
-            </span>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => router.push('/questionnaires')}
-            >
-              Cancelar
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Banner de Paciente Selecionado */}
+            {patient && (
+              <Alert className="border-emerald-200 bg-emerald-50">
+                <User className="h-4 w-4 text-emerald-600" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>
+                    Enviando questionário para: <strong>{patient.name}</strong> ({patient.email})
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => router.push('/questionnaires')}
+                  >
+                    Cancelar
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
             {patient ? 'Escolha um Questionário' : 'Questionários Integrativos'}
@@ -387,6 +394,9 @@ function QuestionnairesPageContent() {
           )}
         </TabsContent>
       </Tabs>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

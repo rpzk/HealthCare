@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -212,24 +214,38 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex pt-16">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-6">
+            <div className="flex items-center justify-center min-h-[50vh]">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
 
   if (!template) {
     return (
-      <div className="container mx-auto py-6">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">Template não encontrado</h3>
-            <Button className="mt-4" onClick={() => router.push('/questionnaires')}>
-              Voltar
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex pt-16">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-6">
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium">Template não encontrado</h3>
+                <Button className="mt-4" onClick={() => router.push('/questionnaires')}>
+                  Voltar
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
       </div>
     )
   }
@@ -237,9 +253,14 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
   const totalQuestions = template.categories.reduce((acc: number, cat: Category) => acc + cat.questions.length, 0)
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="flex pt-16">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.push('/questionnaires')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -634,6 +655,9 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
           </Card>
         </TabsContent>
       </Tabs>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

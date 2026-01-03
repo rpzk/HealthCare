@@ -63,7 +63,14 @@ export const GET = withPatientAuth(async (req, { user }) => {
       }
     }
     
-    return NextResponse.json(response)
+    // Headers para evitar cache
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
   } catch (error) {
     console.error('Erro na API de pacientes:', error)
     return NextResponse.json(
