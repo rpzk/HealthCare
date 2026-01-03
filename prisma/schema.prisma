@@ -107,6 +107,15 @@ model User {
   // Referrals as destination doctor
   destinationReferrals Referral[] @relation("ReferralDestinationDoctor")
 
+  // Schedule Management (New)
+  professionalSchedules       ProfessionalSchedule[]    @relation("ProfessionalSchedules")
+  requestedSchedules          ProfessionalSchedule[]    @relation("ScheduleRequester")
+  approvedSchedules           ProfessionalSchedule[]    @relation("ScheduleApprover")
+  scheduleChangeRequests      ScheduleChangeRequest[]   @relation("ProfessionalChangeRequests")
+  requestedChanges            ScheduleChangeRequest[]   @relation("ChangeRequestRequester")
+  reviewedChanges             ScheduleChangeRequest[]   @relation("ChangeRequestReviewer")
+  createdTemplates            ScheduleTemplate[]        @relation("TemplateCreator")
+
   @@index([acsAssignedMicroAreaId])
   @@index([assignedAreaId])
   @@map("users")
@@ -5041,4 +5050,124 @@ model GynecologicalHistory {
   @@index([eventType])
   @@index([eventDate])
   @@map("gynecological_history")
+}
+
+// ==========================================
+// CLINIC & PROFESSIONAL SCHEDULE MANAGEMENT
+// ==========================================
+
+// Horários de funcionamento da clínica (configuração base)
+model ClinicSchedule {
+  id          String   @id @default(cuid())
+  clinicId    String?  // Null = configuração padrão global
+  dayOfWeek   Int      // 0=Domingo, 1=Segunda, ..., 6=Sábado (ISO 8601)
+  openTime    String   // "08:00"
+  closeTime   String   // "20:00"
+  isOpen      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([clinicId, dayOfWeek])
+  @@index([clinicId])
+  @@map("clinic_schedules")
+}
+
+// Horários de atendimento do profissional (dentro dos horários da clínica)
+model ProfessionalSchedule {
+  id              String                      @id @default(cuid())
+  professionalId  String
+  dayOfWeek       Int                         // 0=Domingo, 1=Segunda, ..., 6=Sábado
+  startTime       String                      // "09:00"
+  endTime         String                      // "17:00"
+  serviceType     ScheduleServiceType         @default(BOTH) // Presencial, Remoto ou Ambos
+  isActive        Boolean                     @default(true)
+  
+  // Aprovação (profissional solicita, admin aprova)
+  status          ScheduleApprovalStatus      @default(PENDING)
+  requestedBy     String                      // ID do profissional
+  approvedBy      String?                     // ID do admin/secretária
+  approvedAt      DateTime?
+  
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  professional    User                        @relation("ProfessionalSchedules", fields: [professionalId], references: [id], onDelete: Cascade)
+  requester       User                        @relation("ScheduleRequester", fields: [requestedBy], references: [id])
+  approver        User?                       @relation("ScheduleApprover", fields: [approvedBy], references: [id])
+
+  @@index([professionalId, dayOfWeek])
+  @@index([status])
+  @@map("professional_schedules")
+}
+
+// Solicitações de mudanças de agenda (workflow de aprovação)
+model ScheduleChangeRequest {
+  id                String                    @id @default(cuid())
+  professionalId    String
+  requestType       ScheduleRequestType       // ADD_HOURS, REMOVE_HOURS, BLOCK_DATES, etc.
+  
+  // Dados da solicitação
+  requestData       Json                      // Flexível para diferentes tipos de solicitação
+  reason            String?                   // Motivo da solicitação
+  
+  // Aprovação
+  status            ScheduleApprovalStatus    @default(PENDING)
+  requestedBy       String
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  reviewNotes       String?                   // Notas do aprovador
+  
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  professional      User                      @relation("ProfessionalChangeRequests", fields: [professionalId], references: [id], onDelete: Cascade)
+  requester         User                      @relation("ChangeRequestRequester", fields: [requestedBy], references: [id])
+  reviewer          User?                     @relation("ChangeRequestReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([professionalId])
+  @@index([status])
+  @@index([requestType])
+  @@map("schedule_change_requests")
+}
+
+// Templates de horários (reutilizáveis)
+model ScheduleTemplate {
+  id          String   @id @default(cuid())
+  name        String   // "Plantão 7-19", "Manhã Padrão", etc.
+  description String?
+  startTime   String   // "07:00"
+  endTime     String   // "19:00"
+  color       String?  // Para UI
+  isGlobal    Boolean  @default(true) // Template global ou específico de usuário
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User?    @relation("TemplateCreator", fields: [createdBy], references: [id])
+
+  @@index([isGlobal])
+  @@index([createdBy])
+  @@map("schedule_templates")
+}
+
+enum ScheduleServiceType {
+  IN_PERSON  // Atendimento presencial
+  REMOTE     // Atendimento remoto (teleconsulta)
+  BOTH       // Ambos (presencial e remoto)
+}
+
+enum ScheduleApprovalStatus {
+  PENDING    // Aguardando aprovação
+  APPROVED   // Aprovado
+  REJECTED   // Rejeitado
+  CANCELLED  // Cancelado pelo solicitante
+}
+
+enum ScheduleRequestType {
+  ADD_HOURS          // Adicionar horários de atendimento
+  REMOVE_HOURS       // Remover horários
+  MODIFY_HOURS       // Modificar horários existentes
+  BLOCK_DATES        // Bloquear datas (plantões, férias)
+  UNBLOCK_DATES      // Desbloquear datas
+  CHANGE_SERVICE_TYPE // Mudar tipo de atendimento (presencial/remoto)
 }
