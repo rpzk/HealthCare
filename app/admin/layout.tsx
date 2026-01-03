@@ -22,8 +22,13 @@ export default function AdminLayout({
       return
     }
 
-    // Verificar se é admin
-    if (session.user?.role !== 'ADMIN') {
+    // Verificar se é admin (check simples e direto)
+    const userRole = (session.user as any)?.role
+    const availableRoles = (session.user as any)?.availableRoles || []
+    
+    const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
+    
+    if (!isAdmin) {
       router.push('/')
     }
   }, [session, status, router])
@@ -36,7 +41,11 @@ export default function AdminLayout({
     )
   }
 
-  if (!session || session.user?.role !== 'ADMIN') {
+  const userRole = (session?.user as any)?.role
+  const availableRoles = (session?.user as any)?.availableRoles || []
+  const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
+
+  if (!session || !isAdmin) {
     return null
   }
 
