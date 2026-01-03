@@ -166,8 +166,8 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
       }
       
-      // Buscar papéis atribuídos (UserAssignedRole) quando o token é criado ou atualizado
-      if (token.id && (trigger === 'signIn' || trigger === 'update' || !token.availableRoles)) {
+      // Buscar papéis atribuídos (UserAssignedRole) se existir
+      if (token.id && (trigger === 'signIn' || trigger === 'update')) {
         try {
           const prisma = await getPrisma()
           const assignedRoles = await prisma.userAssignedRole.findMany({
@@ -183,11 +183,10 @@ export const authOptions: NextAuthOptions = {
               token.role = primary.role
             }
           } else {
-            // Fallback: se não tem roles atribuídas, usar o role do User
             token.availableRoles = [token.role as string]
           }
         } catch (error) {
-          console.error('Erro ao buscar papéis atribuídos:', error)
+          // Se houver erro, apenas usar o role do User (sem falhar)
           token.availableRoles = [token.role as string]
         }
       }
@@ -198,7 +197,6 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.id = token.id as string
         session.user.role = token.role as string
-        // Adicionar availableRoles à sessão
         if (token.availableRoles) {
           (session.user as any).availableRoles = token.availableRoles
         }
