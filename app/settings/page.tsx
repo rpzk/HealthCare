@@ -36,6 +36,7 @@ import {
   Send,
   Settings as SettingsIcon,
   Calendar,
+  Database,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UploadA1Certificate } from '@/components/upload-a1-certificate'
@@ -45,6 +46,7 @@ import { AdvancedScheduleBlockingConfig } from '@/components/advanced-schedule-b
 import { ClinicScheduleConfig } from '@/components/admin/clinic-schedule-config'
 import { ScheduleRequestsManager } from '@/components/admin/schedule-requests-manager'
 import { ProfessionalScheduleRequest } from '@/components/professional-schedule-request'
+import { BackupManager } from '@/components/admin/backup-manager'
 
 export default function SettingsPage() {
   const { data: session } = useSession()
@@ -356,7 +358,7 @@ export default function SettingsPage() {
             </div>
 
             <Tabs defaultValue="profile" className="space-y-6">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-7' : 'grid-cols-6'}`}>
+              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-6'}`}>
                 <TabsTrigger value="profile">
                   <User className="mr-2 h-4 w-4" />
                   Perfil
@@ -382,10 +384,16 @@ export default function SettingsPage() {
                   E-mail
                 </TabsTrigger>
                 {isAdmin && (
-                  <TabsTrigger value="system">
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    Sistema
-                  </TabsTrigger>
+                  <>
+                    <TabsTrigger value="backups">
+                      <Database className="mr-2 h-4 w-4" />
+                      Backups
+                    </TabsTrigger>
+                    <TabsTrigger value="system">
+                      <SettingsIcon className="mr-2 h-4 w-4" />
+                      Sistema
+                    </TabsTrigger>
+                  </>
                 )}
               </TabsList>
 
@@ -976,6 +984,13 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* Aba Backups (Admin only) */}
+              {isAdmin && (
+                <TabsContent value="backups" className="space-y-4">
+                  <BackupManager />
+                </TabsContent>
+              )}
 
               {/* Aba Sistema (Admin only) */}
               {isAdmin && (
