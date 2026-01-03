@@ -84,6 +84,27 @@ async function main() {
       }
     })
 
+    // IMPORTANTE: Criar ou atualizar a entrada em UserAssignedRole para que o admin tenha acesso às funções administrativas
+    await prisma.userAssignedRole.upsert({
+      where: {
+        userId_role: {
+          userId: admin.id,
+          role: 'ADMIN'
+        }
+      },
+      update: {
+        isPrimary: true,
+        assignedAt: new Date()
+      },
+      create: {
+        id: `role_${Math.random().toString(36).substr(2, 9)}`,
+        userId: admin.id,
+        role: 'ADMIN',
+        isPrimary: true,
+        assignedAt: new Date()
+      }
+    })
+
     console.log('\n✅ Administrador configurado com sucesso!\n')
     console.log('━'.repeat(50))
     console.log('📧 Email:    ' + admin.email)
