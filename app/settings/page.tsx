@@ -42,6 +42,9 @@ import { UploadA1Certificate } from '@/components/upload-a1-certificate'
 import { PatientBookingConfig } from '@/components/patient-booking-config'
 import { ScheduleBlockingConfig } from '@/components/schedule-blocking-config'
 import { AdvancedScheduleBlockingConfig } from '@/components/advanced-schedule-blocking-config'
+import { ClinicScheduleConfig } from '@/components/admin/clinic-schedule-config'
+import { ScheduleRequestsManager } from '@/components/admin/schedule-requests-manager'
+import { ProfessionalScheduleRequest } from '@/components/professional-schedule-request'
 
 export default function SettingsPage() {
   const { data: session } = useSession()
@@ -776,6 +779,27 @@ export default function SettingsPage() {
 
               {/* Aba Agendamento */}
               <TabsContent value="scheduling" className="space-y-4">
+                {/* Admin/Secretária: Configuração da Clínica */}
+                {(session?.user?.role === 'ADMIN' || session?.user?.role === 'RECEPTIONIST') && (
+                  <>
+                    <ClinicScheduleConfig />
+                    <Separator className="my-6" />
+                    <ScheduleRequestsManager />
+                    <Separator className="my-6" />
+                  </>
+                )}
+
+                {/* Profissionais: Solicitação de mudanças */}
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Minha Agenda</h3>
+                    <p className="text-sm text-gray-600">
+                      Solicite mudanças na sua agenda que serão avaliadas pela administração
+                    </p>
+                  </div>
+                  <ProfessionalScheduleRequest />
+                </div>
+
                 <PatientBookingConfig />
                 <Separator className="my-6" />
                 <AdvancedScheduleBlockingConfig />
