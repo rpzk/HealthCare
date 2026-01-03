@@ -95,9 +95,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    // Executar script de backup
+    // Executar script de backup completo
     try {
-      const { stdout, stderr } = await execAsync('bash /home/umbrel/HealthCare/scripts/backup-database.sh')
+      const { stdout, stderr } = await execAsync('bash /home/umbrel/HealthCare/scripts/backup-complete.sh')
       
       console.log('[Backup] Sucesso:', stdout)
 
