@@ -60,10 +60,13 @@ export async function createRegistrationOptions(userId: string, email: string, r
   })
 
   const rpID = getRpIdFromRequest(req)
+  // Convert userId string to Uint8Array as required by SimpleWebAuthn v10+
+  const userIdBuffer = new TextEncoder().encode(userId)
+  
   const options = await generateRegistrationOptions({
     rpName: 'HealthCare',
     rpID,
-    userID: userId,
+    userID: userIdBuffer,
     userName: email,
     attestationType: 'none',
     excludeCredentials: existing.map((c: { credentialId: string }) => ({ id: Buffer.from(c.credentialId, 'base64url'), type: 'public-key' })),

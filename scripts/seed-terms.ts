@@ -72,8 +72,8 @@ async function main() {
   console.log('Seeding terms...')
 
   for (const term of terms) {
-    const existing = await prisma.term.findUnique({
-      where: { slug: term.slug }
+    const existing = await prisma.term.findFirst({
+      where: { slug: term.slug, version: term.version }
     })
 
     if (!existing) {

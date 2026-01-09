@@ -93,8 +93,9 @@ export default function middleware(request: NextRequest) {
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('X-XSS-Protection', '0') // Disabled as per modern recommendations
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  // Permissions-Policy: Allow camera and microphone for teleconsulta
-  res.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()')
+  // Permissions-Policy: Allow camera and microphone for teleconsulta; disable Topics API
+  // Replace deprecated 'interest-cohort' with 'browsing-topics' to avoid warnings
+  res.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), browsing-topics=()')
   
   // HSTS - enable in production
   if (process.env.NODE_ENV === 'production') {
@@ -111,11 +112,11 @@ export default function middleware(request: NextRequest) {
     // Scripts: self + inline for Next.js hydration
     `script-src 'self' ${isDev ? "'unsafe-eval'" : ""} 'unsafe-inline'`,
     // Styles: self + inline for Tailwind/CSS-in-JS
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     // Images: self + data URIs + blob for uploads
     "img-src 'self' data: blob: https:",
     // Fonts: self + data URIs
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     // Connect: self + WebSocket for tele, Ollama for AI
     `connect-src 'self' ws: wss: ${process.env.OLLAMA_URL || 'http://localhost:11434'}`,
     // Frame ancestors: none to prevent clickjacking

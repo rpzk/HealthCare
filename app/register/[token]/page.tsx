@@ -61,8 +61,12 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
   }
 
   // Fetch terms
+  const audience = invite.role === 'PATIENT' ? 'PATIENT' : 'PROFESSIONAL'
   const terms = await prisma.term.findMany({
-    where: { isActive: true }
+    where: {
+      isActive: true,
+      OR: [{ audience: 'ALL' }, { audience }],
+    },
   })
 
   // Check if role is PATIENT - they need biometric consents

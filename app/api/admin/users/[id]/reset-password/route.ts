@@ -3,6 +3,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // POST - Resetar senha do usuário
 export async function POST(
@@ -18,6 +27,30 @@ export async function POST(
 
     if (session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: session.user.id,
+        audience: getAudienceForRole(session.user.role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
     }
 
     // Verificar se usuário existe

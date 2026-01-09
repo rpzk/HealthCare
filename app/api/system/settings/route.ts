@@ -78,6 +78,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Debug log
+    if (key === 'SMTP_PASS') {
+      console.log('[SMTP_PASS] Recebido no backend:', {
+        key,
+        valueLength: value?.length,
+        valuePreview: value?.substring(0, 5),
+        encrypted,
+      })
+    }
+
+    const isMaskedSecret = (val: unknown) => {
+      if (typeof val !== 'string') return false
+      const trimmed = val.trim()
+      return trimmed.length > 0 && (/^[*•]+$/.test(trimmed) || trimmed === '********')
+    }
+
     // Validar que não tentam criar secrets críticos via API
     const criticalKeys = [
       'ENCRYPTION_KEY',
@@ -96,13 +112,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await SystemSettingsService.set(key, value, {
-      description,
-      category,
-      isPublic,
-      encrypted,
-      updatedBy: session.user.id,
-    })
+    // Forçar criptografia para chaves sensíveis
+    const sensitiveKeys = ['SMTP_PASS', 'SMTP_PASSWORD', 'GDRIVE_SERVICE_ACCOUNT_JSON']
+    const shouldEncrypt = sensitiveKeys.includes(key) ? true : encrypted
+
+    // Nunca sobrescrever senha com valor mascarado vindo da UI
+    if ((key === 'SMTP_PASS' || key === 'SMTP_PASSWORD') && isMaskedSecret(value)) {
+      return NextResponse.json({
+        success: true,
+        message: 'Senha SMTP mantida (valor mascarado ignorado)',
+      })
+    }
+
+    // Manter SMTP_PASS e SMTP_PASSWORD sincronizados para evitar divergência
+    if (key === 'SMTP_PASS' || key === 'SMTP_PASSWORD') {
+      const normalized = typeof value === 'string' ? value.replace(/\s+/g, '') : value
+      await SystemSettingsService.set('SMTP_PASS', normalized, {
+        description,
+        category,
+        isPublic,
+        encrypted: true,
+        updatedBy: session.user.id,
+      })
+      await SystemSettingsService.set('SMTP_PASSWORD', normalized, {
+        description,
+        category,
+        isPublic,
+        encrypted: true,
+        updatedBy: session.user.id,
+      })
+    } else {
+      await SystemSettingsService.set(key, value, {
+        description,
+        category,
+        isPublic,
+        encrypted: shouldEncrypt,
+        updatedBy: session.user.id,
+      })
+    }
 
     return NextResponse.json({
       success: true,

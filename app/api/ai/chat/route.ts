@@ -4,6 +4,9 @@ import { withMedicalAIAuth } from '@/lib/advanced-auth-v2'
 import ollamaClient from '@/lib/ollama-client'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
 
 // Schema de validação para chat IA
 const aiChatSchema = z.object({
@@ -25,12 +28,71 @@ function validateAiChat(data: any) {
 
 // POST - Chat com IA médica (apenas médicos)
 export const POST = withMedicalAIAuth(async (request, { user }) => {
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: user.id,
+      audience: TermAudience.PROFESSIONAL,
+      gates: ['AI'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json(
+        { error: e.message, code: e.code, missing: e.missing },
+        { status: 503 }
+      )
+    }
+    throw e
+  }
+
   const validation = await validateRequestBody(request, validateAiChat)
   if (!validation.success) {
     return validation.response!
   }
 
   const { message, type, patientId } = validation.data!
+
+  if (patientId) {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { userId: true } })
+    if (patient?.userId) {
+      try {
+        await assertUserAcceptedTerms({
+          prisma,
+          userId: patient.userId,
+          audience: TermAudience.PATIENT,
+          gates: ['AI'],
+        })
+      } catch (e) {
+        if (e instanceof TermsNotAcceptedError) {
+          return NextResponse.json(
+            {
+              error: e.message,
+              code: e.code,
+              missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+            },
+            { status: 403 }
+          )
+        }
+        if (e instanceof TermsNotConfiguredError) {
+          return NextResponse.json(
+            { error: e.message, code: e.code, missing: e.missing },
+            { status: 503 }
+          )
+        }
+        throw e
+      }
+    }
+  }
   // Seleciona o modelo configurado no ambiente (padrão definido no cliente)
   const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL })
 

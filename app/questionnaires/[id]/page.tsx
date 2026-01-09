@@ -10,12 +10,14 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   ArrowLeft, 
   Send, 
   Edit, 
   Copy, 
+  Trash2,
   Clock,
   FileText,
   CheckCircle,
@@ -95,9 +97,28 @@ interface Template {
   isPublic: boolean
   aiAnalysisPrompt: string | null
   categories: Category[]
+  createdBy?: {
+    id: string
+    name: string
+  }
+  createdById?: string | null
   _count: {
     sentQuestionnaires: number
   }
+}
+
+type SessionInfo = {
+  user?: {
+    id?: string
+    role?: string
+    availableRoles?: string[]
+  }
+}
+
+function isAdminSession(session: SessionInfo | null) {
+  const role = session?.user?.role
+  const availableRoles = session?.user?.availableRoles
+  return role === 'ADMIN' || (Array.isArray(availableRoles) && availableRoles.includes('ADMIN'))
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.FC<LucideProps> }> = {
@@ -113,14 +134,32 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams()
   const preselectedPatientId = searchParams?.get('patientId') || null
   const [template, setTemplate] = useState<Template | null>(null)
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
   const [sentQuestionnaires, setSentQuestionnaires] = useState<SentQuestionnaire[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [showSendDialog, setShowSendDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editJson, setEditJson] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [copying, setCopying] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(preselectedPatientId || '')
   const [expiresInDays, setExpiresInDays] = useState('7')
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
+
+  const fetchSession = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/session')
+      if (res.ok) {
+        const data = await res.json()
+        setSessionInfo(data)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const fetchTemplate = useCallback(async () => {
     try {
@@ -164,11 +203,169 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
     fetchTemplate()
     fetchSentQuestionnaires()
     fetchPatients()
+    fetchSession()
     // Auto-open dialog if patient is preselected
     if (preselectedPatientId) {
       setShowSendDialog(true)
     }
-  }, [preselectedPatientId, fetchTemplate, fetchSentQuestionnaires, fetchPatients])
+  }, [preselectedPatientId, fetchTemplate, fetchSentQuestionnaires, fetchPatients, fetchSession])
+
+  function openEdit() {
+    if (!template) return
+
+    const editable = {
+      name: template.name,
+      description: template.description,
+      patientIntro: template.patientIntro,
+      therapeuticSystem: template.therapeuticSystem,
+      estimatedMinutes: template.estimatedMinutes,
+      allowPause: template.allowPause,
+      showProgress: template.showProgress,
+      randomizeQuestions: template.randomizeQuestions,
+      themeColor: template.themeColor,
+      iconEmoji: template.iconEmoji,
+      isPublic: template.isPublic,
+      aiAnalysisPrompt: template.aiAnalysisPrompt,
+      scoringLogic: (template as any).scoringLogic ?? null,
+      categories: template.categories?.map(cat => ({
+        name: cat.name,
+        description: cat.description,
+        iconEmoji: cat.iconEmoji,
+        order: undefined,
+        questions: cat.questions?.map(q => ({
+          text: q.text,
+          helpText: q.helpText,
+          imageUrl: null,
+          type: q.type,
+          isRequired: q.isRequired,
+          order: undefined,
+          scaleMin: q.scaleMin,
+          scaleMax: q.scaleMax,
+          scaleMinLabel: q.scaleMinLabel,
+          scaleMaxLabel: q.scaleMaxLabel,
+          options: (q.options || []).map(o => ({
+            text: o.text,
+            emoji: o.emoji,
+            description: o.description,
+            imageUrl: null,
+            order: undefined,
+          })),
+        })),
+      })),
+    }
+
+    setEditJson(JSON.stringify(editable, null, 2))
+    setShowEditDialog(true)
+  }
+
+  async function saveEdit() {
+    if (!template) return
+    setSavingEdit(true)
+    try {
+      const parsed = JSON.parse(editJson)
+      const res = await fetch(`/api/questionnaires/${template.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      })
+
+      if (res.ok) {
+        setShowEditDialog(false)
+        fetchTemplate()
+        return
+      }
+
+      const err = await res.json().catch(() => null)
+      alert(`Erro: ${err?.error || 'Falha ao salvar'}`)
+    } catch (e: any) {
+      alert(`Erro: ${e?.message || 'JSON inválido'}`)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function copyTemplate() {
+    if (!template) return
+    setCopying(true)
+    try {
+      const payload = {
+        name: `${template.name} (cópia)`,
+        description: template.description,
+        patientIntro: template.patientIntro,
+        therapeuticSystem: template.therapeuticSystem,
+        estimatedMinutes: template.estimatedMinutes,
+        allowPause: template.allowPause,
+        showProgress: template.showProgress,
+        randomizeQuestions: template.randomizeQuestions,
+        themeColor: template.themeColor,
+        iconEmoji: template.iconEmoji,
+        isPublic: false,
+        aiAnalysisPrompt: template.aiAnalysisPrompt,
+        scoringLogic: (template as any).scoringLogic ?? null,
+        categories: template.categories?.map((cat) => ({
+          name: cat.name,
+          description: cat.description,
+          iconEmoji: cat.iconEmoji,
+          questions: cat.questions?.map((q) => ({
+            text: q.text,
+            helpText: q.helpText,
+            type: q.type,
+            isRequired: q.isRequired,
+            scaleMin: q.scaleMin,
+            scaleMax: q.scaleMax,
+            scaleMinLabel: q.scaleMinLabel,
+            scaleMaxLabel: q.scaleMaxLabel,
+            options: (q.options || []).map((o) => ({
+              text: o.text,
+              emoji: o.emoji,
+              description: o.description,
+            })),
+          })),
+        })),
+      }
+
+      const res = await fetch('/api/questionnaires', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (res.ok) {
+        const created = await res.json()
+        router.push(`/questionnaires/${created.id}`)
+        return
+      }
+
+      const err = await res.json().catch(() => null)
+      alert(`Erro: ${err?.error || 'Falha ao copiar'}`)
+    } catch (e: any) {
+      alert(`Erro: ${e?.message || 'Falha ao copiar'}`)
+    } finally {
+      setCopying(false)
+    }
+  }
+
+  async function deleteTemplate() {
+    if (!template) return
+    const ok = window.confirm('Tem certeza que deseja excluir este template?')
+    if (!ok) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/questionnaires/${template.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/questionnaires')
+        return
+      }
+
+      const err = await res.json().catch(() => null)
+      alert(`Erro: ${err?.error || 'Falha ao excluir'}`)
+    } catch (e: any) {
+      alert(`Erro: ${e?.message || 'Falha ao excluir'}`)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   async function sendToPatient() {
     if (!selectedPatient) return
@@ -250,6 +447,11 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
     )
   }
 
+  const isAdmin = isAdminSession(sessionInfo)
+  const canEdit = isAdmin || (!template.isBuiltIn)
+  const canDelete = isAdmin || (!template.isBuiltIn)
+  const canCopy = true
+
   const totalQuestions = template.categories.reduce((acc: number, cat: Category) => acc + cat.questions.length, 0)
 
   return (
@@ -274,16 +476,63 @@ function TemplateDetailPageContent({ params }: { params: { id: string } }) {
           </div>
         </div>
         <div className="flex gap-2">
-          {!template.isBuiltIn && (
-            <>
-              <Button variant="outline" size="icon">
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <Copy className="h-4 w-4" />
-              </Button>
-            </>
+          {canEdit && (
+            <Button variant="outline" size="icon" onClick={openEdit} title="Editar">
+              <Edit className="h-4 w-4" />
+            </Button>
           )}
+          {canCopy && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={copyTemplate}
+              disabled={copying}
+              title="Criar cópia editável"
+            >
+              {copying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={deleteTemplate}
+              disabled={deleting}
+              title="Excluir"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
+          )}
+
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Editar template (JSON)</DialogTitle>
+                <DialogDescription>
+                  Edite o JSON do template. Se o template já foi enviado, alterações estruturais podem ser bloqueadas.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-2">
+                <Label>Template</Label>
+                <Textarea
+                  value={editJson}
+                  onChange={(e) => setEditJson(e.target.value)}
+                  className="min-h-[420px] font-mono"
+                  spellCheck={false}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={savingEdit}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveEdit} disabled={savingEdit}>
+                  {savingEdit && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
             <DialogTrigger asChild>
               <Button>

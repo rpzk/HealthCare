@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { emailService } from '@/lib/email-service'
+import { SystemSettingsService } from '@/lib/system-settings-service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,18 +37,72 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Resgatar credenciais salvas caso a senha enviada esteja mascarada ou ausente
+    const isMasked = (val: string | undefined) => {
+      if (!val) return false
+      const trimmed = String(val).trim()
+      return trimmed.length > 0 && (/^[*•]+$/.test(trimmed) || trimmed === '********')
+    }
+
+    const pickSecret = (...candidates: Array<string | undefined>) => {
+      for (const c of candidates) {
+        if (!c) continue
+        const trimmed = String(c).trim()
+        if (!trimmed) continue
+        if (isMasked(trimmed)) continue
+        return trimmed
+      }
+      return undefined
+    }
+    const stored = await SystemSettingsService.getMany([
+      'SMTP_HOST',
+      'SMTP_PORT',
+      'SMTP_SECURE',
+      'SMTP_USER',
+      'SMTP_PASS',
+      'SMTP_PASSWORD',
+      'SMTP_FROM',
+      'EMAIL_FROM',
+      'EMAIL_PROVIDER'
+    ])
+
+    const dbPass = await SystemSettingsService.getSmtpPassword()
+
+    const resolvedPass = pickSecret(
+      // Se veio uma senha explícita no request, use (desde que não seja máscara)
+      config.SMTP_PASSWORD,
+      config.SMTP_PASS,
+      // Caso contrário, use a senha resolvida do banco/env (mais recente)
+      dbPass,
+      // Fallback final para stored/env (mantido por compatibilidade)
+      stored.SMTP_PASS,
+      stored.SMTP_PASSWORD,
+      process.env.SMTP_PASS,
+      process.env.SMTP_PASSWORD
+    )
+
+    const resolvedHost = config.SMTP_HOST || stored.SMTP_HOST || process.env.SMTP_HOST
+    const resolvedPort = config.SMTP_PORT || stored.SMTP_PORT || process.env.SMTP_PORT || '587'
+    const resolvedSecure = (config.SMTP_SECURE ?? stored.SMTP_SECURE ?? process.env.SMTP_SECURE) === 'true'
+    const resolvedUser = config.SMTP_USER || stored.SMTP_USER || process.env.SMTP_USER
+    const resolvedFrom = config.SMTP_FROM || stored.SMTP_FROM || config.EMAIL_FROM || stored.EMAIL_FROM || process.env.SMTP_FROM || process.env.EMAIL_FROM || resolvedUser
+    const resolvedProvider = config.EMAIL_PROVIDER || stored.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || 'smtp'
+
     // Preparar configuração para teste
+    // Normalizar senha (remover espaços) e aceitar SMTP_PASS ou SMTP_PASSWORD
+    const normalizedPass = (resolvedPass || '').replace(/\s+/g, '')
+
     const testConfig = {
       enabled: true,
-      from: config.SMTP_FROM || config.SMTP_USER || 'noreply@healthcare.com',
-      provider: config.EMAIL_PROVIDER || 'smtp',
+      from: resolvedFrom || resolvedUser || 'noreply@healthcare.com',
+      provider: resolvedProvider,
       smtp: {
-        host: config.SMTP_HOST,
-        port: parseInt(config.SMTP_PORT || '587'),
-        secure: config.SMTP_SECURE === 'true' || config.SMTP_SECURE === true,
+        host: resolvedHost,
+        port: parseInt(resolvedPort || '587'),
+        secure: resolvedSecure,
         auth: {
-          user: config.SMTP_USER,
-          pass: config.SMTP_PASS
+          user: resolvedUser,
+          pass: normalizedPass
         }
       }
     }

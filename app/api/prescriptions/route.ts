@@ -11,10 +11,12 @@ export const GET = withAuth(async (request, { user: _user }) => {
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
+    const patientId = searchParams.get('patientId') || ''
 
     const filters = {
       search: search || undefined,
-      status: status || undefined
+      status: status || undefined,
+      patientId: patientId || undefined,
     }
 
     const result = await PrescriptionsServiceDb.list(filters, page, limit)

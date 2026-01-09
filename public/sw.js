@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'healthcare-v1'
+const CACHE_NAME = 'healthcare-v2'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -39,6 +39,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
+  // Ignore unsupported schemes (e.g., chrome-extension:// injected requests)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return
+
   // Skip non-GET requests
   if (request.method !== 'GET') return
 
@@ -74,11 +77,26 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // For static assets, use cache-first strategy
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff|woff2)$/)
-  ) {
+  // For Next.js static chunks and critical assets, prefer network to avoid stale JS after deploy.
+  if (url.pathname.startsWith('/_next/static/') || url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const responseClone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone)
+            })
+          }
+          return response
+        })
+        .catch(() => caches.match(request))
+    )
+    return
+  }
+
+  // For other static assets (images/fonts), use cache-first.
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|woff|woff2)$/)) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached

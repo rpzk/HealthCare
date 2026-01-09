@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { Markdown } from '@/components/ui/markdown'
 import {
   Shield,
   Heart,
@@ -35,6 +36,15 @@ interface BiometricConsent {
   }
 }
 
+interface InviteTerm {
+  id: string
+  slug: string
+  title: string
+  content: string
+  version: string
+  updatedAt: string
+}
+
 interface InviteData {
   invite: {
     id: string
@@ -49,9 +59,10 @@ interface InviteData {
     speciality: string | null
   }
   biometricConsents: BiometricConsent[]
+  terms: InviteTerm[]
 }
 
-export default function InviteAcceptPage({ params }: { params: Promise<{ token: string }> }) {
+export default function InviteAcceptPage({ params }: { params: { token: string } }) {
   const [token, setToken] = useState<string>('')
   const [data, setData] = useState<InviteData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,20 +74,19 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [phone, setPhone] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [acceptedConsents, setAcceptedConsents] = useState<string[]>([])
-  const [acceptTerms, setAcceptTerms] = useState(false)
-  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
+  const [acceptedTermIds, setAcceptedTermIds] = useState<string[]>([])
   const [showAllConsents, setShowAllConsents] = useState(false)
   
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    params.then(p => {
-      setToken(p.token)
-      loadInvite(p.token)
-    })
-  }, [params])
+    const inviteToken = params.token
+    setToken(inviteToken)
+    void loadInvite(inviteToken)
+  }, [params.token])
 
   const loadInvite = async (inviteToken: string) => {
     try {
@@ -88,13 +98,19 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
       }
       const json = await res.json()
       setData(json)
+      setBirthDate(json?.invite?.birthDate ? String(json.invite.birthDate).slice(0, 10) : '')
       // Selecionar todos por padrão
       setAcceptedConsents(json.biometricConsents.map((c: BiometricConsent) => c.dataType))
+      setAcceptedTermIds([])
     } catch (e) {
       setError('Erro ao carregar convite')
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleTerm = (termId: string) => {
+    setAcceptedTermIds((prev) => (prev.includes(termId) ? prev.filter((t) => t !== termId) : [...prev, termId]))
   }
 
   const toggleConsent = (dataType: string) => {
@@ -126,10 +142,22 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
       return
     }
 
-    if (!acceptTerms || !acceptPrivacy) {
+    const requiredTerms = Array.isArray(data?.terms) ? data.terms : []
+    const hasAllTerms = requiredTerms.every((t) => acceptedTermIds.includes(t.id))
+    if (requiredTerms.length > 0 && !hasAllTerms) {
       toast({
         title: 'Erro',
-        description: 'Você precisa aceitar os termos de uso e política de privacidade',
+        description: 'Você precisa aceitar todos os termos para continuar',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const effectiveBirthDate = birthDate || data?.invite?.birthDate
+    if (!effectiveBirthDate) {
+      toast({
+        title: 'Erro',
+        description: 'Informe sua data de nascimento para continuar',
         variant: 'destructive'
       })
       return
@@ -142,8 +170,10 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           acceptedConsents,
+          acceptedTermIds,
           password,
-          phone
+          phone,
+          birthDate: effectiveBirthDate
         })
       })
 
@@ -233,6 +263,41 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* Dados pessoais mínimos */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Dados para Cadastro
+              </CardTitle>
+              <CardDescription>
+                Confirme seus dados para concluir o cadastro.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="birthDate">Data de nascimento</Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone (opcional)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="(00) 00000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Card de Dados Biométricos */}
           <Card className="mb-6">
             <CardHeader>
@@ -404,39 +469,38 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="terms"
-                  checked={acceptTerms}
-                  onCheckedChange={(v) => setAcceptTerms(v === true)}
-                />
-                <div>
-                  <Label htmlFor="terms" className="cursor-pointer">
-                    Li e aceito os{' '}
-                    <a href="/terms" target="_blank" className="text-blue-600 underline">
-                      Termos de Uso
-                    </a>
-                    {' '}do sistema *
-                  </Label>
-                </div>
-              </div>
+              {Array.isArray(data.terms) && data.terms.length > 0 ? (
+                <div className="space-y-4">
+                  {data.terms.map((term) => (
+                    <div key={term.id} className="border rounded-md p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id={term.id}
+                          checked={acceptedTermIds.includes(term.id)}
+                          onCheckedChange={() => toggleTerm(term.id)}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor={term.id} className="cursor-pointer">
+                            Li e aceito {term.title} <span className="text-muted-foreground">(v{term.version})</span> *
+                          </Label>
+                          <p className="text-xs text-muted-foreground font-mono">{term.slug}</p>
+                        </div>
+                      </div>
+                      <div className="h-32 overflow-y-auto text-xs text-gray-500 bg-gray-50 p-2 rounded border">
+                        <pre className="whitespace-pre-wrap font-sans">{term.content}</pre>
+                      </div>
+                    </div>
+                  ))}
 
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="privacy"
-                  checked={acceptPrivacy}
-                  onCheckedChange={(v) => setAcceptPrivacy(v === true)}
-                />
-                <div>
-                  <Label htmlFor="privacy" className="cursor-pointer">
-                    Li e aceito a{' '}
-                    <a href="/privacy" target="_blank" className="text-blue-600 underline">
-                      Política de Privacidade
-                    </a>
-                    {' '}e autorizo o tratamento dos meus dados conforme a LGPD *
-                  </Label>
+                  <div className="text-sm text-muted-foreground">
+                    Você pode consultar também em{' '}
+                    <a href="/terms" target="_blank" className="text-blue-600 underline">/terms</a> e{' '}
+                    <a href="/privacy" target="_blank" className="text-blue-600 underline">/privacy</a>.
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhum termo ativo configurado.</p>
+              )}
 
               <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
                 <strong>🔒 Seus dados estão protegidos</strong>
@@ -473,7 +537,7 @@ export default function InviteAcceptPage({ params }: { params: Promise<{ token: 
           <Button
             type="submit"
             className="w-full h-12 text-lg"
-            disabled={submitting || !acceptTerms || !acceptPrivacy}
+            disabled={submitting}
           >
             {submitting ? (
               <>

@@ -24,6 +24,16 @@ function getLoginKey(email: string, ip?: string) {
   return `${(email || '').toLowerCase()}|${ip || 'unknown'}`
 }
 
+function normalizeEmail(email: string) {
+  return (email || '').trim()
+}
+
+function normalizeBcryptHash(hash: string) {
+  // Compat: some systems store bcrypt hashes with $2y$ prefix (PHP).
+  // Node bcrypt/bcryptjs typically expects $2a$/$2b$.
+  return hash.startsWith('$2y$') ? `$2b$${hash.slice(4)}` : hash
+}
+
 const providers: NextAuthOptions['providers'] = [
   CredentialsProvider({
       id: "passkey",
@@ -76,7 +86,10 @@ const providers: NextAuthOptions['providers'] = [
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
+        const email = normalizeEmail(credentials?.email || '')
+        const password = credentials?.password || ''
+
+        if (!email || !password) {
           console.warn('Tentativa de login sem credenciais completas')
           return null
         }
@@ -88,20 +101,22 @@ const providers: NextAuthOptions['providers'] = [
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const ipRaw = (req as { headers?: { get?: (name: string) => string | null } })?.headers?.get?.('x-forwarded-for') || (req as { headers?: { get?: (name: string) => string | null } })?.headers?.get?.('x-real-ip')
           const ip = ipRaw ?? undefined
-          const key = getLoginKey(credentials.email, ip)
+          const key = getLoginKey(email, ip)
           const attempt = loginAttempts.get(key) || { count: 0 }
           const now = Date.now()
           const bruteForceDisabled = (process.env.DISABLE_LOGIN_BRUTEFORCE || '') === '1'
           if (!bruteForceDisabled && attempt.blockedUntil && attempt.blockedUntil > now) {
-            console.warn(`IP/email bloqueado temporariamente: ${credentials.email}`)
+            console.warn(`IP/email bloqueado temporariamente: ${email}`)
             return null
           }
 
           const prisma = await getPrisma()
-          // Case-insensitive search to avoid email casing issues
-          const user = await prisma.user.findFirst({
+          // Case-insensitive search to avoid email casing issues.
+          // NOTE: DB unique constraint is case-sensitive in Postgres by default, so it's possible
+          // to have duplicates differing only by casing; in that case, try all candidates.
+          const candidates = await prisma.user.findMany({
             where: {
-              email: { equals: credentials.email, mode: 'insensitive' }
+              email: { equals: email, mode: 'insensitive' }
             },
             select: {
               id: true,
@@ -110,26 +125,36 @@ const providers: NextAuthOptions['providers'] = [
               role: true,
               password: true,
               isActive: true
-            }
+            },
+            take: 5
           })
 
-          if (!user) {
-            console.warn(`Tentativa de login com email não encontrado: ${credentials.email}`)
+          if (candidates.length === 0) {
+            console.warn(`Tentativa de login com email não encontrado: ${email}`)
             return null
           }
 
-          if (!user.isActive) {
-            console.warn(`Tentativa de login com usuário inativo: ${credentials.email}`)
+          const activeCandidates = candidates.filter(u => u.isActive)
+          if (activeCandidates.length === 0) {
+            console.warn(`Tentativa de login com usuário(s) inativo(s): ${email}`)
             return null
           }
 
           // Validar estritamente com hash (sem fallback inseguro)
-          const isPasswordValid = user.password
-            ? await bcrypt.compare(credentials.password, user.password)
-            : false
+          let matchedUser: (typeof activeCandidates)[number] | null = null
+          for (const candidate of activeCandidates) {
+            if (!candidate.password) continue
+            const hash = normalizeBcryptHash(candidate.password)
+            // eslint-disable-next-line no-await-in-loop
+            const ok = await bcrypt.compare(password, hash)
+            if (ok) {
+              matchedUser = candidate
+              break
+            }
+          }
 
-          if (!isPasswordValid) {
-            console.warn(`Senha incorreta para usuário: ${credentials.email}`)
+          if (!matchedUser) {
+            console.warn(`Senha incorreta para usuário: ${email}`)
             // incrementar tentativas
             if (!bruteForceDisabled) {
               attempt.count += 1
@@ -144,10 +169,10 @@ const providers: NextAuthOptions['providers'] = [
           // reset em sucesso
           loginAttempts.delete(key)
           return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
+            id: matchedUser.id,
+            email: matchedUser.email,
+            name: matchedUser.name,
+            role: matchedUser.role
           }
         } catch (error) {
           console.error('Erro na autenticação:', error)

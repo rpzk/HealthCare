@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-01-03T20:03:37Z",
+  "version": "2.0",
+  "description": "Backup completo com configurações e certificados",
+  "database": {
+    "file": "healthcare_20260103200336.sql.gz",
+    "size_bytes": 20,
+    "size_human": "1.0K",
+    "compressed": true,
+    "format": "pg_dump + gzip"
+  },
+  "configurations": {
+    "file": "config_20260103200336.tar.gz",
+    "size_bytes": 37199,
+    "size_human": "37K",
+    "compressed": true,
+    "format": "tar.gz",
+    "items": [
+      ".env (environment variables)",
+      "docker-compose files",
+      "next.config.js",
+      "tsconfig.json",
+      "prisma/schema.prisma",
+      "data/settings.json (fallback settings)"
+    ]
+  },
+  "certificates": {
+    "included": false,
+    "file": "certs_20260103200336.tar.gz",
+    "types": ["A1", "A3", "A4"],
+    "locations_scanned": [
+      "/app/certs",
+      "/etc/healthcare/certs",
+      "/var/healthcare/certs"
+    ]
+  },
+  "database_statistics": {
+    "patients": 0,
+    "users": 0,
+    "consultations": 0,
+    "appointments": 0,
+    "prescriptions": 0,
+    "digital_certificates": 0,
+    "system_settings": 0
+  },
+  "backup_location": "/app/backups/healthcare",
+  "restoration_procedure": "Consulte DATABASE_BACKUP_PROCEDURE.md para instruções de restauração"
+}

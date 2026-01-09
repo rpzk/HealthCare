@@ -3,8 +3,7 @@ import { promises as fs } from 'fs'
 
 /**
  * Minimal STT service abstraction.
- * For now, returns a placeholder transcript mentioning the file name.
- * Later, plug Whisper/Deepgram/Azure/Google here.
+ * Requires a real STT backend via STT_URL.
  */
 export async function transcribeFile(filePath: string): Promise<{ text: string; provider: string }>{
   const abs = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath)
@@ -12,7 +11,7 @@ export async function transcribeFile(filePath: string): Promise<{ text: string; 
     // Basic sanity check that file exists
     await fs.stat(abs)
   } catch {
-    return { text: 'Arquivo de áudio não encontrado para transcrição.', provider: 'stub' }
+    throw new Error('Arquivo de áudio não encontrado para transcrição.')
   }
 
   const sttUrl = process.env.STT_URL // e.g., http://stt:9000/asr
@@ -21,11 +20,7 @@ export async function transcribeFile(filePath: string): Promise<{ text: string; 
   const fileName = path.basename(abs)
 
   if (!sttUrl) {
-    // Placeholder output when no server configured
-    return {
-      text: `Transcrição placeholder do arquivo ${fileName}. Configure STT_URL para ativar transcrição local real.`,
-      provider: providerName
-    }
+    throw new Error('STT_URL não configurado. Configure um servidor STT para transcrição.')
   }
 
   try {
@@ -63,10 +58,6 @@ export async function transcribeFile(filePath: string): Promise<{ text: string; 
     if (!text) throw new Error('Resposta STT sem texto')
     return { text, provider: providerName }
   } catch (e) {
-    // Fallback to stub on error, but include hint
-    return {
-      text: `Falha na transcrição local (${(e as Error).message}). Usando placeholder para ${fileName}.`,
-      provider: providerName
-    }
+    throw new Error(`Falha na transcrição: ${(e as Error).message}`)
   }
 }

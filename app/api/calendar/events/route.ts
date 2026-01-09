@@ -76,18 +76,28 @@ export async function GET(request: NextRequest) {
     // Buscar consultas
     const consultations = await prisma.consultation.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        scheduledDate: true,
+        duration: true,
+        status: true,
+        type: true,
+        notes: true,
         patient: {
           select: {
             id: true,
             name: true,
             phone: true,
+            email: true,
+            cpf: true,
           },
         },
         doctor: {
           select: {
             id: true,
             name: true,
+            email: true,
+            speciality: true,
           },
         },
       },
@@ -109,14 +119,19 @@ export async function GET(request: NextRequest) {
         end: endDate.toISOString(),
         status: consultation.status,
         type: consultation.type,
+        notes: consultation.notes,
         patient: {
           id: consultation.patient.id,
           name: consultation.patient.name,
           phone: consultation.patient.phone,
+          email: consultation.patient.email,
+          cpf: consultation.patient.cpf,
         },
         doctor: consultation.doctor ? {
           id: consultation.doctor.id,
           name: consultation.doctor.name,
+          email: consultation.doctor.email,
+          speciality: consultation.doctor.speciality,
         } : null,
       }
     })

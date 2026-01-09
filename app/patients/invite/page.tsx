@@ -1,16 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { 
   Heart, 
@@ -58,7 +58,7 @@ const biometricTypes = [
     recommended: false
   },
   {
-    type: 'SPO2',
+    type: 'OXYGEN_SATURATION',
     label: 'Saturação O₂',
     description: 'Oximetria de pulso',
     icon: Activity,
@@ -82,7 +82,7 @@ const biometricTypes = [
     recommended: false
   },
   {
-    type: 'ACTIVITY',
+    type: 'STEPS',
     label: 'Atividade',
     description: 'Exercícios e calorias',
     icon: Footprints,
@@ -90,7 +90,7 @@ const biometricTypes = [
     recommended: false
   },
   {
-    type: 'TEMPERATURE',
+    type: 'BODY_TEMPERATURE',
     label: 'Temperatura',
     description: 'Temperatura corporal',
     icon: Thermometer,
@@ -103,25 +103,67 @@ export default function InvitePatientPage() {
   const { data: _session } = useSession()
   const _router = useRouter()
   const { toast } = useToast()
+
+  const userRole = (_session?.user as any)?.role as string | undefined
   
   const [loading, setLoading] = useState(false)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [resending, setResending] = useState(false)
+
+  const [doctors, setDoctors] = useState<Array<{ id: string; name: string; speciality: string | null }>>([])
+  const [assignedDoctorId, setAssignedDoctorId] = useState<string>('')
   
   // Form state
   const [patientName, setPatientName] = useState('')
   const [patientEmail, setPatientEmail] = useState('')
   const [message, setMessage] = useState('')
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    'HEART_RATE', 'BLOOD_PRESSURE', 'SPO2' // Recomendados por padrão
+    'HEART_RATE', 'BLOOD_PRESSURE', 'OXYGEN_SATURATION' // Recomendados por padrão
   ])
 
+  useEffect(() => {
+    if (userRole === 'DOCTOR' && _session?.user?.id) {
+      setAssignedDoctorId(String(_session.user.id))
+      return
+    }
+
+    if (!userRole || userRole === 'PATIENT' || userRole === 'DOCTOR') return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/professionals/doctors')
+        if (!res.ok) return
+        const json = await res.json()
+        if (cancelled) return
+        setDoctors(Array.isArray(json?.doctors) ? json.doctors : [])
+      } catch {
+        // seleção é opcional; falha silenciosa
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [userRole, _session?.user?.id])
+
+  const setPermissionChecked = (type: string, checked: boolean) => {
+    setSelectedPermissions((prev) => {
+      const alreadyChecked = prev.includes(type)
+      if (checked && !alreadyChecked) return [...prev, type]
+      if (!checked && alreadyChecked) return prev.filter((p) => p !== type)
+      return prev
+    })
+  }
+
   const handleTogglePermission = (type: string) => {
-    setSelectedPermissions(prev => 
-      prev.includes(type) 
-        ? prev.filter(p => p !== type)
-        : [...prev, type]
-    )
+    setSelectedPermissions((prev) => {
+      const alreadyChecked = prev.includes(type)
+      if (alreadyChecked) return prev.filter((p) => p !== type)
+      return [...prev, type]
+    })
   }
 
   const handleSelectAll = () => {
@@ -157,15 +199,23 @@ export default function InvitePatientPage() {
         body: JSON.stringify({
           patientName,
           email: patientEmail,
-          message,
-          requestedPermissions: selectedPermissions
+          customMessage: message,
+          requestedBiometrics: selectedPermissions,
+          ...(assignedDoctorId ? { assignedDoctorId } : {})
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setInviteLink(data.inviteUrl)
-        toast({ title: 'Convite criado com sucesso!' })
+        setInviteLink(data.inviteLink || data.inviteUrl || null)
+        setInviteToken(data?.invite?.token || null)
+        if (data?.emailEnabled && data?.emailSent) {
+          toast({ title: 'Convite criado e enviado por e-mail!' })
+        } else if (data?.emailEnabled && !data?.emailSent) {
+          toast({ title: 'Convite criado, mas falhou ao enviar e-mail. Copie o link.', variant: 'destructive' })
+        } else {
+          toast({ title: 'Convite criado! Copie o link para enviar.' })
+        }
       } else {
         const error = await response.json()
         toast({ title: error.error || 'Erro ao criar convite', variant: 'destructive' })
@@ -188,10 +238,40 @@ export default function InvitePatientPage() {
 
   const handleNewInvite = () => {
     setInviteLink(null)
+    setInviteToken(null)
     setPatientName('')
     setPatientEmail('')
     setMessage('')
-    setSelectedPermissions(['HEART_RATE', 'BLOOD_PRESSURE', 'SPO2'])
+    setSelectedPermissions(['HEART_RATE', 'BLOOD_PRESSURE', 'OXYGEN_SATURATION'])
+    if (userRole === 'DOCTOR' && _session?.user?.id) {
+      setAssignedDoctorId(String(_session.user.id))
+    } else {
+      setAssignedDoctorId('')
+    }
+  }
+
+  const handleResendEmail = async () => {
+    if (!inviteToken) {
+      toast({ title: 'Token do convite não encontrado', variant: 'destructive' })
+      return
+    }
+    try {
+      setResending(true)
+      const res = await fetch(`/api/patient-invites/${inviteToken}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast({ title: data?.error || 'Falha ao reenviar convite', variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Convite reenviado por e-mail!' })
+    } catch (e) {
+      toast({ title: 'Falha ao reenviar convite', variant: 'destructive' })
+    } finally {
+      setResending(false)
+    }
   }
 
   // Tela de sucesso com link
@@ -238,6 +318,24 @@ export default function InvitePatientPage() {
               <Button onClick={handleNewInvite} className="flex-1">
                 <Mail className="h-4 w-4 mr-2" />
                 Novo Convite
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResendEmail}
+                disabled={resending || !inviteToken}
+              >
+                {resending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Reenviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Reenviar
+                  </>
+                )}
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/patients">
@@ -315,6 +413,28 @@ export default function InvitePatientPage() {
                 rows={3}
               />
             </div>
+
+            {userRole && userRole !== 'PATIENT' && userRole !== 'DOCTOR' && (
+              <div className="space-y-2">
+                <Label>Vincular paciente a um médico (opcional)</Label>
+                <Select value={assignedDoctorId} onValueChange={setAssignedDoctorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Não vincular agora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Não vincular agora</SelectItem>
+                    {doctors.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}{d.speciality ? ` (${d.speciality})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Se selecionado, o paciente já entra com o médico responsável definido.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -362,9 +482,13 @@ export default function InvitePatientPage() {
                     `}
                     onClick={() => handleTogglePermission(item.type)}
                   >
-                    <Checkbox 
+                    <input
+                      type="checkbox"
                       checked={isSelected}
-                      onCheckedChange={() => handleTogglePermission(item.type)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setPermissionChecked(item.type, e.target.checked)}
+                      className="rounded border-input h-4 w-4 text-primary focus:ring-primary"
+                      aria-label={item.label}
                     />
                     <div className={`p-1.5 rounded ${item.color} bg-muted`}>
                       <Icon className="h-4 w-4" />

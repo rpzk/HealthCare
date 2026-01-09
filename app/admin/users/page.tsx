@@ -113,14 +113,17 @@ export default function AdminUsersPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/admin/users')
-      if (!response.ok) throw new Error('Erro ao carregar usuários')
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = typeof data?.error === 'string' ? data.error : 'Erro ao carregar usuários'
+        throw new Error(message)
+      }
       setUsers(data.users || [])
     } catch (error) {
       console.error('Erro:', error)
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar os usuários',
+        description: error instanceof Error ? error.message : 'Não foi possível carregar os usuários',
         variant: 'destructive'
       })
     } finally {
@@ -208,6 +211,20 @@ export default function AdminUsersPage() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
   }
 
+  const cardBaseClass =
+    'w-full text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+
+  const getCardClass = (active: boolean) =>
+    active ? 'ring-2 ring-ring ring-offset-2 ring-offset-background' : ''
+
+  const toggleRole = (role: string) => {
+    setRoleFilter((prev) => (prev === role ? 'all' : role))
+  }
+
+  const toggleStatus = (status: string) => {
+    setStatusFilter((prev) => (prev === status ? 'all' : status))
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -232,58 +249,92 @@ export default function AdminUsersPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        <button
+          type="button"
+          className={cardBaseClass}
+          onClick={() => {
+            setRoleFilter('all')
+            setStatusFilter('all')
+          }}
+          title="Limpar filtros"
+        >
+          <Card className={`transition-colors hover:bg-muted/40 ${getCardClass(roleFilter === 'all' && statusFilter === 'all')}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                  <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          className={cardBaseClass}
+          onClick={() => toggleStatus('active')}
+          title="Filtrar usuários ativos"
+        >
+          <Card className={`transition-colors hover:bg-muted/40 ${getCardClass(statusFilter === 'active')}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <UserCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ativos</p>
+                  <p className="text-2xl font-bold">{stats.active}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-                <UserCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          className={cardBaseClass}
+          onClick={() => toggleRole('DOCTOR')}
+          title="Filtrar médicos"
+        >
+          <Card className={`transition-colors hover:bg-muted/40 ${getCardClass(roleFilter === 'DOCTOR')}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                  <Stethoscope className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Médicos</p>
+                  <p className="text-2xl font-bold">{stats.byRole['DOCTOR'] || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ativos</p>
-                <p className="text-2xl font-bold">{stats.active}</p>
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          className={cardBaseClass}
+          onClick={() => toggleRole('ADMIN')}
+          title="Filtrar administradores"
+        >
+          <Card className={`transition-colors hover:bg-muted/40 ${getCardClass(roleFilter === 'ADMIN')}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                  <ShieldCheck className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Admins</p>
+                  <p className="text-2xl font-bold">{stats.byRole['ADMIN'] || 0}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                <Stethoscope className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Médicos</p>
-                <p className="text-2xl font-bold">{stats.byRole['DOCTOR'] || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                <ShieldCheck className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold">{stats.byRole['ADMIN'] || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </button>
       </div>
 
       {/* Filters */}

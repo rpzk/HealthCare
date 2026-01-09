@@ -14,6 +14,7 @@ _Last updated: 2025-12-15_
 - GUIA_PRODUCAO_PT_BR.md
 - README_MEDICAL_RECORDS.md / API_MEDICAL_RECORDS.md
 - GUIA_VISUAL_FUNCIONALIDADES.md
+- QUESTIONARIO_PRECONSULTA_PACIENTE_VISUAL.md (questionários: visão do paciente)
 
 ## Operations & Production (keep)
 - PRODUCTION_READINESS.md

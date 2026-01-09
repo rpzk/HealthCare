@@ -57,7 +57,10 @@ model User {
   vacationBalance       VacationBalance?
 
   // Convites de pacientes enviados
-  patientInvites PatientInvite[]
+  patientInvites PatientInvite[] @relation("PatientInviteInvitedBy")
+
+  // Convites onde este usuário foi escolhido como médico responsável
+  assignedPatientInvites PatientInvite[] @relation("PatientInviteAssignedDoctor")
 
   // Fila de espera (médicos)
   waitingLists WaitingList[]
@@ -1720,18 +1723,28 @@ enum InviteStatus {
   EXPIRED
 }
 
+enum TermAudience {
+  ALL
+  PATIENT
+  PROFESSIONAL
+}
+
 model Term {
   id       String  @id @default(cuid())
-  slug     String  @unique
+  slug     String
   title    String
   content  String  @db.Text
   version  String
   isActive Boolean @default(true)
 
+  audience TermAudience @default(ALL)
+
   acceptances TermAcceptance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([slug, version])
 
   @@map("terms")
 }
@@ -1742,6 +1755,12 @@ model TermAcceptance {
   user   User   @relation(fields: [userId], references: [id])
   termId String
   term   Term   @relation(fields: [termId], references: [id])
+
+  // Snapshot auditável do termo aceito (mantém evidência mesmo após atualizações)
+  termSlug    String?
+  termTitle   String?
+  termVersion String?
+  termContent String? @db.Text
 
   acceptedAt DateTime @default(now())
   ipAddress  String?
@@ -3062,7 +3081,11 @@ model PatientInvite {
 
   // Quem enviou
   invitedById String
-  invitedBy   User   @relation(fields: [invitedById], references: [id])
+  invitedBy   User   @relation("PatientInviteInvitedBy", fields: [invitedById], references: [id])
+
+  // Médico responsável (opcional) para vincular automaticamente ao aceitar
+  assignedDoctorId String?
+  assignedDoctor   User?  @relation("PatientInviteAssignedDoctor", fields: [assignedDoctorId], references: [id])
 
   // Dados pré-preenchidos (opcional)
   birthDate DateTime?
@@ -3087,6 +3110,7 @@ model PatientInvite {
   updatedAt DateTime @updatedAt
 
   @@index([email])
+  @@index([assignedDoctorId])
   @@index([token])
   @@map("patient_invites")
 }

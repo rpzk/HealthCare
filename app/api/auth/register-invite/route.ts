@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { TermAudience } from '@prisma/client'
 
 // Instância própria do Prisma para evitar problemas de bundling
 const globalForRegister = globalThis as typeof globalThis & {
@@ -19,12 +20,23 @@ function getRegisterPrisma(): PrismaClient {
 export async function POST(req: Request) {
   try {
     const prisma = getRegisterPrisma()
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip') ||
+      null
+    const userAgent = req.headers.get('user-agent') || null
     const body = await req.json()
     const { token, name, cpf, phone, birthDate, gender, password, acceptedTerms, biometricConsents } = body
 
     if (!token || !name || !cpf || !password || !acceptedTerms) {
       return NextResponse.json(
         { error: 'Campos obrigatórios não preenchidos', code: 'MISSING_FIELDS' },
+        { status: 400 }
+      )
+    }
+
+    if (!Array.isArray(acceptedTerms)) {
+      return NextResponse.json(
+        { error: 'acceptedTerms deve ser uma lista', code: 'INVALID_TERMS' },
         { status: 400 }
       )
     }
@@ -40,6 +52,8 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    const audience = invite.role === 'PATIENT' ? TermAudience.PATIENT : TermAudience.PROFESSIONAL
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -71,6 +85,38 @@ export async function POST(req: Request) {
 
     // Transaction to create User, Person, TermAcceptances and update Invite
     await prisma.$transaction(async (tx) => {
+      // Required active terms for this audience
+      const requiredTerms = await tx.term.findMany({
+        where: {
+          isActive: true,
+          OR: [{ audience: TermAudience.ALL }, { audience }],
+        },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          version: true,
+          content: true,
+        },
+      })
+
+      const requiredTermIds = new Set(requiredTerms.map((t) => t.id))
+      const acceptedTermIds = new Set(acceptedTerms.filter((t: unknown) => typeof t === 'string'))
+
+      if (acceptedTermIds.size !== acceptedTerms.length) {
+        throw new Error('acceptedTerms contém valores inválidos')
+      }
+
+      const missing = requiredTerms.filter((t) => !acceptedTermIds.has(t.id))
+      if (missing.length > 0) {
+        throw new Error('Você precisa aceitar todos os termos obrigatórios')
+      }
+
+      const extra = acceptedTerms.filter((id: string) => !requiredTermIds.has(id))
+      if (extra.length > 0) {
+        throw new Error('acceptedTerms contém termos não reconhecidos')
+      }
+
       // Create Person first (Person-centric model)
       const person = await tx.person.create({
         data: {
@@ -135,8 +181,8 @@ export async function POST(req: Request) {
                   isGranted,
                   grantedAt: isGranted ? new Date() : null,
                   purpose: `Monitoramento de ${dataType.toLowerCase().replace('_', ' ')} via dispositivos vestíveis`,
-                  ipAddress: '0.0.0.0',
-                  userAgent: 'Browser'
+                  ipAddress,
+                  userAgent
                 }
               })
             }
@@ -145,17 +191,19 @@ export async function POST(req: Request) {
       }
 
       // Record Term Acceptances
-      if (Array.isArray(acceptedTerms)) {
-        for (const termId of acceptedTerms) {
-          await tx.termAcceptance.create({
-            data: {
-              userId: person.user.id,
-              termId: termId,
-              ipAddress: '0.0.0.0', // Should get from request headers
-              userAgent: 'Browser' // Should get from request headers
-            }
-          })
-        }
+      for (const term of requiredTerms) {
+        await tx.termAcceptance.create({
+          data: {
+            userId: person.user.id,
+            termId: term.id,
+            termSlug: term.slug,
+            termTitle: term.title,
+            termVersion: term.version,
+            termContent: term.content,
+            ipAddress,
+            userAgent,
+          }
+        })
       }
 
       // Mark invite as used

@@ -58,23 +58,29 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const statusParam = searchParams.get('status') || 'SCHEDULED'
+    const statusParam = searchParams.get('status')
     const days = parseInt(searchParams.get('days') || '30')
 
     // Validate status is a valid enum value
     const validStatuses = ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']
-    const status = validStatuses.includes(statusParam) ? statusParam : 'SCHEDULED'
+    const status = statusParam && validStatuses.includes(statusParam) ? statusParam : null
+
+    // Build where clause - if no status provided, get all consultations
+    const whereClause: any = {
+      doctorId: user.id,
+      scheduledDate: {
+        gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000), // últimos X dias
+        lte: new Date(Date.now() + days * 24 * 60 * 60 * 1000), // próximos X dias
+      },
+    }
+
+    if (status) {
+      whereClause.status = status
+    }
 
     // Get consultations for this professional
     const consultations = await prisma.consultation.findMany({
-      where: {
-        doctorId: user.id,
-        status: status as any,
-        scheduledDate: {
-          gte: new Date(),
-          lte: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
-        },
-      },
+      where: whereClause,
       include: {
         patient: {
           select: {
@@ -91,7 +97,13 @@ export async function GET(request: NextRequest) {
 
     // Get statistics
     const allConsultations = await prisma.consultation.findMany({
-      where: { doctorId: user.id },
+      where: {
+        doctorId: user.id,
+        scheduledDate: {
+          gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+          lte: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
+        },
+      },
       select: { status: true },
     })
 
@@ -107,6 +119,7 @@ export async function GET(request: NextRequest) {
       success: true,
       consultations: consultations.map((c) => ({
         id: c.id,
+        patientId: c.patient?.id,
         patientName: c.patient?.name,
         patientEmail: c.patient?.email,
         patientPhone: c.patient?.phone,

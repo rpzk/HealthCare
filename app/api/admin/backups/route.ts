@@ -5,6 +5,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { readdir, stat } from 'fs/promises'
 import path from 'path'
+import { SystemSettingsService } from '@/lib/system-settings-service'
 
 const execAsync = promisify(exec)
 
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    const backupDir = '/home/umbrel/backups/healthcare'
+    const backupDir = path.join(process.cwd(), 'backups', 'healthcare')
 
     try {
       const files = await readdir(backupDir)
@@ -96,15 +97,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Executar script de backup completo
+    const scriptPath = path.join(process.cwd(), 'scripts', 'backup-complete.sh')
+
+    const [gdriveServiceAccountJson, gdriveFolderId] = await Promise.all([
+      SystemSettingsService.get('GDRIVE_SERVICE_ACCOUNT_JSON'),
+      SystemSettingsService.get('GDRIVE_FOLDER_ID'),
+    ])
+
     try {
-      const { stdout, stderr } = await execAsync('bash /home/umbrel/HealthCare/scripts/backup-complete.sh')
+      const { stdout, stderr } = await execAsync(`bash "${scriptPath}"`, {
+        env: {
+          ...process.env,
+          GDRIVE_SERVICE_ACCOUNT_JSON: gdriveServiceAccountJson || '',
+          GDRIVE_FOLDER_ID: gdriveFolderId || '',
+          APP_ROOT: process.cwd(),
+        },
+      })
       
       console.log('[Backup] Sucesso:', stdout)
 
       // Obter informações do backup criado
       const timestamp = new Date().toISOString().replace(/[:-]/g, '').slice(0, 15)
       const backupFile = `healthcare_${timestamp}.sql.gz`
-      const backupDir = '/home/umbrel/backups/healthcare'
+      const backupDir = path.join(process.cwd(), 'backups', 'healthcare')
       
       try {
         const stats = await stat(path.join(backupDir, backupFile))
@@ -169,7 +184,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Validação de segurança: garantir que é um caminho seguro
-    const backupDir = '/home/umbrel/backups/healthcare'
+    const backupDir = path.join(process.cwd(), 'backups', 'healthcare')
     const filePath = path.join(backupDir, filename)
 
     if (!filePath.startsWith(backupDir)) {

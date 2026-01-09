@@ -237,14 +237,6 @@ export function RoleSwitcher() {
     }
   }, [status, session])
 
-  // Ler papel ativo do cookie quando montar
-  useEffect(() => {
-    const savedRole = getCookie('active_role')
-    if (savedRole && ROLE_CONFIGS[savedRole]) {
-      setActiveRole(savedRole)
-    }
-  }, [])
-
   const fetchUserRoles = async () => {
     try {
       setLoading(true)
@@ -289,7 +281,11 @@ export function RoleSwitcher() {
       // Se não tem papel ativo salvo, usar o da URL ou o primário
       if (!activeRole) {
         const savedRole = getCookie('active_role')
-        if (savedRole) {
+        const allowedRolesFromApi = Array.isArray(data.roles)
+          ? data.roles.map((r: { role?: string }) => r.role).filter(Boolean)
+          : []
+
+        if (savedRole && allowedRolesFromApi.includes(savedRole)) {
           setActiveRole(savedRole)
         } else if (pathname?.startsWith('/admin')) {
           setActiveRole('ADMIN')

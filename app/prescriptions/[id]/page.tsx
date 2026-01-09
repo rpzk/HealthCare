@@ -105,9 +105,10 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       }
     } catch (e) {
       setError((e as Error).message)
-      showError({ 
+      toast({ 
         title: 'Erro ao carregar', 
-        description: (e as Error).message 
+        description: (e as Error).message,
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -334,18 +335,16 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
               onSign={() => setShowPasswordDialog(true)}
               canCancel={data.status === 'ACTIVE'}
               onCancel={() => setShowCancelDialog(true)}
-              customActions={[
+              additionalActions={[
                 {
                   label: 'Imprimir',
                   icon: <Printer className="h-4 w-4" />,
                   onClick: handlePrint,
-                  disabled: !isSigned && requireSignBeforePrint
                 },
                 {
                   label: 'Compartilhar',
                   icon: <Share2 className="h-4 w-4" />,
                   onClick: handleShare,
-                  disabled: !isSigned && requireSignBeforePrint
                 }
               ]}
             />

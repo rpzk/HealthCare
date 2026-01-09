@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Switch } from '@/components/ui/switch'
+import { Markdown } from '@/components/ui/markdown'
 import { Loader2, CheckCircle, ArrowRight, ArrowLeft, Fingerprint, Camera, Mic, Activity, Shield } from 'lucide-react'
 
 interface Term {
@@ -324,7 +325,7 @@ export function RegistrationForm({ invite, terms, isPatient }: RegistrationFormP
                   </div>
                 </div>
                 <div className="h-32 overflow-y-auto text-xs text-gray-500 bg-gray-50 p-2 rounded border">
-                  <pre className="whitespace-pre-wrap font-sans">{term.content}</pre>
+                  <Markdown content={term.content} className="text-xs" />
                 </div>
               </div>
             ))}

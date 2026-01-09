@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withDoctorAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { generateSoapFromTranscript } from '@/lib/ai-soap'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,12 +13,72 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
   const rl = rateLimiters.aiMedical(req)
   if (rl instanceof NextResponse) return rl
 
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: user.id,
+      audience: TermAudience.PROFESSIONAL,
+      gates: ['AI'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json(
+        { error: e.message, code: e.code, missing: e.missing },
+        { status: 503 }
+      )
+    }
+    throw e
+  }
+
   const body = await req.json().catch(() => ({})) as any
   const transcript = body.transcript || ''
+  const patientId = body.patientId as string | undefined
   const locale = body.locale || 'pt-BR'
   const speciality = body.speciality || undefined
   if (!transcript || transcript.length < 10) {
     return NextResponse.json({ error: 'Transcript insuficiente' }, { status: 400 })
+  }
+
+  if (patientId) {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { userId: true } })
+    if (patient?.userId) {
+      try {
+        await assertUserAcceptedTerms({
+          prisma,
+          userId: patient.userId,
+          audience: TermAudience.PATIENT,
+          gates: ['AI'],
+        })
+      } catch (e) {
+        if (e instanceof TermsNotAcceptedError) {
+          return NextResponse.json(
+            {
+              error: e.message,
+              code: e.code,
+              missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+            },
+            { status: 403 }
+          )
+        }
+        if (e instanceof TermsNotConfiguredError) {
+          return NextResponse.json(
+            { error: e.message, code: e.code, missing: e.missing },
+            { status: 503 }
+          )
+        }
+        throw e
+      }
+    }
   }
   try {
     const soap = await generateSoapFromTranscript({ transcript, locale, speciality })

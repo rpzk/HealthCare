@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { ExternalFetchAdapter, ExternalUpdatesService } from '@/lib/external-updates-service'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -73,6 +73,44 @@ function isNormalizedRow(row: UploadedRowCandidate): row is UploadedNormalizedRo
   return Boolean(row.code && row.title)
 }
 
+async function parseXlsx(buffer: Buffer): Promise<RawRow[]> {
+  const workbook = new ExcelJS.Workbook()
+  // Ensure a concrete Node Buffer type for ExcelJS typings.
+  await workbook.xlsx.load(Buffer.from(buffer) as any)
+  const worksheet = workbook.worksheets[0]
+  if (!worksheet) return []
+
+  const headerRow = worksheet.getRow(1)
+  const headerValues = (headerRow.values ?? []) as unknown[]
+  const headers = headerValues
+    .slice(1)
+    .map((value) => (value === null || value === undefined ? '' : String(value)))
+
+  const rows: RawRow[] = []
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return
+    const values = (row.values ?? []) as unknown[]
+    const record: RawRow = {}
+    for (let i = 0; i < headers.length; i++) {
+      const key = headers[i]
+      if (!key) continue
+      const cellValue = values[i + 1]
+      if (cellValue === undefined || cellValue === null || cellValue === '') continue
+
+      if (typeof cellValue === 'object' && cellValue && 'text' in (cellValue as any)) {
+        record[key] = String((cellValue as any).text)
+      } else if (typeof cellValue === 'object' && cellValue && 'result' in (cellValue as any)) {
+        record[key] = (cellValue as any).result
+      } else {
+        record[key] = cellValue
+      }
+    }
+    if (Object.keys(record).length) rows.push(record)
+  })
+
+  return rows
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Verificar autenticação e permissão de admin
   const session = await getServerSession(req, res, authOptions) as CustomSession | null
@@ -97,9 +135,7 @@ if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allo
       if (p.errors && p.errors.length) return res.status(400).json({ error: 'CSV parse error', details: p.errors[0] })
       parsed = p.data.map(normalizeKeys)
     } else if (ext === '.xls' || ext === '.xlsx') {
-      const wb = XLSX.read(buffer, { type: 'buffer' })
-      const sheet = wb.Sheets[wb.SheetNames[0]]
-      const json = XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: undefined })
+      const json = await parseXlsx(buffer)
       parsed = json.map(normalizeKeys)
     } else {
       return res.status(400).json({ error: 'unsupported file extension' })

@@ -62,8 +62,11 @@ export default function RootLayout({
               // Register service worker
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(reg) { console.log('SW registered:', reg.scope); })
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                    .then(function(reg) {
+                      console.log('SW registered:', reg.scope);
+                      try { reg.update(); } catch (e) { /* noop */ }
+                    })
                     .catch(function(err) { console.log('SW failed:', err); });
                 });
               }

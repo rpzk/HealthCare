@@ -4,6 +4,10 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { enqueueAI } from '@/lib/ai-bullmq-queue'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
+import { transcribeFile } from '@/lib/stt-service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,9 +26,36 @@ async function saveFormFile(file: File, relDir: string, baseName?: string) {
   return { fullPath, filename, relPath: path.join('uploads', relDir, filename) }
 }
 
-export const POST = withDoctorAuth(async (req: NextRequest) => {
+export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
   const rl = rateLimiters.aiMedical(req)
   if (rl instanceof NextResponse) return rl
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: user.id,
+      audience: TermAudience.PROFESSIONAL,
+      gates: ['AI'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json(
+        { error: e.message, code: e.code, missing: e.missing },
+        { status: 503 }
+      )
+    }
+    throw e
+  }
 
   // Parse multipart form-data
   const form = await req.formData().catch(() => null)
@@ -38,9 +69,6 @@ export const POST = withDoctorAuth(async (req: NextRequest) => {
   // Salvar arquivo para processamento assíncrono futuro
   const saved = await saveFormFile(file, path.join('transcripts'))
 
-  // MVP: "Transcrição" falsa (eco do nome do arquivo). Substituir por STT real (Whisper/Deepgram etc.)
-  const transcript = `Arquivo recebido (${saved.filename}). Integração STT será aplicada aqui.`
-
   // Optionally enqueue async pipeline to transcribe + generate SOAP and persist as medical record
   const url = new URL(req.url)
   const enqueue = url.searchParams.get('enqueue') === 'true'
@@ -49,6 +77,46 @@ export const POST = withDoctorAuth(async (req: NextRequest) => {
   const doctorId = form.get('doctorId') as string | null
   const locale = (form.get('locale') as string | null) || undefined
   const speciality = (form.get('speciality') as string | null) || undefined
+
+  // If this operation is tied to a patient, enforce patient AI consent too.
+  if (patientId) {
+    const patient = await prisma.patient.findUnique({
+      where: { id: patientId },
+      select: { userId: true },
+    })
+    if (!patient?.userId) {
+      return NextResponse.json(
+        { error: 'Paciente sem conta vinculada para consentimento de IA', code: 'PATIENT_NO_USER' },
+        { status: 403 }
+      )
+    }
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: patient.userId,
+        audience: TermAudience.PATIENT,
+        gates: ['AI'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json(
+          { error: e.message, code: e.code, missing: e.missing },
+          { status: 503 }
+        )
+      }
+      throw e
+    }
+  }
 
   if (enqueue) {
     if (mode === 'draft') {
@@ -73,5 +141,14 @@ export const POST = withDoctorAuth(async (req: NextRequest) => {
     }
   }
 
-  return NextResponse.json({ ok: true, transcript, file: { path: saved.relPath } })
+  // Synchronous STT (requires STT_URL); avoids mocked/placeholder transcripts.
+  try {
+    const stt = await transcribeFile(saved.fullPath)
+    return NextResponse.json({ ok: true, transcript: stt.text, provider: stt.provider, file: { path: saved.relPath } })
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message || 'Falha ao transcrever áudio. Configure STT_URL.', code: 'STT_UNAVAILABLE' },
+      { status: 503 }
+    )
+  }
 })

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
 import { z } from 'zod'
 
 const patientBookingSchema = z.object({
@@ -254,7 +255,28 @@ export async function POST(request: NextRequest) {
     })
 
     // Send confirmation notification
-    // TODO: Implement notification service
+    if (consultation.patient?.email) {
+      try {
+        const dateStr = consultation.scheduledDate.toLocaleDateString('pt-BR')
+        const timeStr = consultation.scheduledDate.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+
+        await sendAppointmentConfirmationEmail({
+          patientEmail: consultation.patient.email,
+          patientName: consultation.patient.name,
+          doctorName: consultation.doctor.name,
+          date: dateStr,
+          time: timeStr,
+          reason: reason || 'Consulta',
+          status: consultation.status === 'IN_PROGRESS' ? 'CONFIRMED' : 'SCHEDULED',
+        })
+      } catch (emailError) {
+        console.error('[Patient Booking] Error sending confirmation email:', emailError)
+      }
+    }
+
     console.log(
       `[Patient Booking] New consultation scheduled: ${consultation.id} by patient ${patient.id}`
     )

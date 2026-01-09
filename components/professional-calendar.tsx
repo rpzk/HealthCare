@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import { Calendar as BigCalendar, dateFnsLocalizer, View, SlotInfo } from 'react-big-calendar'
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +38,12 @@ interface ProfessionalCalendarProps {
   events: CalendarEvent[]
   onSelectSlot?: (slotInfo: SlotInfo) => void
   onSelectEvent?: (event: CalendarEvent) => void
+  onRangeChange?: (range: Date[] | { start: Date; end: Date }, view: View) => void
+  onEventDrop?: (args: { event: CalendarEvent; start: Date; end: Date; isAllDay: boolean }) => void
+  onEventResize?: (args: { event: CalendarEvent; start: Date; end: Date; isAllDay: boolean }) => void
 }
+
+const DnDCalendar = withDragAndDrop(BigCalendar)
 
 const eventStyleGetter = (event: CalendarEvent) => {
   let backgroundColor = '#667eea'
@@ -68,10 +75,26 @@ const eventStyleGetter = (event: CalendarEvent) => {
   }
 }
 
+function CalendarEventContent({ event }: { event: CalendarEvent }) {
+  const label = event.resource?.patientName || event.title
+  const startLabel = format(event.start, 'HH:mm')
+  const endLabel = format(event.end, 'HH:mm')
+  return (
+    <div className="flex flex-col">
+      <div className="text-[11px] font-medium leading-tight truncate">
+        {startLabel}–{endLabel} • {label}
+      </div>
+    </div>
+  )
+}
+
 export function ProfessionalCalendar({
   events,
   onSelectSlot,
   onSelectEvent,
+  onRangeChange,
+  onEventDrop,
+  onEventResize,
 }: ProfessionalCalendarProps) {
   const [view, setView] = useState<View>('week')
   const [date, setDate] = useState(new Date())
@@ -146,21 +169,53 @@ export function ProfessionalCalendar({
 
           {/* Calendar */}
           <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
-            <BigCalendar
+            <DnDCalendar
               localizer={localizer}
               events={processedEvents}
-              startAccessor="start"
-              endAccessor="end"
+              startAccessor={(event) => (event as CalendarEvent).start}
+              endAccessor={(event) => (event as CalendarEvent).end}
               style={{ height: '100%' }}
               view={view}
               onView={setView}
               date={date}
               onNavigate={setDate}
               onSelectSlot={onSelectSlot}
-              onSelectEvent={onSelectEvent}
+              onSelectEvent={(event) => onSelectEvent?.(event as CalendarEvent)}
               selectable
               popup
-              eventPropGetter={eventStyleGetter}
+              eventPropGetter={(event) => eventStyleGetter(event as CalendarEvent)}
+              components={{
+                event: ({ event }: any) => <CalendarEventContent event={event as CalendarEvent} />,
+              }}
+              formats={{
+                eventTimeRangeFormat: () => '',
+              }}
+              onRangeChange={onRangeChange as any}
+              draggableAccessor={(event: any) => {
+                const e = event as CalendarEvent
+                if (e.resource?.type !== 'consultation') return false
+                const status = e.resource?.status
+                return status !== 'CANCELLED' && status !== 'COMPLETED'
+              }}
+              resizable
+              onEventDrop={(args: any) => {
+                if (!onEventDrop) return
+                onEventDrop({
+                  event: args.event as CalendarEvent,
+                  start: args.start as Date,
+                  end: args.end as Date,
+                  isAllDay: !!args.isAllDay,
+                })
+              }}
+              onEventResize={(args: any) => {
+                if (!onEventResize) return
+                onEventResize({
+                  event: args.event as CalendarEvent,
+                  start: args.start as Date,
+                  end: args.end as Date,
+                  isAllDay: !!args.isAllDay,
+                })
+              }}
               messages={{
                 next: 'Próximo',
                 previous: 'Anterior',

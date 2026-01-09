@@ -69,8 +69,15 @@ export default function SchedulePage() {
   useEffect(() => {
     fetch('/api/patients')
       .then(res => res.json())
-      .then(data => setPatients(data.data || []))
-      .catch(err => console.error('Error fetching patients:', err))
+      .then(data => setPatients(data.patients || data.data || []))
+      .catch(err => {
+        console.error('Error fetching patients:', err)
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar pacientes',
+          variant: 'destructive'
+        })
+      })
   }, [])
 
   // Generate time slots and fetch appointments
@@ -337,6 +344,11 @@ export default function SchedulePage() {
                   <SelectValue placeholder="Selecione o paciente" />
                 </SelectTrigger>
                 <SelectContent>
+                  {patients.length === 0 && (
+                    <SelectItem value="__empty" disabled>
+                      Nenhum paciente disponível
+                    </SelectItem>
+                  )}
                   {patients.map(patient => (
                     <SelectItem key={patient.id} value={patient.id}>
                       {patient.name} - {patient.cpf}

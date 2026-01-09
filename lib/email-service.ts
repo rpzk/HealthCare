@@ -1,6 +1,6 @@
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import nodemailer from 'nodemailer'
-import { settings } from '@/lib/settings'
+import { SystemSettingsService } from '@/lib/system-settings-service'
 
 export interface EmailOptions {
   to: string | string[]
@@ -38,23 +38,41 @@ export class EmailService {
   }
 
   public async getConfig(): Promise<EmailConfig> {
-    // Carregar configurações do banco (com fallback para env vars)
-    const dbSettings = await settings.getMany([
-      'EMAIL_ENABLED', 'EMAIL_FROM', 'EMAIL_PROVIDER',
-      'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS'
+    // Carregar configurações do banco (descriptografadas) com fallback para env vars
+    const dbSettings = await SystemSettingsService.getMany([
+      'EMAIL_ENABLED',
+      'EMAIL_FROM',
+      'EMAIL_PROVIDER',
+      'SMTP_FROM',
+      'SMTP_HOST',
+      'SMTP_PORT',
+      'SMTP_SECURE',
+      'SMTP_USER',
+      'SMTP_PASS',
+      'SMTP_PASSWORD'
     ])
 
+    const enabled = (dbSettings.EMAIL_ENABLED || process.env.EMAIL_ENABLED) === 'true'
+    const provider = dbSettings.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || 'smtp'
+    const smtpPass = await SystemSettingsService.getSmtpPassword()
+    const smtpSecureValue = dbSettings.SMTP_SECURE ?? process.env.SMTP_SECURE
+
     return {
-      enabled: dbSettings.EMAIL_ENABLED ? dbSettings.EMAIL_ENABLED === 'true' : process.env.EMAIL_ENABLED === 'true',
-      from: dbSettings.EMAIL_FROM || process.env.EMAIL_FROM || 'noreply@healthcare.system',
-      provider: dbSettings.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || 'console',
+      enabled,
+      from:
+        dbSettings.EMAIL_FROM ||
+        dbSettings.SMTP_FROM ||
+        process.env.EMAIL_FROM ||
+        process.env.SMTP_FROM ||
+        'noreply@healthcare.system',
+      provider,
       smtp: {
         host: dbSettings.SMTP_HOST || process.env.SMTP_HOST,
         port: parseInt(dbSettings.SMTP_PORT || process.env.SMTP_PORT || '587'),
-        secure: dbSettings.SMTP_SECURE ? dbSettings.SMTP_SECURE === 'true' : process.env.SMTP_SECURE === 'true',
+        secure: smtpSecureValue ? smtpSecureValue === 'true' : process.env.SMTP_SECURE === 'true',
         auth: {
           user: dbSettings.SMTP_USER || process.env.SMTP_USER,
-          pass: dbSettings.SMTP_PASS || process.env.SMTP_PASS
+          pass: smtpPass
         }
       }
     }
@@ -69,7 +87,11 @@ export class EmailService {
         auth: {
           user: config.smtp.auth.user,
           pass: config.smtp.auth.pass
-        }
+        },
+        // Avoid long hangs in production when SMTP is unreachable.
+        connectionTimeout: 15_000,
+        greetingTimeout: 15_000,
+        socketTimeout: 20_000,
       })
     }
     return null
@@ -81,7 +103,27 @@ export class EmailService {
   public async sendEmail(options: EmailOptions, overrideConfig?: EmailConfig): Promise<{ success: boolean, error?: unknown }> {
     const config = overrideConfig || await this.getConfig()
     const { to, subject, html, text } = options
-    const from = options.from || config.from
+    const configuredFrom = options.from || config.from
+
+    // Some SMTP providers (notably Gmail) may reject or silently drop messages
+    // when the From domain doesn't match the authenticated user (DMARC/SPF).
+    // In that case, send using the authenticated user and preserve the desired
+    // address as Reply-To.
+    const smtpUser = config.smtp.auth.user
+    const smtpHost = config.smtp.host || ''
+    const isGmailSmtp = config.provider === 'smtp' && smtpHost.includes('gmail.com')
+    const normalizedConfiguredFrom = String(configuredFrom || '').trim().toLowerCase()
+    const normalizedSmtpUser = String(smtpUser || '').trim().toLowerCase()
+
+    const effectiveFrom =
+      isGmailSmtp && normalizedSmtpUser && normalizedConfiguredFrom && normalizedConfiguredFrom !== normalizedSmtpUser
+        ? normalizedSmtpUser
+        : configuredFrom
+
+    const replyTo =
+      isGmailSmtp && normalizedSmtpUser && normalizedConfiguredFrom && normalizedConfiguredFrom !== normalizedSmtpUser
+        ? configuredFrom
+        : undefined
 
     // DEBUG: Log de configuração
     console.log('📧 [EMAIL-SERVICE] Config:', {
@@ -104,7 +146,7 @@ export class EmailService {
       switch (config.provider) {
         case 'console':
           console.log('📧 EMAIL SENT (CONSOLE):', {
-            from,
+            from: effectiveFrom,
             to,
             subject,
             contentLength: html.length
@@ -116,12 +158,31 @@ export class EmailService {
           if (!transporter) {
             throw new Error('SMTP Transporter not initialized')
           }
-          await transporter.sendMail({
-            from,
+
+          // Validate connection early to surface auth/TLS issues with a clearer error.
+          try {
+            await transporter.verify()
+          } catch (verifyError) {
+            console.error('❌ [EMAIL-SERVICE] SMTP verify failed:', verifyError)
+            throw verifyError
+          }
+
+          const info = await transporter.sendMail({
+            from: effectiveFrom,
+            ...(replyTo ? { replyTo } : {}),
             to,
             subject,
             html,
             text
+          })
+
+          console.log('📧 [EMAIL-SERVICE] SMTP send result:', {
+            from: effectiveFrom,
+            replyTo,
+            messageId: (info as any)?.messageId,
+            accepted: (info as any)?.accepted,
+            rejected: (info as any)?.rejected,
+            response: (info as any)?.response,
           })
           break
         }
@@ -563,11 +624,15 @@ export async function sendAppointmentConfirmationEmail(
     </html>
   `
 
-  return emailService.sendEmail({
-    to: data.patientEmail,
-    subject: `Agendamento confirmado - ${data.doctorName}`,
-    html,
-  }).then(result => result.success)
+  const subjectPrefix = data.status === 'CONFIRMED' ? 'Agendamento confirmado' : 'Agendamento recebido'
+
+  return emailService
+    .sendEmail({
+      to: data.patientEmail,
+      subject: `${subjectPrefix} - ${data.doctorName}`,
+      html,
+    })
+    .then((result) => result.success)
 }
 
 interface AppointmentCancellationData {
@@ -631,4 +696,139 @@ export async function sendAppointmentCancellationEmail(
     subject: `Agendamento cancelado - ${data.doctorName}`,
     html,
   }).then(result => result.success)
+}
+
+interface AppointmentRescheduleData {
+  patientEmail: string
+  patientName: string
+  doctorName: string
+  oldDate: string
+  oldTime: string
+  newDate: string
+  newTime: string
+}
+
+export async function sendAppointmentRescheduledEmail(
+  data: AppointmentRescheduleData
+): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 0 0 5px 5px; }
+        .appointment-info { background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 15px 0; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Agendamento Remarcado</h1>
+          <p>O horário da sua consulta foi atualizado</p>
+        </div>
+        <div class="content">
+          <p>Olá <strong>${data.patientName}</strong>,</p>
+          <p>Sua consulta com <strong>${data.doctorName}</strong> foi remarcada. Confira abaixo:</p>
+
+          <div class="appointment-info">
+            <h3>📅 Antes</h3>
+            <p><strong>Data:</strong> ${data.oldDate}</p>
+            <p><strong>Horário:</strong> ${data.oldTime}</p>
+          </div>
+
+          <div class="appointment-info">
+            <h3>✅ Agora</h3>
+            <p><strong>Data:</strong> ${data.newDate}</p>
+            <p><strong>Horário:</strong> ${data.newTime}</p>
+          </div>
+
+          <p style="margin-top: 20px;">Se você tiver dúvidas ou precisar de outro horário, entre em contato com a clínica.</p>
+
+          <div class="footer">
+            <p>Este é um email automático, por favor não responda.</p>
+            <p>&copy; ${new Date().getFullYear()} HealthCare - Sistema de Agendamento</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return emailService
+    .sendEmail({
+      to: data.patientEmail,
+      subject: `Agendamento remarcado - ${data.doctorName}`,
+      html,
+    })
+    .then((result) => result.success)
+}
+
+interface AppointmentReassignedData {
+  patientEmail: string
+  patientName: string
+  oldDoctorName: string
+  newDoctorName: string
+  date: string
+  time: string
+}
+
+export async function sendAppointmentReassignedEmail(
+  data: AppointmentReassignedData
+): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 0 0 5px 5px; }
+        .appointment-info { background: white; padding: 15px; border-left: 4px solid #4f46e5; margin: 15px 0; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Profissional Atualizado</h1>
+          <p>O profissional responsável pela sua consulta foi alterado</p>
+        </div>
+        <div class="content">
+          <p>Olá <strong>${data.patientName}</strong>,</p>
+          <p>O profissional do seu agendamento foi atualizado. Confira abaixo:</p>
+
+          <div class="appointment-info">
+            <h3>📋 Detalhes do Agendamento</h3>
+            <p><strong>Data:</strong> ${data.date}</p>
+            <p><strong>Horário:</strong> ${data.time}</p>
+            <p><strong>Profissional anterior:</strong> ${data.oldDoctorName}</p>
+            <p><strong>Novo profissional:</strong> ${data.newDoctorName}</p>
+          </div>
+
+          <p style="margin-top: 20px;">Se você tiver dúvidas, entre em contato com a clínica.</p>
+
+          <div class="footer">
+            <p>Este é um email automático, por favor não responda.</p>
+            <p>&copy; ${new Date().getFullYear()} HealthCare - Sistema de Agendamento</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return emailService
+    .sendEmail({
+      to: data.patientEmail,
+      subject: `Profissional atualizado - ${data.newDoctorName}`,
+      html,
+    })
+    .then((result) => result.success)
 }

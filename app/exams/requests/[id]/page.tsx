@@ -53,7 +53,7 @@ interface ExamRequestDetail {
 export default function ExamRequestDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const router = useRouter()
-  const { success, error: showError } = useToast()
+  const { toast } = useToast()
   
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
@@ -105,9 +105,10 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
       }
     } catch (e) {
       setError((e as Error).message)
-      showError({ 
+      toast({ 
         title: 'Erro ao carregar', 
-        description: (e as Error).message 
+        description: (e as Error).message,
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -135,14 +136,15 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
       setShowPasswordDialog(false)
       setPassword('')
       
-      success({ 
+      toast({ 
         title: 'Solicitação assinada!', 
         description: 'A assinatura digital foi aplicada com sucesso' 
       })
     } catch (e) {
-      showError({ 
+      toast({ 
         title: 'Erro ao assinar', 
-        description: (e as Error).message 
+        description: (e as Error).message,
+        variant: 'destructive'
       })
     } finally {
       setSigning(false)
@@ -155,15 +157,16 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
       const res = await fetch(`/api/exam-requests/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Erro ao deletar solicitação')
       
-      success({ 
+      toast({ 
         title: 'Solicitação deletada!', 
         description: 'A solicitação de exame foi removida com sucesso' 
       })
       router.push('/exams')
     } catch (e) {
-      showError({ 
+      toast({ 
         title: 'Erro ao deletar', 
-        description: (e as Error).message 
+        description: (e as Error).message,
+        variant: 'destructive'
       })
     } finally {
       setDeleting(false)
@@ -184,14 +187,15 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
       setData(updated)
       setShowCancelDialog(false)
       
-      success({ 
+      toast({ 
         title: 'Solicitação cancelada', 
         description: 'O status foi atualizado para cancelado' 
       })
     } catch (e) {
-      showError({ 
+      toast({ 
         title: 'Erro ao cancelar', 
-        description: (e as Error).message 
+        description: (e as Error).message,
+        variant: 'destructive'
       })
     }
   }
@@ -215,14 +219,15 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
       setData(updated)
       setShowResultDialog(false)
       
-      success({ 
+      toast({ 
         title: 'Resultado atualizado!', 
         description: 'O resultado do exame foi salvo com sucesso' 
       })
     } catch (e) {
-      showError({ 
+      toast({ 
         title: 'Erro ao atualizar', 
-        description: (e as Error).message 
+        description: (e as Error).message,
+        variant: 'destructive'
       })
     } finally {
       setUpdating(false)
@@ -231,9 +236,10 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
 
   const handlePrint = () => {
     if (!isSigned && requireSignBeforePrint) {
-      showError({
+      toast({
         title: 'Assinatura necessária',
-        description: 'Esta solicitação deve ser assinada antes de imprimir'
+        description: 'Esta solicitação deve ser assinada antes de imprimir',
+        variant: 'destructive'
       })
       return
     }
@@ -242,9 +248,10 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
 
   const handleShare = () => {
     if (!isSigned && requireSignBeforePrint) {
-      showError({
+      toast({
         title: 'Assinatura necessária',
-        description: 'Esta solicitação deve ser assinada antes de compartilhar'
+        description: 'Esta solicitação deve ser assinada antes de compartilhar',
+        variant: 'destructive'
       })
       return
     }
@@ -255,12 +262,12 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
     } else {
       try { 
         navigator.clipboard.writeText(shareUrl)
-        success({ 
+        toast({ 
           title: 'Link copiado!', 
           description: 'O link foi copiado para a área de transferência' 
         })
       } catch {
-        showError({ title: 'Erro ao copiar link' })
+        toast({ title: 'Erro ao copiar link', variant: 'destructive' })
       }
     }
   }
@@ -388,24 +395,21 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
               onSign={() => setShowPasswordDialog(true)}
               canCancel={data.status !== 'COMPLETED' && data.status !== 'CANCELLED'}
               onCancel={() => setShowCancelDialog(true)}
-              customActions={[
+              additionalActions={[
                 {
                   label: 'Atualizar Resultado',
                   icon: <FileCheck className="h-4 w-4" />,
                   onClick: () => setShowResultDialog(true),
-                  disabled: data.status === 'CANCELLED'
                 },
                 {
                   label: 'Imprimir',
                   icon: <Printer className="h-4 w-4" />,
                   onClick: handlePrint,
-                  disabled: !isSigned && requireSignBeforePrint
                 },
                 {
                   label: 'Compartilhar',
                   icon: <Share2 className="h-4 w-4" />,
                   onClick: handleShare,
-                  disabled: !isSigned && requireSignBeforePrint
                 }
               ]}
             />

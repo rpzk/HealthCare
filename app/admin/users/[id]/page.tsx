@@ -49,6 +49,20 @@ import { toast } from '@/hooks/use-toast'
 import { UserRolesDialog } from '@/components/admin/user-roles-dialog'
 import { LinkPatientDialog } from '@/components/admin/link-patient-dialog'
 
+// Função para formatar telefone
+const formatPhoneNumber = (value: string): string => {
+  // Remove tudo que não é número
+  const numbers = value.replace(/\D/g, '')
+  
+  // Limita a 11 dígitos
+  const trimmed = numbers.slice(0, 11)
+  
+  // Formata como (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+  if (trimmed.length <= 2) return trimmed
+  if (trimmed.length <= 7) return `(${trimmed.slice(0, 2)}) ${trimmed.slice(2)}`
+  return `(${trimmed.slice(0, 2)}) ${trimmed.slice(2, 7)}-${trimmed.slice(7)}`
+}
+
 interface UserDetails {
   id: string
   name: string
@@ -541,7 +555,8 @@ export default function UserDetailsPage() {
               <Label>Telefone</Label>
               <Input 
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
+                placeholder="(11) 99999-9999"
               />
             </div>
             <div className="space-y-2">

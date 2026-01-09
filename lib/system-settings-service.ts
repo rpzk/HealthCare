@@ -9,14 +9,29 @@
  * - Categorização de settings
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto'
 import prisma from '@/lib/prisma'
 
 // Chave de criptografia do .env (deve ser mantida em .env)
-const MASTER_KEY = process.env.ENCRYPTION_KEY || ''
+const MASTER_KEY_RAW = process.env.ENCRYPTION_KEY || ''
 
-if (!MASTER_KEY || MASTER_KEY.length < 32) {
-  console.warn('⚠️ ENCRYPTION_KEY não configurada adequadamente')
+const isHex = (s: string) => /^[0-9a-fA-F]+$/.test(s)
+const KEY_BYTES = (() => {
+  if (!MASTER_KEY_RAW) return null
+  // Preferir chave em hex (32 bytes => 64 chars hex)
+  if (MASTER_KEY_RAW.length === 64 && isHex(MASTER_KEY_RAW)) {
+    return Buffer.from(MASTER_KEY_RAW, 'hex')
+  }
+  // Fallback seguro: derivar 32 bytes via SHA-256 (aceita passphrase)
+  return createHash('sha256').update(MASTER_KEY_RAW, 'utf8').digest()
+})()
+
+const HAS_MASTER_KEY = !!KEY_BYTES
+
+if (!HAS_MASTER_KEY) {
+  console.warn('⚠️ ENCRYPTION_KEY não configurada — valores sensíveis serão salvos sem criptografia')
+} else if (MASTER_KEY_RAW.length !== 64 || !isHex(MASTER_KEY_RAW)) {
+  console.warn('⚠️ ENCRYPTION_KEY não está em hex (64 chars). Usando derivação SHA-256 para criptografia.')
 }
 
 // Cache em memória (TTL: 5 minutos)
@@ -58,18 +73,24 @@ export interface SystemSettingData {
  * Service de configurações do sistema
  */
 export class SystemSettingsService {
+  private static isMaskedSecret(val: unknown): boolean {
+    if (typeof val !== 'string') return false
+    const trimmed = val.trim()
+    return trimmed.length > 0 && (/^[*•]+$/.test(trimmed) || trimmed === '********')
+  }
+
   /**
    * Criptografa um valor usando AES-256-CBC
    */
   private static encrypt(value: string): string {
-    if (!MASTER_KEY) {
+    if (!KEY_BYTES) {
       throw new Error('ENCRYPTION_KEY não configurada')
     }
 
     const iv = randomBytes(16)
     const cipher = createCipheriv(
       'aes-256-cbc',
-      Buffer.from(MASTER_KEY, 'hex'),
+      KEY_BYTES,
       iv
     )
 
@@ -86,7 +107,7 @@ export class SystemSettingsService {
    * Descriptografa um valor
    */
   private static decrypt(encryptedValue: string): string {
-    if (!MASTER_KEY) {
+    if (!KEY_BYTES) {
       throw new Error('ENCRYPTION_KEY não configurada')
     }
 
@@ -98,7 +119,7 @@ export class SystemSettingsService {
 
     const decipher = createDecipheriv(
       'aes-256-cbc',
-      Buffer.from(MASTER_KEY, 'hex'),
+      KEY_BYTES,
       Buffer.from(ivHex, 'hex')
     )
 
@@ -183,8 +204,13 @@ export class SystemSettingsService {
       updatedBy,
     } = options
 
-    // Criptografar se necessário
-    const finalValue = encrypted ? this.encrypt(value) : value
+    // Criptografar se possível; caso contrário, salvar sem criptografia para não bloquear persistência
+    const shouldEncrypt = encrypted && HAS_MASTER_KEY
+    if (encrypted && !HAS_MASTER_KEY) {
+      console.warn(`[SystemSettingsService] ENCRYPTION_KEY ausente/curta; salvando ${key} sem criptografia`)
+    }
+
+    const finalValue = shouldEncrypt ? this.encrypt(value) : value
 
     await prisma.systemSetting.upsert({
       where: { key },
@@ -194,7 +220,7 @@ export class SystemSettingsService {
         description,
         category,
         isPublic,
-        encrypted,
+        encrypted: shouldEncrypt,
         updatedBy,
       },
       update: {
@@ -202,7 +228,7 @@ export class SystemSettingsService {
         description,
         category,
         isPublic,
-        encrypted,
+        encrypted: shouldEncrypt,
         updatedBy,
         updatedAt: new Date(),
       },
@@ -266,6 +292,42 @@ export class SystemSettingsService {
     }
 
     return result
+  }
+
+  /**
+   * Retorna a senha SMTP mais recente e válida entre SMTP_PASS e SMTP_PASSWORD.
+   * Preferência: registro com updatedAt mais recente no banco.
+   */
+  static async getSmtpPassword(): Promise<string | undefined> {
+    try {
+      const settings = await prisma.systemSetting.findMany({
+        where: { key: { in: ['SMTP_PASS', 'SMTP_PASSWORD'] } },
+        orderBy: { updatedAt: 'desc' },
+        take: 2,
+      })
+
+      for (const s of settings) {
+        try {
+          const rawValue = s.encrypted ? this.decrypt(s.value) : s.value
+          const value = (rawValue || '').trim()
+          if (!value) continue
+          if (this.isMaskedSecret(value)) continue
+          return value
+        } catch (e) {
+          // Se não conseguir descriptografar um registro, tenta o próximo
+          console.error(`Erro ao descriptografar ${s.key}:`, e)
+          continue
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao buscar senha SMTP no banco:', e)
+    }
+
+    // Fallback para env vars
+    const envCandidates = [process.env.SMTP_PASS, process.env.SMTP_PASSWORD]
+      .map((v) => (v || '').trim())
+      .filter((v) => v && !this.isMaskedSecret(v))
+    return envCandidates[0]
   }
 
   /**

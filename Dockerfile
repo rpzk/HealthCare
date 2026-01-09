@@ -33,7 +33,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates openssl bash curl && rm -rf /var/lib/apt/lists/*
+        ca-certificates openssl bash curl rclone && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
