@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -26,6 +27,7 @@ import {
 import { NotificationService, Notification, NotificationPriority, NotificationType } from '@/lib/notification-service'
 
 export function NotificationCenter() {
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -151,6 +153,23 @@ export function NotificationCenter() {
     return new Date(date).toLocaleDateString('pt-BR')
   }
 
+  const getActionUrl = (notification: Notification): string | null => {
+    const metadata = notification.metadata as unknown as Record<string, unknown> | null
+    const actionUrl = metadata && typeof metadata.actionUrl === 'string' ? metadata.actionUrl : null
+    return actionUrl
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    const actionUrl = getActionUrl(notification)
+    if (notification.id && !notification.read) {
+      await markAsRead(notification.id)
+    }
+    if (actionUrl) {
+      setIsOpen(false)
+      router.push(actionUrl)
+    }
+  }
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -211,7 +230,7 @@ export function NotificationCenter() {
                     ? 'bg-muted/30 border-l-blue-500' 
                     : 'border-l-transparent'
                 }`}
-                onClick={() => !notification.read && markAsRead(notification.id!)}
+                onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-start space-x-3">
                   <div className="mt-0.5">

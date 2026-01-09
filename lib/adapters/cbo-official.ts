@@ -1,6 +1,6 @@
 import { ExternalFetchAdapter } from '@/lib/external-updates-service'
 import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { fetchRawToBuffer } from '@/scripts/fetch-raw'
 import fs from 'fs'
 import path from 'path'
@@ -99,32 +99,64 @@ function parseCsvBuffer(buffer: Buffer): RawRow[] {
   return parsed.data.map(normalizeRecord)
 }
 
-function sheetToRows(sheet: XLSX.WorkSheet): RawRow[] {
-  const rawRows = XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: undefined })
-  return rawRows.map(normalizeRecord)
+function worksheetToRows(worksheet: ExcelJS.Worksheet): RawRow[] {
+  const headerRow = worksheet.getRow(1)
+  const headerValues = (headerRow.values ?? []) as unknown[]
+  const headers = headerValues
+    .slice(1)
+    .map((value) => (value === null || value === undefined ? '' : String(value)))
+    .map(normalizeKey)
+
+  const rows: RawRow[] = []
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return
+    const values = (row.values ?? []) as unknown[]
+    const record: RawRow = {}
+    for (let i = 0; i < headers.length; i++) {
+      const key = headers[i]
+      if (!key) continue
+      const cellValue = values[i + 1]
+      if (cellValue === undefined || cellValue === null || cellValue === '') continue
+
+      if (typeof cellValue === 'object' && cellValue && 'text' in (cellValue as any)) {
+        record[key] = String((cellValue as any).text)
+      } else if (typeof cellValue === 'object' && cellValue && 'result' in (cellValue as any)) {
+        record[key] = (cellValue as any).result
+      } else {
+        record[key] = cellValue
+      }
+    }
+
+    if (Object.keys(record).length) {
+      rows.push(normalizeRecord(record))
+    }
+  })
+
+  return rows
 }
 
-function parseXlsxBuffer(buffer: Buffer): RawRow[] {
-  const workbook = XLSX.read(buffer, { type: 'buffer' })
-  if (!workbook.SheetNames.length) {
-    return []
-  }
+async function parseXlsxBuffer(buffer: Buffer): Promise<RawRow[]> {
+  const workbook = new ExcelJS.Workbook()
+  // Ensure a concrete Node Buffer type for ExcelJS typings.
+  const data = Buffer.from(buffer)
+  await workbook.xlsx.load(data as any)
+  if (!workbook.worksheets.length) return []
 
-  const normalizedSheetNames = workbook.SheetNames.map((name) => normalizeKey(name))
+  const normalizedSheetNames = workbook.worksheets.map((ws) => normalizeKey(ws.name || ''))
   const occSheetIndex = normalizedSheetNames.findIndex((name) => name.includes('ocup') || name.includes('occup'))
   const groupSheetIndex = normalizedSheetNames.findIndex((name) => name.includes('estrut') || name.includes('struct'))
 
   const primaryIndex = occSheetIndex !== -1 ? occSheetIndex : 0
-  const rows: RawRow[] = sheetToRows(workbook.Sheets[workbook.SheetNames[primaryIndex]])
+  const rows: RawRow[] = worksheetToRows(workbook.worksheets[primaryIndex])
 
   if (groupSheetIndex !== -1 && groupSheetIndex !== primaryIndex) {
-    rows.push(...sheetToRows(workbook.Sheets[workbook.SheetNames[groupSheetIndex]]))
+    rows.push(...worksheetToRows(workbook.worksheets[groupSheetIndex]))
   }
 
   return rows
 }
 
-function parseBuffer(buffer: Buffer, formatHint: 'csv' | 'xlsx'): RawRow[] {
+async function parseBuffer(buffer: Buffer, formatHint: 'csv' | 'xlsx'): Promise<RawRow[]> {
   return formatHint === 'csv' ? parseCsvBuffer(buffer) : parseXlsxBuffer(buffer)
 }
 
@@ -208,13 +240,13 @@ export const cboOfficialAdapter: ExternalFetchAdapter<CboNormalizedRow> = {
       const extension = path.extname(localPath).toLowerCase()
       const format: 'csv' | 'xlsx' = extension === '.csv' || extension === '.txt' ? 'csv' : 'xlsx'
       const buffer = fs.readFileSync(localPath)
-      rows = parseBuffer(buffer, format)
+      rows = await parseBuffer(buffer, format)
     } else if (CBO_CSV_URL) {
       const buffer = await fetchRawToBuffer(CBO_CSV_URL)
-      rows = parseBuffer(buffer, 'csv')
+      rows = await parseBuffer(buffer, 'csv')
     } else if (CBO_XLSX_URL) {
       const buffer = await fetchRawToBuffer(CBO_XLSX_URL)
-      rows = parseBuffer(buffer, 'xlsx')
+      rows = await parseBuffer(buffer, 'xlsx')
     }
 
     if (!rows || !rows.length) {

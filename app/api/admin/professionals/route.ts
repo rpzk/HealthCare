@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +17,30 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: session.user.id,
+      audience: getAudienceForRole(session.user.role),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {
@@ -44,6 +74,30 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: session.user.id,
+      audience: getAudienceForRole(session.user.role),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {
@@ -134,6 +188,30 @@ export async function PUT(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: session.user.id,
+      audience: getAudienceForRole(session.user.role),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {

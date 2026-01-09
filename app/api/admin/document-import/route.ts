@@ -6,6 +6,13 @@
 import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { medicalDocumentAI, type MedicalDocument, type DocumentAnalysis } from '@/lib/medical-document-ai'
+import { prisma } from '@/lib/prisma'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
 
 // Evita execução em build/SSG: rota puramente dinâmica
 export const dynamic = 'force-dynamic'
@@ -13,13 +20,37 @@ export const revalidate = 0
 export const runtime = 'nodejs'
 
 // GET - Listar documentos processados
-const getHandler = withAdminAuthUnlimited(async (request) => {
+const getHandler = withAdminAuthUnlimited(async (request, { user }) => {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const limit = parseInt(searchParams.get('limit') || '50')
   const offset = parseInt(searchParams.get('offset') || '0')
 
   try {
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: user.id,
+        audience: getAudienceForRole(user.role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
+    }
+
     // Em produção: retornar lista vazia, documentos só com dados reais do banco
     return NextResponse.json({
       documents: [],
@@ -40,8 +71,32 @@ const getHandler = withAdminAuthUnlimited(async (request) => {
 })
 
 // POST - Upload e processamento de documento
-const postHandler = withAdminAuthUnlimited(async (request) => {
+const postHandler = withAdminAuthUnlimited(async (request, { user }) => {
   try {
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: user.id,
+        audience: getAudienceForRole(user.role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     const patientId = formData.get('patientId') as string

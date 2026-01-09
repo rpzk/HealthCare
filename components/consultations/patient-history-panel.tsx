@@ -69,18 +69,47 @@ export function PatientHistoryPanel({ patientId, onRepeatPrescription }: Patient
       setLoading(true)
       setError(null)
 
-      // Carregar consultas anteriores
-      const consultRes = await fetch(`/api/patients/${patientId}/consultations?limit=5`)
+      // Consultas anteriores do paciente (usa filtros existentes ao invés de rota inexistente)
+      const consultRes = await fetch(`/api/consultations?patientId=${patientId}&limit=5`)
       if (consultRes.ok) {
         const consultData = await consultRes.json()
-        setConsultations(consultData.consultations || consultData.data || [])
+        const parsed = (consultData.consultations || consultData.data || []) as any[]
+        const mapped: PastConsultation[] = parsed.map((c) => ({
+          id: c.id,
+          date: c.scheduledDate || c.date || c.createdAt,
+          type: c.type || '',
+          doctor: c.doctor?.name || '',
+          diagnosis: c.chiefComplaint || c.diagnosis || undefined,
+          notes: c.notes || undefined,
+        }))
+        setConsultations(mapped)
+      } else {
+        setError('Não foi possível carregar as consultas anteriores')
+        console.error('Falha ao buscar consultas do paciente', consultRes.status, consultRes.statusText)
       }
 
-      // Carregar prescrições anteriores
-      const prescRes = await fetch(`/api/patients/${patientId}/prescriptions?limit=10`)
+      // Prescrições anteriores do paciente (usa rota principal com filtro por patientId)
+      const prescRes = await fetch(`/api/prescriptions?patientId=${patientId}&limit=10`)
       if (prescRes.ok) {
         const prescData = await prescRes.json()
-        setPrescriptions(prescData.prescriptions || prescData.data || [])
+        const parsed = (prescData.prescriptions || prescData.data || []) as any[]
+        const mapped: PastPrescription[] = parsed.map((p) => {
+          const med = p.medications?.[0] || {}
+          return {
+            id: p.id,
+            date: p.startDate || p.createdAt,
+            medication: med.name || p.medication || '',
+            dosage: med.dosage || p.dosage || '',
+            frequency: med.frequency || p.frequency || '',
+            duration: med.duration || p.duration || '',
+            instructions: med.instructions || p.instructions || undefined,
+            doctor: p.doctor?.name || '',
+          }
+        })
+        setPrescriptions(mapped)
+      } else {
+        setError('Não foi possível carregar as prescrições anteriores')
+        console.error('Falha ao buscar prescrições do paciente', prescRes.status, prescRes.statusText)
       }
     } catch (e) {
       setError('Erro ao carregar histórico')

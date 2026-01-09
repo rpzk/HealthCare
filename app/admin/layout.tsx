@@ -18,7 +18,8 @@ export default function AdminLayout({
     if (status === 'loading') return
     
     if (!session) {
-      router.push('/auth/signin')
+      const currentPath = `${window.location.pathname}${window.location.search}`
+      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(currentPath)}`)
       return
     }
 
@@ -29,7 +30,12 @@ export default function AdminLayout({
     const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
     
     if (!isAdmin) {
-      router.push('/')
+      // Evita loop quando /admin é acessado por não-admin.
+      if (userRole === 'PATIENT' || availableRoles.includes('PATIENT')) {
+        router.push('/minha-saude')
+      } else {
+        router.push('/appointments/dashboard')
+      }
     }
   }, [session, status, router])
 

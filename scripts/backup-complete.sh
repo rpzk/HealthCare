@@ -19,7 +19,8 @@
 set -e
 
 # Configurações
-BACKUP_DIR="/home/umbrel/backups/healthcare"
+APP_ROOT="${APP_ROOT:-/app}"
+BACKUP_DIR="/app/backups/healthcare"
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
 DB_BACKUP_FILE="healthcare_${TIMESTAMP}.sql.gz"
 CONFIG_BACKUP_FILE="config_${TIMESTAMP}.tar.gz"
@@ -90,9 +91,9 @@ CRITICAL_FILES=(
 
 # Copiar arquivos críticos
 for file in "${CRITICAL_FILES[@]}"; do
-  if [ -f "/home/umbrel/HealthCare/$file" ]; then
+  if [ -f "$APP_ROOT/$file" ]; then
     mkdir -p "$CONFIG_TEMP_DIR/$(dirname "$file")"
-    cp "/home/umbrel/HealthCare/$file" "$CONFIG_TEMP_DIR/$file"
+    cp "$APP_ROOT/$file" "$CONFIG_TEMP_DIR/$file"
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ Config: $file" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
   fi
 done
@@ -153,8 +154,7 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Configurações: ${CONFIG_SIZE}" | tee 
 echo -e "\n${BLUE}[3/4]${NC} Fazendo backup de certificados digitais..." | tee -a "$BACKUP_DIR/$BACKUP_LOG"
 
 CERT_LOCATIONS=(
-  "/home/umbrel/certs"
-  "/home/umbrel/HealthCare/certs"
+  "$APP_ROOT/certs"
   "/etc/healthcare/certs"
   "/var/healthcare/certs"
 )
@@ -228,8 +228,7 @@ cat > "$BACKUP_DIR/$BACKUP_MANIFEST" << EOF
     "file": "certs_${TIMESTAMP}.tar.gz",
     "types": ["A1", "A3", "A4"],
     "locations_scanned": [
-      "/home/umbrel/certs",
-      "/home/umbrel/HealthCare/certs",
+      "$APP_ROOT/certs",
       "/etc/healthcare/certs",
       "/var/healthcare/certs"
     ]
@@ -249,6 +248,44 @@ cat > "$BACKUP_DIR/$BACKUP_MANIFEST" << EOF
 EOF
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Manifest criado: $BACKUP_MANIFEST" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+
+################################################################################
+# PARTE 5: CÓPIA PARA GOOGLE DRIVE (se configurado)
+################################################################################
+
+if [ -n "$GDRIVE_SERVICE_ACCOUNT_JSON" ]; then
+  echo -e "\n${BLUE}[5/5]${NC} Enviando backups para Google Drive..." | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+
+  GDRIVE_CONFIG_FILE=$(mktemp)
+  GDRIVE_SA_FILE=$(mktemp)
+  trap "rm -rf $CONFIG_TEMP_DIR $CERTS_TEMP_DIR; rm -f $GDRIVE_CONFIG_FILE $GDRIVE_SA_FILE" EXIT
+
+  echo "$GDRIVE_SERVICE_ACCOUNT_JSON" > "$GDRIVE_SA_FILE"
+
+  cat > "$GDRIVE_CONFIG_FILE" << EOF
+[gdrive]
+type = drive
+scope = drive
+service_account_file = $GDRIVE_SA_FILE
+root_folder_id = ${GDRIVE_FOLDER_ID:-}
+EOF
+
+  if command -v rclone >/dev/null 2>&1; then
+    if rclone --config "$GDRIVE_CONFIG_FILE" about gdrive: --drive-root-folder-id "${GDRIVE_FOLDER_ID:-}" >/dev/null 2>&1; then
+      if rclone --config "$GDRIVE_CONFIG_FILE" copy "$BACKUP_DIR" gdrive: --drive-root-folder-id "${GDRIVE_FOLDER_ID:-}" --transfers=2 --checkers=4 --fast-list --skip-links --log-file "$BACKUP_DIR/rclone_${TIMESTAMP}.log" --log-level INFO; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Backup enviado para Google Drive" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+      else
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  Falha ao enviar para Google Drive (veja rclone_${TIMESTAMP}.log)" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+      fi
+    else
+      echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  Credenciais do Google Drive inválidas ou pasta indisponível" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+    fi
+  else
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  rclone não instalado no contêiner" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+  fi
+else
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] (Info) Google Drive não configurado. Pulei upload externo." | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+fi
 
 # Resumo final
 echo "" | tee -a "$BACKUP_DIR/$BACKUP_LOG"

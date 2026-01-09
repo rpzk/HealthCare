@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import PatientForm, { type PatientFormData } from './patient-form'
 import { PatientDetailsContent } from './patient-details-content'
+import { NewPatientDialog } from './new-patient-dialog'
 
 interface Patient {
   id: string
@@ -89,6 +90,7 @@ export function PatientsList() {
   const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const [defaultTab, setDefaultTab] = useState('overview')
+  const [showNewPatientDialog, setShowNewPatientDialog] = useState(false)
 
   const fetchPatients = async (page: number, search: string) => {
     try {
@@ -251,7 +253,7 @@ export function PatientsList() {
             className="pl-10"
           />
         </div>
-        <Button onClick={() => { setEditingPatient(null); setShowForm(true) }}>
+        <Button onClick={() => setShowNewPatientDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Paciente
         </Button>
@@ -373,6 +375,8 @@ export function PatientsList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <NewPatientDialog open={showNewPatientDialog} onOpenChange={setShowNewPatientDialog} />
     </div>
   )
 }

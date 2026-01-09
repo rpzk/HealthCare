@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { PatientsList } from '@/components/patients/patients-list'
 import { PageHeader } from '@/components/navigation/page-header'
 import { HydrationGuard } from '@/components/hydration-guard'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Pacientes - Sistema de Prontuário Eletrônico',
@@ -13,7 +14,16 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default function PatientsPage() {
+export default function PatientsPage({
+  searchParams,
+}: {
+  searchParams?: { action?: string | string[] }
+}) {
+  const action = Array.isArray(searchParams?.action) ? searchParams?.action[0] : searchParams?.action
+  if (action === 'new') {
+    redirect('/patients/invite')
+  }
+
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />

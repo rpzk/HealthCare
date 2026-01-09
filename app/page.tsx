@@ -19,8 +19,15 @@ export default async function HomePage() {
     const cookieStore = cookies()
     const activeRole = cookieStore.get('active_role')?.value
     
-    // Usar o papel ativo do cookie se existir, senão usar o papel da sessão
-    const effectiveRole = activeRole || session?.user?.role
+    // Usar o papel ativo do cookie APENAS se for permitido para este usuário.
+    // Isso evita loops/redirects incorretos quando o cookie fica “sujo” de outra conta.
+    const sessionRole = session?.user?.role
+    const availableRoles = (session.user as any)?.availableRoles as string[] | undefined
+    const isActiveRoleAllowed =
+      Boolean(activeRole) &&
+      (activeRole === sessionRole || (Array.isArray(availableRoles) && availableRoles.includes(activeRole!)))
+
+    const effectiveRole = isActiveRoleAllowed ? activeRole : sessionRole
     
     // Redirecionar usuários logados para suas respectivas áreas
     if (effectiveRole === 'PATIENT') {

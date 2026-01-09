@@ -3,6 +3,9 @@ import { withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import aiService from '@/lib/ai-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
 
 // Schema de validação para geração de resumo médico
 const medicalSummarySchema = z.object({
@@ -23,6 +26,33 @@ const medicalSummarySchema = z.object({
  */
 export const POST = withDoctorAuth(async (request, { user }) => {
   try {
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: user.id,
+        audience: TermAudience.PROFESSIONAL,
+        gates: ['AI'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json(
+          { error: e.message, code: e.code, missing: e.missing },
+          { status: 503 }
+        )
+      }
+      throw e
+    }
+
     const body = await request.json()
     
     // Validação com Zod
@@ -56,6 +86,36 @@ export const POST = withDoctorAuth(async (request, { user }) => {
       format,
       language
     } = validationResult.data
+
+    const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { userId: true } })
+    if (patient?.userId) {
+      try {
+        await assertUserAcceptedTerms({
+          prisma,
+          userId: patient.userId,
+          audience: TermAudience.PATIENT,
+          gates: ['AI'],
+        })
+      } catch (e) {
+        if (e instanceof TermsNotAcceptedError) {
+          return NextResponse.json(
+            {
+              error: e.message,
+              code: e.code,
+              missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+            },
+            { status: 403 }
+          )
+        }
+        if (e instanceof TermsNotConfiguredError) {
+          return NextResponse.json(
+            { error: e.message, code: e.code, missing: e.missing },
+            { status: 503 }
+          )
+        }
+        throw e
+      }
+    }
 
     // Gerar resumo médico usando IA
     const summary = await aiService.generateMedicalSummary(

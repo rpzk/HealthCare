@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useSidebar } from '@/hooks/use-sidebar'
+import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
 
 interface MenuItem {
   title: string
@@ -53,7 +54,7 @@ const menuItems: MenuItem[] = [
     href: '/patients',
     submenu: [
       { title: 'Lista', href: '/patients' },
-      { title: 'Novo', href: '/patients?action=new' },
+      { title: 'Novo', href: '/patients/invite' },
       { title: 'Busca', href: '/patients/search' },
     ]
   },
@@ -147,6 +148,7 @@ const menuItems: MenuItem[] = [
 export function Sidebar() {
   const { isCollapsed, toggleCollapsed } = useSidebar()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [showNewPatientDialog, setShowNewPatientDialog] = useState(false)
   const pathname = usePathname()
   // no session usage in this component (kept out to avoid unnecessary renders)
 
@@ -272,18 +274,32 @@ export function Sidebar() {
                   {item.submenu && expandedItems.includes(item.title) && (
                     <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-border pl-3">
                       {item.submenu.map((subItem) => (
-                        <Link
-                          key={subItem.title}
-                          href={subItem.href}
-                          className={cn(
-                            'block px-2 py-1.5 text-sm rounded transition-colors',
-                            isActive(subItem.href)
-                              ? 'bg-accent text-accent-foreground font-medium'
-                              : 'text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          {subItem.title}
-                        </Link>
+                        item.title === 'Pacientes' && subItem.title === 'Novo' ? (
+                          <button
+                            key={subItem.title}
+                            type="button"
+                            onClick={() => setShowNewPatientDialog(true)}
+                            className={cn(
+                              'block w-full text-left px-2 py-1.5 text-sm rounded transition-colors',
+                              'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            {subItem.title}
+                          </button>
+                        ) : (
+                          <Link
+                            key={subItem.title}
+                            href={subItem.href}
+                            className={cn(
+                              'block px-2 py-1.5 text-sm rounded transition-colors',
+                              isActive(subItem.href)
+                                ? 'bg-accent text-accent-foreground font-medium'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            {subItem.title}
+                          </Link>
+                        )
                       ))}
                     </div>
                   )}
@@ -292,6 +308,8 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
+
+        <NewPatientDialog open={showNewPatientDialog} onOpenChange={setShowNewPatientDialog} />
       </div>
     </TooltipProvider>
   )

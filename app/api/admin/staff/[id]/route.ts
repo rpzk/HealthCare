@@ -5,6 +5,12 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { EmailService } from '@/lib/email-service'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
 
 interface RouteParams {
   params: { id: string }
@@ -21,6 +27,30 @@ export async function GET(req: Request, { params }: RouteParams) {
   const userRole = (session.user as { role?: string }).role
   if (userRole !== 'ADMIN') {
     return NextResponse.json({ error: 'Apenas administradores podem acessar' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: (session.user as any).id,
+      audience: getAudienceForRole(userRole),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {
@@ -67,6 +97,30 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   const userRole = (session.user as { role?: string }).role
   if (userRole !== 'ADMIN') {
     return NextResponse.json({ error: 'Apenas administradores podem editar' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: (session.user as any).id,
+      audience: getAudienceForRole(userRole),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {
@@ -173,6 +227,30 @@ export async function DELETE(req: Request, { params }: RouteParams) {
   const userRole = (session.user as { role?: string }).role
   if (userRole !== 'ADMIN') {
     return NextResponse.json({ error: 'Apenas administradores podem remover' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: (session.user as any).id,
+      audience: getAudienceForRole(userRole),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {

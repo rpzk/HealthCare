@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { TelemedicineRecordingService } from '@/lib/telemedicine-recording-service'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
 
 /**
  * POST /api/recordings/[id]/stop
@@ -19,6 +22,33 @@ export async function POST(
         { error: 'Não autenticado' },
         { status: 401 }
       )
+    }
+
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: session.user.id,
+        audience: TermAudience.PROFESSIONAL,
+        gates: ['TELEMEDICINE', 'RECORDING'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json(
+          { error: e.message, code: e.code, missing: e.missing },
+          { status: 503 }
+        )
+      }
+      throw e
     }
 
     const { duration } = await request.json()

@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const pendingAnalysis = await prisma.patientQuestionnaire.count({
       where: {
         status: 'COMPLETED',
-        aiAnalysis: null,
+        aiAnalysis: undefined as any,
       },
     })
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       where: {
         status: 'COMPLETED',
         aiAnalysis: {
-          not: null,
+          not: undefined as any,
         },
       },
       select: {

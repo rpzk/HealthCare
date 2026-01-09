@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// Helper para verificar se o usuário é admin
+async function isUserAdmin(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { 
+      role: true,
+      assignedRoles: {
+        select: { role: true }
+      }
+    }
+  })
+
+  const userRole = user?.role
+  const assignedRoles = user?.assignedRoles?.map(r => r.role) || []
+  return userRole === 'ADMIN' || assignedRoles.includes('ADMIN')
+}
 
 // GET - Listar papéis atribuídos a um usuário
 export async function GET(
@@ -15,13 +41,33 @@ export async function GET(
     }
 
     // Verificar se é admin
-    const currentUser = await prisma.user.findUnique({
-      where: { id: (session.user as any).id },
-      select: { role: true }
-    })
-
-    if (currentUser?.role !== 'ADMIN') {
+    const isAdmin = await isUserAdmin((session.user as any).id)
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: (session.user as any).id,
+        audience: getAudienceForRole((session.user as any).role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
     }
 
     const userId = params.id
@@ -76,13 +122,33 @@ export async function POST(
     }
 
     // Verificar se é admin
-    const currentUser = await prisma.user.findUnique({
-      where: { id: (session.user as any).id },
-      select: { id: true, role: true }
-    })
-
-    if (currentUser?.role !== 'ADMIN') {
+    const isAdmin = await isUserAdmin((session.user as any).id)
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: (session.user as any).id,
+        audience: getAudienceForRole((session.user as any).role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
     }
 
     const userId = params.id
@@ -128,13 +194,13 @@ export async function POST(
       },
       update: {
         isPrimary,
-        assignedBy: currentUser.id
+        assignedBy: (session.user as any).id
       },
       create: {
         userId,
         role,
         isPrimary,
-        assignedBy: currentUser.id
+        assignedBy: (session.user as any).id
       }
     })
 
@@ -168,13 +234,33 @@ export async function DELETE(
     }
 
     // Verificar se é admin
-    const currentUser = await prisma.user.findUnique({
-      where: { id: (session.user as any).id },
-      select: { role: true }
-    })
-
-    if (currentUser?.role !== 'ADMIN') {
+    const isAdmin = await isUserAdmin((session.user as any).id)
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: (session.user as any).id,
+        audience: getAudienceForRole((session.user as any).role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
     }
 
     const userId = params.id

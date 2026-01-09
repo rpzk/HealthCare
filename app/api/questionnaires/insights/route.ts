@@ -19,13 +19,12 @@ export async function GET(req: NextRequest) {
       where: {
         status: 'COMPLETED',
         aiAnalysis: {
-          not: null,
+          not: undefined as any,
         },
       },
       include: {
         template: true,
         patient: true,
-        aiAnalysis: true,
       },
       orderBy: {
         aiAnalyzedAt: 'desc',

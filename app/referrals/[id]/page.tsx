@@ -66,7 +66,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 export default function ReferralDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const { success, error } = useToast()
+  const { toast } = useToast()
   
   const id = (params?.id as string) || ''
   const [referral, setReferral] = useState<Referral | null>(null)
@@ -86,9 +86,10 @@ export default function ReferralDetailPage() {
         setReferral(data.referral || data)
       } catch (err) {
         console.error('Erro ao buscar referência:', err)
-        error({
+        toast({
           title: 'Erro',
           description: 'Não foi possível carregar a referência',
+          variant: 'destructive'
         })
       } finally {
         setLoading(false)
@@ -107,7 +108,7 @@ export default function ReferralDetailPage() {
 
       if (!response.ok) throw new Error('Falha ao deletar')
 
-      success({
+      toast({
         title: 'Sucesso',
         description: 'Referência deletada com sucesso',
       })
@@ -115,9 +116,10 @@ export default function ReferralDetailPage() {
       router.push('/referrals')
     } catch (err) {
       console.error('Erro ao deletar:', err)
-      error({
+      toast({
         title: 'Erro',
         description: 'Não foi possível deletar a referência',
+        variant: 'destructive'
       })
     } finally {
       setIsDeleting(false)
@@ -135,7 +137,7 @@ export default function ReferralDetailPage() {
 
       if (!response.ok) throw new Error('Falha ao cancelar')
 
-      success({
+      toast({
         title: 'Sucesso',
         description: 'Referência cancelada com sucesso',
       })
@@ -143,9 +145,10 @@ export default function ReferralDetailPage() {
       setReferral((prev) => prev ? { ...prev, status: 'CANCELLED' } : null)
     } catch (err) {
       console.error('Erro ao cancelar:', err)
-      error({
+      toast({
         title: 'Erro',
         description: 'Não foi possível cancelar a referência',
+        variant: 'destructive'
       })
     } finally {
       setIsDeleting(false)

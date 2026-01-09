@@ -3,12 +3,43 @@ import { withAdminAuthUnlimited, createRateLimitStatsAPI, createRateLimitResetAP
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { MemoryRateLimiter } from '@/lib/rate-limiter'
 import { getRedisCombinedStats } from '@/lib/redis-integration'
+import { prisma } from '@/lib/prisma'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
 
 /**
  * GET - Estatísticas gerais do sistema de segurança
  */
 export const GET = withAdminAuthUnlimited(async (request: NextRequest, { user }) => {
   try {
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: user.id,
+        audience: getAudienceForRole(user.role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
+    }
+
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
@@ -148,6 +179,30 @@ export const GET = withAdminAuthUnlimited(async (request: NextRequest, { user })
  */
 export const POST = withAdminAuthUnlimited(async (request: NextRequest, { user }) => {
   try {
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: user.id,
+        audience: getAudienceForRole(user.role),
+        gates: ['ADMIN_PRIVILEGED'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+      }
+      throw e
+    }
+
     const body = await request.json()
     const { action, ...params } = body
 

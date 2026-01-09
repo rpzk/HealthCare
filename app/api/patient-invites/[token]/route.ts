@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { BiometricDataType, ConsentAction } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { emailService } from '@/lib/email-service'
+
+export const runtime = 'nodejs'
 
 // Info dos tipos biométricos
 const BIOMETRIC_DATA_INFO: Record<string, {
@@ -173,6 +178,22 @@ export async function GET(
       info: BIOMETRIC_DATA_INFO[consent.dataType] || BIOMETRIC_DATA_INFO['OTHER']
     }))
 
+    const terms = await prisma.term.findMany({
+      where: {
+        isActive: true,
+        OR: [{ audience: 'ALL' }, { audience: 'PATIENT' }],
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        content: true,
+        version: true,
+        updatedAt: true,
+      },
+      orderBy: [{ slug: 'asc' }, { createdAt: 'desc' }],
+    })
+
     return NextResponse.json({
       invite: {
         id: invite.id,
@@ -185,6 +206,7 @@ export async function GET(
       invitedBy: invite.invitedBy,
       biometricConsents: consentsWithInfo,
       biometricInfo: BIOMETRIC_DATA_INFO,
+      terms,
       // Informar sobre conta existente
       existingAccount: existingUser ? {
         exists: true,
@@ -215,6 +237,7 @@ export async function POST(
     const body = await request.json()
     const {
       acceptedConsents, // Array de dataTypes aceitos
+      acceptedTermIds, // Array de ids de termos aceitos
       password,
       phone,
       address,
@@ -227,7 +250,8 @@ export async function POST(
     const invite = await prisma.patientInvite.findUnique({
       where: { token },
       include: {
-        biometricConsents: true
+        biometricConsents: true,
+        invitedBy: { select: { id: true, role: true } },
       }
     })
 
@@ -241,6 +265,14 @@ export async function POST(
     if (invite.status !== 'PENDING' || invite.expiresAt < new Date()) {
       return NextResponse.json(
         { error: 'Este convite não é mais válido' },
+        { status: 400 }
+      )
+    }
+
+    const effectiveBirthDate = birthDate ? new Date(birthDate) : invite.birthDate
+    if (!effectiveBirthDate) {
+      return NextResponse.json(
+        { error: 'Data de nascimento é obrigatória para concluir o cadastro' },
         { status: 400 }
       )
     }
@@ -271,6 +303,9 @@ export async function POST(
 
     const now = new Date()
 
+    const responsibleDoctorId =
+      invite.assignedDoctorId || (invite.invitedBy?.role === 'DOCTOR' ? invite.invitedById : null)
+
     // Criar paciente e usuário em transação
     const result = await prisma.$transaction(async (tx) => {
       // 1. Criar registro de paciente
@@ -279,11 +314,11 @@ export async function POST(
           name: invite.patientName,
           email: invite.email,
           phone: phone || invite.phone,
-          birthDate: birthDate ? new Date(birthDate) : (invite.birthDate || new Date('1990-01-01')),
+          birthDate: effectiveBirthDate,
           gender: gender || 'OTHER',
           cpf: invite.cpf,
           address,
-          // Se usuário existente, vincular
+          // Vincular userId se já existir usuário
           userId: existingUser?.id
         }
       })
@@ -307,6 +342,12 @@ export async function POST(
           }
         })
         userId = newUser.id
+
+        // Garantir vínculo inverso (Patient.userId) para as APIs do portal do paciente
+        await tx.patient.update({
+          where: { id: patient.id },
+          data: { userId: newUser.id },
+        })
       } else {
         // 3. Se usuário existe, apenas vincular ao paciente
         await tx.user.update({
@@ -359,27 +400,82 @@ export async function POST(
         })
       }
 
-      // 7. Aceitar termos de uso (se existirem)
+      // 7. Aceitar termos (somente os que o usuário marcou)
       const activeTerms = await tx.term.findMany({
-        where: { isActive: true }
+        where: {
+          isActive: true,
+          OR: [{ audience: 'ALL' }, { audience: 'PATIENT' }],
+        },
+        select: { id: true, slug: true, title: true, version: true, content: true },
       })
 
-      for (const term of activeTerms) {
-        // Verificar se usuário já aceitou este termo
+      const requiredTermIds = new Set(activeTerms.map((t) => t.id))
+      const providedTermIds = Array.isArray(acceptedTermIds) ? acceptedTermIds : []
+
+      for (const requiredId of requiredTermIds) {
+        if (!providedTermIds.includes(requiredId)) {
+          throw new Error('Você precisa aceitar todos os termos para continuar')
+        }
+      }
+
+      const termsById = new Map(activeTerms.map((t) => [t.id, t] as const))
+
+      for (const termId of providedTermIds) {
+        const term = termsById.get(termId)
+        if (!term) continue
+
         const existingAcceptance = await tx.termAcceptance.findFirst({
-          where: { userId: userId!, termId: term.id }
+          where: { userId: userId!, termId: term.id },
         })
-        
+
         if (!existingAcceptance) {
           await tx.termAcceptance.create({
             data: {
               userId: userId!,
               termId: term.id,
+              termSlug: term.slug,
+              termTitle: term.title,
+              termVersion: term.version,
+              termContent: term.content,
               ipAddress,
-              userAgent
-            }
+              userAgent,
+            },
           })
         }
+      }
+
+      // 8. Vincular automaticamente o paciente ao médico responsável (care team)
+      if (responsibleDoctorId) {
+        // Garantir que apenas um membro primário exista
+        await tx.patientCareTeam.updateMany({
+          where: { patientId: patient.id, userId: { not: responsibleDoctorId } },
+          data: { isPrimary: false },
+        })
+
+        await tx.patientCareTeam.upsert({
+          where: {
+            patientId_userId: {
+              patientId: patient.id,
+              userId: responsibleDoctorId,
+            },
+          },
+          update: {
+            accessLevel: 'FULL',
+            isActive: true,
+            isPrimary: true,
+            addedById: invite.invitedById,
+            reason: 'Vínculo automático via convite de cadastro',
+          },
+          create: {
+            patientId: patient.id,
+            userId: responsibleDoctorId,
+            accessLevel: 'FULL',
+            isActive: true,
+            isPrimary: true,
+            addedById: invite.invitedById,
+            reason: 'Vínculo automático via convite de cadastro',
+          },
+        })
       }
 
       return { patient, userId, isExistingUser: !!existingUser }
@@ -399,9 +495,112 @@ export async function POST(
     }, { status: 201 })
   } catch (error) {
     console.error('Error accepting invite:', error)
+
+    if (error instanceof Error && error.message === 'Você precisa aceitar todos os termos para continuar') {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       { error: 'Erro ao processar aceite' },
       { status: 500 }
     )
+  }
+}
+
+// PATCH - Reenviar convite por e-mail (apenas profissional que criou ou ADMIN)
+export async function PATCH(
+  request: NextRequest,
+  context: RouteParams
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const { token } = await context.params
+
+    const invite = await prisma.patientInvite.findUnique({
+      where: { token },
+      include: {
+        invitedBy: {
+          select: {
+            id: true,
+            name: true,
+            speciality: true,
+          },
+        },
+      },
+    })
+
+    if (!invite) {
+      return NextResponse.json({ error: 'Convite não encontrado' }, { status: 404 })
+    }
+
+    const userRole = (session.user as any)?.role as string | undefined
+    const isAdmin = userRole === 'ADMIN'
+    const isOwner = invite.invitedById === session.user.id
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    if (invite.status !== 'PENDING') {
+      return NextResponse.json({ error: 'Convite não está pendente' }, { status: 400 })
+    }
+    if (invite.expiresAt < new Date()) {
+      return NextResponse.json({ error: 'Convite expirou' }, { status: 400 })
+    }
+
+    const config = await emailService.getConfig()
+    if (!config.enabled) {
+      return NextResponse.json({ error: 'Envio de e-mail está desabilitado no sistema' }, { status: 400 })
+    }
+
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const inviteLink = `${baseUrl}/invite/${token}`
+
+    const inviterName = invite.invitedBy?.name || 'Profissional'
+    const inviterSpeciality = invite.invitedBy?.speciality
+    const safeMessage = invite.customMessage ? String(invite.customMessage).trim() : ''
+
+    const result = await emailService.sendEmail({
+      to: invite.email,
+      subject: 'Convite para cadastro no HealthCare',
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.4;">
+          <h2 style="margin: 0 0 8px;">Reenvio de convite</h2>
+          <p style="margin: 0 0 12px;">
+            <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
+            convidou você para se cadastrar no sistema HealthCare.
+          </p>
+          ${safeMessage ? `
+            <div style="margin: 12px 0; padding: 12px; background: #f7f7f7; border-left: 4px solid #2563eb;">
+              <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
+              <div>${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            </div>
+          ` : ''}
+          <p style="margin: 16px 0;">
+            <a href="${inviteLink}" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 6px;">Aceitar convite</a>
+          </p>
+          <p style="margin: 0; font-size: 12px; color: #666;">Se preferir, copie e cole este link no navegador:</p>
+          <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${inviteLink}</p>
+          <p style="margin: 16px 0 0; font-size: 12px; color: #666;">Este link expira em ${Math.max(1, Math.ceil((invite.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} dias.</p>
+        </div>
+      `,
+      text: `Reenvio de convite para cadastro no HealthCare. Acesse: ${inviteLink}`,
+    })
+
+    if (!result.success) {
+      const message = result.error instanceof Error ? result.error.message : String(result.error || 'Falha ao enviar e-mail')
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error resending invite:', error)
+    return NextResponse.json({ error: 'Erro ao reenviar convite' }, { status: 500 })
   }
 }

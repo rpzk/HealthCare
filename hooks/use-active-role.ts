@@ -26,12 +26,18 @@ export function useActiveRole() {
 
     // Primeiro tentar ler do cookie
     const cookieRole = getCookie('active_role')
-    
-    if (cookieRole) {
+
+    const sessionRole = session?.user?.role as string | undefined
+    const availableRoles = (session?.user as any)?.availableRoles as string[] | undefined
+    const allowedRoles = Array.isArray(availableRoles)
+      ? availableRoles
+      : (sessionRole ? [sessionRole] : [])
+
+    if (cookieRole && allowedRoles.includes(cookieRole)) {
       setActiveRole(cookieRole)
-    } else if (session?.user?.role) {
+    } else if (sessionRole) {
       // Fallback para o papel da sessão
-      setActiveRole(session.user.role as string)
+      setActiveRole(sessionRole)
     }
     
     setIsLoading(false)

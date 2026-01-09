@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { TelemedicineRecordingService } from '@/lib/telemedicine-recording-service'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
 
 /**
  * POST /api/recordings/[id]/start
@@ -28,6 +31,58 @@ export async function POST(
         { error: 'Consentimento do paciente é obrigatório' },
         { status: 400 }
       )
+    }
+
+    // Enforce terms: professional + patient must have accepted required active docs
+    try {
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: session.user.id,
+        audience: TermAudience.PROFESSIONAL,
+        gates: ['TELEMEDICINE', 'RECORDING'],
+      })
+
+      const consultation = await prisma.consultation.findUnique({
+        where: { id: params.id },
+        select: { patient: { select: { userId: true } } },
+      })
+
+      const patientUserId = consultation?.patient?.userId
+      if (!patientUserId) {
+        return NextResponse.json(
+          { error: 'Paciente sem conta vinculada para aceite de termos', code: 'PATIENT_NO_USER' },
+          { status: 403 }
+        )
+      }
+
+      await assertUserAcceptedTerms({
+        prisma,
+        userId: patientUserId,
+        audience: TermAudience.PATIENT,
+        gates: ['TELEMEDICINE', 'RECORDING'],
+      })
+    } catch (e) {
+      if (e instanceof TermsNotAcceptedError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+          },
+          { status: 403 }
+        )
+      }
+      if (e instanceof TermsNotConfiguredError) {
+        return NextResponse.json(
+          {
+            error: e.message,
+            code: e.code,
+            missing: e.missing,
+          },
+          { status: 503 }
+        )
+      }
+      throw e
     }
 
     const recordingId = await TelemedicineRecordingService.startRecording(

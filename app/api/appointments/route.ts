@@ -3,6 +3,9 @@ import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { appointmentQuerySchema, createAppointmentSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 import { z } from 'zod'
+import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
+
+export const runtime = 'nodejs'
 
 // Direct Prisma client to avoid bundling issues
 const { PrismaClient } = require('@prisma/client')
@@ -133,13 +136,19 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     const { patientId, doctorId, scheduledDate, type, notes } = parseResult.data
 
     // Verify patient exists
-    const patient = await prisma.patient.findUnique({ where: { id: patientId } })
+    const patient = await prisma.patient.findUnique({
+      where: { id: patientId },
+      select: { id: true, name: true, email: true },
+    })
     if (!patient) {
       return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
     }
 
     // Verify doctor exists
-    const doctor = await prisma.user.findUnique({ where: { id: doctorId } })
+    const doctor = await prisma.user.findUnique({
+      where: { id: doctorId },
+      select: { id: true, name: true },
+    })
     if (!doctor) {
       return NextResponse.json({ error: 'Médico não encontrado' }, { status: 404 })
     }
@@ -183,6 +192,29 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
         }
       }
     })
+
+    // Notify patient (email) if available; never fail the appointment if email fails.
+    if (patient.email) {
+      try {
+        const dateStr = appointmentDate.toLocaleDateString('pt-BR')
+        const timeStr = appointmentDate.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+
+        await sendAppointmentConfirmationEmail({
+          patientEmail: patient.email,
+          patientName: patient.name,
+          doctorName: doctor.name,
+          date: dateStr,
+          time: timeStr,
+          reason: notes || 'Consulta',
+          status: 'SCHEDULED',
+        })
+      } catch (emailError) {
+        console.error('Error sending appointment confirmation email:', emailError)
+      }
+    }
 
     return NextResponse.json(consultation, { status: 201 })
   } catch (error: any) {

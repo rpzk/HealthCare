@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import {
+  assertUserAcceptedTerms,
+  getAudienceForRole,
+  TermsNotAcceptedError,
+  TermsNotConfiguredError,
+} from '@/lib/terms-enforcement'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // GET - Listar todos os usuários
 export async function GET(req: Request) {
@@ -14,6 +23,30 @@ export async function GET(req: Request) {
   const userRole = (session.user as { role?: string }).role
   if (userRole !== 'ADMIN') {
     return NextResponse.json({ error: 'Apenas administradores podem acessar' }, { status: 403 })
+  }
+
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: (session.user as any).id,
+      audience: getAudienceForRole(userRole),
+      gates: ['ADMIN_PRIVILEGED'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
+    }
+    throw e
   }
 
   try {

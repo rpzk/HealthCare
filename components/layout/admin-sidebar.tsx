@@ -180,6 +180,7 @@ const adminMenuItems: MenuItem[] = [
     submenu: [
       { title: 'Status', href: '/system-monitor' },
       { title: 'Configurações Gerais', href: '/settings' },
+      { title: 'Termos & Privacidade', href: '/admin/terms' },
       { title: 'Integrações', href: '/settings/integrations' },
       { title: 'Backup & Dados', href: '/admin/backup' },
     ]

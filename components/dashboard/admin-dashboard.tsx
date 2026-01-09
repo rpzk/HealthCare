@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ComponentType, type SVGProps } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
   Users, 
@@ -195,6 +196,7 @@ export function AdminDashboard() {
           icon={Users}
           color="blue"
           subtitle={stats.newPatientsThisPeriod > 0 ? `+${stats.newPatientsThisPeriod} no período` : undefined}
+          href="/patients"
         />
         <MetricCard
           title="Atendimentos"
@@ -203,6 +205,7 @@ export function AdminDashboard() {
           icon={Calendar}
           color="green"
           subtitle={`${stats.consultationsToday} hoje`}
+          href="/admin/appointments"
         />
         <MetricCard
           title="Média Diária"
@@ -220,6 +223,7 @@ export function AdminDashboard() {
           icon={UserCheck}
           color="amber"
           subtitle={`${stats.totalUsers} total`}
+          href="/admin/users"
         />
       </div>
 
@@ -253,18 +257,24 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Novos Usuários</p>
-                <p className="text-2xl font-bold">{stats.newUsersThisMonth}</p>
+        <Link
+          href="/admin/users"
+          className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          title="Abrir gestão de usuários"
+        >
+          <Card className="cursor-pointer transition-colors hover:bg-muted/40">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Novos Usuários</p>
+                  <p className="text-2xl font-bold">{stats.newUsersThisMonth}</p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500/50" />
               </div>
-              <Users className="h-8 w-8 text-blue-500/50" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">No período selecionado</p>
-          </CardContent>
-        </Card>
+              <p className="text-xs text-muted-foreground mt-3">No período selecionado</p>
+            </CardContent>
+          </Card>
+        </Link>
 
         <Card>
           <CardContent className="pt-6">
@@ -398,7 +408,8 @@ function MetricCard({
   icon: Icon, 
   color, 
   subtitle,
-  hideChange = false
+  hideChange = false,
+  href
 }: { 
   title: string
   value: string
@@ -407,6 +418,7 @@ function MetricCard({
   color: 'blue' | 'green' | 'purple' | 'amber' | 'red'
   subtitle?: string
   hideChange?: boolean
+  href?: string
 }) {
   const colorClasses = {
     blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
@@ -418,8 +430,8 @@ function MetricCard({
 
   const isPositive = change >= 0
 
-  return (
-    <Card>
+  const card = (
+    <Card className={href ? 'cursor-pointer transition-colors hover:bg-muted/40' : undefined}>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
@@ -446,6 +458,18 @@ function MetricCard({
         </div>
       </CardContent>
     </Card>
+  )
+
+  if (!href) return card
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      title={`Abrir ${title.toLowerCase()}`}
+    >
+      {card}
+    </Link>
   )
 }
 

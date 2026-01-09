@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,11 +27,26 @@ const ROLES = [
 
 export default function InvitesPage() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('PATIENT')
   const [generatedLink, setGeneratedLink] = useState('')
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const prefillEmail = searchParams.get('email')
+    const prefillRole = searchParams.get('role')
+
+    if (prefillEmail && prefillEmail !== email) {
+      setEmail(prefillEmail)
+    }
+
+    if (prefillRole && ROLES.some((r) => r.value === prefillRole) && prefillRole !== role) {
+      setRole(prefillRole)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,8 +109,8 @@ export default function InvitesPage() {
           <CardDescription>
             Preencha o email e o tipo de usuário para gerar um link único.
             <br />
-            <span className="text-yellow-600 font-medium">
-              Nota: O sistema gera o link, mas você deve enviá-lo manualmente para o usuário.
+            <span className="text-muted-foreground">
+              O sistema tenta enviar o convite por e-mail automaticamente. Se o envio estiver desativado, copie o link e envie manualmente.
             </span>
           </CardDescription>
         </CardHeader>
@@ -107,7 +123,6 @@ export default function InvitesPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="usuario@dominio.com"
                   className="pl-9"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

@@ -82,7 +82,7 @@ export default function SettingsPage() {
     SMTP_HOST: '',
     SMTP_PORT: '587',
     SMTP_USER: '',
-    SMTP_PASSWORD: '',
+    SMTP_PASS: '',
     SMTP_FROM: '',
     SMTP_FROM_NAME: 'HealthCare',
   })
@@ -102,8 +102,14 @@ export default function SettingsPage() {
     loadProfile()
     loadCertificates()
     loadNotifications()
-    loadEmailConfig()
   }, [])
+
+  useEffect(() => {
+    // Configurações de e-mail são globais do sistema e restritas ao ADMIN
+    if ((session?.user as any)?.role === 'ADMIN') {
+      loadEmailConfig()
+    }
+  }, [session])
 
   const loadProfile = async () => {
     try {
@@ -149,6 +155,7 @@ export default function SettingsPage() {
 
   const loadEmailConfig = async () => {
     try {
+      if ((session?.user as any)?.role !== 'ADMIN') return
       const response = await fetch('/api/system/settings')
       if (response.ok) {
         const data = await response.json()
@@ -156,10 +163,18 @@ export default function SettingsPage() {
           const emailSettings: any = {}
           data.settings.forEach((s: any) => {
             if (s.key.startsWith('EMAIL') || s.key.startsWith('SMTP')) {
-              emailSettings[s.key] = s.value
+              if (s.key === 'SMTP_PASS' || s.key === 'SMTP_PASSWORD') {
+                // Nunca carregar senha real via list (pode vir mascarada como ********)
+                emailSettings['SMTP_PASS'] = '••••••••'
+              } else {
+                emailSettings[s.key] = s.value
+              }
             }
           })
-          setEmailConfig((prev) => ({ ...prev, ...emailSettings }))
+          setEmailConfig((prev) => {
+            const updated = { ...prev, ...emailSettings }
+            return updated
+          })
         }
       }
     } catch (error) {
@@ -241,8 +256,29 @@ export default function SettingsPage() {
 
   const saveEmailConfig = async () => {
     try {
+      if ((session?.user as any)?.role !== 'ADMIN') {
+        toast.error('Acesso negado', {
+          description: 'Apenas administradores podem alterar a configuração de e-mail do sistema',
+        })
+        return
+      }
       setSaving(true)
-      const promises = Object.entries(emailConfig).map(([key, value]) =>
+
+      const isMaskedSecret = (val: unknown) => {
+        if (typeof val !== 'string') return false
+        const trimmed = val.trim()
+        return trimmed.length > 0 && (/^[*•]+$/.test(trimmed) || trimmed === '********')
+      }
+      
+      // Só enviar SMTP_PASS se o user digitou uma senha nova (não é máscara)
+      const newPassword = emailConfig.SMTP_PASS
+      const hasNewPassword = !!newPassword && !isMaskedSecret(newPassword)
+      
+      const configToSave = Object.entries(emailConfig)
+        .filter(([key]) => key !== 'SMTP_PASS') // Remover campo de senha temporariamente
+        .concat(hasNewPassword ? [['SMTP_PASS', newPassword.replace(/\s+/g, '')]] : []) // Adicionar só se houver nova
+
+      const promises = configToSave.map(([key, value]) =>
         fetch('/api/system/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -250,24 +286,39 @@ export default function SettingsPage() {
             key,
             value,
             category: 'EMAIL',
-            encrypted: key.includes('PASSWORD'),
           }),
         })
       )
 
-      await Promise.all(promises)
+      const results = await Promise.all(promises)
+      const firstError = results.find((r) => !r.ok)
+      if (firstError) {
+        const data = await firstError.json().catch(() => null)
+        throw new Error(data?.error || 'Falha ao salvar configurações de e-mail')
+      }
 
       toast.success('Configurações de e-mail salvas!', {
         description: 'As configurações SMTP foram atualizadas',
       })
+      
+      // Recarregar configurações após salvar (para atualizar a máscara)
+      loadEmailConfig()
     } catch (error) {
-      toast.error('Erro ao salvar configurações de e-mail')
+      toast.error('Erro ao salvar configurações de e-mail', {
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+      })
     } finally {
       setSaving(false)
     }
   }
 
   const handleTestEmail = async () => {
+    if ((session?.user as any)?.role !== 'ADMIN') {
+      toast.error('Acesso negado', {
+        description: 'Apenas administradores podem testar o envio de e-mails',
+      })
+      return
+    }
     if (!emailConfig.EMAIL_ENABLED || emailConfig.EMAIL_ENABLED === 'false') {
       toast.error('E-mail desabilitado', {
         description: 'Ative o envio de e-mails antes de testar',
@@ -290,12 +341,16 @@ export default function SettingsPage() {
 
     try {
       setTestingEmail(true)
+      const sanitizedConfig = {
+        ...emailConfig,
+        SMTP_PASS: (emailConfig.SMTP_PASS || '').replace(/\s+/g, ''),
+      }
       const response = await fetch('/api/settings/test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: testAddress,
-          config: emailConfig,
+          config: sanitizedConfig,
         }),
       })
 
@@ -825,6 +880,16 @@ export default function SettingsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {!isAdmin ? (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Esta configuração é global do sistema e pode ser alterada apenas por administradores.
+                          O envio de convites usa a configuração definida pelo admin.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
                     <div className="flex items-center justify-between">
                       <div>
                         <Label htmlFor="email-enabled">Habilitar envio de e-mails</Label>
@@ -896,11 +961,11 @@ export default function SettingsPage() {
                         id="smtp-password"
                         type="password"
                         placeholder="••••••••"
-                        value={emailConfig.SMTP_PASSWORD}
+                        value={emailConfig.SMTP_PASS}
                         onChange={(e) =>
                           setEmailConfig({
                             ...emailConfig,
-                            SMTP_PASSWORD: e.target.value,
+                            SMTP_PASS: e.target.value,
                           })
                         }
                       />
@@ -981,6 +1046,8 @@ export default function SettingsPage() {
                         )}
                       </Button>
                     </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

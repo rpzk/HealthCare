@@ -3,6 +3,9 @@ import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
 import { medicalAI } from '@/lib/advanced-medical-ai'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'
+import prisma from '@/lib/prisma'
+import { TermAudience } from '@prisma/client'
+import { assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
 
 // Schema de validação para verificação de interações
 const drugInteractionSchema = z.object({
@@ -21,12 +24,71 @@ function validateDrugInteraction(data: any) {
 
 // POST - Verificação de interações medicamentosas (apenas médicos)
 export const POST = withDoctorAuth(async (request, { user }) => {
+  try {
+    await assertUserAcceptedTerms({
+      prisma,
+      userId: user.id,
+      audience: TermAudience.PROFESSIONAL,
+      gates: ['AI'],
+    })
+  } catch (e) {
+    if (e instanceof TermsNotAcceptedError) {
+      return NextResponse.json(
+        {
+          error: e.message,
+          code: e.code,
+          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+        },
+        { status: 403 }
+      )
+    }
+    if (e instanceof TermsNotConfiguredError) {
+      return NextResponse.json(
+        { error: e.message, code: e.code, missing: e.missing },
+        { status: 503 }
+      )
+    }
+    throw e
+  }
+
   const validation = await validateRequestBody(request, validateDrugInteraction)
   if (!validation.success) {
     return validation.response!
   }
 
   const { medications, patientId } = validation.data!
+
+  if (patientId) {
+    const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { userId: true } })
+    if (patient?.userId) {
+      try {
+        await assertUserAcceptedTerms({
+          prisma,
+          userId: patient.userId,
+          audience: TermAudience.PATIENT,
+          gates: ['AI'],
+        })
+      } catch (e) {
+        if (e instanceof TermsNotAcceptedError) {
+          return NextResponse.json(
+            {
+              error: e.message,
+              code: e.code,
+              missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+            },
+            { status: 403 }
+          )
+        }
+        if (e instanceof TermsNotConfiguredError) {
+          return NextResponse.json(
+            { error: e.message, code: e.code, missing: e.missing },
+            { status: 503 }
+          )
+        }
+        throw e
+      }
+    }
+  }
 
   if (medications.length < 2) {
     return NextResponse.json({

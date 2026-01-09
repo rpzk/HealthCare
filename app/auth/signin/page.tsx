@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -17,14 +18,35 @@ export default function SignIn() {
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const router = useRouter()
 
+  const getSafeRedirectPath = () => {
+    if (typeof window === 'undefined') return '/'
+
+    const params = new URLSearchParams(window.location.search)
+    const callbackUrl = params.get('callbackUrl') || params.get('next')
+    if (!callbackUrl) return '/'
+
+    // Only allow same-origin redirects to avoid open-redirect issues.
+    try {
+      if (callbackUrl.startsWith('/')) return callbackUrl
+      const url = new URL(callbackUrl)
+      if (url.origin === window.location.origin) {
+        return url.pathname + url.search + url.hash
+      }
+    } catch {
+      // Ignore invalid URLs
+    }
+    return '/'
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
     try {
+      const safeEmail = email.trim()
       const result = await signIn('credentials', {
-        email,
+        email: safeEmail,
         password,
         redirect: false,
       })
@@ -35,7 +57,13 @@ export default function SignIn() {
         // Recarregar a sessão
         const session = await getSession()
         if (session) {
-          router.push('/')
+          const target = getSafeRedirectPath()
+          const userRole = (session.user as any)?.role
+          const availableRoles = (session.user as any)?.availableRoles || []
+          const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
+          const safeTarget = !isAdmin && target.startsWith('/admin') ? '/appointments/dashboard' : target
+
+          router.push(safeTarget)
           router.refresh()
         }
       }
@@ -47,7 +75,8 @@ export default function SignIn() {
   }
 
   const handlePasskey = async () => {
-    if (!email) {
+    const safeEmail = email.trim()
+    if (!safeEmail) {
       setError('Informe o email para usar Passkey')
       return
     }
@@ -57,7 +86,7 @@ export default function SignIn() {
       const optionsRes = await fetch('/api/auth/webauthn/authenticate/options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: safeEmail })
       })
       if (!optionsRes.ok) {
         const data = await optionsRes.json()
@@ -67,7 +96,7 @@ export default function SignIn() {
       const assertion = await startAuthentication(options)
       const result = await signIn('passkey', {
         redirect: false,
-        email,
+        email: safeEmail,
         assertion: JSON.stringify(assertion)
       })
       if (result?.error) {
@@ -75,7 +104,13 @@ export default function SignIn() {
       }
       const session = await getSession()
       if (session) {
-        router.push('/')
+        const target = getSafeRedirectPath()
+        const userRole = (session.user as any)?.role
+        const availableRoles = (session.user as any)?.availableRoles || []
+        const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
+        const safeTarget = !isAdmin && target.startsWith('/admin') ? '/appointments/dashboard' : target
+
+        router.push(safeTarget)
         router.refresh()
       }
     } catch (err: any) {
@@ -87,30 +122,30 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <Card className="w-full max-w-md p-8 space-y-6 shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-md p-6 sm:p-8 space-y-6">
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="p-3 bg-blue-600 rounded-full">
-              <HeartPulse className="w-8 h-8 text-white" />
+            <div className="p-3 bg-primary text-primary-foreground rounded-full">
+              <HeartPulse className="w-8 h-8" />
             </div>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Sistema HealthCare</h1>
-            <p className="text-gray-600">Entre com suas credenciais</p>
+            <h1 className="text-2xl font-semibold tracking-tight">Sistema HealthCare</h1>
+            <p className="text-muted-foreground">Entre com suas credenciais</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-600" />
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive">
+              <AlertCircle className="w-4 h-4" />
+              <p className="text-sm">{error}</p>
             </div>
           )}
 
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="text-sm font-medium">
               Email
             </label>
             <Input
@@ -118,7 +153,6 @@ export default function SignIn() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@healthcare.com"
               required
               disabled={loading}
               autoComplete="username"
@@ -126,7 +160,7 @@ export default function SignIn() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="text-sm font-medium">
               Senha
             </label>
             <Input
@@ -134,7 +168,6 @@ export default function SignIn() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
               required
               disabled={loading}
               autoComplete="current-password"
@@ -157,6 +190,15 @@ export default function SignIn() {
           >
             {passkeyLoading ? 'Autenticando...' : 'Entrar com Passkey'}
           </Button>
+
+          <div className="pt-2 text-center">
+            <Link
+              href="/"
+              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+            >
+              Voltar ao início
+            </Link>
+          </div>
         </form>
       </Card>
     </div>

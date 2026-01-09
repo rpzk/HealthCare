@@ -3,8 +3,9 @@
  * Script para criar usuário administrador inicial
  * 
  * Uso:
- *   npx tsx scripts/setup-admin.ts                    # Gera senha aleatória
- *   npx tsx scripts/setup-admin.ts "MinhaS3nh@Forte"  # Usa senha específica
+ *   npx tsx scripts/setup-admin.ts
+ *   npx tsx scripts/setup-admin.ts "<senha>"
+ *   npx tsx scripts/setup-admin.ts "<senha>" "<email>" "<nome>" "<telefone>"
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -60,25 +61,55 @@ async function main() {
     const passwordArg = process.argv[2]
     const password = passwordArg || generateSecurePassword(16)
     const passwordHash = await bcrypt.hash(password, 12)
-    
-    // Email do admin
-    const email = process.argv[3] || 'admin@healthcare.local'
+
+    const readline = await import('readline')
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+
+    const ask = async (question: string) => {
+      return await new Promise<string>((resolve) => {
+        rl.question(question, resolve)
+      })
+    }
+
+    // Dados do admin: exigimos dados reais (email/nome) para evitar defaults fictícios
+    const emailArg = process.argv[3]
+    const nameArg = process.argv[4]
+    const phoneArg = process.argv[5]
+
+    const email = (emailArg || (await ask('Email do administrador: '))).trim()
+    const name = (nameArg || (await ask('Nome do administrador: '))).trim()
+    const phoneInput = (phoneArg || (await ask('Telefone (opcional): '))).trim()
+    const phone = phoneInput.length > 0 ? phoneInput : null
+
+    rl.close()
+
+    if (!email) {
+      throw new Error('Email do administrador é obrigatório')
+    }
+    if (!name) {
+      throw new Error('Nome do administrador é obrigatório')
+    }
     
     const admin = await prisma.user.upsert({
       where: { email },
       update: {
-        name: 'Administrador do Sistema',
+        name,
         role: 'ADMIN',
         password: passwordHash,
         isActive: true,
+        phone,
+        speciality: null,
         updatedAt: new Date()
       },
       create: {
         email,
-        name: 'Administrador do Sistema',
+        name,
         role: 'ADMIN',
-        speciality: 'Administração',
-        phone: '(00) 00000-0000',
+        speciality: null,
+        phone,
         password: passwordHash,
         isActive: true
       }

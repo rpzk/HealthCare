@@ -8,7 +8,8 @@ export async function register() {
   const hasAddEvent = typeof (globalThis as any).addEventListener === 'function'
 
   try {
-    if (isNode) {
+    // Only run OpenTelemetry in Node.js server runtime, not during build
+    if (isNode && typeof process.env.NEXT_RUNTIME !== 'undefined') {
       // Initialize OpenTelemetry tracing
       if (process.env.OTEL_ENABLED === 'true') {
         const { NodeSDK } = await import('@opentelemetry/sdk-trace-node')

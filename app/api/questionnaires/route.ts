@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+export const runtime = 'nodejs'
+
 // GET - Lista templates de questionários
 export async function GET(req: NextRequest) {
   try {

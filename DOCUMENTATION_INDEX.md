@@ -29,6 +29,11 @@
 - SQL queries
 - Troubleshooting
 
+### Related: Patient Questionnaire View
+→ **[docs/QUESTIONARIO_PRECONSULTA_PACIENTE_VISUAL.md](docs/QUESTIONARIO_PRECONSULTA_PACIENTE_VISUAL.md)**
+- How questionnaires appear to patients
+- Sections, question types, and completion flow
+
 ---
 
 ## 📖 Complete Documentation
