@@ -294,53 +294,62 @@ export function formatBytes(bytes: number): string {
  * Testa conectividade com STUN/TURN
  */
 export async function testIceConnectivity(iceServers: RTCIceServer[]): Promise<IceTestResult> {
-  return new Promise(async (resolve) => {
-    const pc = new RTCPeerConnection({ iceServers })
-    
-    const candidates: RTCIceCandidate[] = []
-    let hasHost = false
-    let hasSrflx = false
-    let hasRelay = false
+  return new Promise((resolve) => {
+    const run = async () => {
+      const pc = new RTCPeerConnection({ iceServers })
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        candidates.push(event.candidate)
-        
-        if (event.candidate.type === 'host') hasHost = true
-        if (event.candidate.type === 'srflx') hasSrflx = true
-        if (event.candidate.type === 'relay') hasRelay = true
-      }
-    }
+      const candidates: RTCIceCandidate[] = []
+      let hasHost = false
+      let hasSrflx = false
+      let hasRelay = false
 
-    // Trigger ICE gathering
-    await pc.createOffer()
-    await pc.setLocalDescription()
-
-    // Wait for gathering to complete
-    const timeout = setTimeout(() => {
-      pc.close()
-      resolve({
-        hasHost,
-        hasSrflx,
-        hasRelay,
-        candidatesCount: candidates.length,
-        quality: hasRelay ? 'excellent' : hasSrflx ? 'good' : hasHost ? 'limited' : 'none'
-      })
-    }, 5000)
-
-    pc.onicegatheringstatechange = () => {
-      if (pc.iceGatheringState === 'complete') {
-        clearTimeout(timeout)
+      const finish = () => {
         pc.close()
         resolve({
           hasHost,
           hasSrflx,
           hasRelay,
           candidatesCount: candidates.length,
-          quality: hasRelay ? 'excellent' : hasSrflx ? 'good' : hasHost ? 'limited' : 'none'
+          quality: hasRelay ? 'excellent' : hasSrflx ? 'good' : hasHost ? 'limited' : 'none',
         })
       }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          candidates.push(event.candidate)
+
+          if (event.candidate.type === 'host') hasHost = true
+          if (event.candidate.type === 'srflx') hasSrflx = true
+          if (event.candidate.type === 'relay') hasRelay = true
+        }
+      }
+
+      // Wait for gathering to complete
+      const timeout = setTimeout(() => {
+        finish()
+      }, 5000)
+
+      pc.onicegatheringstatechange = () => {
+        if (pc.iceGatheringState === 'complete') {
+          clearTimeout(timeout)
+          finish()
+        }
+      }
+
+      // Trigger ICE gathering
+      await pc.createOffer()
+      await pc.setLocalDescription()
     }
+
+    void run().catch(() => {
+      resolve({
+        hasHost: false,
+        hasSrflx: false,
+        hasRelay: false,
+        candidatesCount: 0,
+        quality: 'none',
+      })
+    })
   })
 }
 

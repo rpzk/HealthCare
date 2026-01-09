@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
-
-// Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
-const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { prisma } from '@/lib/prisma'
 
 // POST - Check-in patient for appointment
 export const POST = withAuth(async (req: NextRequest, { params, user }) => {
   const rl = rateLimiters.default(req)
   if (rl instanceof NextResponse) return rl
 
-  // Only admin, manager, receptionist can do check-in
-  if (!['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(user.role)) {
+  // Only admin and receptionist can do check-in
+  if (!['ADMIN', 'RECEPTIONIST'].includes(user.role)) {
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 
@@ -40,17 +35,9 @@ export const POST = withAuth(async (req: NextRequest, { params, user }) => {
       )
     }
 
-    const updated = await prisma.consultation.update({
-      where: { id },
-      data: {
-        status: 'WAITING',
-        // We could add a checkedInAt field if it exists in schema
-      },
-      include: {
-        patient: { select: { id: true, name: true } },
-        doctor: { select: { id: true, name: true } }
-      }
-    })
+    // ConsultationStatus does not include a dedicated WAITING state.
+    // Keep status unchanged and only notify the doctor.
+    const updated = consultation
 
     // Notify doctor about patient arrival
     await prisma.notification.create({

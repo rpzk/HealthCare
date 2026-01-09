@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server'
 import { incCounter } from '@/lib/metrics'
 import { createRedisRateLimiter } from '@/lib/redis-integration'
-import { PrismaClient } from '@prisma/client'
-
-// Direct PrismaClient instantiation to avoid bundling issues
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
-
-function getPrismaClient() {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient()
-  }
-  return globalForPrisma.prisma
-}
-
-const prisma = getPrismaClient()
+import { prisma } from '@/lib/prisma'
 import pkg from '../../../package.json'
 
 // Garantir runtime Node.js para acesso ao Redis, e execução dinâmica
@@ -35,12 +23,7 @@ export async function GET() {
       diagnostics.ok = false
     } else {
       // SELECT 1 ping (Prisma conecta lazy ao executar a query)
-      let prismaRef: any = prisma as any
-      if (!prismaRef) {
-        const mod = await import('@prisma/client')
-        prismaRef = new (mod as any).PrismaClient()
-      }
-      await prismaRef.$queryRaw`SELECT 1`
+      await prisma.$queryRaw`SELECT 1`
       diagnostics.checks.db = { status: 'up' }
     }
   } catch (err: any) {

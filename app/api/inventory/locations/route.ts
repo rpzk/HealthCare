@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
+import { prisma } from '@/lib/prisma'
 
-// Direct Prisma client to avoid bundling issues
-import { PrismaClient, type Prisma } from '@prisma/client'
-const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import type { Prisma } from '@prisma/client'
 
 // GET - List storage locations
 export const GET = withAuth(async (req: NextRequest) => {

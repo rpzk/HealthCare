@@ -1,15 +1,5 @@
-import { PrismaClient } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
-
-// Direct PrismaClient instantiation to avoid bundling issues
-const globalForNotification = globalThis as unknown as { notificationPrisma: PrismaClient }
-
-function getNotificationPrisma() {
-  if (!globalForNotification.notificationPrisma) {
-    globalForNotification.notificationPrisma = new PrismaClient()
-  }
-  return globalForNotification.notificationPrisma
-}
+import { prisma } from '@/lib/prisma'
 
 export interface Notification {
   id: string
@@ -52,7 +42,6 @@ export interface NotificationCreateData {
 export class NotificationService {
   static async createNotification(data: NotificationCreateData) {
     try {
-      const prisma = getNotificationPrisma()
       const notification = await prisma.notification.create({
         data: {
           userId: data.userId,
@@ -74,7 +63,6 @@ export class NotificationService {
   }
 
   static async getUserNotifications(userId: string, filters: { unreadOnly?: boolean, limit?: number, priority?: string, type?: string } | boolean = {}): Promise<Notification[]> {
-    const prisma = getNotificationPrisma()
     const options = typeof filters === 'boolean' ? { unreadOnly: filters } : filters
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, unknown> = { userId }
@@ -90,14 +78,12 @@ export class NotificationService {
   }
 
   static async deleteNotification(id: string) {
-    const prisma = getNotificationPrisma()
     return prisma.notification.delete({
       where: { id }
     })
   }
 
   static async markAsRead(id: string) {
-    const prisma = getNotificationPrisma()
     return prisma.notification.update({
       where: { id },
       data: { read: true }
@@ -105,7 +91,6 @@ export class NotificationService {
   }
 
   static async markAllAsRead(userId: string) {
-    const prisma = getNotificationPrisma()
     return prisma.notification.updateMany({
       where: { userId, read: false },
       data: { read: true }
@@ -113,14 +98,12 @@ export class NotificationService {
   }
 
   static async getUnreadCount(userId: string): Promise<number> {
-    const prisma = getNotificationPrisma()
     return prisma.notification.count({
       where: { userId, read: false }
     })
   }
 
   static async getNotificationStats(userId: string) {
-    const prisma = getNotificationPrisma()
     const [total, unread, byType, byPriority] = await Promise.all([
       prisma.notification.count({ where: { userId } }),
       prisma.notification.count({ where: { userId, read: false } }),

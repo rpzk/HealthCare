@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   Search, Plus, Phone, Mail, Edit, UserX, Users, 
@@ -92,7 +92,18 @@ export function PatientsList() {
   const [defaultTab, setDefaultTab] = useState('overview')
   const [showNewPatientDialog, setShowNewPatientDialog] = useState(false)
 
-  const fetchPatients = async (page: number, search: string) => {
+  const currentPageRef = useRef(currentPage)
+  const searchTermRef = useRef(searchTerm)
+
+  useEffect(() => {
+    currentPageRef.current = currentPage
+  }, [currentPage])
+
+  useEffect(() => {
+    searchTermRef.current = searchTerm
+  }, [searchTerm])
+
+  const fetchPatients = useCallback(async (page: number, search: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -124,19 +135,22 @@ export function PatientsList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchPatients(currentPage, searchTerm)
-  }, [currentPage])
+    void fetchPatients(currentPage, searchTermRef.current)
+  }, [currentPage, fetchPatients])
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (currentPageRef.current === 1) {
+        void fetchPatients(1, searchTerm)
+        return
+      }
       setCurrentPage(1)
-      fetchPatients(1, searchTerm)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchTerm])
+  }, [fetchPatients, searchTerm])
 
   const handleEditPatient = async (patient: Patient) => {
     try {

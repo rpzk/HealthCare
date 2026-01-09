@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-// Direct PrismaClient instantiation to avoid bundling issues
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
-
-function getPrismaClient() {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient()
-  }
-  return globalForPrisma.prisma
-}
-
-const prisma = getPrismaClient()
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {

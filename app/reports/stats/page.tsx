@@ -148,7 +148,7 @@ export default function StatsPage() {
     } finally {
       setLoading(false)
     }
-  }, [timeRange])
+  }, [])
 
   useEffect(() => {
     fetchStatistics()

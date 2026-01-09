@@ -4,14 +4,9 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { appointmentQuerySchema, createAppointmentSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 import { z } from 'zod'
 import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
+import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
-
-// Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
-const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 // GET - List appointments/consultations
 export const GET = withAuth(async (req: NextRequest, { user }) => {

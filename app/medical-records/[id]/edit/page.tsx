@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MedicalRecordForm } from '@/components/medical-records/medical-record-form'
@@ -25,13 +25,7 @@ export default function EditMedicalRecordPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (recordId) {
-      fetchRecord()
-    }
-  }, [recordId])
-
-  const fetchRecord = async () => {
+  const fetchRecord = useCallback(async () => {
     try {
       const response = await fetch(`/api/medical-records/${recordId}`)
       if (!response.ok) {
@@ -44,7 +38,13 @@ export default function EditMedicalRecordPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [recordId])
+
+  useEffect(() => {
+    if (recordId) {
+      void fetchRecord()
+    }
+  }, [fetchRecord, recordId])
 
   const handleSuccess = () => {
     router.push(`/medical-records/${recordId}`)

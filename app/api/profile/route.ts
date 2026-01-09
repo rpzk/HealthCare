@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { updateProfileSchema } from '@/lib/validation-schemas-api'
 
 export const dynamic = 'force-dynamic'
-
-// Direct PrismaClient instantiation to avoid bundling issues
-const globalForPrisma = globalThis as unknown as { profilePrisma: PrismaClient }
-
-function getProfilePrisma() {
-  if (!globalForPrisma.profilePrisma) {
-    globalForPrisma.profilePrisma = new PrismaClient()
-  }
-  return globalForPrisma.profilePrisma
-}
-
-const prisma = getProfilePrisma()
 
 export async function GET() {
   try {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -114,11 +114,7 @@ export function VitalsDashboard({ patientId }: VitalsDashboardProps) {
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState(30)
 
-  useEffect(() => {
-    loadDashboard()
-  }, [patientId, period])
-
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/devices/dashboard?patientId=${patientId}&period=${period}`)
@@ -131,7 +127,11 @@ export function VitalsDashboard({ patientId }: VitalsDashboardProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId, period])
+
+  useEffect(() => {
+    void loadDashboard()
+  }, [loadDashboard])
 
   if (loading) {
     return (

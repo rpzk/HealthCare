@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? (globalForPrisma.prisma = new PrismaClient())
+import { prisma } from '@/lib/prisma'
 
 // GET /api/exam-requests/[id]/signature
 export const GET = withAuth(async (_req, { params, user }) => {

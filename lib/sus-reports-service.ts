@@ -3,10 +3,9 @@
  * Gera relatórios SIAB (Produção Diária, Mensal, Estratificada, etc)
  */
 
-import { PrismaClient, Consultation, Patient } from '@prisma/client'
+import type { Consultation, Patient } from '@prisma/client'
 import { startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export interface DailyReportParams {
   healthUnitId: string

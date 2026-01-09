@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -113,7 +113,7 @@ export function AIRecommendations({ patientId, compact = false }: AIRecommendati
   const [selectedTab, setSelectedTab] = useState('all')
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch(`/api/development/recommendations?patientId=${patientId}`)
@@ -133,13 +133,13 @@ export function AIRecommendations({ patientId, compact = false }: AIRecommendati
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId, toast])
 
   useEffect(() => {
     if (patientId) {
-      fetchRecommendations()
+      void fetchRecommendations()
     }
-  }, [patientId])
+  }, [fetchRecommendations, patientId])
 
   const toggleExpand = (id: string) => {
     setExpandedCards(prev => {

@@ -11,6 +11,8 @@ import {
   TermsNotConfiguredError,
 } from '@/lib/terms-enforcement'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/admin/backups/download
  * Faz download de um backup específico

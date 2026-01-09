@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { 
@@ -76,11 +76,7 @@ export function DashboardOverview() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/dashboard?section=all')
@@ -123,7 +119,11 @@ export function DashboardOverview() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    void fetchDashboardData()
+  }, [fetchDashboardData])
 
   if (loading) {
     return <DashboardSkeleton />

@@ -1,13 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-
-// Lazy Prisma
-let prismaRef: PrismaClient | undefined
-function getPrisma() {
-  if (!prismaRef) {
-    prismaRef = new PrismaClient()
-  }
-  return prismaRef
-}
+import { prisma } from '@/lib/prisma'
 
 export interface Point {
   lat: number
@@ -64,8 +55,6 @@ export class TerritoryService {
    * Encontra a Microárea correspondente a uma coordenada
    */
   static async findMicroAreaByLocation(lat: number, lng: number) {
-    const prisma = getPrisma()
-    
     // 1. Busca otimizada usando Bounding Box (min/max lat/lng)
     // Isso evita carregar todas as microáreas em memória
     const candidates = await prisma.microArea.findMany({
@@ -95,8 +84,6 @@ export class TerritoryService {
    * Atualiza a Microárea de um endereço baseado em suas coordenadas
    */
   static async updateAddressMicroArea(addressId: string) {
-    const prisma = getPrisma()
-    
     const address = await prisma.address.findUnique({
       where: { id: addressId }
     })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -97,21 +97,14 @@ export default function SettingsPage() {
     examResults: true,
   })
 
-  // Carregar dados
-  useEffect(() => {
-    loadProfile()
-    loadCertificates()
-    loadNotifications()
+  const loadNotifications = useCallback(() => {
+    const saved = localStorage.getItem('notifications')
+    if (saved) {
+      setNotifications(JSON.parse(saved))
+    }
   }, [])
 
-  useEffect(() => {
-    // Configurações de e-mail são globais do sistema e restritas ao ADMIN
-    if ((session?.user as any)?.role === 'ADMIN') {
-      loadEmailConfig()
-    }
-  }, [session])
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       const response = await fetch('/api/profile')
       if (response.ok) {
@@ -129,9 +122,9 @@ export default function SettingsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const loadCertificates = async () => {
+  const loadCertificates = useCallback(async () => {
     try {
       setCertificatesLoading(true)
       const response = await fetch('/api/certificates/upload-a1')
@@ -144,16 +137,9 @@ export default function SettingsPage() {
     } finally {
       setCertificatesLoading(false)
     }
-  }
+  }, [])
 
-  const loadNotifications = () => {
-    const saved = localStorage.getItem('notifications')
-    if (saved) {
-      setNotifications(JSON.parse(saved))
-    }
-  }
-
-  const loadEmailConfig = async () => {
+  const loadEmailConfig = useCallback(async () => {
     try {
       if ((session?.user as any)?.role !== 'ADMIN') return
       const response = await fetch('/api/system/settings')
@@ -180,7 +166,18 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Erro ao carregar configurações de e-mail:', error)
     }
-  }
+  }, [session])
+
+  // Carregar dados
+  useEffect(() => {
+    void loadProfile()
+    void loadCertificates()
+    loadNotifications()
+  }, [loadCertificates, loadNotifications, loadProfile])
+
+  useEffect(() => {
+    void loadEmailConfig()
+  }, [loadEmailConfig])
 
   const saveProfile = async () => {
     try {

@@ -1,11 +1,10 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  engineType    = "client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -497,6 +496,7 @@ model Consultation {
   id             String             @id @default(cuid())
   scheduledDate  DateTime
   actualDate     DateTime?
+  completedAt    DateTime?
   duration       Int?
   type           ConsultationType
   status         ConsultationStatus @default(SCHEDULED)

@@ -11,7 +11,7 @@
  * - Indicadores visuais de prioridade
  */
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Clock, Users, Bell, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,7 @@ export function WaitingRoom({
   const [notifying, setNotifying] = useState<string | null>(null);
   
   // Buscar pacientes na fila
-  const fetchWaitingPatients = async () => {
+  const fetchWaitingPatients = useCallback(async () => {
     try {
       const response = await fetch(`/api/tele/waiting-room?doctorId=${doctorId}`);
       
@@ -66,7 +66,7 @@ export function WaitingRoom({
     } finally {
       setLoading(false);
     }
-  };
+  }, [doctorId]);
   
   // Notificar próximo paciente
   const notifyPatient = async (appointmentId: string) => {
@@ -98,12 +98,14 @@ export function WaitingRoom({
   
   // Atualizar a cada 10 segundos
   useEffect(() => {
-    fetchWaitingPatients();
+    void fetchWaitingPatients();
     
-    const interval = setInterval(fetchWaitingPatients, 10000);
+    const interval = setInterval(() => {
+      void fetchWaitingPatients();
+    }, 10000);
     
     return () => clearInterval(interval);
-  }, [doctorId]);
+  }, [fetchWaitingPatients]);
   
   // Formatar tempo de espera
   const formatWaitTime = (minutes?: number) => {

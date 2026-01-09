@@ -1,23 +1,11 @@
 import { NextResponse } from 'next/server'
 import { withAdminAuth } from '@/lib/with-auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import os from 'os'
 export const dynamic = 'force-dynamic'
 
-
-const globalForSystem = globalThis as unknown as { systemPrisma: PrismaClient }
-
-function getSystemPrisma() {
-  if (!globalForSystem.systemPrisma) {
-    globalForSystem.systemPrisma = new PrismaClient()
-  }
-  return globalForSystem.systemPrisma
-}
-
 export const GET = withAdminAuth(async () => {
   try {
-    const prisma = getSystemPrisma()
-    
     // System metrics
     const totalMem = os.totalmem()
     const freeMem = os.freemem()

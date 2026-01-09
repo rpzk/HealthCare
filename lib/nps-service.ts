@@ -5,10 +5,8 @@
  * via WhatsApp e análise de métricas.
  */
 
-import { PrismaClient } from '@prisma/client'
 import { WhatsAppService } from './whatsapp-service'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export interface NpsData {
   consultationId: string

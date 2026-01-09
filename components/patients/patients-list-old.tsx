@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Search, Plus, Filter, MoreVertical, Phone, Mail, Edit, Trash2, UserX, UserCheck, Users, X } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -77,6 +77,17 @@ export function PatientsList() {
     pages: 0
   })
 
+  const currentPageRef = useRef(currentPage)
+  const searchTermRef = useRef(searchTerm)
+
+  useEffect(() => {
+    currentPageRef.current = currentPage
+  }, [currentPage])
+
+  useEffect(() => {
+    searchTermRef.current = searchTerm
+  }, [searchTerm])
+
   // Detectar query param ?action=new para abrir diálogo
   useEffect(() => {
     if (searchParams?.get('action') === 'new') {
@@ -87,7 +98,7 @@ export function PatientsList() {
   }, [searchParams, router])
 
   // Carregar pacientes
-  const fetchPatients = async (page = 1, search = '') => {
+  const fetchPatients = useCallback(async (page = 1, search = '') => {
     try {
       setLoading(true)
       const params = new URLSearchParams({ page: page.toString(), limit: '10', isActive: 'true' })
@@ -123,24 +134,24 @@ export function PatientsList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchPatients(currentPage, searchTerm)
-  }, [currentPage])
+    void fetchPatients(currentPage, searchTermRef.current)
+  }, [currentPage, fetchPatients])
 
   // Buscar pacientes com debounce
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (currentPage === 1) {
-        fetchPatients(1, searchTerm)
-      } else {
-        setCurrentPage(1)
+      if (currentPageRef.current === 1) {
+        void fetchPatients(1, searchTerm)
+        return
       }
+      setCurrentPage(1)
     }, 300)
 
     return () => clearTimeout(debounceTimer)
-  }, [searchTerm])
+  }, [fetchPatients, searchTerm])
 
   // Buscar dados completos do paciente para edição (sem mascaramento)
   const handleEditPatient = async (patient: Patient) => {

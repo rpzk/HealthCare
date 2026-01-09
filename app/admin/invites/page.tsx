@@ -35,6 +35,7 @@ export default function InvitesPage() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
+    if (!searchParams) return
     const prefillEmail = searchParams.get('email')
     const prefillRole = searchParams.get('role')
 

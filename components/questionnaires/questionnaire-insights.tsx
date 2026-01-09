@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,14 +45,7 @@ export function QuestionnaireInsights({ userId }: Props) {
   const [loading, setLoading] = useState(true)
   const [selectedSeverity, setSelectedSeverity] = useState<'all' | 'low' | 'medium' | 'high'>('all')
 
-  useEffect(() => {
-    fetchInsights()
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchInsights, 300000)
-    return () => clearInterval(interval)
-  }, [])
-
-  async function fetchInsights() {
+  const fetchInsights = useCallback(async () => {
     try {
       const res = await fetch(`/api/questionnaires/insights?severity=${selectedSeverity}`)
       if (res.ok) {
@@ -64,7 +57,16 @@ export function QuestionnaireInsights({ userId }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSeverity])
+
+  useEffect(() => {
+    void fetchInsights()
+    // Refresh every 5 minutes
+    const interval = setInterval(() => {
+      void fetchInsights()
+    }, 300000)
+    return () => clearInterval(interval)
+  }, [fetchInsights])
 
   const getIcon = (type: string) => {
     switch (type) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ComponentType, type SVGProps } from 'react'
+import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
@@ -76,11 +76,7 @@ export function AdminDashboard() {
   const [period, setPeriod] = useState('month')
   const router = useRouter()
 
-  useEffect(() => {
-    fetchAdminData()
-  }, [period])
-
-  const fetchAdminData = async () => {
+  const fetchAdminData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -100,7 +96,11 @@ export function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [period])
+
+  useEffect(() => {
+    void fetchAdminData()
+  }, [fetchAdminData])
 
   if (loading) {
     return <AdminDashboardSkeleton />

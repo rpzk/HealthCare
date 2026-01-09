@@ -83,31 +83,36 @@ export async function executeRestoreTest() {
  * npm install node-cron
  */
 export function scheduleBackupsWithCron() {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const cron = require('node-cron');
-    
-    // Backup diário às 3h AM
-    cron.schedule('0 3 * * *', executeBackup, {
-      timezone: 'America/Sao_Paulo'
-    });
+  void import('node-cron')
+    .then((mod) => {
+      const cron: any = (mod as any).default ?? mod
 
-    // Teste de restore: primeiro domingo do mês às 2h AM
-    cron.schedule('0 2 * * 0', async () => {
-      const today = new Date();
-      const dayOfMonth = today.getDate();
-      
-      if (dayOfMonth <= 7) {
-        await executeRestoreTest();
-      }
-    }, {
-      timezone: 'America/Sao_Paulo'
-    });
+      // Backup diário às 3h AM
+      cron.schedule('0 3 * * *', executeBackup, {
+        timezone: 'America/Sao_Paulo',
+      })
 
-    console.log('[Backup Cron] ✓ Scheduler inicializado:');
-    console.log('  - Backup diário: 3h AM (America/Sao_Paulo)');
-    console.log('  - Teste restore: Primeiro domingo do mês, 2h AM');
-  } catch (error) {
-    console.warn('[Backup Cron] node-cron não disponível. Use crontab para agendamento.');
-  }
+      // Teste de restore: primeiro domingo do mês às 2h AM
+      cron.schedule(
+        '0 2 * * 0',
+        async () => {
+          const today = new Date()
+          const dayOfMonth = today.getDate()
+
+          if (dayOfMonth <= 7) {
+            await executeRestoreTest()
+          }
+        },
+        {
+          timezone: 'America/Sao_Paulo',
+        }
+      )
+
+      console.log('[Backup Cron] ✓ Scheduler inicializado:')
+      console.log('  - Backup diário: 3h AM (America/Sao_Paulo)')
+      console.log('  - Teste restore: Primeiro domingo do mês, 2h AM')
+    })
+    .catch(() => {
+      console.warn('[Backup Cron] node-cron não disponível. Use crontab para agendamento.')
+    })
 }

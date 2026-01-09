@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   ArrowLeft, 
@@ -122,11 +122,7 @@ export default function UserDetailsPage() {
     licenseNumber: ''
   })
 
-  useEffect(() => {
-    fetchUser()
-  }, [userId])
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/admin/users/${userId}`)
@@ -164,7 +160,11 @@ export default function UserDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router, userId])
+
+  useEffect(() => {
+    void fetchUser()
+  }, [fetchUser])
 
   const handleSave = async () => {
     try {

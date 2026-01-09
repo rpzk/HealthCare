@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,11 +20,7 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
   const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadCertificates()
-  }, [patientId, doctorId])
-
-  const loadCertificates = async () => {
+  const loadCertificates = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -47,7 +43,11 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
     } finally {
       setLoading(false)
     }
-  }
+  }, [doctorId, patientId])
+
+  useEffect(() => {
+    void loadCertificates()
+  }, [loadCertificates])
 
   const getTypeLabel = (type: string): string => {
     const labels: Record<string, string> = {

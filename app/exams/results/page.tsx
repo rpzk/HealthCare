@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,6 @@ export default function ExamResultsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [examRequests, setExamRequests] = useState<ExamRequest[]>([])
-  const [filteredExams, setFilteredExams] = useState<ExamRequest[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [urgencyFilter, setUrgencyFilter] = useState('')
@@ -39,29 +38,7 @@ export default function ExamResultsPage() {
     fetchExamRequests()
   }, [])
 
-  useEffect(() => {
-    filterExams()
-  }, [examRequests, searchTerm, statusFilter, urgencyFilter, typeFilter])
-
-  const fetchExamRequests = async () => {
-    try {
-      const response = await fetch('/api/exam-requests')
-      if (response.ok) {
-        const data = await response.json()
-        // Ordenar por data mais recente primeiro
-        const sorted = data.sort((a: ExamRequest, b: ExamRequest) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-        setExamRequests(sorted)
-      }
-    } catch (error) {
-      console.error('Erro ao buscar exames:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterExams = () => {
+  const filteredExams = useMemo(() => {
     let filtered = [...examRequests]
 
     // Filtro por texto
@@ -90,7 +67,25 @@ export default function ExamResultsPage() {
       filtered = filtered.filter(exam => exam.exam_type === typeFilter)
     }
 
-    setFilteredExams(filtered)
+    return filtered
+  }, [examRequests, searchTerm, statusFilter, urgencyFilter, typeFilter])
+
+  const fetchExamRequests = async () => {
+    try {
+      const response = await fetch('/api/exam-requests')
+      if (response.ok) {
+        const data = await response.json()
+        // Ordenar por data mais recente primeiro
+        const sorted = data.sort((a: ExamRequest, b: ExamRequest) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        setExamRequests(sorted)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar exames:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatDate = (dateString: string) => {

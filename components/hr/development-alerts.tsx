@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -99,7 +99,7 @@ export function DevelopmentAlerts() {
   const [scope, setScope] = useState<'personal' | 'team' | 'all'>('all')
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ scope })
@@ -119,11 +119,11 @@ export function DevelopmentAlerts() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [scope, toast])
 
   useEffect(() => {
-    fetchAlerts()
-  }, [scope])
+    void fetchAlerts()
+  }, [fetchAlerts])
 
   const handleDismiss = (alertId: string) => {
     setDismissedAlerts(prev => new Set([...prev, alertId]))

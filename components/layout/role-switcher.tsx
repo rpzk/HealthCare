@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import {
@@ -229,15 +229,8 @@ export function RoleSwitcher() {
   const [pendingRole, setPendingRole] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [verifying, setVerifying] = useState(false)
-  
-  // Carregar papéis e papel ativo ao montar
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      fetchUserRoles()
-    }
-  }, [status, session])
 
-  const fetchUserRoles = async () => {
+  const fetchUserRoles = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -301,7 +294,14 @@ export function RoleSwitcher() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeRole, pathname, session])
+
+  // Carregar papéis e papel ativo ao montar
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      void fetchUserRoles()
+    }
+  }, [fetchUserRoles, session, status])
   
   const handleRoleClick = (role: string) => {
     const config = ROLE_CONFIGS[role]

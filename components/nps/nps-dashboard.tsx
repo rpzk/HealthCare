@@ -12,7 +12,7 @@
  * - Filtro por período e médico
  */
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Users, Star, AlertTriangle, Tag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +53,7 @@ export function NpsDashboard({ doctorId }: NpsDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('30');
   
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const params = new URLSearchParams({ period });
       if (doctorId) params.append('doctorId', doctorId);
@@ -73,11 +73,11 @@ export function NpsDashboard({ doctorId }: NpsDashboardProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [doctorId, period]);
   
   useEffect(() => {
-    fetchStats();
-  }, [period, doctorId]);
+    void fetchStats();
+  }, [fetchStats]);
   
   if (loading) {
     return (

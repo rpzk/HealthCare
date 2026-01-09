@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -58,13 +58,7 @@ export function PatientHistoryPanel({ patientId, onRepeatPrescription }: Patient
   const [consultationsOpen, setConsultationsOpen] = useState(true)
   const [prescriptionsOpen, setPrescriptionsOpen] = useState(true)
 
-  useEffect(() => {
-    if (patientId) {
-      loadHistory()
-    }
-  }, [patientId])
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -117,7 +111,13 @@ export function PatientHistoryPanel({ patientId, onRepeatPrescription }: Patient
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId])
+
+  useEffect(() => {
+    if (patientId) {
+      void loadHistory()
+    }
+  }, [loadHistory, patientId])
 
   const handleRepeat = (prescription: PastPrescription) => {
     if (onRepeatPrescription) {

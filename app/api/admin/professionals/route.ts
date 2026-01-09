@@ -136,7 +136,6 @@ export async function POST(request: NextRequest) {
         role,
         crmNumber: crmNumber || null,
         isActive: true,
-        emailVerified: new Date()
       }
     })
 

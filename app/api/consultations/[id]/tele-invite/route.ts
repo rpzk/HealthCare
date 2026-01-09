@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email-service'
 import crypto from 'crypto'
-
-const globalForTele = globalThis as typeof globalThis & {
-  telePrisma?: PrismaClient
-}
-
-function getTelePrisma(): PrismaClient {
-  if (!globalForTele.telePrisma) {
-    globalForTele.telePrisma = new PrismaClient({ log: ['error'] })
-  }
-  return globalForTele.telePrisma
-}
 
 // POST - Enviar convite de teleconsulta para o paciente
 export async function POST(
@@ -28,7 +17,6 @@ export async function POST(
   }
 
   try {
-    const prisma = getTelePrisma()
     const consultationId = params.id
 
     // Buscar consulta com dados do paciente
@@ -72,7 +60,8 @@ export async function POST(
       where: { id: consultationId },
       data: {
         meetingLink: teleToken,
-        status: 'IN_PROGRESS'
+        status: 'IN_PROGRESS',
+        actualDate: consultation.actualDate || new Date()
       }
     })
 

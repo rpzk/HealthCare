@@ -4,9 +4,8 @@
  * Handles country, state, city, zone, district, subprefecture, neighborhood, and area data
  */
 
-import { PrismaClient, Country, State, City, Zone, District, Subprefecture, Neighborhood, Area } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import type { Country, State, City, Zone, District, Subprefecture, Neighborhood, Area } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export interface GeographicHierarchyPath {
   country?: Country

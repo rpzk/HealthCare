@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
+import { prisma } from '@/lib/prisma'
 
 /**
  * POST /api/certificates
@@ -32,9 +33,7 @@ export async function POST(request: Request) {
     let content = body.content
     if (!content) {
       // Buscar nome do paciente para gerar conteúdo padrão
-      const prisma = (await import('@prisma/client')).PrismaClient
-      const db = new prisma()
-      const patient = await db.patient.findUnique({
+      const patient = await prisma.patient.findUnique({
         where: { id: body.patientId },
         select: { name: true }
       })

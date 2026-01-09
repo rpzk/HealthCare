@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -77,20 +77,10 @@ export default function InventoryPage() {
   const [showNewProductModal, setShowNewProductModal] = useState(false)
   const [showMovementModal, setShowMovementModal] = useState(false)
 
-  useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    
-    loadData()
-  }, [session, status, activeTab])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
-    
+
     try {
       if (activeTab === 'dashboard') {
         const res = await fetch('/api/inventory/dashboard')
@@ -101,7 +91,7 @@ export default function InventoryPage() {
         const params = new URLSearchParams()
         if (searchTerm) params.set('search', searchTerm)
         if (showLowStock) params.set('lowStock', 'true')
-        
+
         const res = await fetch(`/api/inventory/products?${params}`)
         if (!res.ok) throw new Error('Erro ao carregar produtos')
         const data = await res.json()
@@ -112,14 +102,26 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab, searchTerm, showLowStock])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    
+    void loadData()
+  }, [loadData, router, session, status])
 
   useEffect(() => {
     if (activeTab === 'products') {
-      const debounce = setTimeout(loadData, 300)
+      const debounce = setTimeout(() => {
+        void loadData()
+      }, 300)
       return () => clearTimeout(debounce)
     }
-  }, [searchTerm, showLowStock])
+  }, [activeTab, loadData, searchTerm, showLowStock])
 
   if (status === 'loading' || loading) {
     return (

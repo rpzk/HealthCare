@@ -61,17 +61,6 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
     return () => clearInterval(interval)
   }, [status])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      try {
-        cleanup()
-      } catch (e) {
-        console.warn('Error during cleanup', e)
-      }
-    }
-  }, [])
-
   const cleanup = useCallback(() => {
     try {
       if (localRef.current?.srcObject) {
@@ -84,6 +73,17 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       console.warn('Error during cleanup', err)
     }
   }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        cleanup()
+      } catch (e) {
+        console.warn('Error during cleanup', e)
+      }
+    }
+  }, [cleanup])
 
   async function join() {
     try {

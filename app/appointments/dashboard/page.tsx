@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -194,24 +194,47 @@ export default function AppointmentsDashboard() {
   // Verificação melhorada de profissional de saúde
   const isProfessional = React.useMemo(() => {
     if (!session?.user?.role) {
-      console.log('[Dashboard] Sem role na sessão')
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Dashboard] Sem role na sessão')
+      }
       return false
     }
     
     const userRole = session.user.role
     const isProf = PROFESSIONAL_ROLES.includes(userRole)
-    
-    console.log('[Dashboard] Role do usuário:', userRole, '| É profissional?', isProf)
-    console.log('[Dashboard] Roles permitidos:', PROFESSIONAL_ROLES)
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Dashboard] Role do usuário:', userRole, '| É profissional?', isProf)
+      console.log('[Dashboard] Roles permitidos:', PROFESSIONAL_ROLES)
+    }
     
     return isProf
   }, [session?.user?.role])
 
+  const loadConsultations = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(
+        `/api/appointments/my-consultations?status=${activeStatus}&days=30`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setConsultations(data.consultations || [])
+        setStats(data.stats)
+      }
+    } catch (error) {
+      console.error('Error loading consultations:', error)
+      toast.error('Erro ao carregar consultas')
+    } finally {
+      setLoading(false)
+    }
+  }, [activeStatus])
+
   useEffect(() => {
     if (isProfessional) {
-      loadConsultations()
+      void loadConsultations()
     }
-  }, [isProfessional, activeStatus])
+  }, [isProfessional, loadConsultations])
 
   useEffect(() => {
     // Carregar eventos iniciais do calendário (sem depender do onRangeChange disparar no mount)
@@ -340,26 +363,7 @@ export default function AppointmentsDashboard() {
 
     loadDetails()
     return () => abortController.abort()
-  }, [editOpen, selectedEvent?.id])
-
-  const loadConsultations = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(
-        `/api/appointments/my-consultations?status=${activeStatus}&days=30`
-      )
-      if (response.ok) {
-        const data = await response.json()
-        setConsultations(data.consultations || [])
-        setStats(data.stats)
-      }
-    } catch (error) {
-      console.error('Error loading consultations:', error)
-      toast.error('Erro ao carregar consultas')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [editOpen, selectedEvent])
 
   const loadAllConsultations = async () => {
     try {
@@ -1192,10 +1196,21 @@ export default function AppointmentsDashboard() {
                         key={consultation.id}
                         className="cursor-pointer hover:shadow-md transition"
                         onClick={() => {
-                          // If the consultation is in progress, go straight to the consultation page.
-                          if (consultation.status === 'IN_PROGRESS') {
+                          // If the user is viewing the "Em andamento" drawer (or the item is in progress), always open the live consultation instead of the edit modal.
+                          const isInProgressDrawer = selectedStatusFilter === 'IN_PROGRESS'
+                          const isInProgressItem = consultation.status === 'IN_PROGRESS'
+                          const isCancelledItem = consultation.status === 'CANCELLED'
+
+                          if (isInProgressDrawer || isInProgressItem) {
                             const isTele = consultation.type === 'TELEMEDICINE'
                             router.push(isTele ? `/consultations/${consultation.id}/tele` : `/consultations/${consultation.id}`)
+                            setStatusDrawerOpen(false)
+                            return
+                          }
+
+                          // Cancelled items should open the consultation detail (read-only) instead of the edit modal.
+                          if (isCancelledItem) {
+                            router.push(`/consultations/${consultation.id}`)
                             setStatusDrawerOpen(false)
                             return
                           }

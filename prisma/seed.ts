@@ -1,4 +1,5 @@
 import { PrismaClient, Gender, ConsultationType, ConsultationStatus, RecordType, Severity, Role } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 
@@ -18,7 +19,15 @@ function encrypt(value?: string | null): string | null {
   }
 }
 
-const prisma = new PrismaClient()
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL não configurado')
+}
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+})
 
 async function main() {
   console.log('Iniciando seed do banco de dados...')

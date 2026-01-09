@@ -1,23 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email-service'
 import crypto from 'crypto'
-
-// Instância própria do Prisma para evitar problemas de bundling
-const globalForInvites = globalThis as typeof globalThis & {
-  invitesPrisma?: PrismaClient
-}
-
-function getInvitesPrisma(): PrismaClient {
-  if (!globalForInvites.invitesPrisma) {
-    globalForInvites.invitesPrisma = new PrismaClient({
-      log: ['error']
-    })
-  }
-  return globalForInvites.invitesPrisma
-}
 
 // Roles que podem convidar e quem podem convidar
 const INVITE_PERMISSIONS: Record<string, string[]> = {
@@ -42,7 +28,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    const prisma = getInvitesPrisma()
     const body = await req.json()
     const { email, role = 'PATIENT' } = body
 

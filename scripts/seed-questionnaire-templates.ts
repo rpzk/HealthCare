@@ -671,13 +671,13 @@ async function main() {
         aiAnalysisPrompt: template.aiAnalysisPrompt,
         scoringLogic: template.scoringLogic,
         categories: {
-          create: template.categories.map((cat, catIndex) => ({
+          create: template.categories.map((cat: any, catIndex: number) => ({
             name: cat.name,
             description: cat.description,
             iconEmoji: cat.iconEmoji,
             order: catIndex,
             questions: {
-              create: cat.questions.map((q: any, qIndex) => ({
+              create: cat.questions.map((q: any, qIndex: number) => ({
                 text: q.text,
                 helpText: q.helpText,
                 type: q.type || 'SINGLE_CHOICE',

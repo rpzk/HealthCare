@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { 
   Calendar,
   Clock,
@@ -77,11 +77,7 @@ export default function AdminAppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('today')
 
-  useEffect(() => {
-    fetchAppointments()
-  }, [dateFilter])
-
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/admin/appointments?date=${dateFilter}`)
@@ -96,7 +92,11 @@ export default function AdminAppointmentsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [dateFilter])
+
+  useEffect(() => {
+    fetchAppointments()
+  }, [fetchAppointments])
 
   const stats = {
     total: appointments.length,

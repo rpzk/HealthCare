@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,11 +34,7 @@ export default function StockAlertsPage() {
   const [notifying, setNotifying] = useState<string | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchAlerts()
-  }, [])
-
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       const res = await fetch('/api/inventory/alerts')
       const data = await res.json()
@@ -53,7 +49,11 @@ export default function StockAlertsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    void fetchAlerts()
+  }, [fetchAlerts])
 
   const sendNotification = async (productId: string) => {
     setNotifying(productId)

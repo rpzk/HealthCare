@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit'
+import path from 'path'
 import { generateCertificateQRCode } from './qrcode-generator';
 
 export type CertificatePdfInput = {
@@ -140,11 +141,11 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
   });
 }
 
-function pathFromPublic(urlPath?: string) {
-  if (!urlPath) return urlPath
+function pathFromPublic(urlPath: string): string {
+  if (!urlPath) return ''
   // Convert '/uploads/foo.png' to absolute filesystem path
   if (urlPath.startsWith('/')) {
-    return require('path').join(process.cwd(), 'public', urlPath.replace(/^\//, ''))
+    return path.join(process.cwd(), 'public', urlPath.replace(/^\//, ''))
   }
   return urlPath
 }
