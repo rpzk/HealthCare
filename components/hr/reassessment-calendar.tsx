@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -78,7 +78,7 @@ export function ReassessmentCalendar() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'due' | 'overdue'>('all')
   const [sending, setSending] = useState(false)
 
-  const fetchSchedules = async () => {
+  const fetchSchedules = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -102,11 +102,11 @@ export function ReassessmentCalendar() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, toast])
 
   useEffect(() => {
-    fetchSchedules()
-  }, [statusFilter])
+    void fetchSchedules()
+  }, [fetchSchedules])
 
   const toggleSelect = (id: string) => {
     setSelectedSchedules(prev => {

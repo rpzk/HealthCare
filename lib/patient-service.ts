@@ -1,16 +1,11 @@
-import { Gender, RiskLevel, Prisma, PrismaClient } from '@prisma/client'
+import { Gender, RiskLevel, Prisma } from '@prisma/client'
 import { getPatientAccessFilter } from '@/lib/patient-access'
-
-// Lazy Prisma to avoid bundling/runtime issues
-let __prisma: PrismaClient | undefined
-async function getPrisma(): Promise<PrismaClient> {
-  if (!__prisma) {
-    const { PrismaClient } = await import('@prisma/client')
-    __prisma = new PrismaClient()
-  }
-  return __prisma
-}
+import { prisma } from '@/lib/prisma'
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
+
+async function getPrisma() {
+  return prisma
+}
 
 export interface PatientCreateData {
   name: string
@@ -48,7 +43,7 @@ export class PatientService {
   // Buscar todos os pacientes com filtros e paginação
   static async getPatients(filters: PatientFilters = {}, page = 1, limit = 10) {
     try {
-      const prisma = await getPrisma()
+      // keep signature async for compatibility
       // console.log('[patient-service] getPatients called')
       const { search, riskLevel, gender, ageRange, userId, userRole } = filters
       

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Redis from 'ioredis'
-import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,7 +15,7 @@ function getRedisConnection() {
   }
 }
 
-export const GET = withAuth(async (req: NextRequest, { params, user }) => {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const rl = rateLimiters.consultations(req)
   if (rl instanceof NextResponse) return rl
   const roomId = params?.id as string
@@ -22,6 +24,19 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
   const url = new URL(req.url)
   const clientId = url.searchParams.get('clientId') || ''
   if (!clientId) return NextResponse.json({ error: 'clientId ausente' }, { status: 400 })
+
+  // Auth: allow either an authenticated session (doctor/staff) OR a valid public join token (meetingLink)
+  const session = await getServerSession(authOptions).catch(() => null)
+  const token = url.searchParams.get('token') || ''
+  const hasSession = !!session?.user?.id
+  if (!hasSession) {
+    if (!token) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    const valid = await prisma.consultation.findFirst({
+      where: { id: roomId, meetingLink: token },
+      select: { id: true },
+    })
+    if (!valid) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+  }
 
   const encoder = new TextEncoder()
   const channel = `tele:room:${roomId}`
@@ -115,4 +130,4 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
       'Connection': 'keep-alive'
     }
   })
-})
+}

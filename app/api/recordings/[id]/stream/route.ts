@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { TelemedicineRecordingService } from '@/lib/telemedicine-recording-service'
+import { prisma } from '@/lib/prisma'
 import fs from 'fs/promises'
 
 /**
@@ -37,10 +36,7 @@ export async function GET(
     }
 
     // Obter arquivo
-    const prisma = (await import('@prisma/client')).PrismaClient
-    const db = new prisma()
-    
-    const recording = await db.telemedicineRecording.findUnique({
+    const recording = await prisma.telemedicineRecording.findUnique({
       where: { id: params.id }
     })
 

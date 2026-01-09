@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -30,11 +30,7 @@ export function MedicationTracking({ prescriptionId }: MedicationTrackingProps) 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchMedications()
-  }, [prescriptionId])
-
-  const fetchMedications = async () => {
+  const fetchMedications = useCallback(async () => {
     try {
       const res = await fetch(`/api/medications/tracking?prescriptionId=${prescriptionId}`)
       if (!res.ok) throw new Error('Erro ao carregar medicações')
@@ -46,7 +42,11 @@ export function MedicationTracking({ prescriptionId }: MedicationTrackingProps) 
     } finally {
       setLoading(false)
     }
-  }
+  }, [prescriptionId])
+
+  useEffect(() => {
+    void fetchMedications()
+  }, [fetchMedications])
 
   const handleMarkAsTaken = async (itemId: string, notes?: string) => {
     setSubmitting(itemId)

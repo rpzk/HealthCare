@@ -97,7 +97,7 @@ export default function ReferralDetailPage() {
     }
 
     if (id) fetchReferral()
-  }, [id, error])
+  }, [id, toast])
 
   const handleDelete = async () => {
     try {

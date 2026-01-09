@@ -28,6 +28,7 @@ export default async function TelePage({ params }: Props){
   }).catch(() => null)
 
   const patientName = consultation?.patient?.name || 'Paciente'
+  const consultationStartedAt = consultation?.actualDate ? consultation.actualDate.toISOString() : undefined
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -67,6 +68,7 @@ export default async function TelePage({ params }: Props){
             roomId={params.id} 
             userId={userId} 
             patientName={patientName}
+            consultationStartedAt={consultationStartedAt}
           />
         </div>
       </div>

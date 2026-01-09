@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
+import { prisma } from '@/lib/prisma'
 
 export type SettingCategory = 'GENERAL' | 'EMAIL' | 'SECURITY' | 'SYSTEM'
 
@@ -17,20 +17,6 @@ interface SettingEntry {
   category: string
   description?: string
   updatedAt?: string
-}
-
-// Criar instância própria do Prisma para settings (evita problemas de bundling)
-const globalForSettings = globalThis as typeof globalThis & {
-  settingsPrisma?: PrismaClient
-}
-
-function getSettingsPrisma(): PrismaClient {
-  if (!globalForSettings.settingsPrisma) {
-    globalForSettings.settingsPrisma = new PrismaClient({
-      log: ['error']
-    })
-  }
-  return globalForSettings.settingsPrisma
 }
 
 const FALLBACK_FILE_PATH = path.join(process.cwd(), 'data', 'settings.json')
@@ -90,7 +76,6 @@ const fallbackManager = {
 export const settings = {
   async get(key: string, defaultValue: string = ''): Promise<string> {
     try {
-      const prisma = getSettingsPrisma()
       const setting = await prisma.systemSetting.findUnique({
         where: { key }
       })
@@ -112,7 +97,6 @@ export const settings = {
     fallbackManager.set(key, value, category, description)
     
     try {
-      const prisma = getSettingsPrisma()
       await prisma.systemSetting.upsert({
         where: { key },
         update: { value, category, description },
@@ -127,7 +111,6 @@ export const settings = {
     const result: Record<string, string> = {}
     
     try {
-      const prisma = getSettingsPrisma()
       const dbSettings = await prisma.systemSetting.findMany({
         where: { key: { in: keys } }
       })
@@ -158,7 +141,6 @@ export const settings = {
   async getAllByCategory(category: SettingCategory) {
     let dbSettings: { key: string; value: string; category: string; description?: string | null }[] = []
     try {
-      const prisma = getSettingsPrisma()
       dbSettings = await prisma.systemSetting.findMany({
         where: { category },
         orderBy: { key: 'asc' }

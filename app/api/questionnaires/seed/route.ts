@@ -1583,13 +1583,13 @@ export async function POST(req: NextRequest) {
           aiAnalysisPrompt: template.aiAnalysisPrompt,
           scoringLogic: template.scoringLogic,
           categories: {
-            create: template.categories.map((cat, catIndex) => ({
+            create: template.categories.map((cat: any, catIndex: number) => ({
               name: cat.name,
               description: cat.description,
               iconEmoji: cat.iconEmoji,
               order: catIndex,
               questions: {
-                create: cat.questions.map((q: any, qIndex) => ({
+                create: cat.questions.map((q: any, qIndex: number) => ({
                   text: q.text,
                   helpText: q.helpText,
                   type: q.type || 'SINGLE_CHOICE',
@@ -1637,7 +1637,7 @@ export async function GET() {
       Object.entries(BUILTIN_TEMPLATES).map(([key, t]) => [key, {
         name: t.name,
         system: t.therapeuticSystem,
-        questions: t.categories.reduce((acc, cat) => acc + cat.questions.length, 0)
+        questions: (t.categories as any[]).reduce((acc: number, cat: any) => acc + (cat?.questions?.length ?? 0), 0)
       }])
     )
   })

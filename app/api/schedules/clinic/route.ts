@@ -72,22 +72,29 @@ export async function POST(request: NextRequest) {
       schedules: z.array(clinicScheduleSchema),
     }).parse(body)
 
-    // Atualizar ou criar horários
+    // Atualizar ou criar horários (configuração padrão global: clinicId = null)
     const results = await Promise.all(
-      schedules.map((schedule) =>
-        prisma.clinicSchedule.upsert({
+      schedules.map(async (schedule) => {
+        const existing = await prisma.clinicSchedule.findFirst({
           where: {
-            clinicId_dayOfWeek: {
-              clinicId: null,
-              dayOfWeek: schedule.dayOfWeek,
+            clinicId: null,
+            dayOfWeek: schedule.dayOfWeek,
+          },
+        })
+
+        if (existing) {
+          return prisma.clinicSchedule.update({
+            where: { id: existing.id },
+            data: {
+              openTime: schedule.openTime,
+              closeTime: schedule.closeTime,
+              isOpen: schedule.isOpen,
             },
-          },
-          update: {
-            openTime: schedule.openTime,
-            closeTime: schedule.closeTime,
-            isOpen: schedule.isOpen,
-          },
-          create: {
+          })
+        }
+
+        return prisma.clinicSchedule.create({
+          data: {
             clinicId: null,
             dayOfWeek: schedule.dayOfWeek,
             openTime: schedule.openTime,
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest) {
             isOpen: schedule.isOpen,
           },
         })
-      )
+      })
     )
 
     return NextResponse.json({

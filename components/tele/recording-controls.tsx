@@ -41,6 +41,7 @@ export function RecordingControls({
   const recordedChunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<Date | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const startRecordingRef = useRef<(() => void) | null>(null);
   
   // Formatar duração (HH:MM:SS)
   const formatDuration = (seconds: number) => {
@@ -163,6 +164,8 @@ export function RecordingControls({
       toast.error('Erro ao iniciar gravação');
     }
   };
+
+  startRecordingRef.current = startRecording;
   
   // Pausar/retomar gravação
   const togglePause = () => {
@@ -255,11 +258,13 @@ export function RecordingControls({
   useEffect(() => {
     if (autoStart && localStream && remoteStream && !isRecording) {
       // Aguardar 2 segundos antes de iniciar
-      setTimeout(() => {
-        startRecording();
+      const timeout = setTimeout(() => {
+        startRecordingRef.current?.();
       }, 2000);
+
+      return () => clearTimeout(timeout);
     }
-  }, [autoStart, localStream, remoteStream]);
+  }, [autoStart, isRecording, localStream, remoteStream]);
   
   // Cleanup
   useEffect(() => {
@@ -267,8 +272,9 @@ export function RecordingControls({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state !== 'inactive') {
+        mr.stop();
       }
     };
   }, []);

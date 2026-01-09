@@ -1,16 +1,10 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import type { PrismaClient } from '@prisma/client'
 import { verifyAuthenticationResponseForUser } from './webauthn'
 
-// Lazy Prisma para evitar problemas de empacotamento/edge
-let prismaRef: PrismaClient | undefined
-async function getPrisma(): Promise<PrismaClient> {
-  if (!prismaRef) {
-    const { PrismaClient } = await import('@prisma/client')
-    prismaRef = new PrismaClient()
-  }
-  return prismaRef
+async function getPrisma() {
+  const { prisma } = await import('@/lib/prisma')
+  return prisma
 }
 import bcrypt from "bcryptjs"
 const DEBUG_AUTH = (process.env.DEBUG_AUTH || '') === '1'

@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
-
-// Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
-const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { prisma } from '@/lib/prisma'
 
 // GET - List work schedules
 export const GET = withAuth(async (req: NextRequest, { user }) => {

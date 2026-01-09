@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -58,12 +58,7 @@ export function TeleWorkspace({ consultationId }: Props) {
   const [exams, setExams] = useState<Array<Record<string, unknown>>>([])
   const [diagnoses, setDiagnoses] = useState<Array<Record<string, unknown>>>([])
 
-  // Load consultation
-  useEffect(() => {
-    loadConsultation()
-  }, [consultationId])
-
-  const loadConsultation = async () => {
+  const loadConsultation = useCallback(async () => {
     try {
       const res = await fetch(`/api/consultations/${consultationId}`)
       if (!res.ok) throw new Error('Falha ao carregar')
@@ -75,7 +70,12 @@ export function TeleWorkspace({ consultationId }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [consultationId])
+
+  // Load consultation
+  useEffect(() => {
+    void loadConsultation()
+  }, [loadConsultation])
 
   // Audio recording for transcription
   const startRecording = async () => {

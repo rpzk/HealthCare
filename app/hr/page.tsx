@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -88,20 +88,10 @@ export default function HRPage() {
 
   const isManager = session?.user?.role && ['ADMIN', 'MANAGER'].includes(session.user.role)
 
-  useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    
-    loadData()
-  }, [session, status, activeTab, statusFilter])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
-    
+
     try {
       if (activeTab === 'dashboard' && isManager) {
         const res = await fetch('/api/hr/dashboard')
@@ -111,7 +101,7 @@ export default function HRPage() {
       } else if (activeTab === 'requests') {
         const params = new URLSearchParams()
         if (statusFilter) params.set('status', statusFilter)
-        
+
         const res = await fetch(`/api/hr/leave-requests?${params}`)
         if (!res.ok) throw new Error('Erro ao carregar solicitações')
         const data = await res.json()
@@ -122,7 +112,17 @@ export default function HRPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab, isManager, statusFilter])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    
+    void loadData()
+  }, [loadData, router, session, status])
 
   const handleAction = async (requestId: string, action: 'approve' | 'reject' | 'cancel', rejectionNote?: string) => {
     try {

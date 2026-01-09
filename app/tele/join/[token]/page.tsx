@@ -1,25 +1,12 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { TelePatientRoom } from '@/components/tele/patient-room'
 import { Video, Shield, Clock, User, Stethoscope } from 'lucide-react'
-
-const globalForTele = globalThis as typeof globalThis & {
-  teleJoinPrisma?: PrismaClient
-}
-
-function getPrisma(): PrismaClient {
-  if (!globalForTele.teleJoinPrisma) {
-    globalForTele.teleJoinPrisma = new PrismaClient({ log: ['error'] })
-  }
-  return globalForTele.teleJoinPrisma
-}
 
 interface Props {
   params: { token: string }
 }
 
 export default async function TeleJoinPage({ params }: Props) {
-  const prisma = getPrisma()
-  
   // Buscar consulta pelo token (meetingLink)
   const consultation = await prisma.consultation.findFirst({
     where: { meetingLink: params.token },
@@ -155,6 +142,8 @@ export default async function TeleJoinPage({ params }: Props) {
           <div className="p-4 sm:p-6 bg-gradient-to-b from-gray-50 to-white">
             <TelePatientRoom 
               roomId={consultation.id} 
+              joinToken={params.token}
+              consultationStartedAt={consultation.actualDate ? new Date(consultation.actualDate).toISOString() : undefined}
               patientName={consultation.patient?.name || 'Paciente'}
               doctorName={consultation.doctor?.name || undefined}
             />

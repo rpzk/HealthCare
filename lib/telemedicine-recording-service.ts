@@ -5,12 +5,10 @@
  * controle de acesso e conformidade LGPD.
  */
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
-
-const prisma = new PrismaClient()
 
 export interface RecordingMetadata {
   consultationId: string

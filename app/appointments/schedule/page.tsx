@@ -78,7 +78,7 @@ export default function SchedulePage() {
           variant: 'destructive'
         })
       })
-  }, [])
+  }, [toast])
 
   // Generate time slots and fetch appointments
   useEffect(() => {

@@ -72,11 +72,13 @@ export default function AdminTermsPage() {
   }
 
   useEffect(() => {
-    ;(async () => {
+    const run = async () => {
       setLoading(true)
       await load()
       setLoading(false)
-    })()
+    }
+
+    void run()
   }, [])
 
   const filtered = useMemo(() => {

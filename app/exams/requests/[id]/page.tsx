@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -73,11 +73,7 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
   const [isSigned, setIsSigned] = useState(false)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
 
-  useEffect(() => {
-    fetchExamRequest()
-  }, [id])
-
-  const fetchExamRequest = async () => {
+  const fetchExamRequest = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/exam-requests/${id}`)
@@ -113,7 +109,11 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, toast])
+
+  useEffect(() => {
+    void fetchExamRequest()
+  }, [fetchExamRequest])
 
   const handleSign = async () => {
     if (!password) return
@@ -753,7 +753,7 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
         cancelText="Cancelar"
         type="danger"
         onConfirm={handleDelete}
-        loading={deleting}
+        isLoading={deleting}
       />
 
       {/* Cancel Confirmation Dialog */}

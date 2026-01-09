@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -74,11 +74,7 @@ export function PendingAppointmentsManager() {
   const [processing, setProcessing] = useState(false)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadAppointments()
-  }, [])
-
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch('/api/appointments/pending?showAll=true')
@@ -98,7 +94,11 @@ export function PendingAppointmentsManager() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    void loadAppointments()
+  }, [loadAppointments])
 
   const handleAction = (appointment: Appointment, action: 'approve' | 'reject') => {
     setSelectedAppointment(appointment)

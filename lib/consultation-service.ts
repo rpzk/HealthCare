@@ -393,11 +393,20 @@ export class ConsultationService {
       throw new Error('Apenas consultas em andamento podem ser finalizadas')
     }
 
+    const completedAt = new Date()
+    const startedAt = consultation.actualDate || completedAt
+    const durationMinutes = Math.max(
+      1,
+      Math.round((completedAt.getTime() - startedAt.getTime()) / 60000)
+    )
+
     return await prisma.consultation.update({
       where: { id },
       data: {
         status: 'COMPLETED',
-        actualDate: new Date(),
+        actualDate: consultation.actualDate || startedAt,
+        completedAt,
+        duration: durationMinutes,
         notes: notes || consultation.notes
       }
     })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -41,11 +41,7 @@ export function MedicalRecordDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  useEffect(() => {
-    fetchRecord()
-  }, [recordId])
-
-  const fetchRecord = async () => {
+  const fetchRecord = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -63,7 +59,11 @@ export function MedicalRecordDetail({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [recordId])
+
+  useEffect(() => {
+    void fetchRecord()
+  }, [fetchRecord])
 
   const handleDelete = async () => {
     setIsDeleting(true)

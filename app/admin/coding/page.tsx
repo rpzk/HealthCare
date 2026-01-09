@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 interface CodeItem { 
   id: string
@@ -40,7 +40,7 @@ export default function CodingAdminPage(){
       .catch(() => setChapters([]))
   }, [system])
 
-  async function doSearch(){
+  const doSearch = useCallback(async () => {
     if(!query.trim()) return
     setLoading(true); setError(null)
     try {
@@ -56,7 +56,7 @@ export default function CodingAdminPage(){
       setResults(j.results||[])
     } catch(e:any){ setError(e.message) }
     finally{ setLoading(false) }
-  }
+  }, [categoriesOnly, query, selectedChapter, sexFilter, system, useFts])
   
   async function loadDetail(id:string){
     setDetail(null)
@@ -65,7 +65,14 @@ export default function CodingAdminPage(){
     if(r.ok) setDetail(j); else setDetail({ error: j.error })
   }
 
-  useEffect(()=>{ if(query.length>2){ const h=setTimeout(()=>doSearch(),400); return ()=>clearTimeout(h) }},[query,system,useFts,selectedChapter,sexFilter,categoriesOnly])
+  useEffect(() => {
+    if (query.length > 2) {
+      const h = setTimeout(() => {
+        void doSearch()
+      }, 400)
+      return () => clearTimeout(h)
+    }
+  }, [query, doSearch])
 
   function getSexLabel(sex: string | null | undefined) {
     if (sex === 'M') return '♂ Masculino'

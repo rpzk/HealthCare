@@ -2,19 +2,7 @@ import { NextResponse } from 'next/server'
 import { withPatientAuth } from '@/lib/advanced-auth-v2'
 import { validateDiagnosisCreate, validateDiagnosisUpdate } from '@/lib/validation-schemas'
 import { CodingService } from '@/lib/coding-service'
-import { PrismaClient } from '@prisma/client'
-
-// Direct PrismaClient instantiation to avoid bundling issues
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
-
-function getPrismaClient() {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient()
-  }
-  return globalForPrisma.prisma
-}
-
-const prisma = getPrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export const GET = withPatientAuth(async (req) => {
   const { searchParams } = new URL(req.url)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -92,13 +92,7 @@ export default function PromoteUserPage() {
   const [speciality, setSpeciality] = useState('')
   const [promoting, setPromoting] = useState(false)
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchUsers()
-    }
-  }, [status])
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/admin/promote-user')
@@ -115,7 +109,13 @@ export default function PromoteUserPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router, toast])
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      void fetchUsers()
+    }
+  }, [fetchUsers, status])
 
   const handleOpenPromote = (user: User) => {
     setSelectedUser(user)

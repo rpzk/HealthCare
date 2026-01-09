@@ -5,14 +5,12 @@
  * de atestados médicos com conformidade CFM e LGPD.
  */
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { signCertificate, SignatureMethod } from './signature-service'
 import { sendCertificateIssuedNotification, sendCertificateRevokedNotification } from './email-service'
-
-const prisma = new PrismaClient()
 
 export interface CertificateData {
   patientId: string

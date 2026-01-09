@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -131,7 +131,7 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
   const { toast } = useToast()
 
   // Carregar equipe de atendimento
-  const loadCareTeam = async () => {
+  const loadCareTeam = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/patients/${patientId}/care-team`)
@@ -151,14 +151,14 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId, toast])
 
   useEffect(() => {
-    loadCareTeam()
-  }, [patientId])
+    void loadCareTeam()
+  }, [loadCareTeam])
 
   // Buscar usuários
-  const searchUsers = async (term: string) => {
+  const searchUsers = useCallback(async (term: string) => {
     if (!term || term.length < 2) {
       setSearchResults([])
       return
@@ -181,15 +181,15 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
     } finally {
       setSearchLoading(false)
     }
-  }
+  }, [careTeam])
 
   // Debounce para busca
   useEffect(() => {
     const timer = setTimeout(() => {
-      searchUsers(searchTerm)
+      void searchUsers(searchTerm)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchTerm])
+  }, [searchTerm, searchUsers])
 
   // Adicionar membro à equipe
   const handleAddMember = async () => {

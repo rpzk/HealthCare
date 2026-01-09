@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -34,11 +34,7 @@ export default function BiDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('month');
 
-  useEffect(() => {
-    fetchDashboard();
-  }, [period]);
-
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/bi/dashboard?period=${period}`);
@@ -50,7 +46,11 @@ export default function BiDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    void fetchDashboard();
+  }, [fetchDashboard]);
 
   if (loading) {
     return (

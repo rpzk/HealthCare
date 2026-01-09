@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Calendar, Clock, User, Play, CheckCircle, XCircle, UserX, Eye, X } from 'lucide-react'
@@ -51,6 +51,7 @@ interface ConsultationListResponse {
 export function ConsultationsList() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const searchParamsString = searchParams?.toString() || ''
   const [searchTerm, setSearchTerm] = useState('')
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,11 +68,7 @@ export function ConsultationsList() {
     pages: 0
   })
 
-  useEffect(() => {
-    fetchConsultations()
-  }, [searchTerm, pagination.page, statusFilter, typeFilter, searchParams?.toString()])
-
-  const fetchConsultations = async () => {
+  const fetchConsultations = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -84,8 +81,9 @@ export function ConsultationsList() {
         ...(typeFilter !== 'all' && { type: typeFilter })
       })
 
-  const urlPatientId = searchParams?.get('patientId') || undefined
-  const urlDate = searchParams?.get('date') || undefined
+      const urlParams = new URLSearchParams(searchParamsString)
+      const urlPatientId = urlParams.get('patientId') || undefined
+      const urlDate = urlParams.get('date') || undefined
       if (urlPatientId) params.set('patientId', urlPatientId)
       if (urlDate) {
         const d = new Date(urlDate)
@@ -121,7 +119,11 @@ export function ConsultationsList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [pagination.limit, pagination.page, searchParamsString, searchTerm, statusFilter, typeFilter])
+
+  useEffect(() => {
+    void fetchConsultations()
+  }, [fetchConsultations])
 
   const handleUpdateConsultation = async (consultationId: string, action: string, reason?: string) => {
     try {

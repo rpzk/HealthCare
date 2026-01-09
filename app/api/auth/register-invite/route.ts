@@ -1,25 +1,10 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { TermAudience } from '@prisma/client'
 
-// Instância própria do Prisma para evitar problemas de bundling
-const globalForRegister = globalThis as typeof globalThis & {
-  registerPrisma?: PrismaClient
-}
-
-function getRegisterPrisma(): PrismaClient {
-  if (!globalForRegister.registerPrisma) {
-    globalForRegister.registerPrisma = new PrismaClient({
-      log: ['error']
-    })
-  }
-  return globalForRegister.registerPrisma
-}
-
 export async function POST(req: Request) {
   try {
-    const prisma = getRegisterPrisma()
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       req.headers.get('x-real-ip') ||
       null

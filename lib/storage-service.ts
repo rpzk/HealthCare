@@ -211,7 +211,7 @@ export async function downloadRecording(key: string): Promise<Buffer> {
   if (config.type === 'local') {
     const filePath = path.join(config.localPath, key);
     const fs = await import('fs/promises');
-    let data = await fs.readFile(filePath);
+    let data: Buffer = await fs.readFile(filePath);
     
     // Verificar se está criptografado
     const ivPath = `${filePath}.iv`;

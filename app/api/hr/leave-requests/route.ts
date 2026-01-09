@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
-
-// Direct Prisma client to avoid bundling issues
-const { PrismaClient } = require('@prisma/client')
-const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
-const prisma = globalForPrisma.prisma ?? new PrismaClient()
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+import { prisma } from '@/lib/prisma'
 
 // GET - List leave requests (own or all for managers)
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -22,8 +17,8 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     const page = parseInt(url.searchParams.get('page') || '1')
     const limit = parseInt(url.searchParams.get('limit') || '20')
 
-    // Only ADMIN and MANAGER can see all requests
-    const canViewAll = ['ADMIN', 'MANAGER'].includes(user.role)
+    // Only ADMIN can see all requests
+    const canViewAll = ['ADMIN'].includes(user.role)
     
     const where: any = {}
     
@@ -172,7 +167,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     // Create notification for managers
     const managers = await prisma.user.findMany({
-      where: { role: { in: ['ADMIN', 'MANAGER'] }, isActive: true },
+      where: { role: { in: ['ADMIN'] }, isActive: true },
       select: { id: true }
     })
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -107,8 +107,7 @@ export default function NovoDashboardPage() {
     redirect("/auth/signin");
   }
 
-  const fetchData = async (showToast = false) => {
-    const wasRefetching = isRefreshing;
+  const fetchData = useCallback(async (showToast = false) => {
     if (!showToast) setLoading(true);
     if (showToast) setIsRefreshing(true);
 
@@ -157,25 +156,25 @@ export default function NovoDashboardPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [lastUpdate, wellnessState?.wellnessScore]);
 
   // Initial load
   useEffect(() => {
     if (status === "authenticated") {
-      fetchData();
+      void fetchData();
     }
-  }, [status]);
+  }, [fetchData, status]);
 
   // Auto-refetch every 5 minutes
   useEffect(() => {
     if (status !== "authenticated") return;
 
     const interval = setInterval(() => {
-      fetchData(true);
+      void fetchData(true);
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(interval);
-  }, [status, wellnessState?.wellnessScore, lastUpdate]);
+  }, [fetchData, status]);
 
   const today = new Date();
   const greeting = (() => {

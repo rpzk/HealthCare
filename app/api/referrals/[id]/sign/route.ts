@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
 import crypto from 'crypto'
-import { PrismaClient } from '@prisma/client'
-
-// Use direct PrismaClient to avoid edge bundling issues
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-const prisma = globalForPrisma.prisma ?? (globalForPrisma.prisma = new PrismaClient())
+import { prisma } from '@/lib/prisma'
 
 export const POST = withAuth(async (request: NextRequest, { user, params }) => {
   try {

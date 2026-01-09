@@ -1,5 +1,4 @@
 import { incCounter, setGauge } from './metrics'
-import type { PrismaClient } from '@prisma/client'
 
 // Evita executar warmup em contextos indevidos (build/edge/test)
 const isNode = typeof process !== 'undefined' && process.versions?.node
@@ -8,13 +7,9 @@ const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.e
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const isEdge = (globalThis as Record<string, unknown>).EdgeRuntime === 'edge'
 
-let prismaRef: PrismaClient | undefined
 async function getPrisma() {
-  if (!prismaRef) {
-    const { PrismaClient } = await import('@prisma/client')
-    prismaRef = new PrismaClient()
-  }
-  return prismaRef as PrismaClient
+  const { prisma } = await import('@/lib/prisma')
+  return prisma
 }
 
 let started = false

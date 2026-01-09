@@ -10,11 +10,12 @@ type Props = {
   roomId: string
   userId: string
   patientName?: string
+  consultationStartedAt?: string
 }
 
 type ConnectionStatus = 'idle' | 'preparing' | 'connecting' | 'connected' | 'disconnected' | 'failed'
 
-export default function TeleRoomCompact({ roomId, userId, patientName }: Props) {
+export default function TeleRoomCompact({ roomId, userId, patientName, consultationStartedAt }: Props) {
   const clientId = useMemo(() => `${userId}-${Math.random().toString(36).slice(2, 9)}`, [userId])
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const esRef = useRef<EventSource | null>(null)
@@ -30,6 +31,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
   const [speakerOff, setSpeakerOff] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [callDuration, setCallDuration] = useState(0)
+  const [consultationElapsedSeconds, setConsultationElapsedSeconds] = useState(0)
   const [remoteConnected, setRemoteConnected] = useState(false)
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'medium' | 'poor' | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -65,16 +67,22 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
     return () => clearInterval(interval)
   }, [status])
 
-  // Cleanup on unmount
+  // Consultation timer (based on consultation start time)
   useEffect(() => {
-    return () => {
-      try {
-        cleanup()
-      } catch (e) {
-        console.warn('Error during cleanup', e)
-      }
+    if (!consultationStartedAt) return
+    const startedAtMs = new Date(consultationStartedAt).getTime()
+    if (!Number.isFinite(startedAtMs)) return
+
+    const tick = () => {
+      const nowMs = Date.now()
+      const diffSeconds = Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
+      setConsultationElapsedSeconds(diffSeconds)
     }
-  }, [])
+
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [consultationStartedAt])
 
   const cleanup = useCallback(() => {
     try {
@@ -88,6 +96,17 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
       console.warn('Cleanup error', e)
     }
   }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        cleanup()
+      } catch (e) {
+        console.warn('Error during cleanup', e)
+      }
+    }
+  }, [cleanup])
 
   async function join() {
     try {
@@ -312,7 +331,13 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
         <div className={`w-2.5 h-2.5 rounded-full ${status === 'connected' ? 'bg-green-400 animate-pulse' : joined ? 'bg-yellow-400 animate-pulse' : 'bg-white/60'}`} />
         <Video className="w-5 h-5 text-white" />
         <span className="text-white text-sm font-medium">
-          {status === 'connected' ? formatDuration(callDuration) : joined ? 'Conectando...' : 'Teleconsulta'}
+          {consultationStartedAt
+            ? formatDuration(consultationElapsedSeconds)
+            : status === 'connected'
+              ? formatDuration(callDuration)
+              : joined
+                ? 'Conectando...'
+                : 'Teleconsulta'}
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); setIsMinimized(false) }}
@@ -355,6 +380,11 @@ export default function TeleRoomCompact({ roomId, userId, patientName }: Props) 
             <span className="text-xs text-red-400 font-mono flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               {formatDuration(callDuration)}
+            </span>
+          )}
+          {consultationStartedAt && (
+            <span className="text-xs text-teal-300 font-mono">
+              {formatDuration(consultationElapsedSeconds)}
             </span>
           )}
           {remoteConnected && (

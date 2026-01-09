@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 
 export interface MedicalRecord {
@@ -39,11 +39,7 @@ export function MedicalRecordsList({
 
   const totalPages = Math.ceil(totalRecords / pageSize)
 
-  useEffect(() => {
-    fetchRecords()
-  }, [page, pageSize, searchTerm, filterType, filterPriority])
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -74,7 +70,11 @@ export function MedicalRecordsList({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [filterPriority, filterType, page, pageSize, searchTerm])
+
+  useEffect(() => {
+    void fetchRecords()
+  }, [fetchRecords])
 
   const handleDelete = async (recordId: string) => {
     if (!confirm('Tem certeza que deseja deletar este prontuário?')) {

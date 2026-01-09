@@ -14,7 +14,10 @@ export class BIService {
       totalConsultations,
       totalDoctors,
       consultationsThisMonth,
-      npsScore
+      npsScore,
+      revenueAggregate,
+      completedConsultationsInPeriod,
+      completedConsultationDurations
     ] = await Promise.all([
       prisma.patient.count(),
       prisma.consultation.count(),
@@ -27,16 +30,90 @@ export class BIService {
           }
         }
       }),
-      this.getNPSScore(start, end)
+      this.getNPSScore(start, end),
+      prisma.financialTransaction.aggregate({
+        where: {
+          type: 'INCOME',
+          status: 'PAID',
+          paidDate: {
+            gte: start,
+            lte: end
+          }
+        },
+        _sum: {
+          amount: true
+        }
+      }),
+      prisma.consultation.count({
+        where: {
+          status: 'COMPLETED',
+          scheduledDate: {
+            gte: start,
+            lte: end
+          }
+        }
+      }),
+      prisma.consultation.findMany({
+        where: {
+          status: 'COMPLETED',
+          scheduledDate: {
+            gte: start,
+            lte: end
+          }
+        },
+        select: {
+          duration: true,
+          actualDate: true,
+          completedAt: true
+        }
+      })
     ])
+
+    const revenue = Number(revenueAggregate._sum.amount || 0)
+
+    const durationMinutesList = completedConsultationDurations
+      .map((c) => {
+        if (typeof c.duration === 'number') return c.duration
+        if (c.actualDate && c.completedAt) {
+          return Math.max(1, Math.round((c.completedAt.getTime() - c.actualDate.getTime()) / 60000))
+        }
+        return null
+      })
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0)
+
+    durationMinutesList.sort((a, b) => a - b)
+
+    const totalDurationMinutes = durationMinutesList.reduce((acc, v) => acc + v, 0)
+    const avgDurationMinutes = durationMinutesList.length > 0
+      ? totalDurationMinutes / durationMinutesList.length
+      : 0
+
+    const percentile = (p: number) => {
+      if (durationMinutesList.length === 0) return 0
+      const index = Math.min(
+        durationMinutesList.length - 1,
+        Math.max(0, Math.ceil((p / 100) * durationMinutesList.length) - 1)
+      )
+      return durationMinutesList[index] || 0
+    }
 
     return {
       totalPatients,
       totalConsultations,
       totalDoctors,
       consultationsThisMonth,
-      revenue: 0, // Payment model não existe, usar 0 como placeholder
-      npsScore
+      revenue,
+      npsScore,
+      consultationDuration: {
+        completedCount: completedConsultationsInPeriod,
+        measuredCount: durationMinutesList.length,
+        totalMinutes: totalDurationMinutes,
+        avgMinutes: avgDurationMinutes,
+        minMinutes: durationMinutesList.length > 0 ? durationMinutesList[0] : 0,
+        maxMinutes: durationMinutesList.length > 0 ? durationMinutesList[durationMinutesList.length - 1] : 0,
+        p50Minutes: percentile(50),
+        p90Minutes: percentile(90)
+      }
     }
   }
 
@@ -90,7 +167,9 @@ export class BIService {
           lte: endDate
         }
       },
-      _count: { id: true }
+      _count: { id: true },
+      _avg: { duration: true },
+      _sum: { duration: true }
     })
 
     const doctorDetails = await Promise.all(
@@ -101,7 +180,9 @@ export class BIService {
         })
         return {
           doctorName: doctor?.name || 'Desconhecido',
-          count: c._count.id
+          count: c._count.id,
+          avgDurationMinutes: c._avg?.duration ? Number(c._avg.duration) : 0,
+          totalDurationMinutes: c._sum?.duration ? Number(c._sum.duration) : 0
         }
       })
     )
@@ -113,11 +194,28 @@ export class BIService {
    * Receita por método de pagamento (placeholder - modelo não existe)
    */
   static async getRevenueByPaymentMethod(startDate: Date, endDate: Date) {
-    // Payment model não existe no schema
-    // Retornar dados vazios como placeholder
-    return [
-      { method: 'Não disponível', amount: 0 }
-    ]
+    const transactions = await prisma.financialTransaction.findMany({
+      where: {
+        type: 'INCOME',
+        status: 'PAID',
+        paidDate: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      select: {
+        paymentMethod: true,
+        amount: true
+      }
+    })
+
+    const byMethod = new Map<string, number>()
+    for (const t of transactions) {
+      const method = t.paymentMethod || 'Não informado'
+      byMethod.set(method, (byMethod.get(method) || 0) + Number(t.amount || 0))
+    }
+
+    return Array.from(byMethod.entries()).map(([method, amount]) => ({ method, amount }))
   }
 
   /**

@@ -9,13 +9,15 @@ import {
 
 type Props = {
   roomId: string
+  joinToken: string
+  consultationStartedAt?: string
   patientName: string
   doctorName?: string
 }
 
 type ConnectionStatus = 'idle' | 'checking' | 'requesting' | 'connecting' | 'connected' | 'waiting' | 'error' | 'disconnected'
 
-export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
+export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, patientName, doctorName }: Props) {
   const clientId = useMemo(() => `patient-${Math.random().toString(36).slice(2, 9)}`, [])
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localRef = useRef<HTMLVideoElement | null>(null)
@@ -33,6 +35,7 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'medium' | 'poor' | null>(null)
   const [callDuration, setCallDuration] = useState(0)
+  const [consultationElapsedSeconds, setConsultationElapsedSeconds] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null)
 
@@ -67,6 +70,23 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
     }
     return () => clearInterval(interval)
   }, [status])
+
+  // Consultation timer (based on consultation start time)
+  useEffect(() => {
+    if (!consultationStartedAt) return
+    const startedAtMs = new Date(consultationStartedAt).getTime()
+    if (!Number.isFinite(startedAtMs)) return
+
+    const tick = () => {
+      const nowMs = Date.now()
+      const diffSeconds = Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
+      setConsultationElapsedSeconds(diffSeconds)
+    }
+
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [consultationStartedAt])
 
   const cleanup = useCallback(() => {
     try {
@@ -258,7 +278,9 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
       }
 
       // Signaling
-      const es = new EventSource(`/api/tele/rooms/${roomId}/events?clientId=${encodeURIComponent(clientId)}`)
+      const es = new EventSource(
+        `/api/tele/rooms/${roomId}/events?clientId=${encodeURIComponent(clientId)}&token=${encodeURIComponent(joinToken)}`
+      )
       esRef.current = es
       
       es.addEventListener('signal', async (ev: MessageEvent) => {
@@ -271,7 +293,7 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
             await fetch(`/api/tele/rooms/${roomId}/signal`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: 'answer', sdp: answer.sdp, from: clientId })
+              body: JSON.stringify({ type: 'answer', sdp: answer.sdp, from: clientId, token: joinToken })
             })
           } else if (data.type === 'answer') {
             if (!pc.currentRemoteDescription) {
@@ -298,7 +320,7 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
           fetch(`/api/tele/rooms/${roomId}/signal`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'candidate', candidate: ev.candidate, from: clientId })
+            body: JSON.stringify({ type: 'candidate', candidate: ev.candidate, from: clientId, token: joinToken })
           })
         }
       }
@@ -309,7 +331,7 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
       await fetch(`/api/tele/rooms/${roomId}/signal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'offer', sdp: offer.sdp, from: clientId })
+        body: JSON.stringify({ type: 'offer', sdp: offer.sdp, from: clientId, token: joinToken })
       })
 
       setJoined(true)
@@ -641,6 +663,14 @@ export function TelePatientRoom({ roomId, patientName, doctorName }: Props) {
             <div className="flex items-center gap-1.5 text-green-600">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="font-mono text-sm font-medium">{formatDuration(callDuration)}</span>
+            </div>
+          )}
+
+          {/* Consultation Duration */}
+          {consultationStartedAt && (
+            <div className="flex items-center gap-1.5 text-gray-600">
+              <span className="text-xs text-gray-500">Consulta:</span>
+              <span className="font-mono text-sm font-medium">{formatDuration(consultationElapsedSeconds)}</span>
             </div>
           )}
         </div>

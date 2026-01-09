@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -56,7 +56,7 @@ interface PrescriptionDetail {
 export default function PrescriptionDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const router = useRouter()
-  const { success, error: showError } = useToast()
+  const { toast, success, error: showError } = useToast()
   
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
@@ -73,11 +73,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
   const [isSigned, setIsSigned] = useState(false)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
 
-  useEffect(() => {
-    fetchPrescription()
-  }, [id])
-
-  const fetchPrescription = async () => {
+  const fetchPrescription = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/prescriptions/${id}`)
@@ -113,7 +109,11 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, toast])
+
+  useEffect(() => {
+    void fetchPrescription()
+  }, [fetchPrescription])
 
   const handleSign = async () => {
     if (!password) return
@@ -137,15 +137,9 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       setShowPasswordDialog(false)
       setPassword('')
       
-      success({ 
-        title: 'Prescrição assinada!', 
-        description: 'A assinatura digital foi aplicada com sucesso' 
-      })
+      success('Prescrição assinada!', 'A assinatura digital foi aplicada com sucesso')
     } catch (e) {
-      showError({ 
-        title: 'Erro ao assinar', 
-        description: (e as Error).message 
-      })
+      showError('Erro ao assinar', (e as Error).message)
     } finally {
       setSigning(false)
     }
@@ -157,16 +151,10 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       const res = await fetch(`/api/prescriptions/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Erro ao deletar prescrição')
       
-      success({ 
-        title: 'Prescrição deletada!', 
-        description: 'A prescrição foi removida com sucesso' 
-      })
+      success('Prescrição deletada!', 'A prescrição foi removida com sucesso')
       router.push('/prescriptions')
     } catch (e) {
-      showError({ 
-        title: 'Erro ao deletar', 
-        description: (e as Error).message 
-      })
+      showError('Erro ao deletar', (e as Error).message)
     } finally {
       setDeleting(false)
     }
@@ -186,24 +174,15 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       setData(updated)
       setShowCancelDialog(false)
       
-      success({ 
-        title: 'Prescrição cancelada', 
-        description: 'O status foi atualizado para cancelado' 
-      })
+      success('Prescrição cancelada', 'O status foi atualizado para cancelado')
     } catch (e) {
-      showError({ 
-        title: 'Erro ao cancelar', 
-        description: (e as Error).message 
-      })
+      showError('Erro ao cancelar', (e as Error).message)
     }
   }
 
   const handlePrint = () => {
     if (!isSigned && requireSignBeforePrint) {
-      showError({
-        title: 'Assinatura necessária',
-        description: 'Esta prescrição deve ser assinada antes de imprimir'
-      })
+      showError('Assinatura necessária', 'Esta prescrição deve ser assinada antes de imprimir')
       return
     }
     window.print()
@@ -211,10 +190,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
 
   const handleShare = () => {
     if (!isSigned && requireSignBeforePrint) {
-      showError({
-        title: 'Assinatura necessária',
-        description: 'Esta prescrição deve ser assinada antes de compartilhar'
-      })
+      showError('Assinatura necessária', 'Esta prescrição deve ser assinada antes de compartilhar')
       return
     }
     
@@ -224,12 +200,9 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
     } else {
       try { 
         navigator.clipboard.writeText(shareUrl)
-        success({ 
-          title: 'Link copiado!', 
-          description: 'O link foi copiado para a área de transferência' 
-        })
+        success('Link copiado!', 'O link foi copiado para a área de transferência')
       } catch {
-        showError({ title: 'Erro ao copiar link' })
+        showError('Erro ao copiar link')
       }
     }
   }
@@ -606,7 +579,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
         cancelText="Cancelar"
         type="danger"
         onConfirm={handleDelete}
-        loading={deleting}
+        isLoading={deleting}
       />
 
       {/* Cancel Confirmation Dialog */}

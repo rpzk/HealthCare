@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from '@/components/ui/use-toast'
@@ -47,11 +47,7 @@ export function RecordingsList({ consultationId }: RecordingsListProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [recordingToDelete, setRecordingToDelete] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadRecordings()
-  }, [consultationId])
-
-  const loadRecordings = async () => {
+  const loadRecordings = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/consultations/${consultationId}/recordings`)
@@ -70,7 +66,11 @@ export function RecordingsList({ consultationId }: RecordingsListProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [consultationId])
+
+  useEffect(() => {
+    void loadRecordings()
+  }, [loadRecordings])
 
   const formatFileSize = (bytes?: number): string => {
     if (!bytes) return 'N/A'

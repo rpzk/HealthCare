@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
+import { prisma } from '@/lib/prisma'
 
 /**
  * DELETE /api/certificates/[id]
@@ -56,10 +57,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const prisma = (await import('@prisma/client')).PrismaClient
-    const db = new prisma()
-
-    const certificate = await db.medicalCertificate.findUnique({
+    const certificate = await prisma.medicalCertificate.findUnique({
       where: { id: params.id },
       include: {
         patient: {

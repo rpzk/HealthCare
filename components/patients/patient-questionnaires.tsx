@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -65,11 +65,7 @@ export function PatientQuestionnaires({ patientId }: PatientQuestionnairesProps)
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchQuestionnaires()
-  }, [patientId])
-
-  async function fetchQuestionnaires() {
+  const fetchQuestionnaires = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/patients/${patientId}/questionnaires`)
@@ -82,7 +78,11 @@ export function PatientQuestionnaires({ patientId }: PatientQuestionnairesProps)
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId])
+
+  useEffect(() => {
+    void fetchQuestionnaires()
+  }, [fetchQuestionnaires])
 
   const completedCount = questionnaires.filter(q => q.status === 'COMPLETED').length
   const pendingCount = questionnaires.filter(q => q.status === 'PENDING' || q.status === 'IN_PROGRESS').length
