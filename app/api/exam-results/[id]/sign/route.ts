@@ -40,7 +40,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     })
     if (!userCertificate || !userCertificate.pfxFilePath) {
       return NextResponse.json(
-        { error: 'Certificado A1 não configurado para o usuário' },
+        { error: 'Certificado digital A1 não configurado. Configure seu certificado em Configurações > Certificados Digitais' },
         { status: 400 }
       )
     }
@@ -50,16 +50,35 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     if (!password) {
       return NextResponse.json({ error: 'Senha do certificado é obrigatória' }, { status: 400 })
     }
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
-    if (userCertificate.pfxPasswordHash && passwordHash !== userCertificate.pfxPasswordHash) {
-      return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
-    }
 
-    const signatureResult = await signWithA1Certificate(
-      contentToSign,
-      userCertificate.pfxFilePath,
-      password
-    )
+    let signatureResult
+    try {
+      signatureResult = await signWithA1Certificate(
+        contentToSign,
+        userCertificate.pfxFilePath,
+        password
+      )
+    } catch (sigError: any) {
+      console.error('Erro ao assinar resultado de exame:', {
+        error: sigError?.message,
+        certificateId: userCertificate.id,
+        userId: user.id
+      })
+      
+      if (sigError?.message?.toLowerCase().includes('password')) {
+        return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
+      }
+      if (sigError?.message?.toLowerCase().includes('expired') || sigError?.message?.toLowerCase().includes('expirado')) {
+        return NextResponse.json({ error: 'Certificado digital expirado' }, { status: 400 })
+      }
+      if (sigError?.message?.toLowerCase().includes('not found')) {
+        return NextResponse.json({ error: 'Arquivo do certificado não encontrado' }, { status: 404 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Falha ao assinar documento. Verifique seu certificado e senha.' 
+      }, { status: 500 })
+    }
 
     const signatureHash = crypto.createHash('sha256').update(contentToSign).digest('hex')
     await prisma.signedDocument.create({

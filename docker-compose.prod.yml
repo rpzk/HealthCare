@@ -66,6 +66,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD}@postgres:5432/healthcare_db
     container_name: healthcare-app
     environment:
       DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD}@postgres:5432/healthcare_db

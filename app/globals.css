@@ -152,8 +152,13 @@
 /* Print-friendly styles for clinical documents */
 @media print {
   /* Hide navigation and chrome */
-  header, nav, aside, .ml-64, .sidebar-content .fixed, .no-print {
+  header, nav, aside, .sidebar-content .fixed, .no-print {
     display: none !important;
+  }
+
+  /* Keep main content visible; just reset the sidebar offset */
+  .ml-64 {
+    margin-left: 0 !important;
   }
 
   body {

@@ -131,35 +131,65 @@ export async function POST(request: NextRequest) {
       .update(password)
       .digest('hex')
 
-    // Desativar certificados antigos do usuário
+    // Desativar certificados antigos do usuário (exceto o que será atualizado)
     await prisma.digitalCertificate.updateMany({
       where: {
         userId: session.user.id,
         isActive: true,
+        serialNumber: { not: certificateInfo.serialNumber },
       },
       data: {
         isActive: false,
       },
     })
 
-    // Salvar no banco de dados
-    const cert = await prisma.digitalCertificate.create({
-      data: {
-        userId: session.user.id,
-        certificateType: 'A1',
-        issuer: certificateInfo.issuer,
-        subject: certificateInfo.subject,
-        serialNumber: certificateInfo.serialNumber,
-        notBefore: certificateInfo.notBefore,
-        notAfter: certificateInfo.notAfter,
-        certificatePem: certificateInfo.certPem,
-        publicKeyPem: certificateInfo.publicKeyPem,
-        pfxFilePath: filePath,
-        pfxPasswordHash: passwordHash,
-        isHardwareToken: false,
-        isActive: true,
-      },
+    // Verificar se já existe certificado com este serialNumber
+    const existingCert = await prisma.digitalCertificate.findUnique({
+      where: { serialNumber: certificateInfo.serialNumber },
     })
+
+    let cert
+    if (existingCert) {
+      // Atualizar certificado existente
+      cert = await prisma.digitalCertificate.update({
+        where: { serialNumber: certificateInfo.serialNumber },
+        data: {
+          userId: session.user.id,
+          certificateType: 'A1',
+          issuer: certificateInfo.issuer,
+          subject: certificateInfo.subject,
+          notBefore: certificateInfo.notBefore,
+          notAfter: certificateInfo.notAfter,
+          certificatePem: certificateInfo.certPem,
+          publicKeyPem: certificateInfo.publicKeyPem,
+          pfxFilePath: filePath,
+          pfxPasswordHash: passwordHash,
+          isHardwareToken: false,
+          isActive: true,
+          revokedAt: null,
+          revokedReason: null,
+        },
+      })
+    } else {
+      // Criar novo certificado
+      cert = await prisma.digitalCertificate.create({
+        data: {
+          userId: session.user.id,
+          certificateType: 'A1',
+          issuer: certificateInfo.issuer,
+          subject: certificateInfo.subject,
+          serialNumber: certificateInfo.serialNumber,
+          notBefore: certificateInfo.notBefore,
+          notAfter: certificateInfo.notAfter,
+          certificatePem: certificateInfo.certPem,
+          publicKeyPem: certificateInfo.publicKeyPem,
+          pfxFilePath: filePath,
+          pfxPasswordHash: passwordHash,
+          isHardwareToken: false,
+          isActive: true,
+        },
+      })
+    }
 
     return NextResponse.json({
       success: true,

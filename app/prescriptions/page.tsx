@@ -64,9 +64,13 @@ export default function PrescriptionsPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
-        search: searchTerm,
-        status: filterStatus
+        search: searchTerm
       })
+      
+      // Só adiciona status se não for 'ALL'
+      if (filterStatus && filterStatus !== 'ALL') {
+        params.append('status', filterStatus)
+      }
 
       const response = await fetch(`/api/prescriptions?${params}`)
       if (!response.ok) throw new Error('Falha ao carregar prescrições')

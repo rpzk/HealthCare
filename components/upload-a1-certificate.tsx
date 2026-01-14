@@ -72,14 +72,17 @@ export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Certificado Digital A1</CardTitle>
+    <Card className="border-blue-200 dark:border-blue-800">
+      <CardHeader className="bg-blue-50/50 dark:bg-blue-950/20">
+        <div className="flex items-center gap-2">
+          <Upload className="h-5 w-5 text-blue-600" />
+          <CardTitle>Carregar Certificado Digital A1</CardTitle>
+        </div>
         <CardDescription>
-          Faça upload do seu certificado ICP-Brasil para assinar documentos
+          Faça upload do seu certificado ICP-Brasil (.pfx ou .p12) para assinar documentos digitalmente
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-6">
         <div>
           <Label htmlFor="pfx-file">Arquivo .pfx ou .p12</Label>
           <Input
@@ -90,6 +93,12 @@ export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
             onChange={(e) => setFile(e.target.files?.[0] || null)}
             disabled={uploading}
           />
+          {file && (
+            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Arquivo selecionado: {file.name}
+            </p>
+          )}
         </div>
 
         <div>
@@ -102,17 +111,21 @@ export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
             placeholder="Digite a senha do certificado"
             disabled={uploading}
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            A senha não será armazenada - você precisará digitá-la a cada assinatura
+          </p>
         </div>
 
         <Button
           onClick={handleUpload}
           disabled={uploading || !file || !password}
           className="w-full"
+          size="lg"
         >
           {uploading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Carregando certificado...
+              Carregando e validando certificado...
             </>
           ) : (
             <>
@@ -122,10 +135,12 @@ export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
           )}
         </Button>
 
-        <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
-          <p>✅ Seu certificado ficará armazenado de forma segura</p>
-          <p>✅ A senha não é armazenada (será solicitada a cada assinatura)</p>
-          <p>✅ Apenas você pode usar seu certificado</p>
+        <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 space-y-1 text-xs">
+          <p className="font-medium text-blue-900 dark:text-blue-300 mb-2">ℹ️ O que acontece ao carregar:</p>
+          <p className="text-blue-800 dark:text-blue-400">✅ Certificado é validado e armazenado com segurança</p>
+          <p className="text-blue-800 dark:text-blue-400">✅ Certificados antigos são desativados automaticamente</p>
+          <p className="text-blue-800 dark:text-blue-400">✅ Apenas você pode usar seu certificado</p>
+          <p className="text-blue-800 dark:text-blue-400">✅ A senha será solicitada a cada assinatura</p>
         </div>
       </CardContent>
     </Card>

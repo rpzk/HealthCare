@@ -30,31 +30,52 @@ export async function signWithA1Certificate(
   pfxPassword: string
 ): Promise<SignatureResult> {
   
-  // 1. Ler arquivo .pfx
-  const pfxBuffer = fs.readFileSync(pfxPath)
-  const pfxBase64 = pfxBuffer.toString('base64')
+  try {
+    // 1. Ler arquivo .pfx
+    const pfxBuffer = fs.readFileSync(pfxPath)
+    const pfxBase64 = pfxBuffer.toString('base64')
+    
+    // 2. Decodificar com node-forge
+    const pfxAsn1 = forge.util.decode64(pfxBase64)
+    const asn1 = forge.asn1.fromDer(pfxAsn1)
+    
+    // 3. Extrair PKCS#12 com senha
+    let p12
+    try {
+      p12 = forge.pkcs12.pkcs12FromAsn1(asn1, pfxPassword)
+    } catch (err) {
+      console.error('Erro ao descriptografar .pfx com a senha fornecida:', err)
+      throw new Error('Senha do certificado incorreta')
+    }
+    
+    if (!p12) {
+      console.error('P12 retornou undefined - possível erro na senha ou arquivo corrompido')
+      throw new Error('Erro ao processar certificado - arquivo pode estar corrompido ou senha incorreta')
+    }
   
-  // 2. Decodificar com node-forge
-  const pfxAsn1 = forge.util.decode64(pfxBase64)
-  const asn1 = forge.asn1.fromDer(pfxAsn1)
-  
-  // 3. Extrair PKCS#12 com senha
-  const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, pfxPassword)
-  
-  // 4. Obter chave privada
-  const keyData = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
-    forge.pki.oids.pkcs8ShroudedKeyBag
-  ]
-  
-  if (!keyData || keyData.length === 0) {
-    throw new Error('Chave privada não encontrada no certificado')
-  }
-  
-  const privateKey = keyData[0].key
-  
-  if (!privateKey) {
-    throw new Error('Chave privada inválida')
-  }
+    // 4. Obter chave privada - tentar múltiplos tipos de bag
+    let privateKey = null
+
+    const tryBag = (bagType: string) => {
+      try {
+        const bags = p12.getBags({ bagType })[bagType]
+        if (bags && bags.length > 0 && bags[0]?.key) {
+          return bags[0].key
+        }
+      } catch {
+        // ignore bag errors and continue
+      }
+      return null
+    }
+
+    privateKey =
+      tryBag(forge.pki.oids.pkcs8ShroudedKeyBag) ||
+      tryBag(forge.pki.oids.rsaPrivateKeyBag) ||
+      tryBag(forge.pki.oids.keyBag)
+
+    if (!privateKey) {
+      throw new Error('Chave privada não encontrada no certificado (verifique a senha ou gere novo .pfx)')
+    }
   
   // 5. Obter certificado
   const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[
@@ -106,6 +127,10 @@ export async function signWithA1Certificate(
       serialNumber: certificate.serialNumber,
     },
     signedAt: new Date(),
+  }
+  } catch (error) {
+    console.error('Erro em signWithA1Certificate:', error)
+    throw error
   }
 }
 

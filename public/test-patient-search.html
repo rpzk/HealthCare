@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste - Patient Autocomplete API</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; color: #cc0000; }
+        .success { background: #e6ffe6; color: #008000; }
+        input { padding: 10px; width: 100%; font-size: 16px; }
+        button { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste de API - Patient Search</h1>
+    
+    <p><strong>Instruções:</strong></p>
+    <ol>
+        <li>Faça login no sistema principal primeiro</li>
+        <li>Digite um termo de busca abaixo (ex: "Ana", "Fernanda")</li>
+        <li>Clique em "Buscar"</li>
+    </ol>
+
+    <input type="text" id="query" placeholder="Digite nome do paciente..." value="Ana">
+    <button onclick="search()">🔍 Buscar</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function search() {
+            const query = document.getElementById('query').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '<div class="result">Buscando...</div>';
+            
+            try {
+                const response = await fetch(`/api/patients/search?q=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>Erro ${response.status}:</strong><br>
+                            ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (!data || data.length === 0) {
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <strong>Nenhum paciente encontrado para "${query}"</strong>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>✅ Encontrados ${data.length} paciente(s):</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>Erro de rede:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
