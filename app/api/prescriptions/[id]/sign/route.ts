@@ -40,9 +40,10 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       where: { userId: user.id, isActive: true, notAfter: { gte: new Date() } },
       orderBy: { createdAt: 'desc' },
     })
+    
     if (!userCertificate || !userCertificate.pfxFilePath) {
       return NextResponse.json(
-        { error: 'Certificado A1 não configurado para o usuário' },
+        { error: 'Certificado digital A1 não configurado. Configure seu certificado em Configurações > Certificados Digitais' },
         { status: 400 }
       )
     }
@@ -52,17 +53,40 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     if (!password) {
       return NextResponse.json({ error: 'Senha do certificado é obrigatória' }, { status: 400 })
     }
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
-    if (userCertificate.pfxPasswordHash && passwordHash !== userCertificate.pfxPasswordHash) {
-      return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
-    }
 
-    // 6. Sign with A1
-    const signatureResult = await signWithA1Certificate(
-      contentToSign,
-      userCertificate.pfxFilePath,
-      password
-    )
+    // 6. Sign with A1 certificate
+    let signatureResult
+    try {
+      signatureResult = await signWithA1Certificate(
+        contentToSign,
+        userCertificate.pfxFilePath,
+        password
+      )
+    } catch (sigError: any) {
+      console.error('Erro ao assinar documento:', {
+        error: sigError?.message,
+        certificateId: userCertificate.id,
+        userId: user.id
+      })
+      
+      // Mensagens de erro específicas
+      if (sigError?.message?.toLowerCase().includes('password')) {
+        return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
+      }
+      if (sigError?.message?.toLowerCase().includes('arquivo') || sigError?.message?.toLowerCase().includes('corrompido')) {
+        return NextResponse.json({ error: 'Certificado corrompido ou arquivo inválido' }, { status: 400 })
+      }
+      if (sigError?.message?.toLowerCase().includes('expired') || sigError?.message?.toLowerCase().includes('expirado')) {
+        return NextResponse.json({ error: 'Certificado digital expirado' }, { status: 400 })
+      }
+      if (sigError?.message?.toLowerCase().includes('not found')) {
+        return NextResponse.json({ error: 'Arquivo do certificado não encontrado' }, { status: 404 })
+      }
+      
+      return NextResponse.json({ 
+        error: sigError?.message || 'Falha ao assinar documento. Verifique seu certificado e senha.' 
+      }, { status: 500 })
+    }
 
     // 7. Update database
     const updated = await prisma.prescription.update({

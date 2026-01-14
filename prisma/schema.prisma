@@ -118,6 +118,10 @@ model User {
   reviewedChanges             ScheduleChangeRequest[]   @relation("ChangeRequestReviewer")
   createdTemplates            ScheduleTemplate[]        @relation("TemplateCreator")
 
+  // Documento Templates
+  createdDocumentTemplates    DocumentTemplate[]        @relation("TemplateCreatedBy")
+  generatedDocuments          GeneratedDocument[]       @relation("GeneratedDocsByDoctor")
+
   @@index([acsAssignedMicroAreaId])
   @@index([assignedAreaId])
   @@map("users")
@@ -230,8 +234,117 @@ model Branding {
   logoUrl    String?
   headerUrl  String?
   footerText String?
+  // Novos campos para melhor estrutura
+  clinicPhone String?
+  clinicAddress String?
+  clinicCity  String?
+  clinicState String?
+  clinicZipCode String?
   updatedAt  DateTime @updatedAt
   @@map("branding")
+}
+
+// Modelo para armazenar templates de documentos customizáveis
+model DocumentTemplate {
+  id                  String   @id @default(cuid())
+  name                String   // Ex: "Prescrição Padrão", "Atestado Médico"
+  documentType        String   // prescription, certificate, attestation, etc.
+  description         String?
+  
+  // HTML com placeholders {{variável}}
+  htmlTemplate        String   @db.Text
+  
+  // CSS customizado para o template
+  cssTemplate         String?  @db.Text
+  
+  // Configurações de layout (JSON)
+  config              Json?    // { pageSize: "A4", orientation: "portrait", margins: {...}, etc. }
+  
+  // Elemento para assinatura digital
+  signaturePosition   String?  // bottom-right, bottom-left, bottom-center, top-right, etc.
+  signatureSize       String?  // small, medium, large
+  
+  // QR Code
+  qrcodePosition      String?  // bottom-right, bottom-left, etc.
+  qrcodeSize          String?  // 1cm, 1.5cm, 2cm, etc.
+  showQrcode          Boolean  @default(true)
+  
+  // Dados de clínica inclusos
+  clinicName          Boolean  @default(true)
+  clinicLogo          Boolean  @default(true)
+  clinicAddress       Boolean  @default(true)
+  clinicPhone         Boolean  @default(true)
+  
+  // Dados de médico inclusos
+  doctorName          Boolean  @default(true)
+  doctorSpec          Boolean  @default(true)
+  doctorCRM           Boolean  @default(true)
+  doctorAddress       Boolean  @default(false)
+  doctorLogo          Boolean  @default(false)
+  
+  // Rodapé
+  showFooter          Boolean  @default(true)
+  footerText          String?
+  
+  // Status
+  isActive            Boolean  @default(true)
+  isDefault           Boolean  @default(false)
+  
+  // Auditoria
+  createdBy           String
+  createdByUser       User     @relation("TemplateCreatedBy", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // Documentos gerados com este template
+  generatedDocs       GeneratedDocument[]
+  
+  @@index([documentType])
+  @@index([createdBy])
+  @@index([isActive])
+  @@index([isDefault])
+  @@map("document_templates")
+}
+
+// Modelo para rastrear documentos gerados com templates
+model GeneratedDocument {
+  id                  String   @id @default(cuid())
+  
+  // Template usado
+  templateId          String
+  template            DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  // Documento original (prescrição, certificado, etc.)
+  documentType        String   // prescription, certificate, attestation, etc.
+  documentId          String   // ID da prescrição, certificado, atestado, etc.
+  
+  // Médico
+  doctorId            String
+  doctor              User     @relation("GeneratedDocsByDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Paciente (opcional)
+  patientId           String?
+  patient             Patient? @relation("GeneratedDocsByPatient", fields: [patientId], references: [id], onDelete: SetNull)
+  
+  // PDF armazenado (URL ou path)
+  pdfUrl              String?
+  
+  // Assinatura digital
+  signedHash          String?
+  
+  // Relacionamento com documento assinado
+  signedDocumentId    String?  @unique
+  signedDocument      SignedDocument? @relation(fields: [signedDocumentId], references: [id], onDelete: SetNull)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([templateId])
+  @@index([documentType, documentId])
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([createdAt])
+  @@map("generated_documents")
 }
 
 model SystemModule {
@@ -315,6 +428,9 @@ model Patient {
 
   // Gravações de teleconsulta
   telemedicineRecordings TelemedicineRecording[]
+
+  // Documentos gerados para este paciente
+  generatedDocuments GeneratedDocument[] @relation("GeneratedDocsByPatient")
 
   // Atestados médicos
   medicalCertificates MedicalCertificate[]
@@ -3887,6 +4003,9 @@ model SignedDocument {
   // Auditoria
   signedAt  DateTime @default(now())
   createdAt DateTime @default(now())
+
+  // Documento gerado associado (opcional)
+  generatedDocument GeneratedDocument?
 
   @@index([documentType, documentId])
   @@index([signerId])

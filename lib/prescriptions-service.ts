@@ -44,16 +44,39 @@ export class PrescriptionsServiceDb {
     digitalSignature?: string | null
     patient?: { id: string; name: string; email: string | null; phone: string | null } | null
     doctor?: { id: string; name: string; email: string; speciality: string | null } | null
+    items?: Array<{
+      id: string
+      customName: string | null
+      dosage: string
+      frequency: string
+      duration: string
+      instructions: string | null
+      medication?: { id: string; name: string; description: string | null } | null
+    }>
   }) {
-    const meds = [
-      {
-        name: db.medication,
-        dosage: db.dosage,
-        frequency: db.frequency,
-        duration: db.duration,
-        instructions: db.instructions || undefined,
-      },
-    ]
+    // Se existem items (novo schema), use-os. Senão, use campos diretos (schema antigo)
+    let meds: MedicationItem[]
+    if (db.items && db.items.length > 0) {
+      meds = db.items.map(item => ({
+        name: item.medication?.name || item.customName || 'Sem nome',
+        dosage: item.dosage,
+        frequency: item.frequency,
+        duration: item.duration,
+        instructions: item.instructions || undefined,
+      }))
+    } else {
+      // Fallback para schema antigo
+      meds = [
+        {
+          name: db.medication,
+          dosage: db.dosage,
+          frequency: db.frequency,
+          duration: db.duration,
+          instructions: db.instructions || undefined,
+        },
+      ]
+    }
+    
     return {
       id: db.id,
       patientId: db.patientId,
@@ -68,6 +91,7 @@ export class PrescriptionsServiceDb {
       patient: db.patient ? { id: db.patient.id, name: db.patient.name, email: db.patient.email, phone: db.patient.phone } : undefined,
       doctor: db.doctor ? { id: db.doctor.id, name: db.doctor.name, email: db.doctor.email, speciality: db.doctor.speciality } : undefined,
       digitalSignature: db.digitalSignature || null,
+      verificationUrl: null,
     }
   }
 
@@ -85,8 +109,14 @@ export class PrescriptionsServiceDb {
 
   static async list(filters: PrescriptionFilters = {}, page = 1, limit = 10) {
     const where: Prisma.PrescriptionWhereInput = {}
-    // status is passed as a string; cast it to the appropriate Prisma enum type
-    if (filters.status) where.status = filters.status as PrescriptionStatus
+    // status é passado como string; validar antes de usar
+    if (filters.status && filters.status.trim() !== '') {
+      const validStatuses = ['ACTIVE', 'COMPLETED', 'CANCELLED', 'EXPIRED']
+      if (validStatuses.includes(filters.status.toUpperCase())) {
+        where.status = filters.status as PrescriptionStatus
+      }
+      // Se status inválido, ignora o filtro
+    }
     if (filters.patientId) where.patientId = filters.patientId
     if (filters.doctorId) where.doctorId = filters.doctorId
     if (filters.search) {
@@ -103,6 +133,11 @@ export class PrescriptionsServiceDb {
           include: {
             patient: { select: { id: true, name: true, email: true, phone: true } },
             doctor: { select: { id: true, name: true, email: true, speciality: true } },
+            items: {
+              include: {
+                medication: { select: { id: true, name: true, description: true } }
+              }
+            }
           },
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * limit,
@@ -134,9 +169,24 @@ export class PrescriptionsServiceDb {
         include: {
           patient: { select: { id: true, name: true, email: true, phone: true } },
           doctor: { select: { id: true, name: true, email: true, speciality: true } },
+          items: {
+            include: {
+              medication: { select: { id: true, name: true, description: true } }
+            }
+          }
         },
       })
-      return row ? this.toApiShape(row) : null
+      if (!row) return null
+
+      const signed = await prisma.signedDocument.findFirst({
+        where: { documentType: 'PRESCRIPTION', documentId: String(id) },
+        orderBy: { signedAt: 'desc' },
+        select: { signatureHash: true },
+      })
+
+      const shaped = this.toApiShape(row)
+      shaped.verificationUrl = signed ? `/api/digital-signatures/validate/${signed.signatureHash}` : null
+      return shaped
     } catch (err: unknown) {
       const error = err as Error & { code?: string; meta?: unknown }
       console.error('Prisma error in PrescriptionsServiceDb.getById', {
@@ -156,6 +206,11 @@ export class PrescriptionsServiceDb {
         include: {
           patient: { select: { id: true, name: true, email: true, phone: true } },
           doctor: { select: { id: true, name: true, email: true, speciality: true } },
+          items: {
+            include: {
+              medication: { select: { id: true, name: true, description: true } }
+            }
+          }
         },
       })
       if (!prescription) return null
@@ -179,13 +234,29 @@ export class PrescriptionsServiceDb {
         data: {
           patientId: data.patientId,
           doctorId: doctorId,
-            consultationId: data.consultationId || null,
+          consultationId: data.consultationId || null,
           status: (data.status || 'ACTIVE') as PrescriptionStatus,
           ...med,
+          // Criar PrescriptionItems com todos os medicamentos
+          items: {
+            create: data.medications.map((m: MedicationItem & { medicationId?: string }) => ({
+              medicationId: m.medicationId || null,
+              customName: !m.medicationId ? m.name : null,
+              dosage: m.dosage,
+              frequency: m.frequency,
+              duration: m.duration,
+              instructions: m.instructions || null,
+            }))
+          }
         },
         include: {
           patient: { select: { id: true, name: true, email: true, phone: true } },
           doctor: { select: { id: true, name: true, email: true, speciality: true } },
+          items: {
+            include: {
+              medication: { select: { id: true, name: true, description: true } }
+            }
+          }
         },
       })
       return this.toApiShape(created)

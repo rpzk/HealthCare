@@ -15,6 +15,11 @@ RUN npm ci
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Receive build args
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -43,7 +48,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 # Create data and uploads directories with correct permissions
-RUN mkdir -p /app/data /app/uploads && chown -R nextjs:nodejs /app/data /app/uploads
+RUN mkdir -p /app/data /app/uploads /app/uploads/certificates /app/uploads/recordings && chown -R nextjs:nodejs /app/data /app/uploads
 
 RUN chmod +x ./scripts/docker-entrypoint.sh
 

@@ -28,7 +28,7 @@ services:
     image: ollama/ollama:latest
     container_name: healthcare-ollama
     ports:
-      - "11434:11434"
+      - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
@@ -39,6 +39,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:-change_me}@postgres:5432/healthcare_db
     container_name: healthcare-app
     environment:
       DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:-change_me}@postgres:5432/healthcare_db

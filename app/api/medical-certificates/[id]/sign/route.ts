@@ -9,32 +9,38 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     const { id } = params
     if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
 
-    // 1) Load exam request
-    const exam = await prisma.examRequest.findUnique({ where: { id: String(id) } })
-    if (!exam) return NextResponse.json({ error: 'Solicitação de exame não encontrada' }, { status: 404 })
+    // 1) Load medical certificate
+    const certificate = await prisma.medicalCertificate.findUnique({ 
+      where: { id: String(id) } 
+    })
+    if (!certificate) {
+      return NextResponse.json({ error: 'Atestado médico não encontrado' }, { status: 404 })
+    }
 
     // 2) Authorization: only the author doctor or admins
-    if (exam.doctorId !== user.id && user.role !== 'ADMIN') {
+    if (certificate.doctorId !== user.id && user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
     // 3) Check if already signed via audit trail
     const alreadySigned = await prisma.signedDocument.findFirst({
-      where: { documentType: 'EXAM_REQUEST', documentId: String(id) },
+      where: { documentType: 'MEDICAL_CERTIFICATE', documentId: String(id) },
     })
     if (alreadySigned) {
-      return NextResponse.json({ error: 'Solicitação de exame já assinada' }, { status: 400 })
+      return NextResponse.json({ error: 'Atestado médico já assinado' }, { status: 400 })
     }
 
-    // 4) Canonical content to sign
+    // 4) Create canonical content to sign
     const contentToSign = JSON.stringify({
-      id: exam.id,
-      patientId: exam.patientId,
-      doctorId: exam.doctorId,
-      examType: exam.examType,
-      description: exam.description,
-      urgency: exam.urgency,
-      requestDate: exam.requestDate,
+      id: certificate.id,
+      patientId: certificate.patientId,
+      doctorId: certificate.doctorId,
+      cid10: certificate.cid10,
+      description: certificate.description,
+      startDate: certificate.startDate,
+      endDate: certificate.endDate,
+      daysOff: certificate.daysOff,
+      createdAt: certificate.createdAt,
     })
 
     // 5) Locate user's active A1 certificate
@@ -50,7 +56,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     }
 
     // 6) Validate password
-    const body = (await request.json().catch(() => ({}))) as any
+    const body = await request.json().catch(() => ({})) as any
     const password: string | undefined = body?.password
     if (!password) {
       return NextResponse.json({ error: 'Senha do certificado é obrigatória' }, { status: 400 })
@@ -65,7 +71,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
         password
       )
     } catch (sigError: any) {
-      console.error('Erro ao assinar solicitação de exame:', {
+      console.error('Erro ao assinar atestado médico:', {
         error: sigError?.message,
         certificateId: userCertificate.id,
         userId: user.id
@@ -90,7 +96,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     const signatureHash = crypto.createHash('sha256').update(contentToSign).digest('hex')
     await prisma.signedDocument.create({
       data: {
-        documentType: 'EXAM_REQUEST',
+        documentType: 'MEDICAL_CERTIFICATE',
         documentId: String(id),
         certificateId: userCertificate.id,
         signerId: user.id,
@@ -102,7 +108,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       },
     })
 
-    // 9) Update cert usage
+    // 9) Update certificate usage
     await prisma.digitalCertificate.update({
       where: { id: userCertificate.id },
       data: { lastUsedAt: new Date(), usageCount: { increment: 1 } },
@@ -115,8 +121,9 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       signatureHash,
       verificationUrl: `/api/digital-signatures/validate/${signatureHash}`,
     })
+
   } catch (error) {
-    console.error('Erro ao assinar solicitação de exame:', error)
+    console.error('Erro ao assinar atestado médico:', error)
     return NextResponse.json(
       { error: 'Erro interno ao assinar documento' },
       { status: 500 }
