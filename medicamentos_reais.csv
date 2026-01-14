@@ -1,0 +1,44 @@
+nome,sinonimo,fantasia,tipo,farmaciabas,farmaciamun,farmaciaestad,farmaciasaud,farmaciapopular,farmaciahospit,farmacicom,farmacomp,via,formato,unidade,concentracao,dosekilo,frequencia,duracao,quantidademax,idademin,idademax,restricaosexo,ativo
+Dipirona,Metamizol,Novalgina,SYMPTOMATIC,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,500,,,1,,,SEM_RESTRICAO,true
+Ibuprofeno,Isobutilparacresol,Ibuprofeno Genérico,SYMPTOMATIC,true,true,true,true,true,true,true,false,Oral,Comprimido,mg,200,,,1,,,SEM_RESTRICAO,true
+Amoxicilina,Amoxicilina Trihidratada,Amoxicilina Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Pó para Suspensão,mg,500,50,,7,35,,,SEM_RESTRICAO,true
+Losartana,Losartana Potássica,Losartana Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,50,,,30,30,,,SEM_RESTRICAO,true
+Metformina,Metformina Hidrocloreto,Metformina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,500,,,60,,,SEM_RESTRICAO,true
+Atorvastatina,Atorvastatina Cálcica,Atorvastatina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,40,,,30,,,SEM_RESTRICAO,true
+Omeprazol,Omeprazol Magnésio,Omeprazol Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Cápsula,mg,20,,,30,,,SEM_RESTRICAO,true
+Salbutamol,Albuterol,Salbutamol Genérico,SYMPTOMATIC,true,true,true,true,true,true,true,false,Inalado,Solução,mg/mL,5,0.15,,1,10,,,SEM_RESTRICAO,true
+Dexametasona,Dexametasona Fosfato,Dexametasona Genérico,CONTINUOUS,false,true,true,true,false,true,true,false,Oral,Comprimido,mg,4,0.1,,5,21,,,SEM_RESTRICAO,true
+Levotiroxina,Levotiroxina Sódica,Puran T4,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mcg,50,2,,365,,,SEM_RESTRICAO,true
+Paracetamol,Acetaminofeno,Paracetamol Genérico,SYMPTOMATIC,true,true,true,true,true,true,true,false,Oral,Comprimido,mg,500,15,,1,,,SEM_RESTRICAO,true
+Cefalexina,Cefalexina Hidratada,Cefalexina Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Cápsula,mg,500,25,,7,35,,,SEM_RESTRICAO,true
+Fluconazol,Fluconazol Triazol,Fluconazol Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Cápsula,mg,150,6,,1,,,SEM_RESTRICAO,true
+Clonazepam,Clonazepam Benzodiazepina,Rivotril,CONTROLLED,false,false,true,false,false,true,true,false,Oral,Comprimido,mg,0.5,0.01,,60,,,SEM_RESTRICAO,true
+Brometo de Ipratrópio,Brometo de Ipratrópio,Atrovent,SYMPTOMATIC,true,true,true,true,true,true,true,false,Inalado,Solução,mcg/mL,20,0.3,,1,,,SEM_RESTRICAO,true
+Sucralfato,Sucralfato,Sucralfato Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Suspensão,mg/mL,200,40,,60,,,SEM_RESTRICAO,true
+Diclofenaco,Diclofenaco Potássico,Diclofenaco Genérico,SYMPTOMATIC,true,true,true,true,true,true,true,false,Oral,Comprimido,mg,50,2,,3,,,SEM_RESTRICAO,true
+Captopril,Captopril,Captopril Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,25,1,,60,,,SEM_RESTRICAO,true
+Enalapril,Enalapril Maleato,Enalapril Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,10,0.5,,60,,,SEM_RESTRICAO,true
+Furosemida,Furosemida,Furosemida Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,40,1,,30,,,SEM_RESTRICAO,true
+Hidroclorotiazida,Hidroclorotiazida,Hidroclorotiazida Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,25,0.5,,30,,,SEM_RESTRICAO,true
+Norfloxacino,Norfloxacino Cloridrato,Norfloxacino Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,400,,,7,,,SEM_RESTRICAO,true
+Sulfametoxazol-Trimetoprima,Sulfametoxazol + Trimetoprima,Bactrim,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,800/160,30,,10,,,SEM_RESTRICAO,true
+Aciclovir,Aciclovir,Aciclovir Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,400,20,,7,,,SEM_RESTRICAO,true
+Metoprolol,Metoprolol Tartarato,Metoprolol Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,50,,,60,,,SEM_RESTRICAO,true
+Verapamil,Verapamil Hidrocloreto,Verapamil Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,80,,,60,,,SEM_RESTRICAO,true
+Nifedipina,Nifedipina,Nifedipina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Cápsula,mg,10,,,60,,,SEM_RESTRICAO,true
+Ranitidina,Ranitidina Hidrocloreto,Ranitidina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,150,,,30,,,SEM_RESTRICAO,true
+Cimetidina,Cimetidina,Cimetidina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,200,,,60,,,SEM_RESTRICAO,true
+Prednisona,Prednisona,Prednisona Genérico,CONTINUOUS,false,true,true,true,false,true,true,false,Oral,Comprimido,mg,5,0.1,,15,,,SEM_RESTRICAO,true
+Hidrocortisona,Hidrocortisona Acetato,Hidrocortisona Genérico,CONTINUOUS,false,true,true,true,false,true,true,false,Oral,Comprimido,mg,10,0.5,,15,,,SEM_RESTRICAO,true
+Ciprofloxacino,Ciprofloxacino Hidrocloreto,Ciprofloxacino Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,500,30,,7,,,SEM_RESTRICAO,true
+Levofloxacino,Levofloxacino Hemi-hidratado,Levofloxacino Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,500,,,7,,,SEM_RESTRICAO,true
+Azitromicina,Azitromicina Dihidratada,Azitromicina Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,500,30,,5,,,SEM_RESTRICAO,true
+Claritromicina,Claritromicina,Claritromicina Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,500,15,,14,,,SEM_RESTRICAO,true
+Cloridrato de Donepezila,Donepezila Hidrocloreto,Donepezila Genérico,CONTINUOUS,false,true,true,false,false,true,true,false,Oral,Comprimido,mg,5,,,60,60,,SEM_RESTRICAO,true
+Espironolactona,Espironolactona,Espironolactona Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,25,1,,60,,,SEM_RESTRICAO,true
+Clopidogrel,Clopidogrel Bissulfato,Clopidogrel Genérico,CONTINUOUS,false,true,true,true,false,true,true,false,Oral,Comprimido,mg,75,,,90,,,SEM_RESTRICAO,true
+Ácido Acetilsalicílico,Aspirina,Aspirina Genérico,CONTINUOUS,true,true,true,true,true,true,true,false,Oral,Comprimido,mg,100,,,30,,,SEM_RESTRICAO,true
+Sinvastatina,Sinvastatina,Sinvastatina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,20,,,30,,,SEM_RESTRICAO,true
+Pravastatina,Pravastatina Sódica,Pravastatina Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Comprimido,mg,20,,,30,,,SEM_RESTRICAO,true
+Genfibrozila,Genfibrozila,Genfibrozila Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Cápsula,mg,300,,,60,,,SEM_RESTRICAO,true
+Fenofibrato,Fenofibrato,Fenofibrato Genérico,CONTINUOUS,true,true,true,true,true,false,true,false,Oral,Cápsula,mg,200,,,30,,,SEM_RESTRICAO,true

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { MedicationAutocomplete } from '@/components/consultations/medication-autocomplete'
+import { PatientAutocomplete } from '@/components/prescriptions/patient-autocomplete'
 import { FormulaAutocomplete } from '@/components/prescriptions/formula-autocomplete'
 import { Pill, FlaskConical, Plus, Trash2, AlertCircle } from 'lucide-react'
 
@@ -21,6 +22,17 @@ type MedicationSuggestion = {
   defaultFrequency: string
   defaultDuration: number
   unit: string
+}
+
+// Tipo que vem do PatientAutocomplete
+type PatientSuggestion = {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  birthDate?: string
+  age?: number
+  riskLevel?: string
 }
 
 type MedicationItem = {
@@ -41,6 +53,7 @@ export default function NewPrescriptionForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [patientId, setPatientId] = useState('')
+  const [patientSearchText, setPatientSearchText] = useState('')
   const [notes, setNotes] = useState('')
   const [medications, setMedications] = useState<MedicationItem[]>([])
   const [activeTab, setActiveTab] = useState<'medication' | 'formula' | 'custom'>('medication')
@@ -48,13 +61,37 @@ export default function NewPrescriptionForm() {
   // Estado para o autocomplete de medicamentos
   const [medicationSearch, setMedicationSearch] = useState('')
 
-  // Adiciona medicamento do catálogo
+  // Quando paciente é selecionado
+  const handlePatientSelect = (patient: PatientSuggestion) => {
+    setPatientId(patient.id)
+    setPatientSearchText(`${patient.name} (${patient.email})`)
+  }
+
+  // Adiciona medicamento do catálogo com valores DEFAULT
   const addFromMedication = (med: MedicationSuggestion) => {
+    // Preparar valores defaults melhorados
+    let frequency = med.defaultFrequency || ''
+    let duration = med.defaultDuration ? `${med.defaultDuration} dias` : ''
+    
+    // Se não houver frequência padrão, usar 1x ao dia
+    if (!frequency) {
+      frequency = '1x ao dia'
+    }
+    // Se a frequência for um número, converter para "Nx ao dia"
+    if (/^\d+$/.test(frequency)) {
+      frequency = `${frequency}x ao dia`
+    }
+    
+    // Se não houver duração padrão, usar 7 dias
+    if (!duration) {
+      duration = '7 dias'
+    }
+
     setMedications(prev => [...prev, {
       name: med.displayName || med.name,
       dosage: med.defaultDosage || '',
-      frequency: med.defaultFrequency ? `${med.defaultFrequency}x ao dia` : '',
-      duration: med.defaultDuration ? `${med.defaultDuration} dias` : '',
+      frequency: frequency,
+      duration: duration,
       instructions: '',
       type: 'medication',
       sourceId: med.id,
@@ -161,8 +198,17 @@ export default function NewPrescriptionForm() {
       {/* Dados do Paciente */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">ID do Paciente *</label>
-          <Input value={patientId} onChange={e => setPatientId(e.target.value)} required placeholder="Digite o ID do paciente" />
+          <label className="block text-sm font-medium mb-1">Paciente *</label>
+          <PatientAutocomplete 
+            value={patientSearchText} 
+            onChange={setPatientSearchText}
+            onSelect={handlePatientSelect}
+            placeholder="Buscar paciente por nome ou email..."
+            required
+          />
+          {patientId && (
+            <p className="text-xs text-muted-foreground mt-1">ID: {patientId}</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Observações Gerais</label>

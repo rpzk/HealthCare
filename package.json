@@ -18,7 +18,13 @@
     "db:seed": "tsx prisma/seed.ts",
     "type-check": "tsc --noEmit",
     "audit:purge": "tsx scripts/purge-old-audit-logs.ts",
-    "backup:db": "bash scripts/backup-db.sh"
+    "backup:db": "bash scripts/backup-db.sh",
+    "import:medications": "tsx scripts/import-medications.ts",
+    "import:patients": "tsx scripts/import-patients.ts",
+    "export:master-data": "tsx scripts/export-master-data.ts",
+    "seed:master-data": "tsx prisma/seed-master-data.ts",
+    "db:reset:safe": "tsx scripts/reset-with-seed.ts",
+    "db:reset:safe:confirm": "tsx scripts/reset-with-seed.ts --confirm"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

@@ -1,0 +1,11 @@
+nome,email,telefone,cpf,data_nascimento,sexo,contato_emergencia,endereco,alergias,medicacoes,risco,carteirinha,latitude,longitude
+João Silva,joao.silva@example.com,11987654321,12345678901,1990-05-15,M,Maria Silva 11987654321,Rua A 123 - São Paulo - SP,Penicilina,Losartana,BAIXO,ABS123456,−23.5505,−46.6333
+Maria Santos,maria.santos@example.com,11987654322,12345678902,1985-08-20,F,José Santos 11987654322,Rua B 456 - São Paulo - SP,Ibuprofeno,Metformina,MÉDIO,ABS123457,−23.5510,−46.6340
+Pedro Oliveira,pedro.oliveira@example.com,11987654323,12345678903,1975-03-10,M,Ana Oliveira 11987654323,Rua C 789 - São Paulo - SP,Nenhuma,Atorvastatina,ALTO,ABS123458,−23.5515,−46.6345
+Amanda Costa,amanda.costa@example.com,11987654324,12345678904,1995-12-25,F,Carlos Costa 11987654324,Rua D 101 - São Paulo - SP,Sulfametoxazol,Omeprazol,BAIXO,ABS123459,−23.5520,−46.6350
+Roberto Alves,roberto.alves@example.com,11987654325,12345678905,1968-07-08,M,Fernanda Alves 11987654325,Rua E 202 - São Paulo - SP,Nenhuma,Levotiroxina,MÉDIO,ABS123460,−23.5525,−46.6355
+Juliana Rocha,juliana.rocha@example.com,11987654326,12345678906,1992-09-14,F,Marcos Rocha 11987654326,Rua F 303 - São Paulo - SP,Aspirina,Captopril,MÉDIO,ABS123461,−23.5530,−46.6360
+Carlos Mendes,carlos.mendes@example.com,11987654327,12345678907,1980-01-30,M,Rita Mendes 11987654327,Rua G 404 - São Paulo - SP,Nenhuma,Furosemida,ALTO,ABS123462,−23.5535,−46.6365
+Beatriz Gonçalves,beatriz.goncalves@example.com,11987654328,12345678908,1988-06-17,F,Antônio Gonçalves 11987654328,Rua H 505 - São Paulo - SP,Cefalosporina,Metoprolol,MÉDIO,ABS123463,−23.5540,−46.6370
+Lucas Ferreira,lucas.ferreira@example.com,11987654329,12345678909,1993-11-22,M,Patricia Ferreira 11987654329,Rua I 606 - São Paulo - SP,Nenhuma,Atorvastatina,BAIXO,ABS123464,−23.5545,−46.6375
+Fernanda Lima,fernanda.lima@example.com,11987654330,12345678910,1987-04-05,F,Gustavo Lima 11987654330,Rua J 707 - São Paulo - SP,Penicilina,Sinvastatina,MÉDIO,ABS123465,−23.5550,−46.6380
