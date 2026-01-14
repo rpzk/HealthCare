@@ -183,6 +183,7 @@ const adminMenuItems: MenuItem[] = [
       { title: 'Termos & Privacidade', href: '/admin/terms' },
       { title: 'Integrações', href: '/settings/integrations' },
       { title: 'Backup & Dados', href: '/admin/backup' },
+      { title: 'Reset de Banco', href: '/admin/database-reset' },
     ]
   },
 ]
