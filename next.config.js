@@ -15,6 +15,12 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 5,
+  },
+  // Skip collecting static props during build in Docker
+  staticPageGenerationTimeout: 0,
 }
 
 module.exports = nextConfig

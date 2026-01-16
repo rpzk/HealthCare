@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Markdown } from '@/components/ui/markdown'
 
-type PendingTerm = {
+export const dynamic = 'force-dynamic'type PendingTerm = {
   id: string
   slug: string
   title: string

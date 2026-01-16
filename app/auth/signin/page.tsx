@@ -172,6 +172,14 @@ export default function SignIn() {
               disabled={loading}
               autoComplete="current-password"
             />
+            <div className="text-right">
+              <Link
+                href={`/auth/forgot-password?email=${encodeURIComponent(email.trim())}`}
+                className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
           </div>
 
           <Button 

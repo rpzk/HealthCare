@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { authOptions } from '@/lib/auth'
 import { LandingPage } from '@/components/landing/landing-page'
+import { prisma } from '@/lib/prisma'
+import { checkPendingTerms } from '@/lib/check-pending-terms'
 
 export const metadata: Metadata = {
   title: 'HealthCare - Sistema Completo de Gestão em Saúde',
@@ -28,6 +30,22 @@ export default async function HomePage() {
       (activeRole === sessionRole || (Array.isArray(availableRoles) && availableRoles.includes(activeRole!)))
 
     const effectiveRole = isActiveRoleAllowed ? activeRole : sessionRole
+    
+    // VERIFICAR TERMOS PENDENTES antes de redirecionar
+    try {
+      const pendingTermIds = await checkPendingTerms(prisma, session.user.id, effectiveRole || 'DOCTOR')
+      if (pendingTermIds && pendingTermIds.length > 0) {
+        // Determinar returnTo baseado no papel
+        let returnTo = '/appointments/dashboard'
+        if (effectiveRole === 'PATIENT') returnTo = '/minha-saude'
+        if (effectiveRole === 'ADMIN') returnTo = '/admin'
+        
+        redirect(`/terms/accept?returnTo=${encodeURIComponent(returnTo)}`)
+      }
+    } catch (error) {
+      console.error('Erro ao verificar termos pendentes:', error)
+      // Continua o fluxo normal em caso de erro
+    }
     
     // Redirecionar usuários logados para suas respectivas áreas
     if (effectiveRole === 'PATIENT') {
