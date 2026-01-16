@@ -36,7 +36,7 @@ async function main() {
     
     if (admins.length === 0) {
       console.log('❌ Nenhum admin encontrado no sistema!')
-      console.log('   Execute: npx tsx scripts/create-admin.ts')
+      console.log('   Execute: npx tsx scripts/setup-admin.ts')
       return
     }
     

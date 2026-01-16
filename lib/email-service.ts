@@ -30,6 +30,17 @@ export class EmailService {
   
   private constructor() {}
 
+  private static toBoolean(value: unknown, defaultValue = false): boolean {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'number') return value !== 0
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y' || normalized === 'on') return true
+      if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'n' || normalized === 'off') return false
+    }
+    return defaultValue
+  }
+
   public static getInstance(): EmailService {
     if (!EmailService.instance) {
       EmailService.instance = new EmailService()
@@ -69,7 +80,7 @@ export class EmailService {
       smtp: {
         host: dbSettings.SMTP_HOST || process.env.SMTP_HOST,
         port: parseInt(dbSettings.SMTP_PORT || process.env.SMTP_PORT || '587'),
-        secure: smtpSecureValue ? smtpSecureValue === 'true' : process.env.SMTP_SECURE === 'true',
+        secure: EmailService.toBoolean(smtpSecureValue, false),
         auth: {
           user: dbSettings.SMTP_USER || process.env.SMTP_USER,
           pass: smtpPass
@@ -132,6 +143,7 @@ export class EmailService {
       from: config.from,
       smtpHost: config.smtp.host,
       smtpPort: config.smtp.port,
+      smtpSecure: config.smtp.secure,
       smtpUser: config.smtp.auth.user ? '✓' : '✗',
       smtpPass: config.smtp.auth.pass ? '✓' : '✗'
     })
@@ -163,7 +175,18 @@ export class EmailService {
           try {
             await transporter.verify()
           } catch (verifyError) {
-            console.error('❌ [EMAIL-SERVICE] SMTP verify failed:', verifyError)
+            const e = verifyError as any
+            console.error('❌ [EMAIL-SERVICE] SMTP verify failed:', {
+              message: e?.message,
+              code: e?.code,
+              command: e?.command,
+              response: e?.response,
+              responseCode: e?.responseCode,
+              errno: e?.errno,
+              syscall: e?.syscall,
+              hostname: e?.hostname,
+              port: e?.port,
+            })
             throw verifyError
           }
 
@@ -208,7 +231,18 @@ export class EmailService {
       return { success: true }
 
     } catch (error) {
-      console.error('❌ Erro ao enviar e-mail:', error)
+      const e = error as any
+      console.error('❌ Erro ao enviar e-mail:', {
+        message: e?.message,
+        code: e?.code,
+        command: e?.command,
+        response: e?.response,
+        responseCode: e?.responseCode,
+        errno: e?.errno,
+        syscall: e?.syscall,
+        hostname: e?.hostname,
+        port: e?.port,
+      })
       
       auditLogger.log(
         'system',

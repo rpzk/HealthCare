@@ -6,7 +6,7 @@ O admin criado pelo terminal tinha `role: ADMIN` no usuário, mas **não tinha a
 ## ✅ Solução Executada
 
 ### 1. Corrigido os Scripts de Criação
-- **create-admin.ts** - Agora cria entrada em `UserAssignedRole` quando cria admin
+- **setup-admin.ts** - Agora cria entrada em `UserAssignedRole` quando cria admin
 - **setup-admin.ts** - Agora cria/atualiza entrada em `UserAssignedRole` quando cria admin
 
 ### 2. Criado Script de Reparo
@@ -36,7 +36,7 @@ Seu admin (`admin@healthcare.com`) agora tem acesso total às funções administ
 ### Via Terminal (Para Criar Novo Admin)
 ```bash
 # Opção 1: Script interativo
-npx tsx scripts/create-admin.ts
+npx tsx scripts/setup-admin.ts
 
 # Opção 2: Script automático
 npx tsx scripts/setup-admin.ts "SenhaForte"

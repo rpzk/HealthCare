@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Upload, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { toastApiError } from '@/lib/toast-api-error'
 
 export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
   const [uploading, setUploading] = useState(false)
@@ -37,10 +38,11 @@ export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
         body: formData,
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao fazer upload')
+        toastApiError(data, 'Erro ao fazer upload')
+        return
       }
 
       toast({

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { toastApiError } from '@/lib/toast-api-error'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -61,7 +62,7 @@ export default function AdminTermsPage() {
       const res = await fetch('/api/admin/terms')
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data?.error || 'Erro ao carregar termos')
+        toastApiError(data, 'Erro ao carregar termos')
         return
       }
       setGroups(Array.isArray(data?.terms) ? data.terms : [])
@@ -125,7 +126,7 @@ export default function AdminTermsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data?.error || 'Erro ao ativar')
+        toastApiError(data, 'Erro ao ativar')
         return
       }
       toast.success('Versão ativada')
@@ -160,7 +161,7 @@ export default function AdminTermsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data?.error || 'Erro ao criar termo')
+        toastApiError(data, 'Erro ao criar termo')
         return
       }
 

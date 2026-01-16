@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FileSignature, Loader2, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { toastApiError } from '@/lib/toast-api-error'
 
 interface A1SignButtonProps {
   certificateId: string
@@ -42,10 +43,11 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
         }),
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao assinar')
+        toastApiError(data, 'Erro ao assinar')
+        return
       }
 
       setSigned(true)

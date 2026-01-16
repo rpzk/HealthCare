@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       console.log('[SMTP_PASS] Recebido no backend:', {
         key,
         valueLength: value?.length,
-        valuePreview: value?.substring(0, 5),
+        provided: typeof value === 'string' ? value.trim().length > 0 : value !== undefined,
         encrypted,
       })
     }

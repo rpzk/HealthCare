@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
+import { toastApiError } from '@/lib/toast-api-error'
 import { Loader2, Save, Eye, EyeOff } from 'lucide-react'
 
 interface Setting {
@@ -49,7 +50,7 @@ export default function SystemSettingsPage() {
       if (data.success) {
         setSettings(data.settings)
       } else {
-        toast.error(data.error || 'Erro ao carregar configurações')
+        toastApiError(data, 'Erro ao carregar configurações')
       }
     } catch (error) {
       toast.error('Erro ao carregar configurações')
@@ -80,7 +81,7 @@ export default function SystemSettingsPage() {
         toast.success('Configuração salva com sucesso')
         await loadSettings()
       } else {
-        toast.error(data.error || 'Erro ao salvar')
+        toastApiError(data, 'Erro ao salvar')
       }
     } catch (error) {
       toast.error('Erro ao salvar configuração')
@@ -113,7 +114,7 @@ export default function SystemSettingsPage() {
         toast.success(data.message || 'Configurações salvas')
         await loadSettings()
       } else {
-        toast.error(data.error || 'Erro ao salvar')
+        toastApiError(data, 'Erro ao salvar')
       }
     } catch (error) {
       toast.error('Erro ao salvar configurações')

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import { toastApiError } from '@/lib/toast-api-error'
 import {
   AlertTriangle,
   Database,
@@ -83,7 +84,7 @@ export default function DatabaseResetPage() {
         setConfirmReset(false)
         setTimeout(loadHistory, 1000)
       } else {
-        toast.error(data.error || 'Erro ao fazer reset')
+        toastApiError(data, 'Erro ao fazer reset')
       }
     } catch (error) {
       toast.error('Erro ao fazer reset')

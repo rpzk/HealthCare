@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { toastApiError } from '@/lib/toast-api-error'
 
 interface UserRolesDialogProps {
   open: boolean
@@ -150,9 +151,12 @@ export function UserRolesDialog({
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/users/${userId}/roles`)
-      if (!res.ok) throw new Error('Erro ao carregar')
-      
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toastApiError(data, 'Erro ao carregar papéis')
+        return
+      }
       const roles = data.assignedRoles || []
       
       setAssignedRoles(roles)

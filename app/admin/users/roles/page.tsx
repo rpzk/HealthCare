@@ -32,6 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
+import { toastApiError } from '@/lib/toast-api-error'
 import { 
   UserCog,
   Shield,
@@ -96,13 +97,24 @@ export default function PromoteUserPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/admin/promote-user')
+      const data = await response.json().catch(() => ({}))
+
       if (response.ok) {
-        const data = await response.json()
         setUsers(data.users)
         setAvailableRoles(data.availableRoles)
-      } else if (response.status === 403) {
+        return
+      }
+
+      if (data?.code === 'TERMS_NOT_ACCEPTED' || data?.code === 'TERMS_NOT_CONFIGURED') {
+        toastApiError(data, 'Ação bloqueada por termos/consentimentos')
+        return
+      }
+
+      if (response.status === 403) {
         toast({ title: 'Acesso negado', variant: 'destructive' })
         router.push('/')
+      } else {
+        toast({ title: data?.error || 'Erro ao carregar usuários', variant: 'destructive' })
       }
     } catch (error) {
       toast({ title: 'Erro ao carregar usuários', variant: 'destructive' })
@@ -150,8 +162,12 @@ export default function PromoteUserPage() {
         setSelectedUser(null)
         fetchUsers()
       } else {
-        const error = await response.json()
-        toast({ title: error.error, variant: 'destructive' })
+        const error = await response.json().catch(() => ({}))
+        if (error?.code === 'TERMS_NOT_ACCEPTED' || error?.code === 'TERMS_NOT_CONFIGURED') {
+          toastApiError(error, 'Ação bloqueada por termos/consentimentos')
+          return
+        }
+        toast({ title: error?.error || 'Erro ao promover usuário', variant: 'destructive' })
       }
     } catch (error) {
       toast({ title: 'Erro ao promover usuário', variant: 'destructive' })

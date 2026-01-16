@@ -8,7 +8,8 @@
  *   npx tsx scripts/setup-admin.ts "<senha>" "<email>" "<nome>" "<telefone>"
  */
 
-import { PrismaClient } from '@prisma/client'
+import 'dotenv/config'
+import { prisma } from '../lib/prisma'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
@@ -23,8 +24,6 @@ function generateSecurePassword(length: number = 16): string {
 }
 
 async function main() {
-  const prisma = new PrismaClient()
-  
   try {
     console.log('\n🏥 HealthCare - Configuração de Administrador\n')
     console.log('━'.repeat(50))

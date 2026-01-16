@@ -7,7 +7,7 @@
 
 ## 🔴 PROBLEMA IDENTIFICADO
 
-Quando um admin era criado via terminal (script `create-admin.ts` ou `setup-admin.ts`), ele recebia o campo `role: ADMIN` no modelo `User`, **MAS** não recebia uma entrada na tabela `UserAssignedRole`.
+Quando um admin era criado via terminal (script `setup-admin.ts`), ele recebia o campo `role: ADMIN` no modelo `User`, **MAS** não recebia uma entrada na tabela `UserAssignedRole`.
 
 ### Consequência
 - O NextAuth verificava `UserAssignedRole` para determinar os papéis do usuário
@@ -51,7 +51,7 @@ if (assignedRoles.length > 0) {
 
 ### O Problema nos Scripts
 ```typescript
-// scripts/create-admin.ts (ANTES)
+// scripts/setup-admin.ts (ANTES)
 const adminUser = await prisma.user.create({
   data: {
     email,
@@ -67,9 +67,9 @@ const adminUser = await prisma.user.create({
 
 ## ✅ SOLUÇÃO IMPLEMENTADA
 
-### 1. Atualizar `scripts/create-admin.ts`
+### 1. Atualizar `scripts/setup-admin.ts`
 ```typescript
-// scripts/create-admin.ts (DEPOIS)
+// scripts/setup-admin.ts (DEPOIS)
 const adminUser = await prisma.user.create({
   data: {
     email,
@@ -157,7 +157,7 @@ npx tsx scripts/fix-admin-roles.ts
 ### Opção 2: Criar Novo Admin com Scripts Atualizados
 ```bash
 # Usando o script interativo (CORRIGIDO)
-npx tsx scripts/create-admin.ts
+npx tsx scripts/setup-admin.ts
 
 # OU usando o script automático (CORRIGIDO)
 npx tsx scripts/setup-admin.ts "SenhaForte123"
@@ -233,7 +233,7 @@ EOF
 
 ## 📋 CHECKLIST DE CORREÇÃO
 
-- ✅ Script `create-admin.ts` atualizado com UserAssignedRole
+- ✅ Script `setup-admin.ts` atualizado com UserAssignedRole
 - ✅ Script `setup-admin.ts` atualizado com UserAssignedRole
 - ✅ Script `fix-admin-roles.ts` criado para corrigir admins existentes
 - ✅ API `POST /api/admin/users/[id]/roles` funcional
@@ -247,7 +247,7 @@ EOF
 
 ### Teste 1: Criar Novo Admin
 ```bash
-npx tsx scripts/create-admin.ts
+npx tsx scripts/setup-admin.ts
 
 # Informações:
 # Email: test@admin.com

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { toastApiError } from '@/lib/toast-api-error'
 import { Loader2, Download, Trash2, RotateCcw, Lock, CheckCircle2, XCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -41,8 +42,16 @@ export default function BackupPage() {
       const res = await fetch('/api/admin/backups')
       const data = await res.json()
 
+      if (!res.ok) {
+        toastApiError(data, 'Erro ao carregar backups')
+        setBackups([])
+        return
+      }
+
       if (data.success) {
         setBackups(data.backups || [])
+      } else {
+        toastApiError(data, 'Erro ao carregar backups')
       }
     } catch (error) {
       toast.error('Erro ao carregar backups')
@@ -57,9 +66,16 @@ export default function BackupPage() {
       const res = await fetch('/api/admin/backups/config')
       const data = await res.json()
 
+      if (!res.ok) {
+        toastApiError(data, 'Erro ao carregar configuração do Google Drive')
+        return
+      }
+
       if (data.success) {
         setGdriveConfigured(Boolean(data.configured))
         setGdriveFolderId(data.folderId || '')
+      } else {
+        toastApiError(data, 'Erro ao carregar configuração do Google Drive')
       }
     } catch (error) {
       console.error(error)
@@ -86,7 +102,7 @@ export default function BackupPage() {
         setGdriveConfigured(true)
         setGdriveJson('')
       } else {
-        toast.error(data.error || 'Erro ao salvar credenciais')
+        toastApiError(data, 'Erro ao salvar credenciais')
       }
     } catch (error) {
       toast.error('Erro ao salvar credenciais')
@@ -106,7 +122,7 @@ export default function BackupPage() {
         toast.success(data.message || 'Backup criado com sucesso!')
         setTimeout(loadBackups, 2000)
       } else {
-        toast.error(data.error || 'Erro ao criar backup')
+        toastApiError(data, 'Erro ao criar backup')
       }
     } catch (error) {
       toast.error('Erro ao criar backup')
@@ -138,7 +154,7 @@ export default function BackupPage() {
         toast.success('Backup deletado com sucesso')
         loadBackups()
       } else {
-        toast.error(data.error || 'Erro ao deletar backup')
+        toastApiError(data, 'Erro ao deletar backup')
       }
     } catch (error) {
       toast.error('Erro ao deletar backup')
@@ -164,7 +180,7 @@ export default function BackupPage() {
         toast.success('Backup restaurado com sucesso. Atualizando página...')
         setTimeout(() => window.location.reload(), 2000)
       } else {
-        toast.error(data.error || 'Erro ao restaurar backup')
+        toastApiError(data, 'Erro ao restaurar backup')
       }
     } catch (error) {
       toast.error('Erro ao restaurar backup')

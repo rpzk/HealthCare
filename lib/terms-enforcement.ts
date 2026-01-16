@@ -8,7 +8,7 @@ export class TermsNotAcceptedError extends Error {
   readonly missingTerms: Array<Pick<Term, 'id' | 'slug' | 'title' | 'audience'>>
 
   constructor(missingTerms: Array<Pick<Term, 'id' | 'slug' | 'title' | 'audience'>>) {
-    super('Termos/consentimentos obrigatórios não aceitos')
+    super('Não permitido por falta de aceite de termos/consentimentos obrigatórios')
     this.missingTerms = missingTerms
   }
 }
@@ -18,7 +18,7 @@ export class TermsNotConfiguredError extends Error {
   readonly missing: Array<{ gate: TermsGate; slugs: string[] }>
 
   constructor(missing: Array<{ gate: TermsGate; slugs: string[] }>) {
-    super('Termos/consentimentos obrigatórios não configurados')
+    super('Serviço indisponível: termos/consentimentos obrigatórios não configurados')
     this.missing = missing
   }
 }

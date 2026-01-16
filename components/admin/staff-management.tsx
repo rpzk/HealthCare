@@ -53,6 +53,7 @@ import {
   Check
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { toastApiError } from '@/lib/toast-api-error'
 
 interface StaffMember {
   id: string
@@ -122,11 +123,18 @@ export function StaffManagement() {
       if (statusFilter !== 'all') params.set('status', statusFilter)
       
       const res = await fetch(`/api/admin/staff?${params}`)
-      const data = await res.json()
-      
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toastApiError(data, 'Erro ao carregar profissionais')
+        return
+      }
+
       if (data.success) {
         setStaff(data.data.staff)
         setStats(data.data.stats)
+      } else {
+        toastApiError(data, 'Erro ao carregar profissionais')
       }
     } catch (error) {
       console.error('Erro ao carregar staff:', error)
@@ -150,14 +158,19 @@ export function StaffManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole })
       })
-      
-      const data = await res.json()
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toastApiError(data, 'Erro ao criar convite')
+        return
+      }
       
       if (data.link) {
         setInviteLink(data.link)
         toast({ title: 'Convite criado!', description: `Link enviado para ${inviteEmail}` })
       } else {
-        toast({ title: 'Erro', description: data.error || 'Erro ao criar convite', variant: 'destructive' })
+        toastApiError(data, 'Erro ao criar convite')
       }
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao criar convite', variant: 'destructive' })
@@ -174,13 +187,18 @@ export function StaffManagement() {
         body: JSON.stringify({ action: 'toggle-status' })
       })
       
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toastApiError(data, 'Falha ao alterar status')
+        return
+      }
       
       if (data.success) {
         toast({ title: 'Sucesso', description: data.message })
         loadStaff()
       } else {
-        toast({ title: 'Erro', description: data.error, variant: 'destructive' })
+        toastApiError(data, 'Falha ao alterar status')
       }
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao alterar status', variant: 'destructive' })
@@ -198,13 +216,18 @@ export function StaffManagement() {
         body: JSON.stringify({ action: 'reset-password' })
       })
       
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toastApiError(data, 'Falha ao resetar senha')
+        return
+      }
       
       if (data.success) {
         setTempPassword(data.tempPassword)
         toast({ title: 'Senha resetada!', description: data.message })
       } else {
-        toast({ title: 'Erro', description: data.error, variant: 'destructive' })
+        toastApiError(data, 'Falha ao resetar senha')
       }
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao resetar senha', variant: 'destructive' })

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Loader2, Copy, Check, Mail, Link as LinkIcon } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { toastApiError } from '@/lib/toast-api-error'
 
 const ROLES = [
   { value: 'PATIENT', label: 'Paciente' },
@@ -62,11 +63,13 @@ export default function InvitesPage() {
         body: JSON.stringify({ email, role })
       })
 
+      const data = await response.json().catch(() => ({}))
+
       if (!response.ok) {
-        throw new Error('Falha ao gerar convite')
+        toastApiError(data, 'Falha ao gerar convite')
+        return
       }
 
-      const data = await response.json()
       setGeneratedLink(data.link)
       toast({
         title: "Convite gerado!",
