@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { TermsGuard } from '@/components/terms-guard'
 
 export const metadata: Metadata = {
   title: 'Minha Saúde | HealthCare',
@@ -12,8 +13,10 @@ export default function MinhaSaudeLayout({
 }) {
   // Layout limpo sem sidebar para área do paciente (mobile-first)
   return (
-    <div className="min-h-screen">
-      {children}
-    </div>
+    <TermsGuard>
+      <div className="min-h-screen">
+        {children}
+      </div>
+    </TermsGuard>
   )
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { AdminHeader } from '@/components/layout/admin-header'
+import { TermsGuard } from '@/components/terms-guard'
 
 export default function AdminLayout({
   children,
@@ -56,14 +57,16 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-      <AdminHeader />
-      <AdminSidebar />
-      <main className="ml-64 pt-16 min-h-screen">
-        <div className="p-6">
-          {children}
-        </div>
-      </main>
-    </div>
+    <TermsGuard>
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
+        <AdminHeader />
+        <AdminSidebar />
+        <main className="ml-64 pt-16 min-h-screen">
+          <div className="p-6">
+            {children}
+          </div>
+        </main>
+      </div>
+    </TermsGuard>
   )
 }

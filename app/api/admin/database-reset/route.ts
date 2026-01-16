@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import fs from 'fs'
 import path from 'path'
 
-const prisma = new PrismaClient()
+// Forçar runtime dinâmico para evitar execução durante build
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 interface ResetRecord {
   id: string
@@ -92,8 +94,6 @@ export async function GET(request: NextRequest) {
       { error: 'Erro ao buscar histórico de resets' },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -230,8 +230,6 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -272,7 +270,5 @@ export async function DELETE(request: NextRequest) {
       { error: 'Erro ao limpar histórico' },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

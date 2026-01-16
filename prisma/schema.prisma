@@ -109,6 +109,9 @@ model User {
   // Referrals as destination doctor
   destinationReferrals Referral[] @relation("ReferralDestinationDoctor")
 
+  // Password Reset Tokens
+  passwordResetTokens PasswordResetToken[]
+
   // Schedule Management (New)
   professionalSchedules       ProfessionalSchedule[]    @relation("ProfessionalSchedules")
   requestedSchedules          ProfessionalSchedule[]    @relation("ScheduleRequester")
@@ -144,6 +147,22 @@ model WebAuthnCredential {
 
   @@index([userId])
   @@map("webauthn_credentials")
+}
+
+model PasswordResetToken {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash          String   @unique
+  expiresAt          DateTime
+  usedAt             DateTime?
+  requestedIp        String?
+  requestedUserAgent String?
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 // Tabela para papéis atribuídos a um usuário
