@@ -7,9 +7,8 @@ import { prisma } from '@/lib/prisma'
 import {
   assertUserAcceptedTerms,
   getAudienceForRole,
-  TermsNotAcceptedError,
-  TermsNotConfiguredError,
 } from '@/lib/terms-enforcement'
+import { termsEnforcementErrorResponse } from '@/lib/terms-http'
 
 const execAsync = promisify(exec)
 
@@ -38,19 +37,8 @@ export async function POST(request: NextRequest) {
         gates: ['ADMIN_PRIVILEGED'],
       })
     } catch (e) {
-      if (e instanceof TermsNotAcceptedError) {
-        return NextResponse.json(
-          {
-            error: e.message,
-            code: e.code,
-            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
-          },
-          { status: 403 }
-        )
-      }
-      if (e instanceof TermsNotConfiguredError) {
-        return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
-      }
+      const res = termsEnforcementErrorResponse(e)
+      if (res) return res
       throw e
     }
 

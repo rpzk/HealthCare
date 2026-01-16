@@ -16,6 +16,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:terms": "tsx scripts/seed-terms.ts",
     "type-check": "tsc --noEmit",
     "audit:purge": "tsx scripts/purge-old-audit-logs.ts",
     "backup:db": "bash scripts/backup-db.sh",

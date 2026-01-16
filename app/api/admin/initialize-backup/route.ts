@@ -10,9 +10,8 @@ import { prisma } from '@/lib/prisma'
 import {
   assertUserAcceptedTerms,
   getAudienceForRole,
-  TermsNotAcceptedError,
-  TermsNotConfiguredError,
 } from '@/lib/terms-enforcement'
+import { termsEnforcementErrorResponse } from '@/lib/terms-http'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,21 +32,17 @@ export async function POST(request: NextRequest) {
         gates: ['ADMIN_PRIVILEGED'],
       })
     } catch (e) {
-      if (e instanceof TermsNotAcceptedError) {
+      const res = termsEnforcementErrorResponse(e)
+      if (res) {
+        const payload = (await res.json()) as Record<string, unknown>
         return NextResponse.json(
           {
             success: false,
-            message: e.message,
-            code: e.code,
-            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
+            message: (payload.error as string) ?? 'Não permitido',
+            code: payload.code,
+            missing: payload.missing,
           },
-          { status: 403 }
-        )
-      }
-      if (e instanceof TermsNotConfiguredError) {
-        return NextResponse.json(
-          { success: false, message: e.message, code: e.code, missing: e.missing },
-          { status: 503 }
+          { status: res.status }
         )
       }
       throw e

@@ -8,9 +8,8 @@ import { EmailService } from '@/lib/email-service'
 import {
   assertUserAcceptedTerms,
   getAudienceForRole,
-  TermsNotAcceptedError,
-  TermsNotConfiguredError,
 } from '@/lib/terms-enforcement'
+import { termsEnforcementErrorResponse } from '@/lib/terms-http'
 
 interface RouteParams {
   params: { id: string }
@@ -37,19 +36,8 @@ export async function GET(req: Request, { params }: RouteParams) {
       gates: ['ADMIN_PRIVILEGED'],
     })
   } catch (e) {
-    if (e instanceof TermsNotAcceptedError) {
-      return NextResponse.json(
-        {
-          error: e.message,
-          code: e.code,
-          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
-        },
-        { status: 403 }
-      )
-    }
-    if (e instanceof TermsNotConfiguredError) {
-      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
-    }
+    const res = termsEnforcementErrorResponse(e)
+    if (res) return res
     throw e
   }
 
@@ -107,19 +95,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       gates: ['ADMIN_PRIVILEGED'],
     })
   } catch (e) {
-    if (e instanceof TermsNotAcceptedError) {
-      return NextResponse.json(
-        {
-          error: e.message,
-          code: e.code,
-          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
-        },
-        { status: 403 }
-      )
-    }
-    if (e instanceof TermsNotConfiguredError) {
-      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
-    }
+    const res = termsEnforcementErrorResponse(e)
+    if (res) return res
     throw e
   }
 
@@ -237,19 +214,8 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       gates: ['ADMIN_PRIVILEGED'],
     })
   } catch (e) {
-    if (e instanceof TermsNotAcceptedError) {
-      return NextResponse.json(
-        {
-          error: e.message,
-          code: e.code,
-          missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
-        },
-        { status: 403 }
-      )
-    }
-    if (e instanceof TermsNotConfiguredError) {
-      return NextResponse.json({ error: e.message, code: e.code, missing: e.missing }, { status: 503 })
-    }
+    const res = termsEnforcementErrorResponse(e)
+    if (res) return res
     throw e
   }
 

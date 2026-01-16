@@ -25,6 +25,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { toastApiError } from '@/lib/toast-api-error'
 import { format, addDays, isBefore, startOfToday, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -177,7 +178,7 @@ export default function PatientBookingPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        toast.error(data.error || 'Erro ao agendar')
+        toastApiError(data, 'Erro ao agendar')
         return
       }
 

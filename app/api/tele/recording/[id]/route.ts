@@ -7,7 +7,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { RecordingService } from '@/lib/recording-service'
 import prisma from '@/lib/prisma'
-import { getAudienceForRole, assertUserAcceptedTerms, TermsNotAcceptedError, TermsNotConfiguredError } from '@/lib/terms-enforcement'
+import { getAudienceForRole, assertUserAcceptedTerms } from '@/lib/terms-enforcement'
+import { termsEnforcementErrorResponse } from '@/lib/terms-http'
 
 export const runtime = 'nodejs'
 
@@ -30,22 +31,8 @@ export async function GET(
         gates: ['TELEMEDICINE', 'RECORDING'],
       })
     } catch (e) {
-      if (e instanceof TermsNotAcceptedError) {
-        return NextResponse.json(
-          {
-            error: e.message,
-            code: e.code,
-            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
-          },
-          { status: 403 }
-        )
-      }
-      if (e instanceof TermsNotConfiguredError) {
-        return NextResponse.json(
-          { error: e.message, code: e.code, missing: e.missing },
-          { status: 503 }
-        )
-      }
+      const res = termsEnforcementErrorResponse(e)
+      if (res) return res
       throw e
     }
 
@@ -87,22 +74,8 @@ export async function DELETE(
         gates: ['TELEMEDICINE', 'RECORDING'],
       })
     } catch (e) {
-      if (e instanceof TermsNotAcceptedError) {
-        return NextResponse.json(
-          {
-            error: e.message,
-            code: e.code,
-            missing: e.missingTerms.map((t) => ({ id: t.id, slug: t.slug, title: t.title, audience: t.audience })),
-          },
-          { status: 403 }
-        )
-      }
-      if (e instanceof TermsNotConfiguredError) {
-        return NextResponse.json(
-          { error: e.message, code: e.code, missing: e.missing },
-          { status: 503 }
-        )
-      }
+      const res = termsEnforcementErrorResponse(e)
+      if (res) return res
       throw e
     }
 

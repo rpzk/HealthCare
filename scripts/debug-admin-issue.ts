@@ -118,7 +118,7 @@ async function main() {
     
     if (!admin) {
       console.log('   ⚠️  Admin não existe! Execute:')
-      console.log('      npx tsx scripts/create-admin.ts')
+      console.log('      npx tsx scripts/setup-admin.ts')
     } else if ((admin.assignedRoles?.length ?? 0) === 0) {
       console.log('   ⚠️  Admin existe mas não tem papéis! Execute:')
       console.log('      npx tsx scripts/fix-admin-roles.ts')

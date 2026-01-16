@@ -7,6 +7,17 @@ import { SystemSettingsService } from '@/lib/system-settings-service'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+function toBoolean(value: unknown, defaultValue = false): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y' || normalized === 'on') return true
+    if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'n' || normalized === 'off') return false
+  }
+  return defaultValue
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação
@@ -83,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     const resolvedHost = config.SMTP_HOST || stored.SMTP_HOST || process.env.SMTP_HOST
     const resolvedPort = config.SMTP_PORT || stored.SMTP_PORT || process.env.SMTP_PORT || '587'
-    const resolvedSecure = (config.SMTP_SECURE ?? stored.SMTP_SECURE ?? process.env.SMTP_SECURE) === 'true'
+    const resolvedSecure = toBoolean(config.SMTP_SECURE ?? stored.SMTP_SECURE ?? process.env.SMTP_SECURE, false)
     const resolvedUser = config.SMTP_USER || stored.SMTP_USER || process.env.SMTP_USER
     const resolvedFrom = config.SMTP_FROM || stored.SMTP_FROM || config.EMAIL_FROM || stored.EMAIL_FROM || process.env.SMTP_FROM || process.env.EMAIL_FROM || resolvedUser
     const resolvedProvider = config.EMAIL_PROVIDER || stored.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || 'smtp'
@@ -162,10 +173,21 @@ export async function POST(request: NextRequest) {
     )
 
     if (!result.success) {
+      const e: any = result.error as any
       return NextResponse.json(
         { 
           success: false,
-          error: result.error ? (result.error instanceof Error ? result.error.message : String(result.error)) : 'Erro desconhecido ao enviar email'
+          error: result.error ? (result.error instanceof Error ? result.error.message : String(result.error)) : 'Erro desconhecido ao enviar email',
+          diagnostic: {
+            code: e?.code,
+            command: e?.command,
+            responseCode: e?.responseCode,
+            response: e?.response,
+            errno: e?.errno,
+            syscall: e?.syscall,
+            hostname: e?.hostname,
+            port: e?.port,
+          }
         },
         { status: 400 }
       )
@@ -188,11 +210,22 @@ export async function POST(request: NextRequest) {
       ? error.message 
       : 'Erro desconhecido ao testar configuração de email'
 
+    const e: any = error as any
+
     return NextResponse.json(
       { 
         success: false,
         error: errorMessage,
-        details: String(error)
+        diagnostic: {
+          code: e?.code,
+          command: e?.command,
+          responseCode: e?.responseCode,
+          response: e?.response,
+          errno: e?.errno,
+          syscall: e?.syscall,
+          hostname: e?.hostname,
+          port: e?.port,
+        }
       },
       { status: 500 }
     )
