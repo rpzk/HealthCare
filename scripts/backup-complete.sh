@@ -18,6 +18,10 @@
 
 set -e
 
+# Carregar credenciais de Google Drive do banco de dados
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/get-backup-credentials.sh"
+
 # Configurações
 APP_ROOT="${APP_ROOT:-/app}"
 BACKUP_DIR="/app/backups/healthcare"
