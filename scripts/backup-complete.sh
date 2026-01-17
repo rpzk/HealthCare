@@ -267,12 +267,14 @@ if [ -n "$GDRIVE_SERVICE_ACCOUNT_JSON" ]; then
 type = drive
 scope = drive
 service_account_file = $GDRIVE_SA_FILE
-root_folder_id = ${GDRIVE_FOLDER_ID:-}
 EOF
 
   if command -v rclone >/dev/null 2>&1; then
-    if rclone --config "$GDRIVE_CONFIG_FILE" about gdrive: --drive-root-folder-id "${GDRIVE_FOLDER_ID:-}" >/dev/null 2>&1; then
-      if rclone --config "$GDRIVE_CONFIG_FILE" copy "$BACKUP_DIR" gdrive: --drive-root-folder-id "${GDRIVE_FOLDER_ID:-}" --transfers=2 --checkers=4 --fast-list --skip-links --log-file "$BACKUP_DIR/rclone_${TIMESTAMP}.log" --log-level INFO; then
+    # Verificar se Folder ID foi fornecido
+    if [ -z "$GDRIVE_FOLDER_ID" ]; then
+      echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  GDRIVE_FOLDER_ID não foi fornecido" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+    elif rclone --config "$GDRIVE_CONFIG_FILE" ls gdrive:/ --drive-root-folder-id "${GDRIVE_FOLDER_ID}" >/dev/null 2>&1; then
+      if rclone --config "$GDRIVE_CONFIG_FILE" copy "$BACKUP_DIR" gdrive:/ --drive-root-folder-id "${GDRIVE_FOLDER_ID}" --transfers=2 --checkers=4 --fast-list --skip-links --log-file "$BACKUP_DIR/rclone_${TIMESTAMP}.log" --log-level INFO; then
         echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Backup enviado para Google Drive" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
       else
         echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  Falha ao enviar para Google Drive (veja rclone_${TIMESTAMP}.log)" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
