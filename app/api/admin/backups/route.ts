@@ -104,15 +104,41 @@ export async function POST(request: NextRequest) {
       SystemSettingsService.get('GDRIVE_FOLDER_ID'),
     ])
 
+    console.log('[Backup] Debug - SA length:', gdriveServiceAccountJson?.length || 0)
+    console.log('[Backup] Debug - Folder ID:', gdriveFolderId?.substring(0, 20) || 'VAZIO')
+    if (gdriveServiceAccountJson) {
+      console.log('[Backup] Debug - SA is valid JSON:', 
+        gdriveServiceAccountJson.includes('client_email') ? 'YES' : 'NO')
+    }
+
     try {
+      // Criar arquivo temporário com a credencial (evita truncamento de env var)
+      const fs = require('fs/promises')
+      const os = require('os')
+      const tempSAFile = path.join(os.tmpdir(), `gdrive-sa-${Date.now()}.json`)
+      
+      if (gdriveServiceAccountJson) {
+        await fs.writeFile(tempSAFile, gdriveServiceAccountJson, 'utf8')
+        console.log('[Backup] Service Account salvo em:', tempSAFile)
+      }
+
       const { stdout, stderr } = await execAsync(`bash "${scriptPath}"`, {
         env: {
           ...process.env,
-          GDRIVE_SERVICE_ACCOUNT_JSON: gdriveServiceAccountJson || '',
+          GDRIVE_SERVICE_ACCOUNT_FILE: gdriveServiceAccountJson ? tempSAFile : '',
           GDRIVE_FOLDER_ID: gdriveFolderId || '',
           APP_ROOT: process.cwd(),
         },
       })
+      
+      // Limpar arquivo temporário
+      if (gdriveServiceAccountJson) {
+        try {
+          await fs.unlink(tempSAFile)
+        } catch (e) {
+          console.warn('[Backup] Erro ao deletar arquivo temp:', e)
+        }
+      }
       
       console.log('[Backup] Sucesso:', stdout)
 

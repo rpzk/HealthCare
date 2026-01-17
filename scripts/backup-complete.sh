@@ -253,26 +253,21 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Manifest criado: $BACKUP_MANIFEST" | te
 # PARTE 5: CÓPIA PARA GOOGLE DRIVE (se configurado)
 ################################################################################
 
-if [ -n "$GDRIVE_SERVICE_ACCOUNT_JSON" ]; then
+if [ -n "$GDRIVE_SERVICE_ACCOUNT_FILE" ] && [ -f "$GDRIVE_SERVICE_ACCOUNT_FILE" ]; then
   echo -e "\n${BLUE}[5/5]${NC} Enviando backups para Google Drive..." | tee -a "$BACKUP_DIR/$BACKUP_LOG"
-  echo "[DEBUG] Tamanho da credencial: ${#GDRIVE_SERVICE_ACCOUNT_JSON} chars" >> "$BACKUP_DIR/$BACKUP_LOG"
+  
+  SA_FILE_SIZE=$(wc -c < "$GDRIVE_SERVICE_ACCOUNT_FILE")
+  echo "[DEBUG] Service Account file size: $SA_FILE_SIZE bytes" >> "$BACKUP_DIR/$BACKUP_LOG"
   echo "[DEBUG] Folder ID: ${GDRIVE_FOLDER_ID:0:20}..." >> "$BACKUP_DIR/$BACKUP_LOG"
 
   GDRIVE_CONFIG_FILE=$(mktemp)
-  GDRIVE_SA_FILE=$(mktemp)
-  trap "rm -rf $CONFIG_TEMP_DIR $CERTS_TEMP_DIR; rm -f $GDRIVE_CONFIG_FILE $GDRIVE_SA_FILE" EXIT
-
-  echo "$GDRIVE_SERVICE_ACCOUNT_JSON" > "$GDRIVE_SA_FILE"
-  
-  # Validar se o JSON foi escrito corretamente
-  SA_FILE_SIZE=$(wc -c < "$GDRIVE_SA_FILE")
-  echo "[DEBUG] Service Account file size: $SA_FILE_SIZE bytes" >> "$BACKUP_DIR/$BACKUP_LOG"
+  trap "rm -rf $CONFIG_TEMP_DIR $CERTS_TEMP_DIR; rm -f $GDRIVE_CONFIG_FILE" EXIT
 
   cat > "$GDRIVE_CONFIG_FILE" << EOF
 [gdrive]
 type = drive
 scope = drive
-service_account_file = $GDRIVE_SA_FILE
+service_account_file = $GDRIVE_SERVICE_ACCOUNT_FILE
 EOF
 
   if command -v rclone >/dev/null 2>&1; then
