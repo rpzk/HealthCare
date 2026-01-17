@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, HeartPulse } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'export default function ForgotPasswordPage() {
+export const dynamic = 'force-dynamic'
+
+function ForgotPasswordContent() {
   const searchParams = useSearchParams()
   const initialEmail = useMemo(() => searchParams.get('email') || '', [searchParams])
 
@@ -116,5 +118,13 @@ export const dynamic = 'force-dynamic'export default function ForgotPasswordPage
         )}
       </Card>
     </div>
+  )
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <ForgotPasswordContent />
+    </Suspense>
   )
 }

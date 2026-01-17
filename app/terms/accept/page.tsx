@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -10,7 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Markdown } from '@/components/ui/markdown'
 
-export const dynamic = 'force-dynamic'type PendingTerm = {
+export const dynamic = 'force-dynamic'
+
+type PendingTerm = {
   id: string
   slug: string
   title: string
@@ -34,7 +36,7 @@ function safeSameOriginPath(input: string | null): string {
   return '/'
 }
 
-export default function AcceptTermsPage() {
+function AcceptTermsContent() {
   const router = useRouter()
   const params = useSearchParams()
 
@@ -175,5 +177,13 @@ export default function AcceptTermsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AcceptTermsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <AcceptTermsContent />
+    </Suspense>
   )
 }

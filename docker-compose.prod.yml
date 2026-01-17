@@ -98,6 +98,7 @@ services:
       - "3000:3000"
     volumes:
       - uploads_data:/app/uploads
+      - backups_data:/app/backups
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
@@ -132,6 +133,7 @@ volumes:
   postgres_data:
   ollama_data:
   uploads_data:
+  backups_data:
 
 networks:
   healthcare-network:

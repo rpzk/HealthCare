@@ -48,7 +48,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 # Create data and uploads directories with correct permissions
-RUN mkdir -p /app/data /app/uploads /app/uploads/certificates /app/uploads/recordings && chown -R nextjs:nodejs /app/data /app/uploads
+RUN mkdir -p /app/data /app/uploads /app/uploads/certificates /app/uploads/recordings /app/backups && chown -R nextjs:nodejs /app/data /app/uploads /app/backups
 
 RUN chmod +x ./scripts/docker-entrypoint.sh
 
