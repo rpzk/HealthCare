@@ -255,12 +255,18 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Manifest criado: $BACKUP_MANIFEST" | te
 
 if [ -n "$GDRIVE_SERVICE_ACCOUNT_JSON" ]; then
   echo -e "\n${BLUE}[5/5]${NC} Enviando backups para Google Drive..." | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+  echo "[DEBUG] Tamanho da credencial: ${#GDRIVE_SERVICE_ACCOUNT_JSON} chars" >> "$BACKUP_DIR/$BACKUP_LOG"
+  echo "[DEBUG] Folder ID: ${GDRIVE_FOLDER_ID:0:20}..." >> "$BACKUP_DIR/$BACKUP_LOG"
 
   GDRIVE_CONFIG_FILE=$(mktemp)
   GDRIVE_SA_FILE=$(mktemp)
   trap "rm -rf $CONFIG_TEMP_DIR $CERTS_TEMP_DIR; rm -f $GDRIVE_CONFIG_FILE $GDRIVE_SA_FILE" EXIT
 
   echo "$GDRIVE_SERVICE_ACCOUNT_JSON" > "$GDRIVE_SA_FILE"
+  
+  # Validar se o JSON foi escrito corretamente
+  SA_FILE_SIZE=$(wc -c < "$GDRIVE_SA_FILE")
+  echo "[DEBUG] Service Account file size: $SA_FILE_SIZE bytes" >> "$BACKUP_DIR/$BACKUP_LOG"
 
   cat > "$GDRIVE_CONFIG_FILE" << EOF
 [gdrive]
@@ -281,7 +287,7 @@ EOF
         # Enviar apenas os arquivos de backup principais (não logs)
         RCLONE_OPTS="--config=$GDRIVE_CONFIG_FILE --drive-root-folder-id=$GDRIVE_FOLDER_ID --include=*.sql.gz --include=*.tar.gz --include=manifest*.json --exclude=*.log --transfers=2 --checkers=4 --fast-list --log-file=$BACKUP_DIR/rclone_${TIMESTAMP}.log --log-level=INFO"
         
-        if rclone copy "$BACKUP_DIR" "gdrive:/" $RCLONE_OPTS 2>&1 | tee -a "$BACKUP_DIR/$BACKUP_LOG"; then
+        if rclone copy "$BACKUP_DIR" "gdrive:" $RCLONE_OPTS 2>&1 | tee -a "$BACKUP_DIR/$BACKUP_LOG"; then
           FILES_UPLOADED=$(rclone ls "$BACKUP_DIR" $RCLONE_OPTS 2>/dev/null | wc -l)
           echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Backup enviado para Google Drive ($FILES_UPLOADED arquivos)" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
         else
