@@ -8,6 +8,11 @@ export interface EmailOptions {
   html: string
   text?: string
   from?: string
+  attachments?: Array<{
+    filename: string
+    content: Buffer | string
+    contentType?: string
+  }>
 }
 
 export interface EmailConfig {
@@ -196,7 +201,8 @@ export class EmailService {
             to,
             subject,
             html,
-            text
+            text,
+            ...(options.attachments ? { attachments: options.attachments } : {})
           })
 
           console.log('📧 [EMAIL-SERVICE] SMTP send result:', {

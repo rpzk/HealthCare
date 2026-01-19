@@ -6,6 +6,7 @@ import { promisify } from 'util'
 import { readdir, stat } from 'fs/promises'
 import path from 'path'
 import { SystemSettingsService } from '@/lib/system-settings-service'
+import { promises as fs } from 'fs'
 
 const execAsync = promisify(exec)
 
@@ -26,27 +27,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    const backupDir = path.join(process.cwd(), 'backups', 'healthcare')
+    const backupDir = process.env.BACKUPS_DIR || path.join(process.cwd(), 'backups', 'healthcare')
 
     try {
       const files = await readdir(backupDir)
       
       const backups = await Promise.all(
         files
-          .filter(f => f.startsWith('healthcare_') && f.endsWith('.sql.gz'))
+          .filter(f => f.endsWith('.sql.gz'))
           .map(async (f) => {
             try {
               const filePath = path.join(backupDir, f)
               const stats = await stat(filePath)
-              const logFile = f.replace('.sql.gz', '.log')
+              const base = f.replace('.sql.gz','')
+              const logCandidates = [
+                `${base}.log`,
+                f.startsWith('healthcare_') ? f.replace('.sql.gz', '.log') : `backup_${base.replace(/^.*_(\d{14})$/, '$1')}.log`,
+              ]
+              const logFile = logCandidates.find(l => files.includes(l)) || `${base}.log`
+              const tsMatch = base.match(/(\d{14})$/)
+              const statusFile = tsMatch ? `status_${tsMatch[1]}.json` : `status_${base}.json`
+              const rcloneLog = tsMatch ? `rclone_${tsMatch[1]}.log` : undefined
               
               return {
                 id: f,
                 filename: f,
                 size: stats.size,
                 sizeHuman: formatBytes(stats.size),
-                createdAt: stats.birthtime,
+                // Use mtime as birthtime may be unset on Linux
+                createdAt: stats.mtime,
                 hasLog: files.includes(logFile),
+                googleDriveUploaded: files.includes(statusFile)
+                  ? await readStatusBoolean(path.join(backupDir, statusFile), 'googleDriveUploaded')
+                  : (rcloneLog && files.includes(rcloneLog) ? true : undefined),
               }
             } catch {
               return null
@@ -79,6 +92,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function readStatusBoolean(filePath: string, key: string): Promise<boolean | undefined> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8')
+    const json = JSON.parse(raw)
+    const v = json?.[key]
+    return typeof v === 'boolean' ? v : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * POST /api/admin/backups
  * Cria novo backup manual
@@ -99,9 +123,10 @@ export async function POST(request: NextRequest) {
     // Executar script de backup completo
     const scriptPath = path.join(process.cwd(), 'scripts', 'backup-complete.sh')
 
-    const [gdriveServiceAccountJson, gdriveFolderId] = await Promise.all([
+    const [gdriveServiceAccountJson, gdriveFolderId, gdriveImpersonate] = await Promise.all([
       SystemSettingsService.get('GDRIVE_SERVICE_ACCOUNT_JSON'),
       SystemSettingsService.get('GDRIVE_FOLDER_ID'),
+      SystemSettingsService.get('GDRIVE_IMPERSONATE_EMAIL'),
     ])
 
     console.log('[Backup] Debug - SA length:', gdriveServiceAccountJson?.length || 0)
@@ -128,6 +153,12 @@ export async function POST(request: NextRequest) {
           GDRIVE_SERVICE_ACCOUNT_FILE: gdriveServiceAccountJson ? tempSAFile : '',
           GDRIVE_FOLDER_ID: gdriveFolderId || '',
           APP_ROOT: process.cwd(),
+          // Ensure pg_dump can connect inside container
+          POSTGRES_HOST: 'postgres',
+          POSTGRES_USER: 'healthcare',
+          POSTGRES_DB: 'healthcare_db',
+          POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || '',
+          GDRIVE_IMPERSONATE: gdriveImpersonate || '',
         },
       })
       
@@ -142,22 +173,31 @@ export async function POST(request: NextRequest) {
       
       console.log('[Backup] Sucesso:', stdout)
 
-      // Obter informações do backup criado
-      const timestamp = new Date().toISOString().replace(/[:-]/g, '').slice(0, 15)
-      const backupFile = `healthcare_${timestamp}.sql.gz`
-      const backupDir = path.join(process.cwd(), 'backups', 'healthcare')
-      
+      // Determinar o último backup pelo arquivo de log mais recente
+      const backupDir = process.env.BACKUPS_DIR || '/app/backups'
+      const files = await readdir(backupDir)
+      const latestLog = files
+        .filter(f => f.startsWith('backup_') && f.endsWith('.log'))
+        .sort((a,b) => b.localeCompare(a))[0]
+      let timestamp = latestLog ? latestLog.replace('backup_','').replace('.log','') : undefined
+      const backupFile = timestamp ? `healthcare_${timestamp}.sql.gz` : undefined
+      const statusFile = timestamp ? `status_${timestamp}.json` : undefined
+
       try {
-        const stats = await stat(path.join(backupDir, backupFile))
+        const stats = backupFile ? await stat(path.join(backupDir, backupFile)) : undefined
+        const googleDriveUploaded = statusFile
+          ? await readStatusBoolean(path.join(backupDir, statusFile), 'googleDriveUploaded')
+          : undefined
         return NextResponse.json({
           success: true,
           message: 'Backup criado com sucesso!',
-          backup: {
+          backup: backupFile && stats ? {
             filename: backupFile,
             size: stats.size,
             sizeHuman: formatBytes(stats.size),
             createdAt: new Date(),
-          },
+            googleDriveUploaded,
+          } : undefined,
         })
       } catch {
         // Se não conseguir ler o arquivo, retornar sucesso mesmo assim
@@ -210,7 +250,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Validação de segurança: garantir que é um caminho seguro
-    const backupDir = path.join(process.cwd(), 'backups', 'healthcare')
+    const backupDir = process.env.BACKUPS_DIR || path.join(process.cwd(), 'backups', 'healthcare')
     const filePath = path.join(backupDir, filename)
 
     if (!filePath.startsWith(backupDir)) {

@@ -8,8 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Markdown } from '@/components/ui/markdown'
+import { formatCPF, isValidCPF } from '@/lib/cpf-utils'
 import {
   Shield,
   Heart,
@@ -51,6 +54,10 @@ interface InviteData {
     email: string
     patientName: string
     birthDate: string | null
+    cpf: string | null
+    allergies: string | null
+    gender: string | null
+    emergencyContact: string | null
     customMessage: string | null
     expiresAt: string
   }
@@ -75,6 +82,11 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
   const [showPassword, setShowPassword] = useState(false)
   const [phone, setPhone] = useState('')
   const [birthDate, setBirthDate] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [allergies, setAllergies] = useState('')
+  const [gender, setGender] = useState('')
+  const [emergencyContact, setEmergencyContact] = useState('')
+  const [bloodType, setBloodType] = useState('')
   const [acceptedConsents, setAcceptedConsents] = useState<string[]>([])
   const [acceptedTermIds, setAcceptedTermIds] = useState<string[]>([])
   const [showAllConsents, setShowAllConsents] = useState(false)
@@ -99,6 +111,10 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
       const json = await res.json()
       setData(json)
       setBirthDate(json?.invite?.birthDate ? String(json.invite.birthDate).slice(0, 10) : '')
+      setCpf(json?.invite?.cpf ? String(json.invite.cpf) : '')
+      setAllergies(json?.invite?.allergies ? String(json.invite.allergies) : '')
+      setGender(json?.invite?.gender ? String(json.invite.gender) : '')
+      setEmergencyContact(json?.invite?.emergencyContact ? String(json.invite.emergencyContact) : '')
       // Selecionar todos por padrão
       setAcceptedConsents(json.biometricConsents.map((c: BiometricConsent) => c.dataType))
       setAcceptedTermIds([])
@@ -142,6 +158,16 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
       return
     }
 
+    // Validar CPF se fornecido
+    if (cpf && !isValidCPF(cpf)) {
+      toast({
+        title: 'Erro',
+        description: 'CPF inválido',
+        variant: 'destructive'
+      })
+      return
+    }
+
     const requiredTerms = Array.isArray(data?.terms) ? data.terms : []
     const hasAllTerms = requiredTerms.every((t) => acceptedTermIds.includes(t.id))
     if (requiredTerms.length > 0 && !hasAllTerms) {
@@ -173,7 +199,11 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
           acceptedTermIds,
           password,
           phone,
-          birthDate: effectiveBirthDate
+          birthDate: effectiveBirthDate,
+          cpf,
+          allergies,
+          gender,
+          emergencyContact
         })
       })
 
@@ -276,7 +306,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="birthDate">Data de nascimento</Label>
+                <Label htmlFor="birthDate">Data de nascimento <span className="text-red-500">*</span></Label>
                 <Input
                   id="birthDate"
                   type="date"
@@ -298,6 +328,110 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
             </CardContent>
           </Card>
 
+          {/* Dados de Saúde & Segurança */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-red-600" />
+                Informações de Saúde & Segurança
+              </CardTitle>
+              <CardDescription>
+                Dados essenciais para seu acompanhamento médico seguro.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Tipo Sanguíneo */}
+              <div className="space-y-2">
+                <Label htmlFor="bloodType">
+                  Tipo Sanguíneo
+                </Label>
+                <Select value={bloodType} onValueChange={setBloodType}>
+                  <SelectTrigger id="bloodType">
+                    <SelectValue placeholder="Selecione seu tipo sanguíneo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Não informado</SelectItem>
+                    <SelectItem value="A_POSITIVE">A+</SelectItem>
+                    <SelectItem value="A_NEGATIVE">A-</SelectItem>
+                    <SelectItem value="B_POSITIVE">B+</SelectItem>
+                    <SelectItem value="B_NEGATIVE">B-</SelectItem>
+                    <SelectItem value="AB_POSITIVE">AB+</SelectItem>
+                    <SelectItem value="AB_NEGATIVE">AB-</SelectItem>
+                    <SelectItem value="O_POSITIVE">O+</SelectItem>
+                    <SelectItem value="O_NEGATIVE">O-</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Gênero */}
+              <div className="space-y-2">
+                <Label htmlFor="gender">
+                  Gênero <span className="text-red-500">*</span>
+                </Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Selecione seu gênero" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">Masculino</SelectItem>
+                    <SelectItem value="FEMALE">Feminino</SelectItem>
+                    <SelectItem value="OTHER">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Alergias */}
+              <div className="space-y-2">
+                <Label htmlFor="allergies">
+                  Alergias <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="allergies"
+                  placeholder="Ex: Penicilina, Amendoim, Látex (separe com vírgulas)"
+                  value={allergies}
+                  onChange={(e) => setAllergies(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-amber-600">
+                  ⚠️ Importante: informar todas as alergias conhecidas para sua segurança.
+                </p>
+              </div>
+
+              {/* CPF */}
+              <div className="space-y-2">
+                <Label htmlFor="cpf">
+                  CPF <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="cpf"
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(formatCPF(e.target.value))}
+                  maxLength={14}
+                />
+                {cpf && !isValidCPF(cpf) && (
+                  <p className="text-xs text-red-500">CPF inválido</p>
+                )}
+              </div>
+
+              {/* Contato de Emergência */}
+              <div className="space-y-2">
+                <Label htmlFor="emergencyContact">
+                  Contato de Emergência
+                </Label>
+                <Input
+                  id="emergencyContact"
+                  placeholder="Nome e telefone (Ex: Maria Silva - 11 99999-8888)"
+                  value={emergencyContact}
+                  onChange={(e) => setEmergencyContact(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Pessoa a contactar em caso de emergência médica.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
           {/* Card de Dados Biométricos */}
           <Card className="mb-6">
             <CardHeader>

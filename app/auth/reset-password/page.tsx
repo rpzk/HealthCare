@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const token = useMemo(() => searchParams.get('token') || '', [searchParams])
+  const token = useMemo(() => searchParams?.get('token') || '', [searchParams])
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

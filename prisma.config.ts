@@ -8,8 +8,8 @@ export default defineConfig({
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {
-    // Use process.env directly so commands like `prisma generate` can run in environments
-    // where DATABASE_URL isn't injected (e.g. type-check only pipelines).
-    url: process.env.DATABASE_URL ?? '',
+    url:
+      process.env.DATABASE_URL ??
+      'postgresql://healthcare:umbrel_secure_pass@postgres:5432/healthcare_db',
   },
 })

@@ -390,6 +390,7 @@ model Patient {
   address               String?
   emergencyContact      String?
   allergies             String?
+  bloodType             String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   currentMedications    String?
@@ -421,6 +422,7 @@ model Patient {
   vitalSigns            VitalSigns[]
   strengthAssessments   StrengthAssessment[]   @relation("PatientStrengthAssessments")
   developmentPlans      DevelopmentPlan[]      @relation("PatientDevelopmentPlans")
+  pdfExports            PatientPdfExport[]     @relation("PatientPdfExports")
 
   // Dispositivos de saúde conectados
   connectedDevices   ConnectedDevice[]
@@ -3225,6 +3227,9 @@ model PatientInvite {
   // Dados pré-preenchidos (opcional)
   birthDate DateTime?
   cpf       String?
+  allergies           String? // Alergias conhecidas
+  gender              Gender? // Gênero do paciente
+  emergencyContact    String? // Nome + telefone de contato emergência
 
   // Mensagem personalizada
   customMessage String?
@@ -5332,4 +5337,60 @@ enum ScheduleRequestType {
   BLOCK_DATES        // Bloquear datas (plantões, férias)
   UNBLOCK_DATES      // Desbloquear datas
   CHANGE_SERVICE_TYPE // Mudar tipo de atendimento (presencial/remoto)
+}
+
+enum PatientPdfExportStatus {
+  PENDING    // Aguardando processamento
+  PROCESSING // Em processamento
+  COMPLETED  // Concluído com sucesso
+  FAILED     // Falhou
+  CANCELLED  // Cancelado
+}
+
+model PatientPdfExport {
+  id           String                    @id @default(cuid())
+  patientId    String
+  patient      Patient                   @relation("PatientPdfExports", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Job tracking
+  bullmqJobId  String?
+  status       PatientPdfExportStatus    @default(PENDING)
+  progress     Int                       @default(0)
+  
+  // Output
+  filename     String?
+  filePath     String?
+  fileSize     Int?
+  
+  // Error tracking
+  errorMessage String?
+  
+  // Metadata
+  requestedBy  String?
+  requestedAt  DateTime                  @default(now())
+  completedAt  DateTime?
+  expiresAt    DateTime?                 // Para limpeza automática
+  
+  logs         PatientPdfExportLog[]
+  
+  @@index([patientId])
+  @@index([status])
+  @@index([requestedAt])
+  @@map("patient_pdf_exports")
+}
+
+model PatientPdfExportLog {
+  id          String   @id @default(cuid())
+  exportId    String
+  export      PatientPdfExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
+  
+  // Progress step
+  step        String   // transcribing, generating, signing, uploading, etc.
+  percentage  Int?
+  message     String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([exportId])
+  @@map("patient_pdf_export_logs")
 }

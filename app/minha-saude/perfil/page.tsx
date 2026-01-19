@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 // Separator removed: not used in this page
 import { 
   
@@ -53,8 +56,11 @@ interface PatientProfile {
   address?: {
     street: string
     number: string
+    complement?: string | null
+    neighborhood?: string | null
     city: string
     state: string
+    zipCode?: string | null
   }
   emergencyContact?: {
     name: string
@@ -68,10 +74,49 @@ export default function PerfilPacientePage() {
   const [profile, setProfile] = useState<PatientProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [healthCardOpen, setHealthCardOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+  const [form, setForm] = useState({
+    phone: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    bloodType: '',
+    allergies: '',
+    emergencyName: '',
+    emergencyPhone: '',
+    emergencyRelation: '',
+  })
 
   useEffect(() => {
     fetchProfile()
   }, [])
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        phone: profile.phone || '',
+        street: profile.address?.street || '',
+        number: profile.address?.number || '',
+        complement: profile.address?.complement || '',
+        neighborhood: profile.address?.neighborhood || '',
+        city: profile.address?.city || '',
+        state: profile.address?.state || '',
+        zipCode: profile.address?.zipCode || '',
+        bloodType: profile.bloodType || '',
+        allergies: profile.allergies?.join(', ') || '',
+        emergencyName: profile.emergencyContact?.name || '',
+        emergencyPhone: profile.emergencyContact?.phone || '',
+        emergencyRelation: profile.emergencyContact?.relation || '',
+      })
+    }
+  }, [profile])
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -89,6 +134,62 @@ export default function PerfilPacientePage() {
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/auth/signin' })
+  }
+
+  const handleFormChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setErrorMsg('')
+    setSuccessMsg('')
+
+    const payload: any = {}
+    if (form.phone) payload.phone = form.phone
+    if (form.bloodType) payload.bloodType = form.bloodType
+    if (form.allergies) {
+      payload.allergies = form.allergies.split(',').map((s) => s.trim()).filter(Boolean)
+    }
+    if (form.emergencyName && form.emergencyPhone) {
+      payload.emergencyContact = {
+        name: form.emergencyName,
+        phone: form.emergencyPhone,
+        relation: form.emergencyRelation || 'Contato',
+      }
+    }
+    if (form.street && form.city && form.state) {
+      payload.address = {
+        street: form.street,
+        number: form.number,
+        complement: form.complement,
+        neighborhood: form.neighborhood,
+        city: form.city,
+        state: form.state,
+        zipCode: form.zipCode,
+      }
+    }
+
+    try {
+      const res = await fetch('/api/patient/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Erro ao salvar')
+      }
+
+      setSuccessMsg('Dados atualizados com sucesso.')
+      await fetchProfile()
+      setEditOpen(false)
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Erro ao salvar')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getInitials = (name: string) => {
@@ -144,15 +245,25 @@ export default function PerfilPacientePage() {
               <p className="text-sm text-muted-foreground">
                 {profile?.email || session?.user?.email}
               </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-3 rounded-full"
-                onClick={() => setHealthCardOpen(true)}
-              >
-                <QrCode className="h-4 w-4 mr-2" />
-                Cartão de Saúde
-              </Button>
+              <div className="flex gap-2 mt-3 flex-wrap justify-center">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-full"
+                  onClick={() => setHealthCardOpen(true)}
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Cartão de Saúde
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  className="rounded-full"
+                  onClick={() => setEditOpen(true)}
+                >
+                  Editar dados
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -362,6 +473,112 @@ export default function PerfilPacientePage() {
               </div>
             </CardContent>
           </Card>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editar Perfil */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar informações</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input
+                value={form.phone}
+                onChange={(e) => handleFormChange('phone', e.target.value)}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo sanguíneo</Label>
+              <Select value={form.bloodType} onValueChange={(value) => handleFormChange('bloodType', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Alergias (separe por vírgula)</Label>
+              <Input
+                value={form.allergies}
+                onChange={(e) => handleFormChange('allergies', e.target.value)}
+                placeholder="Amendoim, Penicilina"
+              />
+            </div>
+
+            <div className="md:col-span-2 mt-2">
+              <p className="text-sm font-semibold mb-2">Endereço principal</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Rua</Label>
+                  <Input value={form.street} onChange={(e) => handleFormChange('street', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número</Label>
+                  <Input value={form.number} onChange={(e) => handleFormChange('number', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bairro</Label>
+                  <Input value={form.neighborhood} onChange={(e) => handleFormChange('neighborhood', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Complemento</Label>
+                  <Input value={form.complement} onChange={(e) => handleFormChange('complement', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cidade</Label>
+                  <Input value={form.city} onChange={(e) => handleFormChange('city', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>UF</Label>
+                  <Input value={form.state} onChange={(e) => handleFormChange('state', e.target.value)} maxLength={2} />
+                </div>
+                <div className="space-y-2">
+                  <Label>CEP</Label>
+                  <Input value={form.zipCode} onChange={(e) => handleFormChange('zipCode', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 mt-2">
+              <p className="text-sm font-semibold mb-2">Contato de emergência</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input value={form.emergencyName} onChange={(e) => handleFormChange('emergencyName', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Relação</Label>
+                  <Input value={form.emergencyRelation} onChange={(e) => handleFormChange('emergencyRelation', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input value={form.emergencyPhone} onChange={(e) => handleFormChange('emergencyPhone', e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+          {successMsg && <p className="text-sm text-green-600">{successMsg}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Salvando...' : 'Salvar' }
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

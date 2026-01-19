@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 function ForgotPasswordContent() {
   const searchParams = useSearchParams()
-  const initialEmail = useMemo(() => searchParams.get('email') || '', [searchParams])
+  const initialEmail = useMemo(() => searchParams?.get('email') || '', [searchParams])
 
   const [email, setEmail] = useState(initialEmail)
   const [loading, setLoading] = useState(false)

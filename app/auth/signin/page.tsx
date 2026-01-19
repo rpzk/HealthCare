@@ -199,10 +199,19 @@ export default function SignIn() {
             {passkeyLoading ? 'Autenticando...' : 'Entrar com Passkey'}
           </Button>
 
-          <div className="pt-2 text-center">
+          <div className="pt-4 text-center space-y-2">
+            <div className="text-sm text-muted-foreground">
+              Não tem uma conta?{' '}
+              <Link
+                href="/auth/register"
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Cadastre-se aqui
+              </Link>
+            </div>
             <Link
               href="/"
-              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline block"
             >
               Voltar ao início
             </Link>

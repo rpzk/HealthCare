@@ -150,7 +150,7 @@ export class TemplateRenderer {
       'patient.email': patient.email || '',
       'patient.phone': patient.phone || '',
       'patient.cpf': patient.cpf || '',
-      'patient.birthDate': this.formatDate(patient.birthDate),
+      'patient.birthDate': patient.birthDate ? this.formatDate(patient.birthDate) : '',
       'patient.age': patient.birthDate
         ? this.calculateAge(patient.birthDate)
         : '',

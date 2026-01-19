@@ -200,6 +200,10 @@ export async function GET(
         email: invite.email,
         patientName: invite.patientName,
         birthDate: invite.birthDate,
+        cpf: invite.cpf,
+        allergies: invite.allergies,
+        gender: invite.gender,
+        emergencyContact: invite.emergencyContact,
         customMessage: invite.customMessage,
         expiresAt: invite.expiresAt
       },
@@ -243,6 +247,9 @@ export async function POST(
       address,
       birthDate,
       gender,
+      cpf,
+      allergies,
+      emergencyContact,
       additionalData
     } = body
 
@@ -315,8 +322,10 @@ export async function POST(
           email: invite.email,
           phone: phone || invite.phone,
           birthDate: effectiveBirthDate,
-          gender: gender || 'OTHER',
-          cpf: invite.cpf,
+          gender: gender || invite.gender || 'OTHER',
+          cpf: cpf || invite.cpf,
+          allergies: allergies || invite.allergies,
+          emergencyContact: emergencyContact || invite.emergencyContact,
           address,
           // Vincular userId se já existir usuário
           userId: existingUser?.id

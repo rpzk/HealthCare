@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
       patientName,
       birthDate,
       cpf,
+      allergies,
+      gender,
+      emergencyContact,
       customMessage,
       // Accept legacy keys from older UIs as well
       message,
@@ -213,12 +216,15 @@ export async function POST(request: NextRequest) {
     const invite = await prisma.patientInvite.create({
       data: {
         email,
-        phone,
+        phone: phone || null,
         patientName,
         token,
         expiresAt,
         birthDate: birthDate ? new Date(birthDate) : null,
-        cpf,
+        cpf: cpf || null,
+        allergies: allergies || null,
+        gender: gender || null,
+        emergencyContact: emergencyContact || null,
         customMessage: resolvedMessage,
         invitedById: session.user.id,
         assignedDoctorId: effectiveAssignedDoctorId,
