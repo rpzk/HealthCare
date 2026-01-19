@@ -5,12 +5,14 @@ import {
   listBackups,
   restoreFromBackup
 } from '@/lib/certificate-backup-service'
+import { BackupOrchestrator } from '@/lib/backup-orchestrator'
 import { prisma } from '@/lib/prisma'
 import {
   assertUserAcceptedTerms,
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/admin/backup/create
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { action, backupFilename } = body
+    const { action, backupFilename, type = 'all' } = body
 
     if (!action) {
       return NextResponse.json(
@@ -52,6 +54,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // New unified backup using BackupOrchestrator
+    if (action === 'UNIFIED_BACKUP') {
+      logger.info({ 
+        userId: session.user.id, 
+        backupType: type 
+      }, 'Starting unified backup')
+
+      const result = await BackupOrchestrator.runBackup(type)
+      
+      return NextResponse.json(result, {
+        status: result.success ? 200 : 500
+      })
+    }
+
+    // Legacy certificate backup (kept for backwards compatibility)
     if (action === 'CREATE') {
       const result = await createDailyBackup()
       return NextResponse.json(result)

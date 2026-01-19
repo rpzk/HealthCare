@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
-import { enqueueAI } from '@/lib/ai-bullmq-queue'
+import { enqueueAIJob } from '@/lib/ai-queue-factory'
 
 export const runtime = 'nodejs'
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Enqueue job
-    const job = await enqueueAI('patient_pdf_export', {
+    const job = await enqueueAIJob('patient_pdf_export', {
       patientId,
       exportId: exportRecord.id,
     })

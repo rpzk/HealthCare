@@ -3,7 +3,7 @@ import { withDoctorAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { enqueueAI } from '@/lib/ai-bullmq-queue'
+import { enqueueAIJob } from '@/lib/ai-queue-factory'
 import prisma from '@/lib/prisma'
 import { TermAudience } from '@prisma/client'
 import { assertUserAcceptedTerms } from '@/lib/terms-enforcement'
@@ -93,7 +93,7 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
 
   if (enqueue) {
     if (mode === 'draft') {
-      const job = await enqueueAI('transcribe_and_generate_soap_draft', {
+      const job = await enqueueAIJob('transcribe_and_generate_soap_draft', {
         filePath: saved.relPath,
         locale,
         speciality
@@ -103,7 +103,7 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
       if (!patientId || !doctorId) {
         return NextResponse.json({ error: 'patientId e doctorId são obrigatórios para enfileirar' }, { status: 400 })
       }
-      const job = await enqueueAI('transcribe_and_generate_soap', {
+      const job = await enqueueAIJob('transcribe_and_generate_soap', {
         filePath: saved.relPath,
         patientId,
         doctorId,
