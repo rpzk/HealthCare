@@ -4,6 +4,7 @@ import { MedicalRecordsService } from '@/lib/medical-records-service'
 import { medicalRecordsAuditService } from '@/lib/medical-records-audit-service'
 import { fieldMaskingService } from '@/lib/medical-records-masking-service'
 import { rateLimitingService } from '@/lib/medical-records-rate-limiting-service'
+import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 // Schema de validação para atualizar prontuário
@@ -17,9 +18,48 @@ const updateMedicalRecordSchema = z.object({
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']).optional()
 })
 
+// ============================================
+// HELPER: RBAC Check
+// ============================================
+/**
+ * Verificar se usuário tem acesso ao prontuário
+ * - ADMIN: acesso total
+ * - DOCTOR: seu próprio prontuário ou pacientes atribuídos
+ * - PATIENT: apenas seus próprios prontuários
+ */
+async function checkRecordAccess(record: any, user: any): Promise<boolean> {
+  if (user.role === 'ADMIN') return true
+
+  if (user.role === 'PATIENT') {
+    // Paciente só vê seus próprios prontuários
+    const patient = await prisma.patient.findFirst({
+      where: { userId: user.id },
+      select: { id: true }
+    })
+    return patient?.id === record.patientId
+  }
+
+  if (user.role === 'DOCTOR') {
+    // Médico vê prontuários que criou
+    if (record.doctorId === user.id) return true
+    
+    // Ou prontuários de pacientes atribuídos
+    const hasLink = await prisma.patientCareTeam.findFirst({
+      where: {
+        patientId: record.patientId,
+        professionalId: user.id,
+        status: 'ACTIVE'
+      }
+    })
+    return !!hasLink
+  }
+
+  return false
+}
+
 /**
  * GET /api/medical-records/[id]
- * Buscar um prontuário específico por ID
+ * Buscar um prontuário específico por ID com RBAC
  */
 export const GET = withAuth(async (request: NextRequest, { user: _user, params }) => {
   try {
@@ -40,6 +80,24 @@ export const GET = withAuth(async (request: NextRequest, { user: _user, params }
       return NextResponse.json(
         { error: 'Prontuário não encontrado' },
         { status: 404 }
+      )
+    }
+
+    // ============================================
+    // RBAC: Verificar se usuário pode acessar
+    // ============================================
+    const canAccess = await checkRecordAccess(record, user)
+    if (!canAccess) {
+      await medicalRecordsAuditService.logError(
+        'READ_DENIED',
+        id,
+        user.id,
+        user.role,
+        'Acesso negado pelo RBAC'
+      )
+      return NextResponse.json(
+        { error: 'Acesso negado: sem permissão para visualizar este prontuário' },
+        { status: 403 }
       )
     }
 
