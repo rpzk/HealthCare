@@ -1,47 +1,11 @@
 import { NextResponse, NextRequest } from 'next/server'
-
-// Fallback in-memory rate limiter (used if Redis is unavailable)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
+import { checkRateLimit, RateLimitPresets } from './lib/rate-limiter-factory'
 
 function getClientKey(request: NextRequest): string {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
              request.headers.get('x-real-ip') || 
              'unknown'
   return `ip:${ip}`
-}
-
-// In-memory rate limiter (fallback)
-function checkRateLimitMemory(request: NextRequest): { allowed: boolean; remaining: number } {
-  const key = getClientKey(request)
-  const now = Date.now()
-  const windowMs = 60 * 1000 // 1 minute
-  const maxRequests = 300 // 300 requests per minute globally
-  
-  const entry = rateLimitStore.get(key)
-  
-  if (!entry || entry.resetTime <= now) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs })
-    return { allowed: true, remaining: maxRequests - 1 }
-  }
-  
-  entry.count++
-  
-  if (entry.count > maxRequests) {
-    return { allowed: false, remaining: 0 }
-  }
-  
-  return { allowed: true, remaining: maxRequests - entry.count }
-}
-
-// Cleanup old entries periodically (1% chance per request)
-function cleanupRateLimitStore() {
-  if (Math.random() > 0.01) return
-  const now = Date.now()
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetTime <= now) {
-      rateLimitStore.delete(key)
-    }
-  }
 }
 
 // Generate nonce for CSP
@@ -51,9 +15,7 @@ function generateNonce(): string {
   return Buffer.from(array).toString('base64')
 }
 
-export default function middleware(request: NextRequest) {
-  cleanupRateLimitStore()
-  
+export async function middleware(request: NextRequest) {
   // Skip rate limiting for static assets
   const pathname = request.nextUrl.pathname
   if (pathname.startsWith('/_next/') || 
@@ -65,9 +27,15 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Apply rate limiting (using in-memory fallback in middleware)
-  // For API routes, use the Redis rate limiter directly in the route handler
-  const { allowed, remaining } = checkRateLimitMemory(request)
+  // Apply rate limiting using RateLimiterFactory
+  // Auto-selects Redis (production) or in-memory (development)
+  const clientKey = getClientKey(request)
+  const rateLimitResult = await checkRateLimit(clientKey, {
+    ...RateLimitPresets.standard,
+    keyPrefix: 'middleware'
+  })
+  
+  const { allowed, remaining } = rateLimitResult
   
   if (!allowed) {
     return new NextResponse(
