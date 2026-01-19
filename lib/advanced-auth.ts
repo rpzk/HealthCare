@@ -9,6 +9,7 @@ import { auditLogger, AuditAction } from './audit-logger'
 import { getRateLimiterForPath } from './rate-limiter'
 import { createRedisRateLimiter } from './redis-integration'
 import { aiAnomalyDetector } from './ai-anomaly-detector'
+import { recordRequest } from './metrics'
 
 export interface AdvancedAuthenticatedApiHandler {
   (request: NextRequest, context: { 
@@ -174,6 +175,7 @@ export function withRateLimitedAuth(
             response.headers.set('Retry-After', rateLimitResult.retryAfter.toString())
           }
 
+          recordRequest(request.nextUrl.pathname, request.method, response.status, Date.now() - startTime)
           return response
         }
 

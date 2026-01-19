@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { withAdminAuthUnlimited } from '@/lib/advanced-auth-v2'
+import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { validateCodeImport } from '@/lib/validation-schemas'
 import { CodingService } from '@/lib/coding-service'
 

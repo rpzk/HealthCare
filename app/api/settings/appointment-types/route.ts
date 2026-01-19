@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withPatientAuth, withAdminAuthUnlimited } from '@/lib/advanced-auth-v2'
+import { withPatientAuth, withAdminAuthUnlimited } from '@/lib/advanced-auth'
 
 interface ServiceType {
   id: string

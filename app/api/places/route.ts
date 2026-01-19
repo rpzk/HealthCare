@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { withPatientAuth } from '@/lib/advanced-auth-v2'
+import { withPatientAuth } from '@/lib/advanced-auth'
 import { AddressService } from '@/lib/address-service'
 import { validatePlace } from '@/lib/validation-schemas'
 
