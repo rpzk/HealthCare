@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { validateRequestBody } from '@/lib/with-auth'
-import { withMedicalAIAuth } from '@/lib/advanced-auth-v2'
+import { withMedicalAIAuth } from '@/lib/advanced-auth'
 import ollamaClient from '@/lib/ollama-client'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { z } from 'zod'

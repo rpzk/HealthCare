@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PatientService } from '../../../lib/patient-service'
 import { validateRequestBody } from '../../../lib/with-auth'
-import { withPatientAuth } from '@/lib/advanced-auth-v2'
+import { withPatientAuth } from '@/lib/advanced-auth'
 import { startSpan } from '@/lib/tracing'
 import { validatePatient } from '../../../lib/validation-schemas'
 import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'

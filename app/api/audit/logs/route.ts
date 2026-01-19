@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { withAdminAuthUnlimited } from '@/lib/advanced-auth-v2'
+import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 
 // GET /api/audit/logs?limit=50&userId=...&action=...
 export const GET = withAdminAuthUnlimited(async (req: NextRequest, { user: _user }) => {

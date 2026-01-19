@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { toast } from '@/components/ui/use-toast'
+import { toast } from '@/hooks/use-toast'
 import { Play, Download, Trash2, Clock, FileVideo, Loader2 } from 'lucide-react'
 import {
   Dialog,

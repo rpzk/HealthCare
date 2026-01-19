@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { withPatientAuth } from '@/lib/advanced-auth-v2'
+import { withPatientAuth } from '@/lib/advanced-auth'
 import { validateDiagnosisCreate, validateDiagnosisUpdate } from '@/lib/validation-schemas'
 import { CodingService } from '@/lib/coding-service'
 import { prisma } from '@/lib/prisma'

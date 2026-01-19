@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
 import { rateLimiters } from '@/lib/rate-limiter'
-import { withConsultationAuth } from '@/lib/advanced-auth-v2'
+import { withConsultationAuth } from '@/lib/advanced-auth'
 import { ConsultationType } from '@prisma/client'
 import { consultationQuerySchema, createConsultationSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { withDashboardAuth } from '@/lib/advanced-auth-v2'
+import { withDashboardAuth } from '@/lib/advanced-auth'
 import { CodingService } from '@/lib/coding-service'
 
 export const GET = withDashboardAuth(async (req) => {

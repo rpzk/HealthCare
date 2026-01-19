@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { validateRequestBody } from '@/lib/with-auth'
-import { withMedicalAIAuth } from '@/lib/advanced-auth-v2'
+import { withMedicalAIAuth } from '@/lib/advanced-auth'
 import { validateSymptomAnalysis } from '@/lib/validation-schemas'
 import { medicalAI } from '@/lib/advanced-medical-ai'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
