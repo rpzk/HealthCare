@@ -4,7 +4,9 @@ import { MedicalRecordsService } from '@/lib/medical-records-service'
 import { medicalRecordsAuditService } from '@/lib/medical-records-audit-service'
 import { fieldMaskingService } from '@/lib/medical-records-masking-service'
 import { rateLimitingService } from '@/lib/medical-records-rate-limiting-service'
+import { notificationService } from '@/lib/notification-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 // Schema de validação para atualizar prontuário
@@ -210,6 +212,33 @@ export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
       changes: Object.keys(data).filter(key => data[key as keyof typeof data] !== undefined)
     })
 
+    // 🔔 Send notification to patient about update
+    try {
+      const patient = await prisma.patient.findUnique({
+        where: { id: updatedRecord.patientId },
+        select: { userId: true }
+      })
+      
+      if (patient?.userId) {
+        const changesList = Object.keys(data).filter(key => data[key as keyof typeof data] !== undefined).join(', ')
+        await notificationService.createNotification({
+          userId: patient.userId,
+          type: 'MEDICAL_RECORD',
+          title: 'Prontuário Atualizado',
+          message: `Seu prontuário "${updatedRecord.title}" foi atualizado. Campos alterados: ${changesList}`,
+          priority: updatedRecord.priority === 'CRITICAL' || updatedRecord.priority === 'HIGH' ? 'HIGH' : 'NORMAL',
+          metadata: {
+            recordId: updatedRecord.id,
+            changes: changesList,
+            updatedBy: user.id
+          }
+        })
+      }
+    } catch (notifError) {
+      logger.error({ error: notifError }, 'Failed to send notification for record update')
+      // Don't fail the request if notification fails
+    }
+
     // Apply field masking based on user role
     const maskedRecord = fieldMaskingService.maskRecord(updatedRecord, user.role)
 
@@ -279,6 +308,33 @@ export const DELETE = withAuth(async (request: NextRequest, { user, params }) =>
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       reason: 'Admin deletion'
     })
+
+    // 🔔 Send notification to patient about deletion
+    try {
+      const patient = await prisma.patient.findUnique({
+        where: { id: existingRecord.patientId },
+        select: { userId: true }
+      })
+      
+      if (patient?.userId) {
+        await notificationService.createNotification({
+          userId: patient.userId,
+          type: 'SYSTEM',
+          title: 'Prontuário Removido',
+          message: `O prontuário "${existingRecord.title}" foi removido por um administrador.`,
+          priority: 'HIGH',
+          metadata: {
+            recordId: id,
+            recordTitle: existingRecord.title,
+            deletedBy: user.id,
+            deletedAt: new Date().toISOString()
+          }
+        })
+      }
+    } catch (notifError) {
+      logger.error({ error: notifError }, 'Failed to send notification for record deletion')
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json(
       { message: 'Prontuário deletado com sucesso' },

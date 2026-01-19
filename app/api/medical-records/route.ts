@@ -4,6 +4,7 @@ import { MedicalRecordsService } from '@/lib/medical-records-service'
 import { medicalRecordsAuditService } from '@/lib/medical-records-audit-service'
 import { fieldMaskingService } from '@/lib/medical-records-masking-service'
 import { rateLimitingService } from '@/lib/medical-records-rate-limiting-service'
+import { notificationService } from '@/lib/notification-service'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
@@ -287,6 +288,32 @@ export const POST = withAuth(async (request: NextRequest, { user }) => {
       user.id,
       user.role || 'DOCTOR'
     )
+
+    // 🔔 Send notification to patient
+    try {
+      const patient = await prisma.patient.findUnique({
+        where: { id: data.patientId },
+        select: { userId: true }
+      })
+      
+      if (patient?.userId) {
+        await notificationService.createNotification({
+          userId: patient.userId,
+          type: 'MEDICAL_RECORD',
+          title: 'Novo Prontuário Criado',
+          message: `Um novo prontuário foi criado: ${data.title}`,
+          priority: data.priority === 'CRITICAL' || data.priority === 'HIGH' ? 'HIGH' : 'NORMAL',
+          metadata: {
+            recordId: record.id,
+            recordType: data.recordType,
+            priority: data.priority
+          }
+        })
+      }
+    } catch (notifError) {
+      logger.error({ error: notifError }, 'Failed to send notification for new record')
+      // Don't fail the request if notification fails
+    }
 
     // Apply masking before returning
     const maskedRecord = fieldMaskingService.maskRecord(record, user.role || 'DOCTOR')
