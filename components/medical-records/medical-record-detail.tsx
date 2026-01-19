@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { AIRecordInsights } from './ai-record-insights'
 
 export interface MedicalRecordDetail {
   id: string
@@ -272,6 +273,23 @@ export function MedicalRecordDetail({
               <div className="field">
                 <div className="field-value sensitive">{record.notes}</div>
               </div>
+            </div>
+          )}
+
+          {/* AI-Powered Insights */}
+          {(record.diagnosis || record.treatment) && (
+            <div style={{ marginTop: '2rem' }}>
+              <AIRecordInsights
+                recordId={record.id}
+                patientId={record.patientId}
+                recordData={{
+                  diagnosis: record.diagnosis,
+                  treatment: record.treatment,
+                  notes: record.notes,
+                  recordType: record.recordType,
+                  priority: record.priority
+                }}
+              />
             </div>
           )}
 
