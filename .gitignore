@@ -35,7 +35,22 @@ uploads/*
 
 # Vercel / deploy
 .vercel
+
+# Django legacy project (reference only - not versioned)
 ssf/
+manage.py
+requirements.txt
+entrypoint.sh
+staticfiles/
+templates/
+agenda/
+consultas/
+geral/
+pacientes/
+profissionais/
+db.sqlite3
+*.pyc
+__pycache__/
 
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
