@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const backupDir = '/home/umbrel/backups/healthcare'
+    const backupDir = process.env.BACKUPS_DIR || '/app/backups'
     const filePath = path.join(backupDir, filename)
 
     // Validação de segurança

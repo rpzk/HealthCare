@@ -91,7 +91,7 @@ export class PrescriptionsServiceDb {
       patient: db.patient ? { id: db.patient.id, name: db.patient.name, email: db.patient.email, phone: db.patient.phone } : undefined,
       doctor: db.doctor ? { id: db.doctor.id, name: db.doctor.name, email: db.doctor.email, speciality: db.doctor.speciality } : undefined,
       digitalSignature: db.digitalSignature || null,
-      verificationUrl: null,
+      verificationUrl: null as string | null,
     }
   }
 

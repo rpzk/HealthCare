@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validação de segurança
-    const backupDir = '/home/umbrel/backups/healthcare'
+    const backupDir = process.env.BACKUPS_DIR || '/app/backups'
     const filePath = `${backupDir}/${filename}`
 
     if (!filePath.startsWith(backupDir)) {

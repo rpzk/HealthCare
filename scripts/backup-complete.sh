@@ -26,6 +26,9 @@ DB_BACKUP_FILE="healthcare_${TIMESTAMP}.sql.gz"
 CONFIG_BACKUP_FILE="config_${TIMESTAMP}.tar.gz"
 BACKUP_MANIFEST="manifest_${TIMESTAMP}.json"
 BACKUP_LOG="backup_${TIMESTAMP}.log"
+STATUS_JSON="status_${TIMESTAMP}.json"
+
+GDRIVE_UPLOADED=false
 
 # Cores para output
 GREEN='\033[0;32m'
@@ -50,7 +53,7 @@ echo -e "\n${BLUE}[1/4]${NC} Fazendo backup do banco de dados PostgreSQL..." | t
 POSTGRES_USER="${POSTGRES_USER:-healthcare}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-umbrel_secure_pass}"
 POSTGRES_DB="${POSTGRES_DB:-healthcare_db}"
-POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
+POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 
 # Fazer dump do banco
 PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
@@ -280,11 +283,12 @@ EOF
         echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  Credenciais do Google Drive inválidas ou pasta indisponível" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
       else
         # Enviar apenas os arquivos de backup principais (não logs)
-        RCLONE_OPTS="--config=$GDRIVE_CONFIG_FILE --drive-root-folder-id=$GDRIVE_FOLDER_ID --include=*.sql.gz --include=*.tar.gz --include=manifest*.json --exclude=*.log --transfers=2 --checkers=4 --fast-list --log-file=$BACKUP_DIR/rclone_${TIMESTAMP}.log --log-level=INFO"
+        RCLONE_OPTS="--config=$GDRIVE_CONFIG_FILE --drive-root-folder-id=$GDRIVE_FOLDER_ID ${GDRIVE_IMPERSONATE:+--drive-impersonate=$GDRIVE_IMPERSONATE} --include=*.sql.gz --include=*.tar.gz --include=manifest*.json --exclude=*.log --transfers=2 --checkers=4 --fast-list --log-file=$BACKUP_DIR/rclone_${TIMESTAMP}.log --log-level=INFO"
         
         if rclone copy "$BACKUP_DIR" "gdrive:" $RCLONE_OPTS 2>&1 | tee -a "$BACKUP_DIR/$BACKUP_LOG"; then
           FILES_UPLOADED=$(rclone ls "$BACKUP_DIR" $RCLONE_OPTS 2>/dev/null | wc -l)
           echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ Backup enviado para Google Drive ($FILES_UPLOADED arquivos)" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+          GDRIVE_UPLOADED=true
         else
           echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  Falha ao enviar para Google Drive (veja rclone_${TIMESTAMP}.log)" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
         fi
@@ -332,3 +336,15 @@ echo "" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
 echo "📍 Local: $BACKUP_DIR/" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
 echo "========================================" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Backup finalizado" | tee -a "$BACKUP_DIR/$BACKUP_LOG"
+
+# Escrever status JSON para consumo pela API/UI
+cat > "$BACKUP_DIR/$STATUS_JSON" << EOF
+{
+  "timestamp": "$TIMESTAMP",
+  "dbBackupFile": "$DB_BACKUP_FILE",
+  "configBackupFile": "$CONFIG_BACKUP_FILE",
+  "certsIncluded": $( [ "$CERT_FOUND" = true ] && echo "true" || echo "false" ),
+  "googleDriveFolderId": "${GDRIVE_FOLDER_ID:-}",
+  "googleDriveUploaded": $( [ "$GDRIVE_UPLOADED" = true ] && echo "true" || echo "false" )
+}
+EOF

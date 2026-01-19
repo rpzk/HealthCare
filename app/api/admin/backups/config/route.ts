@@ -33,15 +33,17 @@ export async function GET() {
     throw e
   }
 
-  const [folderId, serviceAccountJson] = await Promise.all([
+  const [folderId, serviceAccountJson, impersonateEmail] = await Promise.all([
     SystemSettingsService.get('GDRIVE_FOLDER_ID'),
     SystemSettingsService.get('GDRIVE_SERVICE_ACCOUNT_JSON'),
+    SystemSettingsService.get('GDRIVE_IMPERSONATE_EMAIL'),
   ])
 
   return NextResponse.json({
     success: true,
     configured: Boolean(serviceAccountJson && folderId),
     folderId: folderId || '',
+    impersonateEmail: impersonateEmail || '',
   })
 }
 
@@ -70,7 +72,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { serviceAccountJson, folderId } = body || {}
+  const { serviceAccountJson, folderId, impersonateEmail } = body || {}
 
   if (!serviceAccountJson || !folderId) {
     return NextResponse.json({ error: 'serviceAccountJson e folderId são obrigatórios' }, { status: 400 })
@@ -89,6 +91,16 @@ export async function PUT(request: NextRequest) {
     isPublic: false,
     updatedBy: session.user.id,
   })
+
+  if (impersonateEmail) {
+    await SystemSettingsService.set('GDRIVE_IMPERSONATE_EMAIL', impersonateEmail, {
+      encrypted: false,
+      category: SettingCategory.STORAGE,
+      isPublic: false,
+      updatedBy: session.user.id,
+    })
+    SystemSettingsService.clearCache('GDRIVE_IMPERSONATE_EMAIL')
+  }
 
   SystemSettingsService.clearCache('GDRIVE_SERVICE_ACCOUNT_JSON')
   SystemSettingsService.clearCache('GDRIVE_FOLDER_ID')

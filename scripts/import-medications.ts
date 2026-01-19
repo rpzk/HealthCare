@@ -16,7 +16,7 @@
  *    defaultDuration, maxQuantity, minAge, maxAge, sexRestriction, active
  */
 
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient, Prisma, PrescriptionType } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import fs from 'fs'
 import path from 'path'
@@ -99,24 +99,24 @@ function toNumber(v: any): number | undefined {
   return isNaN(n) ? undefined : n
 }
 
-function mapPrescriptionType(v: any): Prisma.PrescriptionType | undefined {
+function mapPrescriptionType(v: any): PrescriptionType | undefined {
   if (!v && v !== 0) return undefined
   const s = String(v).trim().toUpperCase()
-  const map: Record<string, Prisma.PrescriptionType> = {
-    SYMPTOMATIC: 'SYMPTOMATIC',
-    CONTINUOUS: 'CONTINUOUS',
-    CONTROLLED: 'CONTROLLED',
-    BLUE_B: 'BLUE_B',
-    YELLOW_A: 'YELLOW_A',
-    PHYTOTHERAPIC: 'PHYTOTHERAPIC',
+  const map: Record<string, PrescriptionType> = {
+    SYMPTOMATIC: PrescriptionType.SYMPTOMATIC,
+    CONTINUOUS: PrescriptionType.CONTINUOUS,
+    CONTROLLED: PrescriptionType.CONTROLLED,
+    BLUE_B: PrescriptionType.BLUE_B,
+    YELLOW_A: PrescriptionType.YELLOW_A,
+    PHYTOTHERAPIC: PrescriptionType.PHYTOTHERAPIC,
     // aliases comuns
-    SIMPLES: 'SYMPTOMATIC',
-    SIMPLE: 'SYMPTOMATIC',
-    CONTINUA: 'CONTINUOUS',
-    AMARELA: 'YELLOW_A',
-    A: 'YELLOW_A',
-    AZUL: 'BLUE_B',
-    B: 'BLUE_B',
+    SIMPLES: PrescriptionType.SYMPTOMATIC,
+    SIMPLE: PrescriptionType.SYMPTOMATIC,
+    CONTINUA: PrescriptionType.CONTINUOUS,
+    AMARELA: PrescriptionType.YELLOW_A,
+    A: PrescriptionType.YELLOW_A,
+    AZUL: PrescriptionType.BLUE_B,
+    B: PrescriptionType.BLUE_B,
   }
   return map[s]
 }
@@ -151,7 +151,7 @@ function buildMedicationData(r: Row): Prisma.MedicationCreateInput {
     name: String(name).trim(),
     synonym: (get('synonym', 'sinonimo') as string) || null,
     tradeName: (get('tradename', 'fantasia', 'nome fantasia', 'marca') as string) || null,
-    prescriptionType: mapPrescriptionType(get('prescriptiontype', 'tipo', 'tipo de receita')) || 'SYMPTOMATIC',
+    prescriptionType: mapPrescriptionType(get('prescriptiontype', 'tipo', 'tipo de receita')) || PrescriptionType.SYMPTOMATIC,
     basicPharmacy: toBool(get('basicpharmacy', 'basica', 'farmacia basica')) ?? false,
     municipalPharmacy: toBool(get('municipalpharmacy', 'municipal')) ?? false,
     statePharmacy: toBool(get('statepharmacy', 'estadual')) ?? false,
