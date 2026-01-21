@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { parseAllergies } from '@/lib/patient-schemas'
 import {
   Dialog,
   DialogContent,
@@ -59,19 +60,6 @@ interface Pagination {
 const getInitials = (name?: string | null): string => {
   if (!name) return '??'
   return name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || '??'
-}
-
-const parseAllergies = (allergies?: string | null): string[] => {
-  if (!allergies) return []
-  if (typeof allergies === 'string') {
-    try {
-      const parsed = JSON.parse(allergies)
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return allergies.split(',').map(s => s.trim()).filter(Boolean)
-    }
-  }
-  return []
 }
 
 export function PatientsList() {

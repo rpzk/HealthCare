@@ -87,13 +87,22 @@ export const GET = withRbac('patient.read', async (req, { params, user }) => {
       { patientId: params.id, patientName: patient.name, editMode: isEditMode }
     )
     
-    // Se é modo de edição e usuário tem permissão, retornar dados completos
-    // Caso contrário, aplicar mascaramento para LGPD
-    if (isEditMode) {
+    // Admin sempre vê dados completos sem mascaramento
+    // Paciente vendo próprio perfil também vê tudo
+    // Modo de edição também retorna tudo
+    // Caso contrário, aplicar mascaramento LGPD
+    const isAdmin = user.role === 'ADMIN'
+    const isSelf = patient.userId === user.id
+    
+    if (isEditMode || isAdmin || isSelf) {
       return NextResponse.json(patient)
     }
     
-    return NextResponse.json(applyPatientMasking(patient))
+    // Para outros casos, aplicar masking apropriado
+    const clinicalRoles = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'HEALTH_AGENT']
+    const exposeClinical = clinicalRoles.includes(user.role)
+    
+    return NextResponse.json(applyPatientMasking(patient, { exposeClinical }))
   } catch (error: any) {
     auditLogger.logError(
       user.id,
@@ -226,14 +235,20 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
       }
     )
     
+    // Admin sempre recebe dados completos sem masking
+    const isAdmin = user.role === 'ADMIN'
+    
     // Headers para evitar cache após atualização
-    return NextResponse.json(applyPatientMasking(patient), {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+    return NextResponse.json(
+      isAdmin ? patient : applyPatientMasking(patient),
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       }
-    })
+    )
   } catch (error: any) {
     auditLogger.logError(
       user.id,

@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { decrypt, encrypt, hashCPF } from '@/lib/crypto'
+import { parseAllergies, serializeAllergies, normalizeBloodType } from '@/lib/patient-schemas'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
 const updateSchema = z.object({
   phone: z.string().min(8).max(20).optional(),
+  cpf: z.string().min(11).max(14).optional(),
   bloodType: z.enum(['A+','A-','B+','B-','AB+','AB-','O+','O-']).optional(),
   allergies: z.array(z.string().min(1)).optional(),
   emergencyContact: z.object({
@@ -29,7 +32,7 @@ const updateSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
@@ -59,11 +62,12 @@ export async function GET(req: NextRequest) {
       name: patient.name,
       email: patient.email,
       phone: patient.phone,
-      cpf: patient.cpf,
+      cpf: decrypt(patient.cpf as string | null),
       birthDate: patient.birthDate?.toISOString() || null,
       gender: patient.gender,
+      bloodType: normalizeBloodType(patient.bloodType),
       // the schema stores a free-form 'address' string and a relation 'addresses' -> we surface the primary address if present
-      allergies: patient.allergies ? patient.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+      allergies: parseAllergies(decrypt(patient.allergies as string | null)),
       address: (patient.addresses && patient.addresses.length > 0) ? (() => {
         const primary = patient.addresses.find((a: any) => a.isPrimary) || patient.addresses[0]
         return {
@@ -95,6 +99,12 @@ export async function GET(req: NextRequest) {
           return { name: String(raw), phone: null, relation: 'Contato' }
         }
       })()
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     })
 
   } catch (error) {
@@ -144,8 +154,17 @@ export async function PUT(req: NextRequest) {
     // Montar updates
     const patientUpdate: any = {}
     if (data.phone) patientUpdate.phone = data.phone
-    if (data.bloodType) patientUpdate.bloodType = data.bloodType
-    if (data.allergies) patientUpdate.allergies = data.allergies.join(', ')
+    if (data.cpf) {
+      const cpfValue = data.cpf.trim()
+      if (cpfValue) {
+        patientUpdate.cpf = encrypt(cpfValue)
+        patientUpdate.cpfHash = hashCPF(cpfValue)
+      }
+    }
+    if (data.bloodType) patientUpdate.bloodType = normalizeBloodType(data.bloodType)
+    if (data.allergies && data.allergies.length > 0) {
+      patientUpdate.allergies = encrypt(serializeAllergies(data.allergies))
+    }
     if (data.emergencyContact) patientUpdate.emergencyContact = JSON.stringify(data.emergencyContact)
 
     // Atualizar endereço primário
@@ -195,8 +214,9 @@ export async function PUT(req: NextRequest) {
       patient: {
         id: updated.id,
         phone: updated.phone,
-        bloodType: (updated as any).bloodType,
-        allergies: updated.allergies ? updated.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+        cpf: decrypt(updated.cpf as string | null),
+        bloodType: normalizeBloodType(updated.bloodType),
+        allergies: parseAllergies(decrypt(updated.allergies as string | null)),
         emergencyContact: (function() {
           const raw = updated.emergencyContact
           if (!raw) return null

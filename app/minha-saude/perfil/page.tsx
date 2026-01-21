@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { parseAllergies } from '@/lib/patient-schemas'
 // Separator removed: not used in this page
 import { 
   
@@ -80,6 +81,7 @@ export default function PerfilPacientePage() {
   const [successMsg, setSuccessMsg] = useState('')
   const [form, setForm] = useState({
     phone: '',
+    cpf: '',
     street: '',
     number: '',
     complement: '',
@@ -102,6 +104,7 @@ export default function PerfilPacientePage() {
     if (profile) {
       setForm({
         phone: profile.phone || '',
+        cpf: profile.cpf || '',
         street: profile.address?.street || '',
         number: profile.address?.number || '',
         complement: profile.address?.complement || '',
@@ -110,7 +113,7 @@ export default function PerfilPacientePage() {
         state: profile.address?.state || '',
         zipCode: profile.address?.zipCode || '',
         bloodType: profile.bloodType || '',
-        allergies: profile.allergies?.join(', ') || '',
+        allergies: parseAllergies(profile.allergies).join(', ') || '',
         emergencyName: profile.emergencyContact?.name || '',
         emergencyPhone: profile.emergencyContact?.phone || '',
         emergencyRelation: profile.emergencyContact?.relation || '',
@@ -121,7 +124,13 @@ export default function PerfilPacientePage() {
   const fetchProfile = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/patient/profile')
+      const response = await fetch('/api/patient/profile', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       if (!response.ok) throw new Error('Falha ao carregar')
       const data = await response.json()
       setProfile(data)
@@ -146,8 +155,12 @@ export default function PerfilPacientePage() {
     setSuccessMsg('')
 
     const payload: any = {}
-    if (form.phone) payload.phone = form.phone
-    if (form.bloodType) payload.bloodType = form.bloodType
+    const trimmedPhone = form.phone?.trim()
+    const trimmedCpf = form.cpf?.trim()
+    const trimmedBloodType = form.bloodType?.trim()
+    if (trimmedPhone) payload.phone = trimmedPhone
+    if (trimmedCpf) payload.cpf = trimmedCpf
+    if (trimmedBloodType) payload.bloodType = trimmedBloodType
     if (form.allergies) {
       payload.allergies = form.allergies.split(',').map((s) => s.trim()).filter(Boolean)
     }
@@ -490,6 +503,14 @@ export default function PerfilPacientePage() {
                 value={form.phone}
                 onChange={(e) => handleFormChange('phone', e.target.value)}
                 placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>CPF</Label>
+              <Input
+                value={form.cpf}
+                onChange={(e) => handleFormChange('cpf', e.target.value)}
+                placeholder="000.000.000-00"
               />
             </div>
             <div className="space-y-2">

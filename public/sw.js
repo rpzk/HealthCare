@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'healthcare-v2'
+const CACHE_NAME = 'healthcare-v3'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

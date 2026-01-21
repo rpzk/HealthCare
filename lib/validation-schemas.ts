@@ -6,7 +6,9 @@ export const phoneSchema = z.string().regex(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, 'Telef
 export const cpfSchema = z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, 'CPF deve estar no formato XXX.XXX.XXX-XX')
 export const dateSchema = z.string().datetime('Data inválida') || z.date()
 
-// Schema para criação/atualização de paciente
+// DEPRECATED: Use patientCreateSchema ou patientUpdateSchema from @/lib/patient-schemas
+// Este schema mantido apenas para compatibilidade com código legado
+// @deprecated Use instead: import { patientCreateSchema, patientUpdateSchema } from '@/lib/patient-schemas'
 export const patientSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   email: emailSchema.optional(),
@@ -20,7 +22,9 @@ export const patientSchema = z.object({
   state: z.string().max(2, 'Estado deve ter 2 caracteres').optional(),
   zipCode: z.string().regex(/^\d{5}-?\d{3}$/, 'CEP inválido').optional(),
   emergencyContact: z.string().max(100, 'Contato de emergência muito longo').optional(),
-  bloodType: z.enum(['A_POSITIVE', 'A_NEGATIVE', 'B_POSITIVE', 'B_NEGATIVE', 'AB_POSITIVE', 'AB_NEGATIVE', 'O_POSITIVE', 'O_NEGATIVE']).optional(),
+  // NOTA: bloodType agora suporta ambos os formatos (A_POSITIVE e A+) para compatibilidade legada
+  // Novo código deve usar: normalizeBloodType() de @/lib/patient-schemas
+  bloodType: z.enum(['A_POSITIVE', 'A_NEGATIVE', 'B_POSITIVE', 'B_NEGATIVE', 'AB_POSITIVE', 'AB_NEGATIVE', 'O_POSITIVE', 'O_NEGATIVE', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
   allergies: z.array(z.string()).optional(),
   chronicDiseases: z.array(z.string()).optional(),
   doctorId: z.string().cuid('ID do médico inválido')
