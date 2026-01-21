@@ -6,6 +6,7 @@
 import { prisma } from '@/lib/prisma'
 import { WhatsAppService } from '@/lib/whatsapp-service'
 import { addDays, isBefore } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 export class WaitingListService {
   /**
@@ -68,7 +69,7 @@ export class WaitingListService {
 
       return waitingList
     } catch (error) {
-      console.error('[WaitingList] Error adding:', error)
+      logger.error('[WaitingList] Error adding:', error)
       throw error
     }
   }
@@ -94,7 +95,7 @@ export class WaitingListService {
       }
 
       if (!item.patient.phone) {
-        console.log('[WaitingList] Patient has no phone')
+        logger.info('[WaitingList] Patient has no phone')
         return false
       }
 
@@ -127,7 +128,7 @@ export class WaitingListService {
 
       return false
     } catch (error) {
-      console.error('[WaitingList] Error notifying:', error)
+      logger.error('[WaitingList] Error notifying:', error)
       return false
     }
   }
@@ -170,7 +171,7 @@ export class WaitingListService {
         }
       })
 
-      console.log(`[WaitingList] Found ${waitingPatients.length} waiting patients`)
+      logger.info(`[WaitingList] Found ${waitingPatients.length} waiting patients`)
 
       for (const item of waitingPatients) {
         await this.notifyAvailableSlot(item.id, appointment.scheduledDate)
@@ -179,7 +180,7 @@ export class WaitingListService {
         await new Promise(resolve => setTimeout(resolve, 5000))
       }
     } catch (error) {
-      console.error('[WaitingList] Error processing cancellation:', error)
+      logger.error('[WaitingList] Error processing cancellation:', error)
     }
   }
 
@@ -215,7 +216,7 @@ export class WaitingListService {
       }
     })
 
-    console.log(`[WaitingList] Expired ${result.count} items`)
+    logger.info(`[WaitingList] Expired ${result.count} items`)
     return result.count
   }
 

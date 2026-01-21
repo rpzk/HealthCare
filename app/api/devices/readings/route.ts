@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma, ReadingType, ReadingContext, AlertSeverity } from '@prisma/client'
 import { EmailService } from '@/lib/email-service'
+import { logger } from '@/lib/logger'
 
 // Limites de referência padrão
 const DEFAULT_THRESHOLDS: Record<string, {
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(readings)
   } catch (error) {
-    console.error('Error fetching readings:', error)
+    logger.error('Error fetching readings:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar leituras' },
       { status: 500 }
@@ -292,7 +293,7 @@ export async function POST(request: NextRequest) {
 
     if (criticalReadings.length > 0) {
       // Criar notificação de alerta
-      console.log(`⚠️ ${criticalReadings.length} leituras críticas para paciente ${patientId}`)
+      logger.info(`⚠️ ${criticalReadings.length} leituras críticas para paciente ${patientId}`)
 
       // Tentar enviar e-mail de alerta para o paciente ou responsável
       try {
@@ -323,7 +324,7 @@ export async function POST(request: NextRequest) {
           })
         }
       } catch (notifyError) {
-        console.error('Erro ao enviar alerta de leitura crítica:', notifyError)
+        logger.error('Erro ao enviar alerta de leitura crítica:', notifyError)
       }
     }
 
@@ -333,7 +334,7 @@ export async function POST(request: NextRequest) {
       alerts: criticalReadings.length
     }, { status: 201 })
   } catch (error) {
-    console.error('Error creating readings:', error)
+    logger.error('Error creating readings:', error)
     return NextResponse.json(
       { error: 'Erro ao registrar leituras' },
       { status: 500 }

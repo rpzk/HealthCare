@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET /api/exam-requests/[id]
 export const GET = withAuth(async (_req, { params, user }) => {
@@ -23,7 +24,7 @@ export const GET = withAuth(async (_req, { params, user }) => {
 
     return NextResponse.json(item)
   } catch (error) {
-    console.error('Erro ao buscar solicitação de exame:', error)
+    logger.error('Erro ao buscar solicitação de exame:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 })

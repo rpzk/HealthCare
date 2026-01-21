@@ -7,6 +7,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,7 +70,7 @@ export async function GET(
 
     return NextResponse.json(user)
   } catch (error) {
-    console.error('Erro ao buscar usuário:', error)
+    logger.error('Erro ao buscar usuário:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
@@ -140,7 +141,7 @@ export async function PATCH(
 
     return NextResponse.json(updatedUser)
   } catch (error) {
-    console.error('Erro ao atualizar usuário:', error)
+    logger.error('Erro ao atualizar usuário:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
@@ -200,7 +201,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Erro ao excluir usuário:', error)
+    logger.error('Erro ao excluir usuário:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }

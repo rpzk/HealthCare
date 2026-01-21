@@ -14,6 +14,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from '@/hooks/use-toast'
 import { PaymentDialog } from './payment-dialog'
+import { logger } from '@/lib/logger'
 
 export function FinancialDashboard() {
   const [loading, setLoading] = useState(true)
@@ -38,7 +39,7 @@ export function FinancialDashboard() {
       const json = await res.json()
       setData(json)
     } catch (error) {
-      console.error(error)
+      logger.error(error)
     } finally {
       setLoading(false)
     }

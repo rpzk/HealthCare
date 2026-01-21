@@ -10,6 +10,7 @@ import { generatePatientPdfHtml, generatePatientPdfFromHtml } from '@/lib/pdf-pa
 import { signPdf } from '@/lib/pdf-signing'
 import prisma from '@/lib/prisma'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 const connection = {
   host: process.env.REDIS_HOST || 'localhost',
@@ -46,7 +47,7 @@ async function updateJobProgress(
       },
     })
   } catch (e) {
-    console.error('[PDF Export Progress] Error updating log:', e)
+    logger.error('[PDF Export Progress] Error updating log:', e)
   }
 }
 

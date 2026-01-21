@@ -17,6 +17,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, X, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface CancelRescheduleDialogProps {
   consultationId: string
@@ -67,7 +68,7 @@ export function CancelRescheduleDialog({
       setReason('')
       onSuccess?.()
     } catch (error) {
-      console.error('Error:', error)
+      logger.error('Error:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao cancelar consulta')
     } finally {
       setLoading(false)

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { decrypt, encrypt, hashCPF } from '@/lib/crypto'
 import { parseAllergies, serializeAllergies, normalizeBloodType } from '@/lib/patient-schemas'
 import { z } from 'zod'
@@ -108,7 +110,7 @@ export async function GET(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Erro ao buscar perfil do paciente:', error)
+    logger.error('Erro ao buscar perfil do paciente:', error)
     return NextResponse.json(
       { error: 'Erro ao carregar perfil' },
       { status: 500 }
@@ -244,7 +246,7 @@ export async function PUT(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Erro ao atualizar perfil do paciente:', error)
+    logger.error('Erro ao atualizar perfil do paciente:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar perfil' },
       { status: 500 }

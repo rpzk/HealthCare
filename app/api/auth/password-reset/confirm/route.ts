@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { createRedisRateLimiter } from '@/lib/redis-integration'
 import { getClientIpFromRequest, hashPasswordResetToken } from '@/lib/password-reset'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
     }
 
-    console.error('Erro no confirm de reset de senha:', error)
+    logger.error('Erro no confirm de reset de senha:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { toastApiError } from '@/lib/toast-api-error'
+import { logger } from '@/lib/logger'
 
 interface UserRolesDialogProps {
   open: boolean
@@ -165,7 +166,7 @@ export function UserRolesDialog({
       const primary = roles.find((r: AssignedRole) => r.isPrimary)
       setPrimaryRole(primary?.role || data.role || '')
     } catch (error) {
-      console.error(error)
+      logger.error(error)
       toast({ title: 'Erro', description: 'Erro ao carregar papéis', variant: 'destructive' })
     } finally {
       setLoading(false)
@@ -254,7 +255,7 @@ export function UserRolesDialog({
       onSuccess?.()
       onOpenChange(false)
     } catch (error) {
-      console.error(error)
+      logger.error(error)
       toast({ title: 'Erro', description: 'Erro ao salvar papéis', variant: 'destructive' })
     } finally {
       setSaving(false)

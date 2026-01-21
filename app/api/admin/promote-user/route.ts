@@ -8,6 +8,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 // POST - Promover usuário para um novo papel (mantendo perfil de paciente se existir)
 export async function POST(request: NextRequest) {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error promoting user:', error)
+    logger.error('Error promoting user:', error)
     return NextResponse.json(
       { error: 'Erro ao promover usuário' },
       { status: 500 }
@@ -172,7 +173,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error listing users:', error)
+    logger.error('Error listing users:', error)
     return NextResponse.json(
       { error: 'Erro ao listar usuários' },
       { status: 500 }

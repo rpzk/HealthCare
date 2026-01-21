@@ -9,6 +9,7 @@ import { DebugOverlay } from '@/components/debug-overlay'
 import '@/lib/server-instrumentation'
 import '@/lib/prisma-warmup'
 import { Toaster } from 'sonner'
+import { logger } from '@/lib/logger'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -64,10 +65,10 @@ export default function RootLayout({
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
                     .then(function(reg) {
-                      console.log('SW registered:', reg.scope);
+                      logger.info('SW registered:', reg.scope);
                       try { reg.update(); } catch (e) { /* noop */ }
                     })
-                    .catch(function(err) { console.log('SW failed:', err); });
+                    .catch(function(err) { logger.info('SW failed:', err); });
                 });
               }
             `

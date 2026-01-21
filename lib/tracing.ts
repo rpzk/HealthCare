@@ -4,6 +4,7 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api'
 import { Resource } from '@opentelemetry/resources'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
+import { logger } from '@/lib/logger'
 
 let initialized = false
 
@@ -22,9 +23,9 @@ export function initTracing(){
     provider.addSpanProcessor(new BatchSpanProcessor(exporter))
     provider.register()
     initialized = true
-    console.log('[Tracing] OpenTelemetry inicializado')
+    logger.info('[Tracing] OpenTelemetry inicializado')
   } catch(e){
-    console.warn('[Tracing] Falha ao inicializar', (e as Error).message)
+    logger.warn('[Tracing] Falha ao inicializar', (e as Error).message)
   }
 }
 

@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle, Download, RefreshCw, Trash2, HardDrive, RotateCw } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface Backup {
   id: string
@@ -44,7 +45,7 @@ export function BackupManager() {
         setError(data.message || 'Erro ao carregar backups')
       }
     } catch (err) {
-      console.error('[BackupManager] Load error:', err)
+      logger.error('[BackupManager] Load error:', err)
       setError('Erro ao carregar backups')
     } finally {
       setLoading(false)
@@ -73,7 +74,7 @@ export function BackupManager() {
         setError(data.error || 'Erro ao criar backup')
       }
     } catch (err) {
-      console.error('[BackupManager] Create error:', err)
+      logger.error('[BackupManager] Create error:', err)
       setError('Erro ao criar backup')
     } finally {
       setCreating(false)
@@ -100,7 +101,7 @@ export function BackupManager() {
         setError(data.error || 'Erro ao deletar backup')
       }
     } catch (err) {
-      console.error('[BackupManager] Delete error:', err)
+      logger.error('[BackupManager] Delete error:', err)
       setError('Erro ao deletar backup')
     }
   }
@@ -140,7 +141,7 @@ export function BackupManager() {
         setError(data.error || 'Erro ao restaurar backup')
       }
     } catch (err) {
-      console.error('[BackupManager] Restore error:', err)
+      logger.error('[BackupManager] Restore error:', err)
       setError('Erro ao restaurar backup')
     } finally {
       setRestoring(null)

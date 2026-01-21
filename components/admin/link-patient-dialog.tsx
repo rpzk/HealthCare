@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast'
 import { Loader2, UserPlus, Link2, Search, User, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface LinkPatientDialogProps {
   userId: string
@@ -87,7 +88,7 @@ export function LinkPatientDialog({
         setExistingPatients(data.patients || [])
       }
     } catch (error) {
-      console.error('Erro na busca:', error)
+      logger.error('Erro na busca:', error)
     } finally {
       setSearching(false)
     }

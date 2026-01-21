@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 import {
   Brain,
   Clock,
@@ -179,7 +180,7 @@ export function StratumAssessment() {
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
+      logger.error('Erro ao carregar dados:', error)
       toast({ title: 'Erro', description: 'Falha ao carregar avaliação', variant: 'destructive' })
     } finally {
       setLoading(false)
@@ -223,7 +224,7 @@ export function StratumAssessment() {
         })
       })
     } catch (error) {
-      console.error('Erro ao salvar resposta:', error)
+      logger.error('Erro ao salvar resposta:', error)
     } finally {
       setSaving(false)
     }

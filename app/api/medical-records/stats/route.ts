@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/medical-records/stats
@@ -170,7 +171,7 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
       }))
     })
   } catch (error) {
-    console.error('Error fetching medical records stats:', error)
+    logger.error('Error fetching medical records stats:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar estatísticas' },
       { status: 500 }

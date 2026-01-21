@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { Search, FlaskConical, Pill, Info, X } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 type FormulaTemplate = {
   id: string
@@ -62,7 +63,7 @@ export function FormulaAutocomplete({
         setSelectedIndex(0)
       }
     } catch (error) {
-      console.error('Erro ao buscar fórmulas:', error)
+      logger.error('Erro ao buscar fórmulas:', error)
     } finally {
       setLoading(false)
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/consultations/patient-preview/[patientId]
@@ -84,7 +85,7 @@ export async function GET(
       age
     })
   } catch (error: any) {
-    console.error('Erro:', error.message || error)
+    logger.error('Erro:', error.message || error)
     return NextResponse.json(
       { error: 'Erro ao buscar dados do paciente' },
       { status: 500 }

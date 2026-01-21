@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { sendAppointmentCancellationEmail } from '@/lib/email-service'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const cancelSchema = z.object({
   consultationId: z.string().min(1),
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
           reason: reason || 'Cancelado pelo sistema',
         })
       } catch (emailError) {
-        console.error('Error sending cancellation email:', emailError)
+        logger.error('Error sending cancellation email:', emailError)
         // Don't fail the cancellation if email fails
       }
     }
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 })
     }
-    console.error('Error cancelling consultation:', error)
+    logger.error('Error cancelling consultation:', error)
     return NextResponse.json({ error: 'Failed to cancel consultation' }, { status: 500 })
   }
 }
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
       status: consultation.status,
     })
   } catch (error) {
-    console.error('Error checking consultation:', error)
+    logger.error('Error checking consultation:', error)
     return NextResponse.json({ error: 'Failed to check consultation' }, { status: 500 })
   }
 }

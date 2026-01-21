@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server'
 import { MedicationService } from '@/lib/medication-service'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
   try {
@@ -35,7 +36,7 @@ export async function GET() {
       forms
     })
   } catch (error) {
-    console.error('Erro ao obter estatísticas de medicamentos:', error)
+    logger.error('Erro ao obter estatísticas de medicamentos:', error)
     return NextResponse.json(
       { error: 'Erro ao obter estatísticas' },
       { status: 500 }

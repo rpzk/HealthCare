@@ -9,6 +9,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FileSignature } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface CertificateSignatureExampleProps {
   certificateId: string
@@ -46,7 +47,7 @@ export function CertificateSignatureExample({
           </div>
 
           <Button
-            onClick={() => console.log('Assinar certificado:', certificateId)}
+            onClick={() => logger.info('Assinar certificado:', certificateId)}
             className="w-full"
           >
             <FileSignature className="mr-2 h-4 w-4" />

@@ -58,6 +58,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface CareTeamMember {
   id: string
@@ -141,8 +142,8 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
       setCareTeam(data.careTeam || [])
       setResponsibleDoctor(data.responsibleDoctor || null)
     } catch (error: unknown) {
-      if (error instanceof Error) console.error('Error loading care team:', error)
-      else console.error('Error loading care team:', String(error))
+      if (error instanceof Error) logger.error('Error loading care team:', error)
+      else logger.error('Error loading care team:', String(error))
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar a equipe de atendimento',
@@ -176,8 +177,8 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
         (data.users || data).filter((u: User) => !existingIds.includes(u.id))
       )
     } catch (error: unknown) {
-      if (error instanceof Error) console.error('Error searching users:', error)
-      else console.error('Error searching users:', String(error))
+      if (error instanceof Error) logger.error('Error searching users:', error)
+      else logger.error('Error searching users:', String(error))
     } finally {
       setSearchLoading(false)
     }

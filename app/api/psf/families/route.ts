@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   try {
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(household)
   } catch (error) {
-    console.error('[HOUSEHOLD_CREATE]', error)
+    logger.error('[HOUSEHOLD_CREATE]', error)
     return new NextResponse('Internal Error', { status: 500 })
   }
 }

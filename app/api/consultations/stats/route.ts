@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { logger } from '@/lib/logger'
 
 // GET - Estatísticas de consultas
 export const GET = withAuth(async (request: NextRequest, { user }) => {
@@ -38,7 +39,7 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
       { doctorId: searchParams.get('doctorId') }
     )
 
-    console.error('Erro ao buscar estatísticas de consultas:', error)
+    logger.error('Erro ao buscar estatísticas de consultas:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

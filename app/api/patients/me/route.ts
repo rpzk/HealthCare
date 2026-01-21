@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export async function GET() {
 
     return NextResponse.json(patient)
   } catch (error) {
-    console.error('Erro ao buscar dados do paciente:', error)
+    logger.error('Erro ao buscar dados do paciente:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

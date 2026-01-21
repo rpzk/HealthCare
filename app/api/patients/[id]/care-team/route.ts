@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import {
   checkPatientAccess,
   addToCareTeam,
@@ -89,7 +90,7 @@ export async function GET(
       totalMembers: formattedTeam.length
     })
   } catch (error) {
-    console.error('Error fetching care team:', error)
+    logger.error('Error fetching care team:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar equipe de atendimento' },
       { status: 500 }
@@ -178,7 +179,7 @@ export async function POST(
       message: `${targetUser.name} adicionado à equipe de atendimento`
     })
   } catch (error) {
-    console.error('Error adding to care team:', error)
+    logger.error('Error adding to care team:', error)
     return NextResponse.json(
       { error: 'Erro ao adicionar à equipe de atendimento' },
       { status: 500 }
@@ -238,7 +239,7 @@ export async function DELETE(
       message: 'Profissional removido da equipe de atendimento'
     })
   } catch (error) {
-    console.error('Error removing from care team:', error)
+    logger.error('Error removing from care team:', error)
     return NextResponse.json(
       { error: 'Erro ao remover da equipe de atendimento' },
       { status: 500 }

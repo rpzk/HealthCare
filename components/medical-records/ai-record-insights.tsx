@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Loader2, Brain, AlertTriangle, CheckCircle2, TrendingUp, Pill, FileText, Activity } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface AIInsight {
   type: 'diagnosis' | 'treatment' | 'interaction' | 'risk' | 'summary'
@@ -75,7 +76,7 @@ export function AIRecordInsights({ recordId, patientId, recordData }: AIRecordIn
               }
             }
           } catch (err) {
-            console.error('Erro na análise de diagnóstico:', err)
+            logger.error('Erro na análise de diagnóstico:', err)
           }
         }
 
@@ -127,7 +128,7 @@ export function AIRecordInsights({ recordId, patientId, recordData }: AIRecordIn
               }
             }
           } catch (err) {
-            console.error('Erro na verificação de interações:', err)
+            logger.error('Erro na verificação de interações:', err)
           }
         }
 
@@ -172,13 +173,13 @@ export function AIRecordInsights({ recordId, patientId, recordData }: AIRecordIn
             }
           }
         } catch (err) {
-          console.error('Erro na geração de resumo:', err)
+          logger.error('Erro na geração de resumo:', err)
         }
 
         setInsights(results)
       } catch (err) {
         setError('Não foi possível gerar insights de IA. O serviço pode estar indisponível.')
-        console.error('Erro geral ao gerar insights:', err)
+        logger.error('Erro geral ao gerar insights:', err)
       } finally {
         setIsLoading(false)
       }

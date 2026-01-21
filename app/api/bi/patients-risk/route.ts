@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { BIService } from '@/lib/bi-service';
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(patientsByRisk, { status: 200 });
   } catch (error) {
-    console.error('Erro ao buscar pacientes por risco:', error);
+    logger.error('Erro ao buscar pacientes por risco:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar estatísticas' },
       { status: 500 }

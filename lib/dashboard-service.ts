@@ -1,4 +1,5 @@
 import { ensurePrismaConnected, getPrisma } from './db-client'
+import { logger } from '@/lib/logger'
 
 const prisma = getPrisma()
 
@@ -42,7 +43,7 @@ export class DashboardService {
         completionRate,
       }
     } catch (err) {
-      console.error('[dashboard] erro em getStats()', err)
+      logger.error('[dashboard] erro em getStats()', err)
       throw err
     }
   }
@@ -91,7 +92,7 @@ export class DashboardService {
         };
       }).filter(Boolean);
     } catch (err) {
-      console.error('[dashboard] erro em getUpcomingAppointments()', err)
+      logger.error('[dashboard] erro em getUpcomingAppointments()', err)
       return []
     }
   }
@@ -124,7 +125,7 @@ export class DashboardService {
         }
       }).filter(Boolean); // Remove nulls
     } catch (err) {
-      console.error('[dashboard] erro em getRecentPatients()', err)
+      logger.error('[dashboard] erro em getRecentPatients()', err)
       // Return empty array instead of throwing
       return []
     }

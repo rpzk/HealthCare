@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma'
 import { TermAudience } from '@prisma/client'
 import { assertUserAcceptedTerms } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/recordings/[id]/chunk
@@ -60,7 +61,7 @@ export async function POST(
     return NextResponse.json({ success: true })
 
   } catch (error: unknown) {
-    console.error('[Recording] Erro ao salvar chunk:', error)
+    logger.error('[Recording] Erro ao salvar chunk:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao salvar chunk' },
       { status: 500 }

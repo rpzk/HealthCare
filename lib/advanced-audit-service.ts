@@ -11,6 +11,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { AuditAlertType, AlertSeverity, AlertStatus } from '@prisma/client';
+import { logger } from '@/lib/logger'
 
 interface AuditLogEntry {
   userId: string;
@@ -248,7 +249,7 @@ export class AdvancedAuditService {
    */
   private async notifyAdmins(alertId: string, alertType: AuditAlertType, entry: AuditLogEntry) {
     // TODO: Integrar com email/Slack
-    console.log(`[ALERTA CRÍTICO] ${alertType}:`, {
+    logger.info(`[ALERTA CRÍTICO] ${alertType}:`, {
       user: entry.userEmail,
       ip: entry.ipAddress,
       action: entry.action

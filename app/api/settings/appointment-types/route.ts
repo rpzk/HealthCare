@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withPatientAuth, withAdminAuthUnlimited } from '@/lib/advanced-auth'
+import { logger } from '@/lib/logger'
 
 interface ServiceType {
   id: string
@@ -55,7 +56,7 @@ export const GET = withPatientAuth(async (req, { user }) => {
     // Retornar serviços padrão se não houver configuração
     return NextResponse.json({ services: DEFAULT_SERVICES })
   } catch (error) {
-    console.error('Erro ao buscar tipos de atendimento:', error)
+    logger.error('Erro ao buscar tipos de atendimento:', error)
     return NextResponse.json({ services: DEFAULT_SERVICES })
   }
 })
@@ -104,7 +105,7 @@ export const POST = withAdminAuthUnlimited(async (req, { user }) => {
       message: 'Tipos de atendimento salvos com sucesso'
     })
   } catch (error) {
-    console.error('Erro ao salvar tipos de atendimento:', error)
+    logger.error('Erro ao salvar tipos de atendimento:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -127,7 +128,7 @@ export const DELETE = withAdminAuthUnlimited(async (req, { user }) => {
       message: 'Configuração resetada para padrão'
     })
   } catch (error) {
-    console.error('Erro ao resetar tipos de atendimento:', error)
+    logger.error('Erro ao resetar tipos de atendimento:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

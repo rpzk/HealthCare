@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
 
 import { MovementType, Role, type Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // GET - List inventory movements
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -69,7 +70,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error fetching movements:', error)
+    if (error instanceof Error) logger.error('Error fetching movements:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar movimentações', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -229,7 +230,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(result, { status: 201 })
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error creating movement:', error)
+    if (error instanceof Error) logger.error('Error creating movement:', error)
     return NextResponse.json(
       { error: 'Erro ao criar movimentação', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

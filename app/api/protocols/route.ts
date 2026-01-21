@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { protocolQuerySchema, createProtocolSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ protocols })
   } catch (error) {
-    console.error('Erro ao listar protocolos:', error)
+    logger.error('Erro ao listar protocolos:', error)
     return NextResponse.json(
       { error: 'Erro ao listar protocolos' },
       { status: 500 }
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ protocol }, { status: 201 })
   } catch (error) {
-    console.error('Erro ao criar protocolo:', error)
+    logger.error('Erro ao criar protocolo:', error)
     return NextResponse.json(
       { error: 'Erro ao criar protocolo' },
       { status: 500 }

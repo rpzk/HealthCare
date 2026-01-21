@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 // GET - Inventory Dashboard
@@ -145,7 +146,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }))
     })
   } catch (error: any) {
-    console.error('Error fetching inventory dashboard:', error)
+    logger.error('Error fetching inventory dashboard:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar dashboard', details: error.message },
       { status: 500 }

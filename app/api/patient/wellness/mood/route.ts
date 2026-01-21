@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Session } from "next-auth";
+import { logger } from '@/lib/logger'
 
 /**
  * Calculate wellness score from mood components
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error recording mood:", error);
+    logger.error("Error recording mood:", error);
     return NextResponse.json(
       {
         error: "Internal server error",

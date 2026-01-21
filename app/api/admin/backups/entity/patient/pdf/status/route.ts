@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       })) || [],
     })
   } catch (e: any) {
-    console.error('[Patient PDF Status] Error:', e)
+    logger.error('[Patient PDF Status] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao consultar status' }, { status: 500 })
   }
 }

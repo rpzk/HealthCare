@@ -29,6 +29,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface Patient {
   id: string
@@ -145,7 +146,7 @@ export default function NewExamRequestForm() {
         setPatients(data.patients || data || [])
       }
     } catch (error) {
-      console.error('Erro ao buscar pacientes:', error)
+      logger.error('Erro ao buscar pacientes:', error)
     } finally {
       setPatientLoading(false)
     }
@@ -181,7 +182,7 @@ export default function NewExamRequestForm() {
         setExams(data)
       }
     } catch (error) {
-      console.error('Erro ao buscar exames:', error)
+      logger.error('Erro ao buscar exames:', error)
     } finally {
       setExamLoading(false)
     }
@@ -207,7 +208,7 @@ export default function NewExamRequestForm() {
         setCombos(data)
       }
     } catch (error) {
-      console.error('Erro ao buscar combos:', error)
+      logger.error('Erro ao buscar combos:', error)
     } finally {
       setComboLoading(false)
     }
@@ -284,7 +285,7 @@ export default function NewExamRequestForm() {
       // Track combo usage
       fetch(`/api/exam-combos/${combo.id}/use`, { method: 'POST' })
     } catch (error) {
-      console.error('Erro ao adicionar combo:', error)
+      logger.error('Erro ao adicionar combo:', error)
     }
 
     setComboSearch('')

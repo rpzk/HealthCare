@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger'
 
 interface WaitingPatient {
   appointmentId: string;
@@ -61,7 +62,7 @@ export function WaitingRoom({
       })));
       
     } catch (error) {
-      console.error('Erro ao buscar fila:', error);
+      logger.error('Erro ao buscar fila:', error);
       toast.error('Erro ao carregar fila de espera');
     } finally {
       setLoading(false);
@@ -89,7 +90,7 @@ export function WaitingRoom({
       await fetchWaitingPatients();
       
     } catch (error) {
-      console.error('Erro ao notificar:', error);
+      logger.error('Erro ao notificar:', error);
       toast.error('Erro ao notificar paciente');
     } finally {
       setNotifying(null);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Listar forças de caráter
 export async function GET() {
@@ -40,7 +41,7 @@ export async function GET() {
       total: strengths.length
     })
   } catch (error) {
-    console.error('Erro ao buscar forças:', error)
+    logger.error('Erro ao buscar forças:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar forças de caráter' },
       { status: 500 }
@@ -318,7 +319,7 @@ export async function POST(request: NextRequest) {
       total: strengths.length
     })
   } catch (error) {
-    console.error('Erro ao criar seed:', error)
+    logger.error('Erro ao criar seed:', error)
     return NextResponse.json(
       { error: 'Erro ao criar seed' },
       { status: 500 }

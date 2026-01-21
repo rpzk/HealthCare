@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { DashboardService } from '@/lib/dashboard-service'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { logger } from '@/lib/logger'
 
 // GET - Dados do dashboard (usuários autenticados)
 export const GET = withAuth(async (request, { user }) => {
@@ -46,7 +47,7 @@ export const GET = withAuth(async (request, { user }) => {
           patients: allPatients
         }
       } catch (error: any) {
-        console.error('[API] Dashboard error FULL STACK:', error);
+        logger.error('[API] Dashboard error FULL STACK:', error);
         return NextResponse.json(
           { success: false, error: error.message || 'Internal Server Error', details: error.stack },
           { status: 500 }

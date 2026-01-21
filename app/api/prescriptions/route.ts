@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth, validateRequestBody } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 import { validatePrescription } from '@/lib/validation-schemas'
+import { logger } from '@/lib/logger'
 
 // GET - Buscar prescrições médicas
 export const GET = withAuth(async (request, { user: _user }) => {
@@ -23,7 +24,7 @@ export const GET = withAuth(async (request, { user: _user }) => {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Erro ao buscar prescrições (outer catch):', error)
+    logger.error('Erro ao buscar prescrições (outer catch)', error as Error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -48,7 +49,7 @@ export const POST = withAuth(async (request, { user }) => {
         status: 'ACTIVE',
       })
     } catch (innerErr: any) {
-      console.error('PrescriptionsServiceDb.create failed', {
+      logger.error('PrescriptionsServiceDb.create failed', innerErr, {
         message: innerErr?.message,
         code: innerErr?.code,
         meta: innerErr?.meta,
@@ -59,7 +60,7 @@ export const POST = withAuth(async (request, { user }) => {
 
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
-    console.error('Erro ao criar prescrição (outer catch):', error)
+    logger.error('Erro ao criar prescrição (outer catch)', error as Error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

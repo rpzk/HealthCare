@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
 import { Clock, Save } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 const DAYS = [
   'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -40,7 +41,7 @@ export function ScheduleConfig() {
       
       setSchedule(fullSchedule)
     } catch (error) {
-      console.error(error)
+      logger.error(error)
     } finally {
       setLoading(false)
     }

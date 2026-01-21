@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withPatientAuth } from '@/lib/advanced-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,7 +78,7 @@ export const GET = withPatientAuth(async (req) => {
 
     return NextResponse.json({ results: suggestions })
   } catch (err) {
-    console.error('[addresses/search] geocode error', err)
+    logger.error('[addresses/search] geocode error', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 })

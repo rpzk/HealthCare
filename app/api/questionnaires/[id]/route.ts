@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -66,7 +68,7 @@ export async function GET(
     return NextResponse.json(template)
 
   } catch (error: any) {
-    console.error('Error fetching template:', error)
+    logger.error('Error fetching template:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -218,7 +220,7 @@ export async function PUT(
     return NextResponse.json(template)
 
   } catch (error: any) {
-    console.error('Error updating template:', error)
+    logger.error('Error updating template:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -289,7 +291,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
 
   } catch (error: any) {
-    console.error('Error deleting template:', error)
+    logger.error('Error deleting template:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

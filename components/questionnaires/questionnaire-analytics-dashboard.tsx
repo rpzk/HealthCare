@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface QuestionnaireMetrics {
   totalSent: number
@@ -72,7 +73,7 @@ export function QuestionnaireAnalyticsDashboard({ userId }: Props) {
         setMetrics(data)
       }
     } catch (error) {
-      console.error('Erro ao carregar métricas:', error)
+      logger.error('Erro ao carregar métricas:', error)
     } finally {
       setLoading(false)
     }

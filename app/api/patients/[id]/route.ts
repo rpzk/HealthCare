@@ -7,6 +7,7 @@ import { applyPatientMasking } from '@/lib/masking'
 import { startSpan } from '@/lib/tracing'
 import { requirePatientAccess } from '@/lib/patient-access'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 interface RouteParams {
   params: {
@@ -114,7 +115,7 @@ export const GET = withRbac('patient.read', async (req, { params, user }) => {
       { patientId: params.id }
     )
     
-    console.error('Erro ao buscar paciente:', error)
+    logger.error('Erro ao buscar paciente:', error)
     
     if (error.message === 'Paciente não encontrado') {
       return NextResponse.json(
@@ -260,7 +261,7 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
       { patientId: params.id }
     )
     
-    console.error('Erro ao atualizar paciente:', error)
+    logger.error('Erro ao atualizar paciente:', error)
     
     if (error.message === 'Paciente não encontrado') {
       return NextResponse.json(
@@ -313,7 +314,7 @@ export const PATCH = withRbac('patient.write', async (req, { params, user }) => 
       { patientId: params.id }
     )
     
-    console.error('Erro na operação do paciente:', error)
+    logger.error('Erro na operação do paciente:', error)
     
     if (error.message === 'Paciente não encontrado') {
       return NextResponse.json(
@@ -378,7 +379,7 @@ export const DELETE = withRbac('patient.write', async (req, { params, user }) =>
       { patientId: params.id }
     )
     
-    console.error('Erro ao excluir paciente:', error)
+    logger.error('Erro ao excluir paciente:', error)
     
     if (error.message === 'Paciente não encontrado') {
       return NextResponse.json(

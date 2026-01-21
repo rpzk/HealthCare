@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface Notification {
   id: string
@@ -57,7 +58,7 @@ export class NotificationService {
       })
       return notification
     } catch (error) {
-      console.error('Erro ao criar notificação:', error)
+      logger.error('Erro ao criar notificação:', error)
       throw error
     }
   }

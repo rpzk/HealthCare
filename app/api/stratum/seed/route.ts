@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // POST - Seed questões iniciais (apenas ADMIN)
 export async function POST(request: NextRequest) {
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest) {
       total: questions.length
     })
   } catch (error) {
-    console.error('Erro ao criar seed:', error)
+    logger.error('Erro ao criar seed:', error)
     return NextResponse.json(
       { error: 'Erro ao criar seed' },
       { status: 500 }

@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
 
 import type { Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // GET - Get product by ID
 export const GET = withAuth(async (req: NextRequest, { params }) => {
@@ -48,7 +49,7 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
       isLowStock: totalStock <= product.minStock
     })
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error fetching product:', error)
+    if (error instanceof Error) logger.error('Error fetching product:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -112,7 +113,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(product)
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error updating product:', error)
+    if (error instanceof Error) logger.error('Error updating product:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -155,7 +156,7 @@ export const DELETE = withAuth(async (req: NextRequest, { params, user }) => {
     await prisma.product.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error deleting product:', error)
+    if (error instanceof Error) logger.error('Error deleting product:', error)
     return NextResponse.json(
       { error: 'Erro ao excluir produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

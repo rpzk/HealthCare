@@ -7,6 +7,7 @@ async function getPrisma() {
   return prisma
 }
 import bcrypt from "bcryptjs"
+import { logger } from '@/lib/logger'
 const DEBUG_AUTH = (process.env.DEBUG_AUTH || '') === '1'
 
 // Mitigação simples de brute-force (dev). Em produção, usar Redis/ip-based limiter
@@ -38,7 +39,7 @@ const providers: NextAuthOptions['providers'] = [
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.assertion) {
-          console.warn('Tentativa de login passkey sem email/assertion')
+          logger.warn('Tentativa de login passkey sem email/assertion')
           return null
         }
 
@@ -50,14 +51,14 @@ const providers: NextAuthOptions['providers'] = [
           })
 
           if (!user || !user.isActive) {
-            console.warn('Usuário inválido/inativo para passkey', credentials.email)
+            logger.warn('Usuário inválido/inativo para passkey', credentials.email)
             return null
           }
 
           const assertion = JSON.parse(credentials.assertion)
           const verification = await verifyAuthenticationResponseForUser(credentials.email, assertion, req as any)
           if (!verification.verified) {
-            console.warn('Passkey não verificada para', credentials.email)
+            logger.warn('Passkey não verificada para', credentials.email)
             return null
           }
 
@@ -68,7 +69,7 @@ const providers: NextAuthOptions['providers'] = [
             role: user.role,
           }
         } catch (error) {
-          console.error('Erro na autenticação passkey:', error)
+          logger.error('Erro na autenticação passkey:', error)
           return null
         }
       }
@@ -84,7 +85,7 @@ const providers: NextAuthOptions['providers'] = [
         const password = credentials?.password || ''
 
         if (!email || !password) {
-          console.warn('Tentativa de login sem credenciais completas')
+          logger.warn('Tentativa de login sem credenciais completas')
           return null
         }
 
@@ -100,7 +101,7 @@ const providers: NextAuthOptions['providers'] = [
           const now = Date.now()
           const bruteForceDisabled = (process.env.DISABLE_LOGIN_BRUTEFORCE || '') === '1'
           if (!bruteForceDisabled && attempt.blockedUntil && attempt.blockedUntil > now) {
-            console.warn(`IP/email bloqueado temporariamente: ${email}`)
+            logger.warn(`IP/email bloqueado temporariamente: ${email}`)
             return null
           }
 
@@ -124,13 +125,13 @@ const providers: NextAuthOptions['providers'] = [
           })
 
           if (candidates.length === 0) {
-            console.warn(`Tentativa de login com email não encontrado: ${email}`)
+            logger.warn(`Tentativa de login com email não encontrado: ${email}`)
             return null
           }
 
           const activeCandidates = candidates.filter(u => u.isActive)
           if (activeCandidates.length === 0) {
-            console.warn(`Tentativa de login com usuário(s) inativo(s): ${email}`)
+            logger.warn(`Tentativa de login com usuário(s) inativo(s): ${email}`)
             return null
           }
 
@@ -148,7 +149,7 @@ const providers: NextAuthOptions['providers'] = [
           }
 
           if (!matchedUser) {
-            console.warn(`Senha incorreta para usuário: ${email}`)
+            logger.warn(`Senha incorreta para usuário: ${email}`)
             // incrementar tentativas
             if (!bruteForceDisabled) {
               attempt.count += 1
@@ -169,7 +170,7 @@ const providers: NextAuthOptions['providers'] = [
             role: matchedUser.role
           }
         } catch (error) {
-          console.error('Erro na autenticação:', error)
+          logger.error('Erro na autenticação:', error)
           return null
         }
       }

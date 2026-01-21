@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { StratumLevel } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // GET - Buscar assessments do usuário ou todos (se admin)
 export async function GET(request: NextRequest) {
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ assessments })
   } catch (error) {
-    console.error('Erro ao buscar assessments:', error)
+    logger.error('Erro ao buscar assessments:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar assessments' },
       { status: 500 }
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ assessment })
   } catch (error) {
-    console.error('Erro ao criar assessment:', error)
+    logger.error('Erro ao criar assessment:', error)
     return NextResponse.json(
       { error: 'Erro ao criar assessment' },
       { status: 500 }
@@ -180,7 +181,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
   } catch (error) {
-    console.error('Erro ao atualizar assessment:', error)
+    logger.error('Erro ao atualizar assessment:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar assessment' },
       { status: 500 }

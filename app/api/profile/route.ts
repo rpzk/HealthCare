@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { updateProfileSchema } from '@/lib/validation-schemas-api'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,7 +76,7 @@ export async function GET() {
 
     return NextResponse.json(profile)
   } catch (error) {
-    console.error('Erro ao buscar perfil:', error)
+    logger.error('Erro ao buscar perfil:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
@@ -122,7 +123,7 @@ export async function PUT(request: NextRequest) {
       user: updatedUser 
     })
   } catch (error) {
-    console.error('Erro ao atualizar perfil:', error)
+    logger.error('Erro ao atualizar perfil:', error)
     return NextResponse.json({ error: 'Erro ao atualizar perfil' }, { status: 500 })
   }
 }

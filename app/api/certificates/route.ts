@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/certificates
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error: unknown) {
-    console.error('[Certificates] Erro ao emitir atestado:', error)
+    logger.error('[Certificates] Erro ao emitir atestado:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao emitir atestado' },
       { status: 500 }
@@ -110,7 +111,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ certificates })
 
   } catch (error: unknown) {
-    console.error('[Certificates] Erro ao listar atestados:', error)
+    logger.error('[Certificates] Erro ao listar atestados:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao listar atestados' },
       { status: 500 }

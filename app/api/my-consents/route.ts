@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BiometricDataType, ConsentAction } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // GET - Listar consentimentos do paciente logado
 export async function GET(request: NextRequest) {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       patientId: user.patient.id
     })
   } catch (error) {
-    console.error('Error fetching consents:', error)
+    logger.error('Error fetching consents:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar permissões' },
       { status: 500 }
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
         : 'Permissão revogada com sucesso'
     })
   } catch (error) {
-    console.error('Error updating consent:', error)
+    logger.error('Error updating consent:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar permissão' },
       { status: 500 }
@@ -229,7 +230,7 @@ export async function DELETE(request: NextRequest) {
       message: `${activeConsents.length} permissões foram revogadas`
     })
   } catch (error) {
-    console.error('Error revoking all consents:', error)
+    logger.error('Error revoking all consents:', error)
     return NextResponse.json(
       { error: 'Erro ao revogar permissões' },
       { status: 500 }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { logger } from '@/lib/logger'
 
 // Schema de validação para criar/editar combo
 const ExamComboSchema = z.object({
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Erro ao listar combos de exames:', error);
+    logger.error('Erro ao listar combos de exames:', error);
     return NextResponse.json(
       { error: 'Erro ao listar combos de exames' },
       { status: 500 }
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error('Erro ao criar combo de exames:', error);
+    logger.error('Erro ao criar combo de exames:', error);
     return NextResponse.json(
       { error: 'Erro ao criar combo de exames' },
       { status: 500 }

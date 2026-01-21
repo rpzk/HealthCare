@@ -3,6 +3,7 @@ import { getPatientAccessFilter } from '@/lib/patient-access'
 import { prisma } from '@/lib/prisma'
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
 import { normalizeBloodType, parseAllergies, serializeAllergies } from '@/lib/patient-schemas'
+import { logger } from '@/lib/logger'
 
 async function getPrisma() {
   return prisma
@@ -46,7 +47,7 @@ export class PatientService {
   static async getPatients(filters: PatientFilters = {}, page = 1, limit = 10) {
     try {
       // keep signature async for compatibility
-      // console.log('[patient-service] getPatients called')
+      // logger.info('[patient-service] getPatients called')
       const { search, riskLevel, gender, ageRange, userId, userRole } = filters
       
       // Construir filtros do Prisma
@@ -180,7 +181,7 @@ export class PatientService {
         currentPage: page
       }
     } catch (error) {
-      console.error('Erro ao buscar pacientes:', error)
+      logger.error('Erro ao buscar pacientes:', error)
       throw error
     }
   }
@@ -193,7 +194,7 @@ export class PatientService {
   static async getPatientById(id: string) {
     try {
       const prisma = await getPrisma()
-      // console.log('[patient-service] getPatientById called')
+      // logger.info('[patient-service] getPatientById called')
       const patient = await prisma.patient.findUnique({
         where: { id },
         include: {
@@ -283,7 +284,7 @@ export class PatientService {
         } : null
       }
     } catch (error) {
-      console.error('Erro ao buscar paciente:', error)
+      logger.error('Erro ao buscar paciente:', error)
       throw error
     }
   }
@@ -292,7 +293,7 @@ export class PatientService {
   static async createPatient(data: PatientCreateData) {
     try {
       const prisma = await getPrisma()
-      // console.log('[patient-service] createPatient called')
+      // logger.info('[patient-service] createPatient called')
 
       // 1. Verificar se já existe uma Pessoa com este CPF
       let personId: string | undefined
@@ -374,7 +375,7 @@ export class PatientService {
         currentMedications: decrypt(patient.currentMedications as string | null)
       }
     } catch (error) {
-      console.error('Erro ao criar paciente:', error)
+      logger.error('Erro ao criar paciente:', error)
       throw error
     }
   }
@@ -383,7 +384,7 @@ export class PatientService {
   static async updatePatient(id: string, data: PatientUpdateData) {
     try {
       const prisma = await getPrisma()
-      // console.log('[patient-service] updatePatient called')
+      // logger.info('[patient-service] updatePatient called')
       // Preparar campos criptografados
       const updateData: Record<string, unknown> = { ...data }
       if (data.cpf) {
@@ -424,7 +425,7 @@ export class PatientService {
         currentMedications: decrypt(patient.currentMedications as string | null)
       }
     } catch (error) {
-      console.error('Erro ao atualizar paciente:', error)
+      logger.error('Erro ao atualizar paciente:', error)
       throw error
     }
   }
@@ -433,14 +434,14 @@ export class PatientService {
   static async deletePatient(id: string) {
     try {
       const prisma = await getPrisma()
-      // console.log('[patient-service] deletePatient called')
+      // logger.info('[patient-service] deletePatient called')
       await prisma.patient.delete({
         where: { id }
       })
 
       return { success: true }
     } catch (error) {
-      console.error('Erro ao excluir paciente:', error)
+      logger.error('Erro ao excluir paciente:', error)
       throw error
     }
   }
@@ -449,7 +450,7 @@ export class PatientService {
   static async getPatientStats() {
     try {
       const prisma = await getPrisma()
-      // console.log('[patient-service] getPatientStats called')
+      // logger.info('[patient-service] getPatientStats called')
       const [totalPatients, genderStats, riskLevelStats] = await Promise.all([
         prisma.patient.count(),
         prisma.patient.groupBy({
@@ -478,7 +479,7 @@ export class PatientService {
         riskDistribution
       }
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error)
+      logger.error('Erro ao buscar estatísticas:', error)
       throw error
     }
   }

@@ -1,13 +1,14 @@
 'use client'
 import { useEffect } from 'react'
+import { logger } from '@/lib/logger'
 
 export function ClientErrorLogger() {
   useEffect(() => {
     function onError(ev: ErrorEvent) {
-      console.error('[GlobalClientError]', ev.message, ev.error?.stack)
+      logger.error('[GlobalClientError]', ev.message, ev.error?.stack)
     }
     function onRejection(ev: PromiseRejectionEvent) {
-      console.error('[GlobalUnhandledRejection]', ev.reason)
+      logger.error('[GlobalUnhandledRejection]', ev.reason)
     }
     window.addEventListener('error', onError)
     window.addEventListener('unhandledrejection', onRejection)
@@ -28,7 +29,7 @@ export function ClientErrorLogger() {
         return origDefine(obj, prop, desc)
       }
     } catch(e) {
-      console.warn('[Instrument] unable to wrap defineProperty', e)
+      logger.warn('[Instrument] unable to wrap defineProperty', e)
     }
     return () => {
       window.removeEventListener('error', onError)

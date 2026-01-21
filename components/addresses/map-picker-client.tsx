@@ -6,6 +6,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { AddressSuggestion } from './address-autocomplete'
 import { Loader2 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 // Fix for Leaflet marker icons
 const icon = L.icon({
@@ -65,7 +66,7 @@ export default function MapPickerClient({ onAddressSelect, initialLat, initialLn
         onAddressSelect(suggestion)
       }
     } catch (error) {
-      console.error('Error fetching address from coordinates:', error)
+      logger.error('Error fetching address from coordinates:', error)
     } finally {
       setLoading(false)
     }

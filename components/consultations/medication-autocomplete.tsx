@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Pill, AlertTriangle, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface MedicationSuggestion {
   id: string
@@ -78,7 +79,7 @@ export function MedicationAutocomplete({
         setHighlightIndex(0)
       }
     } catch (error) {
-      console.error('Erro ao buscar medicamentos:', error)
+      logger.error('Erro ao buscar medicamentos:', error)
     } finally {
       setIsLoading(false)
     }

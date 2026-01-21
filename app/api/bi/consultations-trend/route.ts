@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { BIService } from '@/lib/bi-service';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(trend, { status: 200 });
   } catch (error) {
-    console.error('Erro ao buscar tendência de consultas:', error);
+    logger.error('Erro ao buscar tendência de consultas:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar tendência' },
       { status: 500 }

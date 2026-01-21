@@ -7,6 +7,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -153,7 +154,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Erro ao vincular paciente:', error)
+    logger.error('Erro ao vincular paciente:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }

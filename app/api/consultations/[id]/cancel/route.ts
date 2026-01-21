@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   request: NextRequest,
@@ -97,7 +98,7 @@ export async function POST(
     })
 
     // Log para auditoria
-    console.log(`[AUDIT] Consulta ${id} cancelada por ${session.user.name} (${session.user.id}). Motivo: ${reason}`)
+    logger.info(`[AUDIT] Consulta ${id} cancelada por ${session.user.name} (${session.user.id}). Motivo: ${reason}`)
 
     return NextResponse.json({
       success: true,
@@ -113,7 +114,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('[Cancel Consultation] Error:', error)
+    logger.error('[Cancel Consultation] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao cancelar consulta' },
       { status: 500 }

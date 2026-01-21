@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       totalSizeMB: Math.round(backups.reduce((sum, b) => sum + b.sizeMB, 0) * 100) / 100
     }, { status: 200 });
   } catch (error) {
-    console.error('[Backup] Erro ao listar:', error);
+    logger.error('[Backup] Erro ao listar:', error);
     return NextResponse.json(
       { error: 'Erro ao listar backups' },
       { status: 500 }

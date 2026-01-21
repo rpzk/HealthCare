@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { logger } from '@/lib/logger'
 import { 
   Stethoscope, Activity, Save, Mic, MicOff, Loader2, 
   Pill, FileText, TestTube, User, ChevronDown, ChevronUp,
@@ -89,7 +90,7 @@ export function TeleWorkspace({ consultationId }: Props) {
       mr.start()
       setRecording(true)
     } catch (e: unknown) {
-      console.warn('Start recording failed', e)
+      logger.warn('Start recording failed', e)
       toast({ title: 'Erro', description: 'Não foi possível acessar o microfone', variant: 'destructive' })
     }
   }
@@ -122,7 +123,7 @@ export function TeleWorkspace({ consultationId }: Props) {
         toast({ title: 'Transcrição concluída', description: 'SOAP preenchido automaticamente' })
       }
     } catch (e: unknown) {
-      console.warn('Transcription error', e)
+      logger.warn('Transcription error', e)
       toast({ title: 'Erro', description: 'Falha na transcrição', variant: 'destructive' })
     } finally {
       setProcessing(false)
@@ -146,7 +147,7 @@ export function TeleWorkspace({ consultationId }: Props) {
       })
       toast({ title: 'Salvo!', description: 'Consulta atualizada com sucesso' })
     } catch (e: unknown) {
-      console.warn('Save error', e)
+      logger.warn('Save error', e)
       toast({ title: 'Erro', description: 'Falha ao salvar', variant: 'destructive' })
     } finally {
       setSaving(false)

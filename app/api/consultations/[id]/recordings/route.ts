@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { TelemedicineRecordingService } from '@/lib/telemedicine-recording-service'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/consultations/[id]/recordings
@@ -48,7 +49,7 @@ export async function GET(
     })
 
   } catch (error: unknown) {
-    console.error('[Recording] Erro ao listar gravações:', error)
+    logger.error('[Recording] Erro ao listar gravações:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao listar gravações' },
       { status: 500 }

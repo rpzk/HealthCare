@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const ADMIN_ROLES = ['ADMIN', 'RECEPTIONIST']
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ schedules, isDefault: false })
   } catch (error) {
-    console.error('Error fetching clinic schedules:', error)
+    logger.error('Error fetching clinic schedules:', error)
     return NextResponse.json({ error: 'Failed to fetch clinic schedules' }, { status: 500 })
   }
 }
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       schedules: results,
     })
   } catch (error) {
-    console.error('Error updating clinic schedules:', error)
+    logger.error('Error updating clinic schedules:', error)
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
     }

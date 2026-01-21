@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 
@@ -78,7 +79,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(receiptData)
   } catch (error) {
-    console.error('Error generating receipt:', error)
+    logger.error('Error generating receipt:', error)
     return NextResponse.json(
       { error: 'Erro ao gerar recibo' },
       { status: 500 }

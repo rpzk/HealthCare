@@ -138,7 +138,7 @@ class AuditLogger {
           
           // Verificação de segurança para garantir que o modelo existe
           if (!client.auditLog) {
-            console.warn('⚠️ Modelo AuditLog não encontrado no Prisma Client. Verifique se "npx prisma generate" foi executado.')
+            logger.warn('⚠️ Modelo AuditLog não encontrado no Prisma Client. Verifique se "npx prisma generate" foi executado.')
             return
           }
 
@@ -161,7 +161,7 @@ class AuditLogger {
           // Desabilitar persistência se der erro (ex.: migrações não aplicadas)
           this.persistEnabled = false
           if (process.env.NODE_ENV !== 'test') {
-            console.error('Falha ao persistir AuditLog, usando memória:', (e as Error).message)
+            logger.error('Falha ao persistir AuditLog, usando memória:', (e as Error).message)
           }
         }
       })

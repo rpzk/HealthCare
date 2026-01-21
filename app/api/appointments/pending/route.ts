@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/appointments/pending
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[Pending Appointments] Error fetching:', error)
+    logger.error('[Pending Appointments] Error fetching:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar agendamentos pendentes' },
       { status: 500 }
@@ -179,12 +180,12 @@ export async function PATCH(request: NextRequest) {
     })
 
     // TODO: Enviar notificação ao paciente
-    console.log(
+    logger.info(
       `[Appointment ${action === 'approve' ? 'Approved' : 'Rejected'}] ID: ${appointmentId} by ${session.user.email}`
     )
-    console.log(`Patient: ${updated.patient.name} (${updated.patient.email})`)
-    console.log(`Doctor: ${updated.doctor.name}`)
-    console.log(`Scheduled: ${updated.scheduledDate}`)
+    logger.info(`Patient: ${updated.patient.name} (${updated.patient.email})`)
+    logger.info(`Doctor: ${updated.doctor.name}`)
+    logger.info(`Scheduled: ${updated.scheduledDate}`)
 
     // TODO: Implementar envio de email/WhatsApp
     // if (action === 'approve') {
@@ -209,7 +210,7 @@ export async function PATCH(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[Approve Appointment] Error:', error)
+    logger.error('[Approve Appointment] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao processar agendamento' },
       { status: 500 }

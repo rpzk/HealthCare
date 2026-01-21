@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { getPatientAccessFilter } from '@/lib/patient-access'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -52,7 +53,7 @@ export const GET = withAuth(async (request, { user }) => {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Erro ao buscar pacientes:', error)
+    logger.error('Erro ao buscar pacientes:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar pacientes' },
       { status: 500 }

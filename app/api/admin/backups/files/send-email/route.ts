@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { EmailService } from '@/lib/email-service'
 import path from 'path'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
       message: `PDF enviado para ${email}`,
     })
   } catch (e: any) {
-    console.error('[Send PDF Email] Error:', e)
+    logger.error('[Send PDF Email] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao enviar PDF' }, { status: 500 })
   }
 }

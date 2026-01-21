@@ -27,6 +27,7 @@ interface WhatsAppConfig {
  * WHATSAPP_INSTANCE_ID=your_instance_id
  */
 import { SystemSettingsService } from './system-settings-service'
+import { logger } from '@/lib/logger'
 
 export class WhatsAppService {
   private static async getConfig(): Promise<WhatsAppConfig> {
@@ -47,7 +48,7 @@ export class WhatsAppService {
    */
   static async sendMessage(data: WhatsAppMessage): Promise<boolean> {
     if (!(await this.isConfigured())) {
-      console.warn('WhatsApp not configured. Message not sent:', data.message)
+      logger.warn('WhatsApp not configured. Message not sent:', data.message)
       return false
     }
 
@@ -61,11 +62,11 @@ export class WhatsAppService {
         case 'zenvia':
           return await this.sendViaZenvia(data)
         default:
-          console.error('Unknown WhatsApp provider:', provider)
+          logger.error('Unknown WhatsApp provider:', provider)
           return false
       }
     } catch (error) {
-      console.error('Error sending WhatsApp message:', error)
+      logger.error('Error sending WhatsApp message:', error)
       return false
     }
   }

@@ -6,6 +6,7 @@ import { startSpan } from '@/lib/tracing'
 import { validatePatient } from '../../../lib/validation-schemas'
 import { applyPatientsCollectionMasking, applyPatientMasking } from '@/lib/masking'
 import { sanitizeSearchQuery, sanitizeName, sanitizeEmail, sanitizeCpf } from '@/lib/sanitization'
+import { logger } from '@/lib/logger'
 
 // GET /api/patients - Listar pacientes (protegido por autenticação)
 export const GET = withPatientAuth(async (req, { user }) => {
@@ -78,7 +79,7 @@ export const GET = withPatientAuth(async (req, { user }) => {
       }
     })
   } catch (error) {
-    console.error('Erro na API de pacientes:', error)
+    logger.error('Erro na API de pacientes:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -128,7 +129,7 @@ export const POST = withPatientAuth(async (req, { user }) => {
     // Mask de retorno (apenas confirmação sem dados sensíveis)
     return NextResponse.json(applyPatientMasking(patient), { status: 201 })
   } catch (error: any) {
-    console.error('Erro ao criar paciente:', error)
+    logger.error('Erro ao criar paciente:', error)
     
     if (error.message.includes('já existe')) {
       return NextResponse.json(

@@ -9,6 +9,7 @@ import { RecordingService } from '@/lib/recording-service'
 import prisma from '@/lib/prisma'
 import { getAudienceForRole, assertUserAcceptedTerms } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutos para upload
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       recording,
     })
   } catch (error: any) {
-    console.error('Erro ao criar gravação:', error)
+    logger.error('Erro ao criar gravação:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao processar gravação' },
       { status: 500 }
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
       recordings,
     })
   } catch (error: any) {
-    console.error('Erro ao listar gravações:', error)
+    logger.error('Erro ao listar gravações:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao listar gravações' },
       { status: 500 }

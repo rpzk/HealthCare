@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +71,7 @@ export async function PUT(request: NextRequest) {
       message: 'Senha alterada com sucesso'
     })
   } catch (error) {
-    console.error('Erro ao alterar senha:', error)
+    logger.error('Erro ao alterar senha:', error)
     return NextResponse.json({ error: 'Erro ao alterar senha' }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - List work schedules
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -58,7 +59,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching schedules:', error)
+    logger.error('Error fetching schedules:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar escalas', details: error.message },
       { status: 500 }
@@ -131,7 +132,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(schedule, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating schedule:', error)
+    logger.error('Error creating schedule:', error)
     return NextResponse.json(
       { error: 'Erro ao criar escala', details: error.message },
       { status: 500 }

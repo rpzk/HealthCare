@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Upload, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { toastApiError } from '@/lib/toast-api-error'
+import { logger } from '@/lib/logger'
 
 export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
   const [uploading, setUploading] = useState(false)
@@ -62,7 +63,7 @@ export function UploadA1Certificate({ onSuccess }: { onSuccess?: () => void }) {
       }
 
     } catch (error) {
-      console.error('Erro ao fazer upload:', error)
+      logger.error('Erro ao fazer upload:', error)
       toast({
         title: 'Erro ao carregar certificado',
         description: error instanceof Error ? error.message : 'Erro desconhecido',

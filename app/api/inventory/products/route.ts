@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
 
 import type { Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // GET - List products
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -86,7 +87,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error fetching products:', error)
+    if (error instanceof Error) logger.error('Error fetching products:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar produtos', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -158,7 +159,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(product, { status: 201 })
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error creating product:', error)
+    if (error instanceof Error) logger.error('Error creating product:', error)
     return NextResponse.json(
       { error: 'Erro ao criar produto', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

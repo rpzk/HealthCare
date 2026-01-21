@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email-service'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 // POST - Enviar convite de teleconsulta para o paciente
 export async function POST(
@@ -112,7 +113,7 @@ export async function POST(
         text: `Olá ${consultation.patient.name}, Dr(a). ${consultation.doctor?.name} está aguardando você para uma teleconsulta. Acesse: ${teleLink}`
       })
 
-      console.log('[tele-invite] Email enviado:', emailResult.success)
+      logger.info('[tele-invite] Email enviado:', emailResult.success)
     }
 
     return NextResponse.json({
@@ -126,7 +127,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Erro ao enviar convite de teleconsulta:', error)
+    logger.error('Erro ao enviar convite de teleconsulta:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }

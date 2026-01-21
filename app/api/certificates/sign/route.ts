@@ -10,6 +10,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
       message: 'Atestado assinado com sucesso',
     })
   } catch (error) {
-    console.error('[ICP-Brasil] Erro ao assinar:', error)
+    logger.error('[ICP-Brasil] Erro ao assinar:', error)
     return NextResponse.json(
       {
         error: 'Falha ao assinar certificado',

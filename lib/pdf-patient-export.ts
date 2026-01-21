@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import { formatDate } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Gender } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export interface PatientPdfExportOptions {
   patientId: string
@@ -355,7 +356,7 @@ export async function generatePatientPdfFromHtml(html: string): Promise<Buffer> 
     await browser.close()
     return pdf
   } catch (e) {
-    console.error('[PDF Generation] Puppeteer error:', e)
+    logger.error('[PDF Generation] Puppeteer error:', e)
     throw new Error('Erro ao gerar PDF. Certifique-se de que Puppeteer e Chromium estão instalados.')
   }
 }

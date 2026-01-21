@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generateCertificatePdf } from '@/lib/pdf-generator';
 import { getBranding } from '@/lib/branding-service';
 import { getCurrentUser } from '@/lib/with-auth';
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,7 @@ export async function GET(
     });
   } catch (e) {
     // Non-blocking: PDF still returns even if audit fails
-    console.warn('AuditLog failed for certificate PDF generation', e);
+    logger.warn('AuditLog failed for certificate PDF generation', e);
   }
 
   return new Response(buffer as any, {
@@ -91,7 +92,7 @@ export async function GET(
     },
   });
   } catch (error) {
-    console.error('Error generating PDF:', error)
+    logger.error('Error generating PDF:', error)
     return new Response(JSON.stringify({ error: 'Failed to generate PDF' }), { status: 500 })
   }
 }

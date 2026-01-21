@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { DashboardSkeleton } from './skeleton'
 import { FloatingActionButton } from './floating-action-button'
+import { logger } from '@/lib/logger'
 
 // Importar CalendarView dinamicamente para evitar SSR issues
 const CalendarView = dynamic(
@@ -98,10 +99,10 @@ export function DashboardOverview() {
       setData(dashboardData.data || dashboardData)
     } catch (err: unknown) {
       if (err instanceof Error) {
-        console.error('Erro ao carregar dashboard:', err)
+        logger.error('Erro ao carregar dashboard:', err)
         setError(err.message || 'Não foi possível carregar os dados do dashboard.')
       } else {
-        console.error('Erro ao carregar dashboard:', String(err))
+        logger.error('Erro ao carregar dashboard:', String(err))
         setError('Não foi possível carregar os dados do dashboard.')
       }
       

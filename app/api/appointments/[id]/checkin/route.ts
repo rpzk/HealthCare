@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // POST - Check-in patient for appointment
 export const POST = withAuth(async (req: NextRequest, { params, user }) => {
@@ -51,7 +52,7 @@ export const POST = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(updated)
   } catch (error: any) {
-    console.error('Error checking in patient:', error)
+    logger.error('Error checking in patient:', error)
     return NextResponse.json(
       { error: 'Erro ao fazer check-in', details: error.message },
       { status: 500 }

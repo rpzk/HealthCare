@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { logger } from '@/lib/logger'
 import {
   TrendingUp,
   Target,
@@ -103,7 +104,7 @@ export function DevelopmentDashboard({ patientId }: DevelopmentDashboardProps) {
       const data = await res.json()
       setStats(data)
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
     } finally {
       setLoading(false)
     }

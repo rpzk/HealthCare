@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { SUSReportsService } from '@/lib/sus-reports-service'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(report, { status: 201 })
   } catch (error) {
-    console.error('[SUS] Erro ao gerar relatório de situação de saúde:', error)
+    logger.error('[SUS] Erro ao gerar relatório de situação de saúde:', error)
     return NextResponse.json(
       { error: 'Erro ao gerar relatório' },
       { status: 500 }

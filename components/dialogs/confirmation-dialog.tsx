@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { AlertTriangle, AlertCircle, Info } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 export type ConfirmationType = 'danger' | 'warning' | 'info'
 
@@ -76,7 +77,7 @@ export function ConfirmationDialog({
       await onConfirm()
       onOpenChange(false)
     } catch (error) {
-      console.error('Erro na confirmação:', error)
+      logger.error('Erro na confirmação:', error)
     }
   }
 

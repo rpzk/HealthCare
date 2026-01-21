@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import { 
   Video, VideoOff, Mic, MicOff, PhoneOff, 
   Loader2, Maximize2, Minimize2, Wifi, Move,
@@ -53,7 +54,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
         const json = await res.json().catch(() => null)
         if (json?.iceServers) setIceServers(json.iceServers)
       } catch (e) {
-        console.warn('Failed to load ICE config', e)
+        logger.warn('Failed to load ICE config', e)
       }
     })()
   }, [])
@@ -93,7 +94,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
       pcRef.current?.close()
       esRef.current?.close()
     } catch (e) {
-      console.warn('Cleanup error', e)
+      logger.warn('Cleanup error', e)
     }
   }, [])
 
@@ -103,7 +104,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
       try {
         cleanup()
       } catch (e) {
-        console.warn('Error during cleanup', e)
+        logger.warn('Error during cleanup', e)
       }
     }
   }, [cleanup])
@@ -167,11 +168,11 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
             try {
               await pc.addIceCandidate(data.candidate)
             } catch (e) {
-              console.warn('Failed to add ICE candidate', e)
+              logger.warn('Failed to add ICE candidate', e)
             }
           }
         } catch (e) {
-          console.error('Signaling error:', e)
+          logger.error('Signaling error:', e)
         }
       })
 
@@ -249,7 +250,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
         }
       }
     } catch (e) {
-      console.warn('toggleScreenShare failed', e)
+      logger.warn('toggleScreenShare failed', e)
     }
   }
 

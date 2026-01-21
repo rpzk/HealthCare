@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma, ReadingType } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -165,7 +166,7 @@ export async function GET(request: NextRequest) {
       healthSummary
     })
   } catch (error) {
-    console.error('Error fetching dashboard:', error)
+    logger.error('Error fetching dashboard:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar dashboard' },
       { status: 500 }

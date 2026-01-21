@@ -5,6 +5,7 @@ import { Bot, X, Send, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { logger } from '@/lib/logger'
 
 interface Message {
   id: string
@@ -79,7 +80,7 @@ export function AIAssistantButton() {
         setMessages(prev => [...prev, errorResponse])
       }
     } catch (error) {
-      console.error('Erro ao comunicar com IA:', error)
+      logger.error('Erro ao comunicar com IA:', error)
       
       // Mostrar erro de conexão
       const errorResponse: Message = {

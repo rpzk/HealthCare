@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Session } from "next-auth";
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching badges:", error);
+    logger.error("Error fetching badges:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

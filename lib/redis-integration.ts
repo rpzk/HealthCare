@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { logger } from '@/lib/logger'
 
 // Util para throttling de logs repetidos de erro Redis
 class LogThrottler {
@@ -13,17 +14,17 @@ class LogThrottler {
       this.suppressed++;
       if (this.suppressed === 1) {
         // primeira vez que suprimimos, avisamos
-        console.error(prefix + ' (repetindo, suprimindo logs por alguns segundos)');
+        logger.error(prefix + ' (repetindo, suprimindo logs por alguns segundos)');
       }
       return;
     }
     if (this.suppressed > 0) {
-      console.error(`${prefix} (+${this.suppressed} repetidos suprimidos)`);
+      logger.error(`${prefix} (+${this.suppressed} repetidos suprimidos)`);
       this.suppressed = 0;
     }
     this.lastMsg = msg;
     this.lastTime = now;
-    console.error(prefix, msg);
+    logger.error(prefix, msg);
   }
 }
 
@@ -88,7 +89,7 @@ export class RedisRateLimiter {
           maxRetriesPerRequest: 2
         });
       } catch (e) {
-        console.error('❌ Erro ao parsear REDIS_URL, fallback para host/port:', e);
+        logger.error('❌ Erro ao parsear REDIS_URL, fallback para host/port:', e);
         this.redis = new Redis({
           host: finalConfig.host,
           port: finalConfig.port,
@@ -115,15 +116,15 @@ export class RedisRateLimiter {
     this.redis.on('error', (err: NodeJS.ErrnoException) => {
       // Suppress connection refused errors during build/test if needed
       if (err?.code === 'ECONNREFUSED') {
-        // console.warn('Redis connection refused (expected during build/test)');
+        // logger.warn('Redis connection refused (expected during build/test)');
         return;
       }
-      console.error('Redis Client Error:', err);
+      logger.error('Redis Client Error:', err);
     });
 
 
     if (process.env.DISABLE_REDIS === '1') {
-      console.log('🔕 Redis desativado via DISABLE_REDIS=1 (usando apenas fallback em memória)')
+      logger.info('🔕 Redis desativado via DISABLE_REDIS=1 (usando apenas fallback em memória)')
     } else {
       this.setupRedisEventHandlers();
       this.initializeConnection();
@@ -135,12 +136,12 @@ export class RedisRateLimiter {
    */
   private setupRedisEventHandlers(): void {
     this.redis.on('connect', () => {
-      console.log('🔴 Redis conectado para rate limiting');
+      logger.info('🔴 Redis conectado para rate limiting');
       this.isRedisConnected = true;
     });
 
     this.redis.on('ready', () => {
-      console.log('✅ Redis pronto para operações de rate limiting');
+      logger.info('✅ Redis pronto para operações de rate limiting');
     });
 
     this.redis.on('error', (error) => {
@@ -153,12 +154,12 @@ export class RedisRateLimiter {
     });
 
     this.redis.on('close', () => {
-      console.log('🔌 Conexão Redis fechada, usando fallback');
+      logger.info('🔌 Conexão Redis fechada, usando fallback');
       this.isRedisConnected = false;
     });
 
     this.redis.on('reconnecting', () => {
-      console.log('🔄 Reconectando ao Redis...');
+      logger.info('🔄 Reconectando ao Redis...');
     });
   }
 
@@ -175,7 +176,7 @@ export class RedisRateLimiter {
       const hostTried = (this.redis as { options?: { host?: string } }).options?.host;
       if (hostTried === 'redis' || hostTried === 'redis-cache') {
         try {
-          console.log('🔁 Tentando fallback para localhost:6379 (rate limiter)');
+          logger.info('🔁 Tentando fallback para localhost:6379 (rate limiter)');
           this.redis.disconnect();
           this.redis = new Redis({
             host: 'localhost',
@@ -217,7 +218,7 @@ export class RedisRateLimiter {
       try {
         return await this.checkRateLimitRedis(key, limit, windowMs, blockDurationMs, now);
       } catch (error) {
-        console.error('❌ Erro no Redis rate limit, usando fallback:', error);
+        logger.error('❌ Erro no Redis rate limit, usando fallback:', error);
         this.isRedisConnected = false;
       }
     }
@@ -403,7 +404,7 @@ export class RedisRateLimiter {
         ]);
         return;
       } catch (error) {
-        console.error('❌ Erro ao resetar no Redis:', error);
+        logger.error('❌ Erro ao resetar no Redis:', error);
       }
     }
 
@@ -436,7 +437,7 @@ export class RedisRateLimiter {
         const blockedKeys = keys.filter(k => k.includes(':blocked'));
         blockedUsers = blockedKeys.length;
       } catch (error) {
-        console.error('❌ Erro ao obter stats do Redis:', error);
+        logger.error('❌ Erro ao obter stats do Redis:', error);
       }
     }
 
@@ -501,7 +502,7 @@ export class RedisCache {
           lazyConnect: true
         });
       } catch (e) {
-        console.error('❌ Erro ao parsear REDIS_URL (cache), fallback host/port:', e);
+        logger.error('❌ Erro ao parsear REDIS_URL (cache), fallback host/port:', e);
         this.redis = new Redis({
           host: finalConfig.host,
           port: finalConfig.port,
@@ -523,7 +524,7 @@ export class RedisCache {
     }
 
     if (process.env.DISABLE_REDIS === '1') {
-      console.log('🔕 Redis Cache desativado via DISABLE_REDIS=1 (fallback memória)')
+      logger.info('🔕 Redis Cache desativado via DISABLE_REDIS=1 (fallback memória)')
     } else {
       this.setupEventHandlers();
       this.initializeConnection();
@@ -533,7 +534,7 @@ export class RedisCache {
   private setupEventHandlers(): void {
     this.redis.on('connect', () => {
       this.isRedisConnected = true;
-      console.log('🔴 Redis Cache conectado');
+      logger.info('🔴 Redis Cache conectado');
     });
 
     this.redis.on('error', (error) => {
@@ -555,7 +556,7 @@ export class RedisCache {
       const hostTried = (this.redis as { options?: { host?: string } }).options?.host;
       if (hostTried === 'redis' || hostTried === 'redis-cache') {
         try {
-          console.log('🔁 Tentando fallback para localhost:6379 (cache)');
+          logger.info('🔁 Tentando fallback para localhost:6379 (cache)');
           this.redis.disconnect();
           this.redis = new Redis({
             host: 'localhost',
@@ -582,7 +583,7 @@ export class RedisCache {
         await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
         return;
       } catch (error) {
-        console.error('❌ Erro ao salvar no Redis Cache:', error);
+        logger.error('❌ Erro ao salvar no Redis Cache:', error);
       }
     }
 
@@ -600,7 +601,7 @@ export class RedisCache {
         const value = await this.redis.get(key);
         return value ? JSON.parse(value) : null;
       } catch (error) {
-        console.error('❌ Erro ao ler do Redis Cache:', error);
+        logger.error('❌ Erro ao ler do Redis Cache:', error);
       }
     }
 
@@ -626,7 +627,7 @@ export class RedisCache {
       try {
         await this.redis.del(key);
       } catch (error) {
-        console.error('❌ Erro ao deletar do Redis Cache:', error);
+        logger.error('❌ Erro ao deletar do Redis Cache:', error);
       }
     }
 
@@ -698,7 +699,7 @@ function startBackgroundCleanupIfNeeded() {
         _redisRateLimiter?.cleanup();
         _redisCache?.cleanup();
       } catch (e) {
-        console.error('Erro durante limpeza periódica do Redis:', e);
+        logger.error('Erro durante limpeza periódica do Redis:', e);
       }
     }, 10 * 60 * 1000);
   }

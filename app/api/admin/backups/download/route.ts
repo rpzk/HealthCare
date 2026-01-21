@@ -9,6 +9,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,14 +81,14 @@ export async function GET(request: NextRequest) {
         },
       })
     } catch (err: any) {
-      console.error('[Backup Download] File error:', err)
+      logger.error('[Backup Download] File error:', err)
       if (err.code === 'ENOENT') {
         return NextResponse.json({ error: 'Arquivo não encontrado' }, { status: 404 })
       }
       return NextResponse.json({ error: 'Erro ao ler arquivo' }, { status: 500 })
     }
   } catch (error) {
-    console.error('[Backup Download] Error:', error)
+    logger.error('[Backup Download] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao fazer download' },
       { status: 500 }

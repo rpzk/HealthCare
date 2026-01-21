@@ -22,6 +22,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface DevelopmentAlert {
   id: string
@@ -110,7 +111,7 @@ export function DevelopmentAlerts() {
       setAlerts(data.alerts || [])
       setSummary(data.summary || null)
     } catch (error) {
-      console.error('Error fetching alerts:', error)
+      logger.error('Error fetching alerts:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os alertas',

@@ -1,6 +1,7 @@
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import nodemailer from 'nodemailer'
 import { SystemSettingsService } from '@/lib/system-settings-service'
+import { logger } from '@/lib/logger'
 
 export interface EmailOptions {
   to: string | string[]
@@ -142,7 +143,7 @@ export class EmailService {
         : undefined
 
     // DEBUG: Log de configuração
-    console.log('📧 [EMAIL-SERVICE] Config:', {
+    logger.info('📧 [EMAIL-SERVICE] Config:', {
       enabled: config.enabled,
       provider: config.provider,
       from: config.from,
@@ -155,14 +156,14 @@ export class EmailService {
 
     try {
       if (!config.enabled) {
-        console.log('📧 EMAIL (DISABLED):', { to, subject })
+        logger.info('📧 EMAIL (DISABLED):', { to, subject })
         return { success: true }
       }
 
       // Implementação baseada no provedor
       switch (config.provider) {
         case 'console':
-          console.log('📧 EMAIL SENT (CONSOLE):', {
+          logger.info('📧 EMAIL SENT (CONSOLE):', {
             from: effectiveFrom,
             to,
             subject,
@@ -181,7 +182,7 @@ export class EmailService {
             await transporter.verify()
           } catch (verifyError) {
             const e = verifyError as any
-            console.error('❌ [EMAIL-SERVICE] SMTP verify failed:', {
+            logger.error('❌ [EMAIL-SERVICE] SMTP verify failed:', {
               message: e?.message,
               code: e?.code,
               command: e?.command,
@@ -205,7 +206,7 @@ export class EmailService {
             ...(options.attachments ? { attachments: options.attachments } : {})
           })
 
-          console.log('📧 [EMAIL-SERVICE] SMTP send result:', {
+          logger.info('📧 [EMAIL-SERVICE] SMTP send result:', {
             from: effectiveFrom,
             replyTo,
             messageId: (info as any)?.messageId,
@@ -217,7 +218,7 @@ export class EmailService {
         }
         
         default:
-          console.warn(`⚠️ Provedor de e-mail desconhecido: ${config.provider}`)
+          logger.warn(`⚠️ Provedor de e-mail desconhecido: ${config.provider}`)
           return { success: false, error: `Provedor desconhecido: ${config.provider}` }
       }
 
@@ -238,7 +239,7 @@ export class EmailService {
 
     } catch (error) {
       const e = error as any
-      console.error('❌ Erro ao enviar e-mail:', {
+      logger.error('❌ Erro ao enviar e-mail:', {
         message: e?.message,
         code: e?.code,
         command: e?.command,

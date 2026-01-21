@@ -6,7 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { z } from 'zod'
 
 const trackMedicationSchema = z.object({
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(tracking, { status: 201 })
   } catch (error) {
-    console.error('[Medication Tracking POST]', error)
+    logger.error('[Medication Tracking POST]', error)
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -174,7 +176,7 @@ export async function GET(req: NextRequest) {
       { status: 200 }
     )
   } catch (error) {
-    console.error('[Medication Tracking GET]', error)
+    logger.error('[Medication Tracking GET]', error)
     return NextResponse.json(
       { error: 'Failed to fetch medication tracking' },
       { status: 500 }

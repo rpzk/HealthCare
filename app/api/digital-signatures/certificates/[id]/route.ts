@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -67,7 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({ success: true, certificate: updated })
   } catch (error: any) {
-    console.error('Erro ao atualizar certificado digital:', error)
+    logger.error('Erro ao atualizar certificado digital:', error)
     return NextResponse.json(
       { error: error?.message || 'Erro ao atualizar certificado' },
       { status: 500 }

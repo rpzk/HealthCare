@@ -15,6 +15,7 @@ import {
   Brain
 } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
+import { logger } from '@/lib/logger'
 
 // 📄 Tipos para importação de documentos
 interface MedicalDocument {
@@ -95,10 +96,10 @@ export default function MedicalDocumentImport() {
           // Iniciar análise em background
           analyzeDocument(newDocument.id)
         } else {
-          console.error('Erro no upload:', await response.text())
+          logger.error('Erro no upload:', await response.text())
         }
       } catch (error) {
-        console.error('Erro no upload:', error)
+        logger.error('Erro no upload:', error)
       }
     }
     
@@ -121,7 +122,7 @@ export default function MedicalDocumentImport() {
         )
       }
     } catch (error) {
-      console.error('Erro na análise:', error)
+      logger.error('Erro na análise:', error)
     }
   }
 
@@ -147,7 +148,7 @@ export default function MedicalDocumentImport() {
         )
       }
     } catch (error) {
-      console.error('Erro na confirmação:', error)
+      logger.error('Erro na confirmação:', error)
     }
   }
 
@@ -160,7 +161,7 @@ export default function MedicalDocumentImport() {
       
       setDocuments(prev => prev.filter(doc => doc.id !== documentId))
     } catch (error) {
-      console.error('Erro ao remover:', error)
+      logger.error('Erro ao remover:', error)
     }
   }
 

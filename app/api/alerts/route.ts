@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
   try {
@@ -31,7 +32,7 @@ export async function GET() {
 
     return NextResponse.json({ alerts })
   } catch (error) {
-    console.error('Error fetching alerts:', error)
+    logger.error('Error fetching alerts:', error)
     return NextResponse.json({ error: 'Erro ao carregar alertas' }, { status: 500 })
   }
 }
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ alert: created })
   } catch (error) {
-    console.error('Error creating alert:', error)
+    logger.error('Error creating alert:', error)
     return NextResponse.json({ error: 'Erro ao criar alerta' }, { status: 500 })
   }
 }

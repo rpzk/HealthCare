@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { paymentGateway, PaymentProvider } from '@/lib/payment-gateway-service'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 // Schema de validação
 const createPaymentLinkSchema = z.object({
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       pixKey: result.pixKey,
     })
   } catch (error) {
-    console.error('[Payment API] Error:', error)
+    logger.error('[Payment API] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao criar link de pagamento' },
       { status: 500 }
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ status })
   } catch (error) {
-    console.error('[Payment API] Error checking status:', error)
+    logger.error('[Payment API] Error checking status:', error)
     return NextResponse.json(
       { error: 'Erro ao verificar status' },
       { status: 500 }

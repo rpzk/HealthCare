@@ -1,4 +1,5 @@
 import { incCounter } from './metrics'
+import { logger } from '@/lib/logger'
 
 // Lista de variáveis obrigatórias em produção
 const REQUIRED_VARS = [
@@ -17,9 +18,9 @@ export function verifyConfig(){
     for (const v of missing) incCounter('config_missing_total', { var: v })
     if (process.env.CI){
       // Em CI apenas registra sem quebrar build
-      console.warn('[config-check] Variáveis ausentes:', missing.join(','))
+      logger.warn('[config-check] Variáveis ausentes:', missing.join(','))
     } else {
-      console.warn('[config-check] Variáveis ausentes (continuando em dev):', missing.join(','))
+      logger.warn('[config-check] Variáveis ausentes (continuando em dev):', missing.join(','))
     }
   }
 }

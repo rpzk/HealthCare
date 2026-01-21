@@ -41,6 +41,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface VitalsDashboardProps {
   patientId: string
@@ -123,7 +124,7 @@ export function VitalsDashboard({ patientId }: VitalsDashboardProps) {
         setData(json)
       }
     } catch (error) {
-      console.error('Error loading dashboard:', error)
+      logger.error('Error loading dashboard:', error)
     } finally {
       setLoading(false)
     }

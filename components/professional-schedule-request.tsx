@@ -18,6 +18,7 @@ import { Calendar, Loader2, AlertCircle, Send, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { CalendarDatePicker } from '@/components/calendar-date-picker'
 import { ShiftTemplates } from '@/components/schedule-shift-templates'
+import { logger } from '@/lib/logger'
 
 interface ShiftTemplate {
   id: string
@@ -86,7 +87,7 @@ export function ProfessionalScheduleRequest() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error('Error submitting request:', error)
+      logger.error('Error submitting request:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao enviar solicitação')
     } finally {
       setSubmitting(false)
@@ -131,7 +132,7 @@ export function ProfessionalScheduleRequest() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error('Error submitting block request:', error)
+      logger.error('Error submitting block request:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao enviar solicitação')
     } finally {
       setSubmitting(false)

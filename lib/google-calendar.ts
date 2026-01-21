@@ -9,6 +9,7 @@
 
 import { google, calendar_v3 } from 'googleapis'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Configuração do cliente OAuth2
 function getOAuth2Client() {
@@ -95,7 +96,7 @@ async function getAuthenticatedClient(userId: string): Promise<calendar_v3.Calen
       
       oauth2Client.setCredentials(credentials)
     } catch (error) {
-      console.error('Erro ao renovar token Google:', error)
+      logger.error('Erro ao renovar token Google:', error)
       // Desativar integração se não conseguir renovar
       await (prisma as any).userIntegration.update({
         where: { id: integration.id },
@@ -130,7 +131,7 @@ export async function createGoogleCalendarEvent(
   const calendar = await getAuthenticatedClient(userId)
   
   if (!calendar) {
-    console.log('Google Calendar não configurado para usuário:', userId)
+    logger.info('Google Calendar não configurado para usuário:', userId)
     return null
   }
   
@@ -208,7 +209,7 @@ export async function createGoogleCalendarEvent(
       htmlLink: response.data.htmlLink!,
     }
   } catch (error) {
-    console.error('Erro ao criar evento no Google Calendar:', error)
+    logger.error('Erro ao criar evento no Google Calendar:', error)
     return null
   }
 }
@@ -253,7 +254,7 @@ export async function updateGoogleCalendarEvent(
     
     return true
   } catch (error) {
-    console.error('Erro ao atualizar evento no Google Calendar:', error)
+    logger.error('Erro ao atualizar evento no Google Calendar:', error)
     return false
   }
 }
@@ -278,7 +279,7 @@ export async function cancelGoogleCalendarEvent(
     
     return true
   } catch (error) {
-    console.error('Erro ao cancelar evento no Google Calendar:', error)
+    logger.error('Erro ao cancelar evento no Google Calendar:', error)
     return false
   }
 }
@@ -324,7 +325,7 @@ export async function syncConsultationsToGoogleCalendar(
     } catch (e) {
       // ignore malformed notes JSON but keep debugging info
       // eslint-disable-next-line no-console
-      console.debug('googleCalendar: parsing consultation.notes failed', e)
+      logger.debug('googleCalendar: parsing consultation.notes failed', e)
     }
     
     if (existingEventId) {

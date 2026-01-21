@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { AppointmentConfirmationService } from '@/lib/appointment-confirmation-service'
+import { logger } from '@/lib/logger'
 
 /**
  * Webhook para receber mensagens do WhatsApp
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    console.log('[WhatsApp Webhook] Received:', body)
+    logger.info('[WhatsApp Webhook] Received:', body)
 
     // Estrutura varia por provider (Evolution API, Twilio, etc.)
     // Exemplo para Evolution API:
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('[WhatsApp Webhook] Error:', error)
+    logger.error('[WhatsApp Webhook] Error:', error)
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
   }
 }

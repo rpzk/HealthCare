@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { logger } from '@/lib/logger'
 import {
   Brain,
   Gem,
@@ -383,7 +384,7 @@ export function IntegralProfile({ userId, patientId, compact = false }: Integral
           evolutionHistory: statsData?.stratum?.evolution || [],
         })
       } catch (error) {
-        console.error('Error loading profile:', error)
+        logger.error('Error loading profile:', error)
       } finally {
         setLoading(false)
       }

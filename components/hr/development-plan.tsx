@@ -44,6 +44,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface Action {
   id: string
@@ -130,7 +131,7 @@ export function DevelopmentPlanComponent() {
         setEditedVision(plans[0].futureVision || '')
       }
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
     } finally {
       setLoading(false)
     }
@@ -159,7 +160,7 @@ export function DevelopmentPlanComponent() {
       setEditedVision(newPlan.futureVision || '')
       toast({ title: 'Plano gerado com sucesso!' })
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: error instanceof Error ? error.message : 'Erro ao gerar plano', variant: 'destructive' })
     } finally {
       setGenerating(false)
@@ -190,7 +191,7 @@ export function DevelopmentPlanComponent() {
       fetchPlan()
       toast({ title: action.completed ? 'Ação desmarcada' : 'Ação concluída! 🎉' })
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: 'Erro ao atualizar ação', variant: 'destructive' })
     }
   }
@@ -211,7 +212,7 @@ export function DevelopmentPlanComponent() {
         toast({ title: milestone.celebration })
       }
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: 'Erro ao atualizar marco', variant: 'destructive' })
     }
   }
@@ -236,7 +237,7 @@ export function DevelopmentPlanComponent() {
       fetchPlan()
       toast({ title: 'Meta adicionada!' })
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: 'Erro ao adicionar meta', variant: 'destructive' })
     }
   }
@@ -257,7 +258,7 @@ export function DevelopmentPlanComponent() {
       fetchPlan()
       toast({ title: 'Visão atualizada!' })
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: 'Erro ao atualizar visão', variant: 'destructive' })
     }
   }
@@ -273,7 +274,7 @@ export function DevelopmentPlanComponent() {
       fetchPlan()
       toast({ title: 'Meta removida' })
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: 'Erro ao remover meta', variant: 'destructive' })
     }
   }

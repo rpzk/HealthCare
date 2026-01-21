@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Activity, Calendar, DollarSign, TrendingUp, Users, Clock, AlertCircle, Award } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { logger } from '@/lib/logger'
 
 interface DashboardData {
   period: 'today' | 'week' | 'month';
@@ -42,7 +43,7 @@ export default function BiDashboard() {
       const result = await response.json();
       setData(result);
     } catch (error) {
-      console.error('Erro ao carregar dashboard:', error);
+      logger.error('Erro ao carregar dashboard:', error);
     } finally {
       setLoading(false);
     }

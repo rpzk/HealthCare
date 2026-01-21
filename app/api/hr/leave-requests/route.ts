@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - List leave requests (own or all for managers)
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -69,7 +70,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching leave requests:', error)
+    logger.error('Error fetching leave requests:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar solicitações', details: error.message },
       { status: 500 }
@@ -194,7 +195,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(request, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating leave request:', error)
+    logger.error('Error creating leave request:', error)
     return NextResponse.json(
       { error: 'Erro ao criar solicitação', details: error.message },
       { status: 500 }

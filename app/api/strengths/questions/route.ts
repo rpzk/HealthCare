@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Buscar questões de forças
 export async function GET(request: NextRequest) {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ questions: parsed })
   } catch (error) {
-    console.error('Erro ao buscar questões:', error)
+    logger.error('Erro ao buscar questões:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar questões' },
       { status: 500 }
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
       total: questions.length
     })
   } catch (error) {
-    console.error('Erro ao criar seed:', error)
+    logger.error('Erro ao criar seed:', error)
     return NextResponse.json(
       { error: 'Erro ao criar seed' },
       { status: 500 }

@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import { 
   Video, VideoOff, Mic, MicOff, Phone, PhoneOff, 
   Settings, AlertCircle, CheckCircle2, Loader2, 
@@ -52,7 +53,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
         const json = await res.json().catch(() => null)
         if (json?.iceServers) setIceServers(json.iceServers)
       } catch (e) {
-        console.warn('Failed to load ICE config', e)
+        logger.warn('Failed to load ICE config', e)
       }
     })()
   }, [])
@@ -100,7 +101,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       pcRef.current?.close()
       esRef.current?.close()
     } catch (e) {
-      console.warn('Cleanup error', e)
+      logger.warn('Cleanup error', e)
     }
   }, [previewStream])
 
@@ -141,7 +142,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       setStatus('idle')
     } catch (e) {
       // non-fatal permission check failure
-      console.warn('Permission check failed', e)
+      logger.warn('Permission check failed', e)
       setStatus('idle')
     }
   }
@@ -169,7 +170,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
         localRef.current.srcObject = stream
       }
     } catch (err: unknown) {
-      console.error('Erro ao testar dispositivos:', err)
+      logger.error('Erro ao testar dispositivos:', err)
       setHasPermissions(false)
 
       if (err instanceof Error) {
@@ -303,16 +304,16 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
             try {
               await pc.addIceCandidate(data.candidate)
             } catch (e) {
-              console.warn('Failed to add ICE candidate', e)
+              logger.warn('Failed to add ICE candidate', e)
             }
           }
         } catch (err) {
-          console.error('Signaling error:', err)
+          logger.error('Signaling error:', err)
         }
       })
       
       es.onerror = () => {
-        console.warn('EventSource error')
+        logger.warn('EventSource error')
       }
 
       pc.onicecandidate = (ev) => {
@@ -337,7 +338,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       setJoined(true)
       setStatus('waiting')
     } catch (err: unknown) {
-      console.error('Erro ao entrar:', err)
+      logger.error('Erro ao entrar:', err)
       setStatus('error')
 
       if (err instanceof Error) {

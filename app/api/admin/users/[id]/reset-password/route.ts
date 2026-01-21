@@ -8,6 +8,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,7 +70,7 @@ export async function POST(
       message: 'Senha resetada com sucesso. Compartilhe a senha temporária de forma segura.'
     })
   } catch (error) {
-    console.error('Erro ao resetar senha:', error)
+    logger.error('Erro ao resetar senha:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }

@@ -11,6 +11,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { signCertificate, SignatureMethod } from './signature-service'
 import { sendCertificateIssuedNotification, sendCertificateRevokedNotification } from './email-service'
+import { logger } from '@/lib/logger'
 
 export interface CertificateData {
   patientId: string
@@ -136,7 +137,7 @@ export class MedicalCertificateService {
       const signResult = signCertificate(certificateDataToSign, signatureMethod)
       signature = signResult.signature
     } catch (error) {
-      console.warn('Failed to sign certificate:', error)
+      logger.warn('Failed to sign certificate:', error)
       // Continue without signature if signing fails
     }
 
@@ -215,7 +216,7 @@ export class MedicalCertificateService {
         endDate ? format(endDate, 'dd/MM/yyyy', { locale: ptBR }) : undefined,
         validationUrl
       ).catch(err => {
-        console.warn('Failed to send certificate issued email:', err)
+        logger.warn('Failed to send certificate issued email:', err)
         // Non-blocking: continue even if email fails
       })
     }
@@ -315,7 +316,7 @@ export class MedicalCertificateService {
         certificateNumber,
         reason
       ).catch((error) => {
-        console.warn(
+        logger.warn(
           `[Email Error] Falha ao enviar notificação de revogação para ${certificateId}:`,
           error.message
         )

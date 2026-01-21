@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface CIDSuggestion {
   id: string
@@ -64,7 +65,7 @@ export function CIDAutocomplete({
         setHighlightIndex(0)
       }
     } catch (error) {
-      console.error('Erro ao buscar CID:', error)
+      logger.error('Erro ao buscar CID:', error)
     } finally {
       setIsLoading(false)
     }

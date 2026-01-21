@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Calendar, Clock, AlertCircle, Save, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface ScheduleConfig {
   dayOfWeek: number
@@ -71,7 +72,7 @@ export function PatientBookingConfig() {
         setSchedules(data.schedules || [])
       }
     } catch (error) {
-      console.error('Error loading schedules:', error)
+      logger.error('Error loading schedules:', error)
       toast.error('Erro ao carregar horários')
     } finally {
       setLoading(false)
@@ -107,7 +108,7 @@ export function PatientBookingConfig() {
       toast.success('Configurações de agendamento salvas com sucesso!')
       await loadSchedules()
     } catch (error) {
-      console.error('Error saving schedules:', error)
+      logger.error('Error saving schedules:', error)
       toast.error(
         error instanceof Error ? error.message : 'Erro ao salvar configurações'
       )

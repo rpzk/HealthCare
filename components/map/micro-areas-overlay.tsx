@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic'
 import { Fragment, useEffect, useState } from 'react'
 import type { LatLngExpression } from 'leaflet'
 import type { GeoJsonObject } from 'geojson'
+import { logger } from '@/lib/logger'
 
 // Lazy import Leaflet objects inside client component
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
@@ -53,7 +54,7 @@ export function MicroAreasOverlayMap({ heightClass = 'h-[500px]' }: { heightClas
             try {
               feature = JSON.parse(ma.polygonGeo) as GeoJsonObject
             } catch (err) {
-              console.warn('Invalid polygonGeo for micro-area', ma.id, err)
+              logger.warn('Invalid polygonGeo for micro-area', ma.id, err)
             }
           }
           return (

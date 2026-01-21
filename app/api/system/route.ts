@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAdminAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import os from 'os'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 export const GET = withAdminAuth(async () => {
@@ -68,7 +69,7 @@ export const GET = withAdminAuth(async () => {
       }
     })
   } catch (error) {
-    console.error('Erro ao obter métricas do sistema:', error)
+    logger.error('Erro ao obter métricas do sistema:', error)
     return NextResponse.json({ error: 'Erro ao obter métricas' }, { status: 500 })
   }
 })

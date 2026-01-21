@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getGoogleAuthUrl } from '@/lib/google-calendar'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(authUrl)
 
   } catch (error) {
-    console.error('[Google Calendar Connect] Error:', error)
+    logger.error('[Google Calendar Connect] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao iniciar conexão com Google Calendar' },
       { status: 500 }

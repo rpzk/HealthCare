@@ -13,6 +13,7 @@ import { Clock, CheckCircle, XCircle, AlertCircle, Loader2, Eye } from 'lucide-r
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface ScheduleRequest {
   id: string
@@ -80,7 +81,7 @@ export function ScheduleRequestsManager() {
         setRequests(data.requests)
       }
     } catch (error) {
-      console.error('Error loading requests:', error)
+      logger.error('Error loading requests:', error)
       toast.error('Erro ao carregar solicitações')
     } finally {
       setLoading(false)
@@ -110,7 +111,7 @@ export function ScheduleRequestsManager() {
       setReviewNotes('')
       await loadRequests()
     } catch (error) {
-      console.error('Error reviewing request:', error)
+      logger.error('Error reviewing request:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao processar')
     } finally {
       setProcessing(null)

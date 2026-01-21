@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface Point {
   lat: number
@@ -46,7 +47,7 @@ export class TerritoryService {
         return { lat, lng }
       })
     } catch (e) {
-      console.error('Erro ao parsear polígono:', e)
+      logger.error('Erro ao parsear polígono:', e)
       return []
     }
   }

@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(results)
   } catch (error) {
-    console.error('Erro ao listar especialidades:', error)
+    logger.error('Erro ao listar especialidades:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar especialidades' },
       { status: 500 }

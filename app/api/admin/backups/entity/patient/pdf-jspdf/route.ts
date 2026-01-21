@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { PatientRecordPDFGenerator } from '@/lib/patient-record-pdf-generator'
 import path from 'path'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       message: 'PDF gerado com sucesso',
     })
   } catch (e: any) {
-    console.error('[Patient PDF Export] Error:', e)
+    logger.error('[Patient PDF Export] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao gerar PDF' }, { status: 500 })
   }
 }

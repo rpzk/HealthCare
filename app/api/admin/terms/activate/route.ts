@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 function isAdmin(session: any): boolean {
   const role = session?.user?.role
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     if (error?.message === 'TERM_NOT_FOUND') {
       return NextResponse.json({ error: 'Termo não encontrado' }, { status: 404 })
     }
-    console.error('Erro ao ativar termo:', error)
+    logger.error('Erro ao ativar termo:', error)
     return NextResponse.json({ error: 'Erro ao ativar termo' }, { status: 500 })
   }
 }

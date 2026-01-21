@@ -6,6 +6,7 @@
 
 import type { Country, State, City, Zone, District, Subprefecture, Neighborhood, Area } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface GeographicHierarchyPath {
   country?: Country
@@ -76,7 +77,7 @@ export class GeographicService {
         country: area.neighborhood?.subprefecture?.district?.zone?.city?.state?.country
       }
     } catch (error) {
-      console.error('Error getting hierarchy path:', error)
+      logger.error('Error getting hierarchy path:', error)
       return null
     }
   }
@@ -143,7 +144,7 @@ export class GeographicService {
 
       return results
     } catch (error) {
-      console.error('Error searching geographic data:', error)
+      logger.error('Error searching geographic data:', error)
       throw error
     }
   }
@@ -183,7 +184,7 @@ export class GeographicService {
         }
       })
     } catch (error) {
-      console.error('Error getting areas by city:', error)
+      logger.error('Error getting areas by city:', error)
       throw error
     }
   }
@@ -220,7 +221,7 @@ export class GeographicService {
         }
       })
     } catch (error) {
-      console.error('Error getting areas by state:', error)
+      logger.error('Error getting areas by state:', error)
       throw error
     }
   }
@@ -257,7 +258,7 @@ export class GeographicService {
         acsHistoryRecords: acsHistoryCount
       }
     } catch (error) {
-      console.error('Error getting region statistics:', error)
+      logger.error('Error getting region statistics:', error)
       throw error
     }
   }
@@ -319,7 +320,7 @@ export class GeographicService {
           throw new Error('Invalid start level')
       }
     } catch (error) {
-      console.error('Error getting geographic tree:', error)
+      logger.error('Error getting geographic tree:', error)
       throw error
     }
   }
@@ -396,7 +397,7 @@ export class GeographicService {
 
       return nearbyAreas
     } catch (error) {
-      console.error('Error getting nearby areas:', error)
+      logger.error('Error getting nearby areas:', error)
       throw error
     }
   }

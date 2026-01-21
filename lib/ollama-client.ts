@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios'
+import { logger } from '@/lib/logger'
 
 // URL do serviço Ollama, configurável via variável de ambiente
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
@@ -87,7 +88,7 @@ class OllamaGenerativeModel {
         ]
       }
     } catch (error) {
-      console.error('Erro ao chamar Ollama:', error)
+      logger.error('Erro ao chamar Ollama:', error)
       
       // Retornar erro claro em vez de fallback
       throw new Error('Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.')
@@ -164,7 +165,7 @@ class OllamaChat {
         ]
       }
     } catch (error) {
-      console.error('Erro ao chamar chat do Ollama:', error)
+      logger.error('Erro ao chamar chat do Ollama:', error)
       
       // Retornar erro claro em vez de fallback
       throw new Error('Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.')

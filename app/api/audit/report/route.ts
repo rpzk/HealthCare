@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { advancedAuditService } from '@/lib/advanced-audit-service';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(report, { status: 200 });
   } catch (error) {
-    console.error('[Audit] Erro ao gerar relatório:', error);
+    logger.error('[Audit] Erro ao gerar relatório:', error);
     return NextResponse.json(
       { error: 'Erro ao gerar relatório' },
       { status: 500 }

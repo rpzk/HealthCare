@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { logger } from '@/lib/logger'
 import { 
   UserPlus, 
   FileText, 
@@ -96,7 +97,7 @@ export default function AutoPatientRegistration() {
       }
     } catch (err) {
       setError('Erro de conexão com o servidor')
-      console.error('Erro:', err)
+      logger.error('Erro:', err)
     } finally {
       setIsProcessing(false)
     }

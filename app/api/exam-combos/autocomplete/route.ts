@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic';
 
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(combos);
   } catch (error) {
-    console.error('Erro no autocomplete de combos:', error);
+    logger.error('Erro no autocomplete de combos:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar combos' },
       { status: 500 }

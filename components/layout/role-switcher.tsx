@@ -35,6 +35,7 @@ import {
   Lock
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 // Helper para manipular cookies
 function setCookie(name: string, value: string, days: number = 7) {
@@ -287,7 +288,7 @@ export function RoleSwitcher() {
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar papéis:', error)
+      logger.error('Erro ao buscar papéis:', error)
       const userRole = (session?.user as { role?: string })?.role || 'DOCTOR'
       setAvailableRoles([{ role: userRole, isPrimary: true }])
       if (!activeRole) setActiveRole(userRole)

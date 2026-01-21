@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ signatures, total, take, skip })
   } catch (error: any) {
-    console.error('Erro ao listar assinaturas digitais:', error)
+    logger.error('Erro ao listar assinaturas digitais:', error)
     return NextResponse.json(
       { error: error?.message || 'Erro ao listar assinaturas' },
       { status: 500 }

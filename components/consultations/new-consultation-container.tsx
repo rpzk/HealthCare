@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { ConsultationForm } from '@/components/consultations/consultation-form'
+import { logger } from '@/lib/logger'
 
 export default function NewConsultationContainer() {
   const router = useRouter()
@@ -27,7 +28,7 @@ export default function NewConsultationContainer() {
           }
         })
         .catch(err => {
-          console.log('Paciente não carregado:', err)
+          logger.info('Paciente não carregado:', err)
           // Continuar mesmo sem carregar os dados
         })
     }

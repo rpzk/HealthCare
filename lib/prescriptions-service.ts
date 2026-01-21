@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import type { Prisma, PrescriptionStatus } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export interface PrescriptionFilters {
   search?: string
@@ -152,7 +153,7 @@ export class PrescriptionsServiceDb {
       }
     } catch (err: unknown) {
       const error = err as Error & { code?: string; meta?: unknown }
-      console.error('Prisma error in PrescriptionsServiceDb.list', {
+      logger.error('Prisma error in PrescriptionsServiceDb.list', {
         message: error?.message,
         code: error?.code,
         meta: error?.meta,
@@ -189,7 +190,7 @@ export class PrescriptionsServiceDb {
       return shaped
     } catch (err: unknown) {
       const error = err as Error & { code?: string; meta?: unknown }
-      console.error('Prisma error in PrescriptionsServiceDb.getById', {
+      logger.error('Prisma error in PrescriptionsServiceDb.getById', {
         message: error?.message,
         code: error?.code,
         meta: error?.meta,
@@ -217,7 +218,7 @@ export class PrescriptionsServiceDb {
       return this.toApiShape(prescription)
     } catch (err: unknown) {
       const error = err as Error & { code?: string }
-      console.error('Prisma error in PrescriptionsServiceDb.getPrescriptionById', {
+      logger.error('Prisma error in PrescriptionsServiceDb.getPrescriptionById', {
         message: error?.message,
         code: error?.code,
       })
@@ -262,7 +263,7 @@ export class PrescriptionsServiceDb {
       return this.toApiShape(created)
     } catch (err: unknown) {
       const error = err as Error & { code?: string; meta?: unknown }
-      console.error('Prisma error in PrescriptionsServiceDb.create', {
+      logger.error('Prisma error in PrescriptionsServiceDb.create', {
         message: error?.message,
         code: error?.code,
         meta: error?.meta,
@@ -295,7 +296,7 @@ export class PrescriptionsServiceDb {
       return this.toApiShape(updated)
     } catch (err: unknown) {
       const error = err as Error & { code?: string; meta?: unknown }
-      console.error('Prisma error in PrescriptionsServiceDb.update', {
+      logger.error('Prisma error in PrescriptionsServiceDb.update', {
         message: error?.message,
         code: error?.code,
         meta: error?.meta,
@@ -311,7 +312,7 @@ export class PrescriptionsServiceDb {
       return { success: true }
     } catch (err: unknown) {
       const error = err as Error & { code?: string; meta?: unknown }
-      console.error('Prisma error in PrescriptionsServiceDb.remove', {
+      logger.error('Prisma error in PrescriptionsServiceDb.remove', {
         message: error?.message,
         code: error?.code,
         meta: error?.meta,

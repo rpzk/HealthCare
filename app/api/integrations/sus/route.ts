@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { SUSService } from '@/lib/integration-services'
 import { authOptions } from '@/auth'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/integrations/sus/register
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('[SUS API Error]', error)
+    logger.error('[SUS API Error]', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error'
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('[SUS History API Error]', error)
+    logger.error('[SUS History API Error]', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error'

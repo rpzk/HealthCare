@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { MedicationService } from '@/lib/medication-service'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +28,7 @@ export async function GET(
 
     return NextResponse.json(medication)
   } catch (error) {
-    console.error('Erro ao buscar medicamento:', error)
+    logger.error('Erro ao buscar medicamento:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar medicamento' },
       { status: 500 }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 function isAdmin(session: any): boolean {
   const role = session?.user?.role
@@ -75,7 +76,7 @@ export async function GET() {
       terms: Array.from(bySlug.values()),
     })
   } catch (error) {
-    console.error('Erro ao listar termos:', error)
+    logger.error('Erro ao listar termos:', error)
     return NextResponse.json({ error: 'Erro ao listar termos' }, { status: 500 })
   }
 }
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
     if (typeof error?.code === 'string' && error.code === 'P2002') {
       return NextResponse.json({ error: 'Já existe uma versão com este slug + versão' }, { status: 409 })
     }
-    console.error('Erro ao criar termo:', error)
+    logger.error('Erro ao criar termo:', error)
     return NextResponse.json({ error: 'Erro ao criar termo' }, { status: 500 })
   }
 }

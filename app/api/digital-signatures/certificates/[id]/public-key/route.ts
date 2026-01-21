@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
     })
   } catch (error: any) {
-    console.error('Erro ao baixar chave pública:', error)
+    logger.error('Erro ao baixar chave pública:', error)
     return NextResponse.json({ error: error?.message || 'Erro ao baixar chave' }, { status: 500 })
   }
 }

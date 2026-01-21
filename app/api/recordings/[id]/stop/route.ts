@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma'
 import { TermAudience } from '@prisma/client'
 import { assertUserAcceptedTerms } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/recordings/[id]/stop
@@ -51,7 +52,7 @@ export async function POST(
     })
 
   } catch (error: unknown) {
-    console.error('[Recording] Erro ao finalizar gravação:', error)
+    logger.error('[Recording] Erro ao finalizar gravação:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao finalizar gravação' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { CartorioService } from '@/lib/integration-services'
 import { authOptions } from '@/auth'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/integrations/cartorio/submit
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('[Cartório API Error]', error)
+    logger.error('[Cartório API Error]', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error'
@@ -87,7 +88,7 @@ export async function GET(
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('[Cartório Status API Error]', error)
+    logger.error('[Cartório Status API Error]', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error'

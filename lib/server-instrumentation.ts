@@ -4,14 +4,14 @@ if (!globalWithHooks.__errorHooksInstalled) {
   globalWithHooks.__errorHooksInstalled = true
   process.on('unhandledRejection', (reason: unknown) => {
     const err = reason as Error | undefined
-    console.error('[global] UnhandledRejection:', err?.message || reason, err?.stack)
+    logger.error('[global] UnhandledRejection:', err?.message || reason, err?.stack)
   })
   process.on('uncaughtException', (err: Error) => {
-    console.error('[global] UncaughtException:', err.message, err.stack)
+    logger.error('[global] UncaughtException:', err.message, err.stack)
   })
   process.on('exit', (code) => {
     if (code !== 0) {
-      console.error('[global] Process exiting with code', code)
+      logger.error('[global] Process exiting with code', code)
     }
   })
 }

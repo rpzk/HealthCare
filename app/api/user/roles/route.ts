@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       primaryRole
     })
   } catch (error) {
-    console.error('Erro ao buscar papéis:', error)
+    logger.error('Erro ao buscar papéis:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

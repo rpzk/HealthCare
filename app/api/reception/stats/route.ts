@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 // GET - Reception dashboard stats
@@ -70,14 +71,14 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
   } catch (error: unknown) {
     // Narrow unknown error to preserve typing while providing useful logs
     if (error instanceof Error) {
-      console.error('Error fetching reception stats:', error.message)
+      logger.error('Error fetching reception stats:', error.message)
       return NextResponse.json(
         { error: 'Erro ao buscar estatísticas', details: error.message },
         { status: 500 }
       )
     }
 
-    console.error('Error fetching reception stats:', String(error))
+    logger.error('Error fetching reception stats:', String(error))
     return NextResponse.json(
       { error: 'Erro ao buscar estatísticas' },
       { status: 500 }

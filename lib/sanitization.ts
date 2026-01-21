@@ -202,7 +202,7 @@ export function logInjectionAttempt(
     ip?: string
   }
 ): void {
-  console.warn('[SECURITY] Possible injection attempt detected:', {
+  logger.warn('[SECURITY] Possible injection attempt detected:', {
     input: input.slice(0, 100), // Log only first 100 chars
     ...context,
     timestamp: new Date().toISOString(),

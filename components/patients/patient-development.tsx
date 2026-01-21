@@ -29,6 +29,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface Assessment {
   id: string
@@ -81,7 +82,7 @@ export function PatientDevelopment({ patientId, patientName, patientEmail }: Pat
 
       setAssessments(allAssessments)
     } catch (error) {
-      console.error('Erro ao buscar avaliações:', error)
+      logger.error('Erro ao buscar avaliações:', error)
     } finally {
       setLoading(false)
     }
@@ -149,7 +150,7 @@ export function PatientDevelopment({ patientId, patientName, patientEmail }: Pat
       toast({ title: 'Plano de desenvolvimento criado para o paciente!' })
       fetchAssessments()
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast({ title: error instanceof Error ? error.message : 'Erro ao gerar plano', variant: 'destructive' })
     }
   }

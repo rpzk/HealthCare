@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { 
   searchFormulas, 
   autocompleteFormulas, 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result)
 
   } catch (error) {
-    console.error('Erro ao buscar fórmulas:', error)
+    logger.error('Erro ao buscar fórmulas:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar fórmulas' },
       { status: 500 }
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(formula, { status: 201 })
 
   } catch (error) {
-    console.error('Erro ao criar fórmula:', error)
+    logger.error('Erro ao criar fórmula:', error)
     return NextResponse.json(
       { error: 'Erro ao criar fórmula' },
       { status: 500 }

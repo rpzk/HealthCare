@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const patientBookingSchema = z.object({
   doctorId: z.string().min(1, 'ID do profissional é obrigatório'),
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
       count: availableProfessionals.length,
     })
   } catch (error) {
-    console.error('[Patient Booking] Error fetching available professionals:', error)
+    logger.error('[Patient Booking] Error fetching available professionals:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar profissionais disponíveis' },
       { status: 500 }
@@ -273,11 +274,11 @@ export async function POST(request: NextRequest) {
           status: consultation.status === 'IN_PROGRESS' ? 'CONFIRMED' : 'SCHEDULED',
         })
       } catch (emailError) {
-        console.error('[Patient Booking] Error sending confirmation email:', emailError)
+        logger.error('[Patient Booking] Error sending confirmation email:', emailError)
       }
     }
 
-    console.log(
+    logger.info(
       `[Patient Booking] New consultation scheduled: ${consultation.id} by patient ${patient.id}`
     )
 
@@ -295,7 +296,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[Patient Booking] Error creating appointment:', error)
+    logger.error('[Patient Booking] Error creating appointment:', error)
     return NextResponse.json(
       { error: 'Erro ao agendar consulta' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // POST - Add entry to schedule
 export const POST = withAuth(async (req: NextRequest, { params, user }) => {
@@ -102,7 +103,7 @@ export const POST = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(entry, { status: 201 })
   } catch (error: any) {
-    console.error('Error adding schedule entry:', error)
+    logger.error('Error adding schedule entry:', error)
     return NextResponse.json(
       { error: 'Erro ao adicionar entrada', details: error.message },
       { status: 500 }
@@ -148,7 +149,7 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(entries)
   } catch (error: any) {
-    console.error('Error fetching schedule entries:', error)
+    logger.error('Error fetching schedule entries:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar entradas', details: error.message },
       { status: 500 }

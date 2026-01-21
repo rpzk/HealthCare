@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { logger } from '@/lib/logger'
 
 // GET - Horários disponíveis para um médico em uma data
 export const GET = withAuth(async (request: NextRequest, { user }) => {
@@ -107,7 +108,7 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
       }
     )
 
-    console.error('Erro ao buscar horários disponíveis:', error)
+    logger.error('Erro ao buscar horários disponíveis:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

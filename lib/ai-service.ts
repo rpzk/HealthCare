@@ -1,4 +1,5 @@
 import ollamaClient from './ollama-client'
+import { logger } from '@/lib/logger'
 
 const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'qwen2.5:3b' })
 
@@ -75,7 +76,7 @@ IMPORTANTE: Esta análise é apenas para apoio médico e não substitui a avalia
         references: []
       }
     } catch (error) {
-      console.error('Erro na análise de IA:', error)
+      logger.error('Erro na análise de IA:', error)
       return {
         analysis: 'Erro ao processar análise. Verifique a configuração da API do Google AI.',
         suggestions: [],
@@ -118,7 +119,7 @@ Forneça uma análise detalhada baseada em farmacologia clínica.
         references: []
       }
     } catch (error) {
-      console.error('Erro na análise de interações:', error)
+      logger.error('Erro na análise de interações:', error)
       return {
         analysis: 'Erro ao processar análise de interações. Verifique a configuração da API do Google AI.',
         suggestions: [],
@@ -154,7 +155,7 @@ Crie um resumo estruturado incluindo:
 
       return result.response.text() || 'Não foi possível gerar resumo'
     } catch (error) {
-      console.error('Erro na geração de resumo:', error)
+      logger.error('Erro na geração de resumo:', error)
       return 'Erro ao gerar resumo médico. Verifique a configuração da API do Google AI.'
     }
   }

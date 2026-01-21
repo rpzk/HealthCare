@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Get vacation balance for user
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -53,7 +54,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       availableDays: available
     })
   } catch (error: any) {
-    console.error('Error fetching vacation balance:', error)
+    logger.error('Error fetching vacation balance:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar saldo de férias', details: error.message },
       { status: 500 }
@@ -110,7 +111,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(balance)
   } catch (error: any) {
-    console.error('Error creating vacation balance:', error)
+    logger.error('Error creating vacation balance:', error)
     return NextResponse.json(
       { error: 'Erro ao criar saldo de férias', details: error.message },
       { status: 500 }

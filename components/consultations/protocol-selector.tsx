@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface Protocol {
   id: string
@@ -122,7 +123,7 @@ export function ProtocolSelector({ onApply, triggerClassName }: ProtocolSelector
         setProtocols(data.protocols || [])
       }
     } catch (error) {
-      console.error('Erro ao carregar protocolos:', error)
+      logger.error('Erro ao carregar protocolos:', error)
     } finally {
       setLoading(false)
     }

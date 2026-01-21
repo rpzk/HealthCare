@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { logger } from '@/lib/logger'
 
 // POST - Verificar senha do usuário logado
 export async function POST(request: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Erro ao verificar senha:', error)
+    logger.error('Erro ao verificar senha:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

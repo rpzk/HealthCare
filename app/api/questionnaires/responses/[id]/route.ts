@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
@@ -62,7 +63,7 @@ export async function GET(
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('Error fetching response:', error)
+    logger.error('Error fetching response:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar resposta' },
       { status: 500 }
@@ -91,7 +92,7 @@ export async function PATCH(
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('Error updating response:', error)
+    logger.error('Error updating response:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar resposta' },
       { status: 500 }

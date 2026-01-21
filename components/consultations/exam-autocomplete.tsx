@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { FlaskConical, Loader2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface ExamSuggestion {
   id: string
@@ -70,7 +71,7 @@ export function ExamAutocomplete({
         setHighlightIndex(0)
       }
     } catch (error) {
-      console.error('Erro ao buscar exames:', error)
+      logger.error('Erro ao buscar exames:', error)
     } finally {
       setIsLoading(false)
     }

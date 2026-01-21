@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { TelemedicineRecordingService } from '@/lib/telemedicine-recording-service'
 import { prisma } from '@/lib/prisma'
 import fs from 'fs/promises'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/recordings/[id]/stream
@@ -61,7 +62,7 @@ export async function GET(
     })
 
   } catch (error: unknown) {
-    console.error('[Recording] Erro ao fazer stream:', error)
+    logger.error('[Recording] Erro ao fazer stream:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao fazer stream' },
       { status: 500 }

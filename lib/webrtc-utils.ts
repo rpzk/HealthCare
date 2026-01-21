@@ -94,7 +94,7 @@ export async function getIceServers(): Promise<RTCIceServer[]> {
       return data.iceServers
     }
   } catch (error) {
-    console.warn('Failed to load ICE config from API, using defaults', error)
+    logger.warn('Failed to load ICE config from API, using defaults', error)
   }
 
   // Fallback: usar STUN servers públicos gratuitos
@@ -169,10 +169,10 @@ export async function getUserMediaWithQuality(
       audio: quality.audio
     })
 
-    console.log(`[WebRTC] Stream obtained with ${quality.name}`)
+    logger.info(`[WebRTC] Stream obtained with ${quality.name}`)
     return stream
   } catch (error) {
-    console.error('[WebRTC] Error getting media with preset:', preset, error)
+    logger.error('[WebRTC] Error getting media with preset:', preset, error)
 
     if (!allowFallback) {
       throw error
@@ -180,17 +180,17 @@ export async function getUserMediaWithQuality(
 
     // Fallback automático para qualidade menor
     if (preset === 'high') {
-      console.log('[WebRTC] Falling back to medium quality')
+      logger.info('[WebRTC] Falling back to medium quality')
       return getUserMediaWithQuality('medium', true)
     }
 
     if (preset === 'medium') {
-      console.log('[WebRTC] Falling back to low quality')
+      logger.info('[WebRTC] Falling back to low quality')
       return getUserMediaWithQuality('low', true)
     }
 
     if (preset === 'low') {
-      console.log('[WebRTC] Falling back to audio only')
+      logger.info('[WebRTC] Falling back to audio only')
       return getUserMediaWithQuality('audioOnly', false)
     }
 
@@ -375,7 +375,7 @@ export class ConnectionRecovery {
     this.onReconnect = onReconnect
 
     pc.oniceconnectionstatechange = () => {
-      console.log('[WebRTC] ICE connection state:', pc.iceConnectionState)
+      logger.info('[WebRTC] ICE connection state:', pc.iceConnectionState)
       
       if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
         this.handleDisconnection()
@@ -389,19 +389,19 @@ export class ConnectionRecovery {
 
   private async handleDisconnection() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[WebRTC] Max reconnection attempts reached')
+      logger.error('[WebRTC] Max reconnection attempts reached')
       return
     }
 
     this.reconnectAttempts++
-    console.log(`[WebRTC] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    logger.info(`[WebRTC] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
 
     try {
       // ICE restart
       await this.pc.restartIce()
       this.onReconnect?.()
     } catch (error) {
-      console.error('[WebRTC] Reconnection failed:', error)
+      logger.error('[WebRTC] Reconnection failed:', error)
     }
   }
 }

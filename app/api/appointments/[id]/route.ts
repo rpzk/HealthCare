@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { updateAppointmentSchema } from '@/lib/validation-schemas-api'
 import { sendAppointmentReassignedEmail, sendAppointmentRescheduledEmail } from '@/lib/email-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -215,7 +216,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
         newTime: newTimeStr,
       })
     } catch (emailError) {
-      console.error('Error sending appointment rescheduled email:', emailError)
+      logger.error('Error sending appointment rescheduled email:', emailError)
     }
   }
 
@@ -237,7 +238,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
         time: timeStr,
       })
     } catch (emailError) {
-      console.error('Error sending appointment reassigned email:', emailError)
+      logger.error('Error sending appointment reassigned email:', emailError)
     }
   }
 

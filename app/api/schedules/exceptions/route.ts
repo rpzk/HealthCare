@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 // Todos os roles que são considerados profissionais de saúde
 const PROFESSIONAL_ROLES = [
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
       count: exceptions.length,
     })
   } catch (error) {
-    console.error('Error fetching exceptions:', error)
+    logger.error('Error fetching exceptions:', error)
     return NextResponse.json({ error: 'Failed to fetch exceptions' }, { status: 500 })
   }
 }
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 })
     }
-    console.error('Error creating exceptions:', error)
+    logger.error('Error creating exceptions:', error)
     return NextResponse.json({ error: 'Failed to create exceptions' }, { status: 500 })
   }
 }
@@ -177,7 +178,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Exception removed',
     })
   } catch (error) {
-    console.error('Error deleting exception:', error)
+    logger.error('Error deleting exception:', error)
     return NextResponse.json({ error: 'Failed to delete exception' }, { status: 500 })
   }
 }

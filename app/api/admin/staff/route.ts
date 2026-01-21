@@ -7,6 +7,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 // GET - Listar todos os profissionais (staff)
 export async function GET(req: Request) {
@@ -115,7 +116,7 @@ export async function GET(req: Request) {
       }
     })
   } catch (error) {
-    console.error('[staff] Error:', error)
+    logger.error('[staff] Error:', error)
     return NextResponse.json({ error: 'Erro ao buscar profissionais' }, { status: 500 })
   }
 }

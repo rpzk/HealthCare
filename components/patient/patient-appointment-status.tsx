@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Clock, CheckCircle, XCircle, Calendar, AlertCircle, Info } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface Appointment {
   id: string
@@ -42,7 +43,7 @@ export function PatientAppointmentStatus() {
       const data = await res.json()
       setAppointments(data.data || [])
     } catch (error) {
-      console.error('Error loading appointments:', error)
+      logger.error('Error loading appointments:', error)
     } finally {
       setLoading(false)
     }

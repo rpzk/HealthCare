@@ -19,10 +19,10 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 export const logger = {
-  debug: (...args: unknown[]) => shouldLog('debug') && console.log('[DEBUG]', ...args),
-  info: (...args: unknown[]) => shouldLog('info') && console.log('[INFO]', ...args),
-  warn: (...args: unknown[]) => shouldLog('warn') && console.warn('[WARN]', ...args),
-  error: (...args: unknown[]) => console.error('[ERROR]', ...args), // Always log errors
+  debug: (...args: unknown[]) => shouldLog('debug') && logger.info('[DEBUG]', ...args),
+  info: (...args: unknown[]) => shouldLog('info') && logger.info('[INFO]', ...args),
+  warn: (...args: unknown[]) => shouldLog('warn') && logger.warn('[WARN]', ...args),
+  error: (...args: unknown[]) => logger.error('[ERROR]', ...args), // Always log errors
 }
 
 export function createRequestId(): string {
@@ -34,7 +34,7 @@ export function createRequestId(): string {
   } catch (e) {
     // If crypto.randomUUID unexpectedly throws, continue to fallback
     // eslint-disable-next-line no-console
-    console.debug('createRequestId crypto.randomUUID error', e)
+    logger.debug('createRequestId crypto.randomUUID error', e)
   }
   // Fallback: pseudo-UUID (not cryptographically secure)
   const rnd = Math.random().toString(36).slice(2, 10)
