@@ -3,6 +3,7 @@ import { withAuth, validateRequestBody } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 import { validatePrescription } from '@/lib/validation-schemas'
 import { logger } from '@/lib/logger'
+import type { Prescription } from '@/types'
 
 // GET - Buscar prescrições médicas
 export const GET = withAuth(async (request, { user: _user }) => {
@@ -39,21 +40,21 @@ export const POST = withAuth(async (request, { user }) => {
     if (!validation.success) return validation.response!
 
     const data = validation.data!
-    let created
+    let created: Prescription | undefined
     try {
       created = await PrescriptionsServiceDb.create({
         patientId: data.patientId,
         doctorId: user.id,
-        medications: data.medications as any,
-        notes: (data as any).observations,
+        medications: data.medications as Prescription['medications'],
+        notes: (data as Record<string, any>).observations,
         status: 'ACTIVE',
       })
-    } catch (innerErr: any) {
-      logger.error('PrescriptionsServiceDb.create failed', innerErr, {
-        message: innerErr?.message,
-        code: innerErr?.code,
-        meta: innerErr?.meta,
-        stack: innerErr?.stack?.split('\n').slice(0,5).join(' | ')
+    } catch (innerErr) {
+      logger.error('PrescriptionsServiceDb.create failed', innerErr as Error, {
+        message: (innerErr as any)?.message,
+        code: (innerErr as any)?.code,
+        meta: (innerErr as any)?.meta,
+        stack: (innerErr as any)?.stack?.split('\n').slice(0,5).join(' | ')
       })
       throw innerErr
     }

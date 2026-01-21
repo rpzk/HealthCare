@@ -5,6 +5,7 @@ import { withConsultationAuth } from '@/lib/advanced-auth'
 import { ConsultationType } from '@prisma/client'
 import { consultationQuerySchema, createConsultationSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 import { logger } from '@/lib/logger'
+import { handleApiError, ApiError } from '@/lib/api-error-handler'
 
 // GET - Listar consultas (protegido por autenticação)
 export const GET = withConsultationAuth(async (request, { user }) => {
@@ -91,7 +92,7 @@ export const POST = withConsultationAuth(async (request, { user }) => {
     }
     return resp
 
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Erro ao criar consulta:', error)
     
     if (error.message.includes('não encontrado') || 

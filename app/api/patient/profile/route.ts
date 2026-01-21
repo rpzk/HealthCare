@@ -3,10 +3,46 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
 import { decrypt, encrypt, hashCPF } from '@/lib/crypto'
 import { parseAllergies, serializeAllergies, normalizeBloodType } from '@/lib/patient-schemas'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import type { Address } from '@prisma/client'
+import type { BloodType } from '@/types'
+
+interface PatientWhereClause {
+  OR: Array<{ userId?: string } | { email?: string }>
+}
+
+interface PatientResponse {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  cpf: string | null
+  birthDate: string | null
+  gender: string | null
+  bloodType: BloodType | null
+  allergies: string[]
+  address: AddressResponse | null
+  emergencyContact: EmergencyContactResponse | null
+}
+
+interface AddressResponse {
+  street: string
+  number: string
+  complement: string | null
+  neighborhood: string | null
+  city: string
+  state: string
+  zipCode: string | null
+}
+
+interface EmergencyContactResponse {
+  name: string
+  phone: string | null
+  relation: string
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +79,7 @@ export async function GET(req: NextRequest) {
     const userEmail = session.user.email
 
     // Buscar o paciente vinculado a este usuário
-    const whereClause: any = { OR: [{ userId }] }
+    const whereClause: PatientWhereClause = { OR: [{ userId }] }
     if (userEmail) whereClause.OR.push({ email: userEmail })
 
     const patient = await prisma.patient.findFirst({
@@ -71,7 +107,7 @@ export async function GET(req: NextRequest) {
       // the schema stores a free-form 'address' string and a relation 'addresses' -> we surface the primary address if present
       allergies: parseAllergies(decrypt(patient.allergies as string | null)),
       address: (patient.addresses && patient.addresses.length > 0) ? (() => {
-        const primary = patient.addresses.find((a: any) => a.isPrimary) || patient.addresses[0]
+        const primary = patient.addresses.find((a: Address) => a.isPrimary) || patient.addresses[0]
         return {
           street: primary.street,
           number: primary.number,
@@ -154,7 +190,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // Montar updates
-    const patientUpdate: any = {}
+    const patientUpdate: Prisma.PatientUpdateInput = {}
     if (data.phone) patientUpdate.phone = data.phone
     if (data.cpf) {
       const cpfValue = data.cpf.trim()
@@ -231,7 +267,7 @@ export async function PUT(req: NextRequest) {
           }
         })(),
         address: (updated.addresses && updated.addresses.length > 0) ? (() => {
-          const primary = updated.addresses.find((a: any) => a.isPrimary) || updated.addresses[0]
+          const primary = updated.addresses.find((a: Address) => a.isPrimary) || updated.addresses[0]
           return {
             street: primary.street,
             number: primary.number,

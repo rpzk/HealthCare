@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { handleApiError, ApiError } from '@/lib/api-error-handler'
 
 export const runtime = 'nodejs'
 
@@ -98,7 +99,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
         totalPages: Math.ceil(total / limit)
       }
     })
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Error fetching appointments:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar agendamentos', details: error.message },
@@ -213,7 +214,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     }
 
     return NextResponse.json(consultation, { status: 201 })
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Error creating appointment:', error)
     return NextResponse.json(
       { error: 'Erro ao criar agendamento', details: error.message },

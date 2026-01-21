@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { handleApiError, ApiError } from '@/lib/api-error-handler'
 export const dynamic = 'force-dynamic'
 
 
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({ certificates, total, take, skip })
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Erro ao listar certificados digitais', error)
     return NextResponse.json(
       { error: error?.message || 'Erro ao listar certificados' },
