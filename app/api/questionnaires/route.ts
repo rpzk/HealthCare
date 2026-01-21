@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { handleApiError, ApiError } from '@/lib/api-error-handler'
 
 export const runtime = 'nodejs'
 
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(templatesWithCount)
 
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Error fetching questionnaire templates', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(template, { status: 201 })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating questionnaire template:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

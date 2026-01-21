@@ -5,6 +5,8 @@ import { hash } from 'bcryptjs'
 import { encrypt, hashCPF } from '@/lib/crypto'
 import { serializeAllergies, normalizeBloodType, normalizeCPF } from '@/lib/patient-schemas'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import type { BloodType } from '@/types'
 
 const registerSchema = z.object({
   // Dados da conta
@@ -143,11 +145,10 @@ export async function POST(request: NextRequest) {
     })
 
     // TODO: Enviar email de confirmação
-    console.log('[Patient Registration] New patient registered:', {
+    logger.info('[Patient Registration] New patient registered', {
       userId: result.user.id,
       patientId: result.patient.id,
       email: data.email,
-      cpf: data.cpf,
     })
 
     // TODO: Implementar envio de email de boas-vindas
@@ -162,23 +163,26 @@ export async function POST(request: NextRequest) {
         email: result.user.email,
       },
     })
-  } catch (error: any) {
-    logger.error('[Patient Registration] Error:', error)
+  } catch (error) {
+    logger.error('[Patient Registration] Error', error as Error)
 
     // Erro específico de constraint unique
-    if (error.code === 'P2002') {
-      const field = error.meta?.target?.[0]
-      if (field === 'email') {
-        return NextResponse.json(
-          { error: 'Este email já está cadastrado' },
-          { status: 409 }
-        )
-      }
-      if (field === 'cpf') {
-        return NextResponse.json(
-          { error: 'Este CPF já está cadastrado' },
-          { status: 409 }
-        )
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as Prisma.PrismaClientKnownRequestError
+      if (prismaError.code === 'P2002') {
+        const field = prismaError.meta?.target?.[0]
+        if (field === 'email') {
+          return NextResponse.json(
+            { error: 'Este email já está cadastrado' },
+            { status: 409 }
+          )
+        }
+        if (field === 'cpf') {
+          return NextResponse.json(
+            { error: 'Este CPF já está cadastrado' },
+            { status: 409 }
+          )
+        }
       }
     }
 

@@ -1,15 +1,11 @@
-/**
- * POST /api/medications/tracking - Registrar tomada de medicamento
- * GET /api/medications/tracking - Listar tomadas do paciente
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import type { MedicationTracking } from '@/types'
 
 const trackMedicationSchema = z.object({
   prescriptionItemId: z.string().min(1),
@@ -110,7 +106,7 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit
 
     // Construir filtros
-    let where: any = {}
+    const where: Prisma.MedicationTrackingWhereInput = {}
 
     if (prescriptionId) {
       // Validar acesso à prescrição

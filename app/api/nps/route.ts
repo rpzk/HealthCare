@@ -62,10 +62,10 @@ export async function POST(request: NextRequest) {
       response: result,
       doctorName: consultation.doctor?.name ?? null,
     });
-  } catch (error: any) {
-    logger.error("Erro ao submeter NPS:", error);
+  } catch (error) {
+    logger.error("Erro ao submeter NPS", error as Error);
     return NextResponse.json(
-      { error: error.message || "Erro ao submeter resposta" },
+      { error: (error as any)?.message || "Erro ao submeter resposta" },
       { status: 500 }
     );
   }
@@ -92,10 +92,10 @@ export async function GET(request: NextRequest) {
       success: true,
       response,
     });
-  } catch (error: any) {
-    logger.error("Erro ao consultar NPS:", error);
+  } catch (error) {
+    logger.error("Erro ao consultar NPS", error as Error);
     return NextResponse.json(
-      { error: error.message || "Erro ao consultar NPS" },
+      { error: (error as any)?.message || "Erro ao consultar NPS" },
       { status: 500 }
     );
   }
