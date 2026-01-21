@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface Questionnaire {
   id: string
@@ -74,7 +75,7 @@ export function PatientQuestionnaires({ patientId }: PatientQuestionnairesProps)
         setQuestionnaires(data)
       }
     } catch (error) {
-      console.error('Error fetching questionnaires:', error)
+      logger.error('Error fetching questionnaires:', error)
     } finally {
       setLoading(false)
     }

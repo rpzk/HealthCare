@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
 import { Play, Download, Trash2, Clock, FileVideo, Loader2 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
   Dialog,
   DialogContent,
@@ -57,7 +58,7 @@ export function RecordingsList({ consultationId }: RecordingsListProps) {
         setRecordings(data.recordings)
       }
     } catch (error) {
-      console.error('[Recordings] Erro ao carregar:', error)
+      logger.error('[Recordings] Erro ao carregar:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar as gravações',
@@ -145,7 +146,7 @@ export function RecordingsList({ consultationId }: RecordingsListProps) {
       loadRecordings()
 
     } catch (error) {
-      console.error('[Recordings] Erro ao excluir:', error)
+      logger.error('[Recordings] Erro ao excluir:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível excluir a gravação',

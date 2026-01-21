@@ -5,6 +5,7 @@ import { withAuth, withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-au
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { ConsultationType, ConsultationStatus } from '@prisma/client'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 interface RouteParams {
   params: {
@@ -77,7 +78,7 @@ export const GET = withAuth(async (request: NextRequest, { params, user }) => {
       { consultationId: params.id }
     )
     
-    console.error('Erro ao buscar consulta:', error)
+    logger.error('Erro ao buscar consulta:', error)
     
     if (error.message === 'Consulta não encontrada') {
       return NextResponse.json(
@@ -161,7 +162,7 @@ export const PUT = withDoctorAuth(async (request: NextRequest, { params, user })
       { consultationId: params.id }
     )
     
-    console.error('Erro ao atualizar consulta:', error)
+    logger.error('Erro ao atualizar consulta:', error)
     
     if (error.message.includes('não encontrada') || 
         error.message.includes('já existe uma consulta')) {
@@ -249,7 +250,7 @@ export const PATCH = withDoctorAuth(async (request: NextRequest, { params, user 
       { consultationId: params.id }
     )
     
-    console.error('Erro ao executar ação na consulta:', error)
+    logger.error('Erro ao executar ação na consulta:', error)
     
     if (error.message.includes('não encontrada') || 
         error.message.includes('podem ser')) {
@@ -302,7 +303,7 @@ export const DELETE = withDoctorAuth(async (request: NextRequest, { params, user
       { consultationId: params.id }
     )
     
-    console.error('Erro ao cancelar consulta:', error)
+    logger.error('Erro ao cancelar consulta:', error)
     
     if (error.message.includes('não encontrada') || 
         error.message.includes('não podem ser canceladas')) {

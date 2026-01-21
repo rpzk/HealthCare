@@ -8,6 +8,7 @@
 import forge from 'node-forge'
 import fs from 'fs'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 interface SignatureResult {
   signature: string
@@ -44,12 +45,12 @@ export async function signWithA1Certificate(
     try {
       p12 = forge.pkcs12.pkcs12FromAsn1(asn1, pfxPassword)
     } catch (err) {
-      console.error('Erro ao descriptografar .pfx com a senha fornecida:', err)
+      logger.error('Erro ao descriptografar .pfx com a senha fornecida:', err)
       throw new Error('Senha do certificado incorreta')
     }
     
     if (!p12) {
-      console.error('P12 retornou undefined - possível erro na senha ou arquivo corrompido')
+      logger.error('P12 retornou undefined - possível erro na senha ou arquivo corrompido')
       throw new Error('Erro ao processar certificado - arquivo pode estar corrompido ou senha incorreta')
     }
   
@@ -129,7 +130,7 @@ export async function signWithA1Certificate(
     signedAt: new Date(),
   }
   } catch (error) {
-    console.error('Erro em signWithA1Certificate:', error)
+    logger.error('Erro em signWithA1Certificate:', error)
     throw error
   }
 }
@@ -179,7 +180,7 @@ export async function verifyA1Signature(
     
     return verified
   } catch (error) {
-    console.error('Erro ao verificar assinatura:', error)
+    logger.error('Erro ao verificar assinatura:', error)
     return false
   }
 }

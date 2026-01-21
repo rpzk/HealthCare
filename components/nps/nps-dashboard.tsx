@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger'
 
 interface NpsStats {
   npsScore: number;
@@ -68,7 +69,7 @@ export function NpsDashboard({ doctorId }: NpsDashboardProps) {
       setStats(data);
       
     } catch (error) {
-      console.error('Erro ao carregar NPS:', error);
+      logger.error('Erro ao carregar NPS:', error);
       toast.error('Erro ao carregar estatísticas');
     } finally {
       setLoading(false);

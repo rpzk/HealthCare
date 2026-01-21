@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const ADMIN_ROLES = ['ADMIN', 'RECEPTIONIST']
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ schedules })
   } catch (error) {
-    console.error('Error fetching professional schedules:', error)
+    logger.error('Error fetching professional schedules:', error)
     return NextResponse.json({ error: 'Failed to fetch schedules' }, { status: 500 })
   }
 }
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error creating schedule:', error)
+    logger.error('Error creating schedule:', error)
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
     }
@@ -194,7 +195,7 @@ export async function DELETE(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error deleting schedule:', error)
+    logger.error('Error deleting schedule:', error)
     return NextResponse.json({ error: 'Failed to delete schedule' }, { status: 500 })
   }
 }

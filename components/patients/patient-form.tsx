@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { X, Save, UserPlus, MapPin, Check } from 'lucide-react'
 import { AddressAutocomplete, AddressSuggestion } from '../addresses/address-autocomplete'
 import { AddressMapPicker } from '../addresses/address-map-picker'
+import { logger } from '@/lib/logger'
 
 // Opções de papel (role) disponíveis
 const ROLE_OPTIONS = [
@@ -224,7 +225,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
             fetchCoordinates(`${data.logradouro}, ${data.localidade}, ${data.uf}`)
           }
         } catch (error) {
-          console.error('Erro ao buscar CEP:', error)
+          logger.error('Erro ao buscar CEP:', error)
         } finally {
           setLoading(false)
         }
@@ -252,7 +253,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
         }))
       }
     } catch (error) {
-      console.error('Erro ao buscar coordenadas:', error)
+      logger.error('Erro ao buscar coordenadas:', error)
     }
   }
 
@@ -293,7 +294,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     }
 
     if (!session?.user?.id) {
-      console.error('Usuário não está autenticado')
+      logger.error('Usuário não está autenticado')
       return
     }
 
@@ -335,7 +336,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
 
       await onSubmit(submitData)
     } catch (error) {
-      console.error('Erro ao submeter formulário:', error)
+      logger.error('Erro ao submeter formulário:', error)
     } finally {
       setLoading(false)
     }

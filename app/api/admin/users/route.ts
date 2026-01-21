@@ -7,6 +7,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -113,7 +114,7 @@ export async function GET(req: Request) {
     })
 
   } catch (error) {
-    console.error('Erro ao listar usuários:', error)
+    logger.error('Erro ao listar usuários:', error)
     return NextResponse.json(
       { error: 'Erro ao listar usuários' },
       { status: 500 }

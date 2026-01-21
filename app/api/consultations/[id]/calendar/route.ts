@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateICS, generateCalendarLinks, generateCancellationICS } from '@/lib/ics-generator'
 import { addMinutes } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
@@ -129,7 +130,7 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('[Consultation Calendar] Error:', error)
+    logger.error('[Consultation Calendar] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao gerar dados do calendário' },
       { status: 500 }

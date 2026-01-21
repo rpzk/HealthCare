@@ -61,7 +61,7 @@ export function withAuth(
       })
 
     } catch (error) {
-      console.error('Erro no wrapper withAuth:', error)
+      logger.error('Erro no wrapper withAuth:', error)
       return NextResponse.json(
         { 
           error: 'Erro interno do servidor',
@@ -79,6 +79,7 @@ export function withAuth(
  * Evita replicar listas de roles em cada rota e centraliza política.
  */
 import { isAllowed } from './rbac'
+import { logger } from '@/lib/logger'
 export function withRbac(
   action: string,
   handler: AuthenticatedApiHandler

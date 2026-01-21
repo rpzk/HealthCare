@@ -24,6 +24,7 @@ import {
   Stethoscope
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface PastConsultation {
   id: string
@@ -79,7 +80,7 @@ export function PatientHistoryPanel({ patientId, onRepeatPrescription }: Patient
         setConsultations(mapped)
       } else {
         setError('Não foi possível carregar as consultas anteriores')
-        console.error('Falha ao buscar consultas do paciente', consultRes.status, consultRes.statusText)
+        logger.error('Falha ao buscar consultas do paciente', consultRes.status, consultRes.statusText)
       }
 
       // Prescrições anteriores do paciente (usa rota principal com filtro por patientId)
@@ -103,11 +104,11 @@ export function PatientHistoryPanel({ patientId, onRepeatPrescription }: Patient
         setPrescriptions(mapped)
       } else {
         setError('Não foi possível carregar as prescrições anteriores')
-        console.error('Falha ao buscar prescrições do paciente', prescRes.status, prescRes.statusText)
+        logger.error('Falha ao buscar prescrições do paciente', prescRes.status, prescRes.statusText)
       }
     } catch (e) {
       setError('Erro ao carregar histórico')
-      console.error('Erro ao carregar histórico:', e)
+      logger.error('Erro ao carregar histórico:', e)
     } finally {
       setLoading(false)
     }

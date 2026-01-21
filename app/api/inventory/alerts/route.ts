@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Check for low stock items and create alerts
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -74,7 +75,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error) {
-    console.error('Error checking stock levels:', error)
+    logger.error('Error checking stock levels:', error)
     return NextResponse.json(
       { error: 'Erro ao verificar níveis de estoque' },
       { status: 500 }
@@ -138,7 +139,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       notificationsSent: notifications.length
     })
   } catch (error) {
-    console.error('Error creating stock alerts:', error)
+    logger.error('Error creating stock alerts:', error)
     return NextResponse.json(
       { error: 'Erro ao criar alertas de estoque' },
       { status: 500 }

@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 export interface RecordingMetadata {
   consultationId: string
@@ -37,9 +38,9 @@ export class TelemedicineRecordingService {
   static async initialize(): Promise<void> {
     try {
       await fs.mkdir(this.UPLOAD_DIR, { recursive: true })
-      console.log('[Recording] Diretório de gravações criado:', this.UPLOAD_DIR)
+      logger.info('[Recording] Diretório de gravações criado:', this.UPLOAD_DIR)
     } catch (error) {
-      console.error('[Recording] Erro ao criar diretório:', error)
+      logger.error('[Recording] Erro ao criar diretório:', error)
       throw error
     }
   }
@@ -414,7 +415,7 @@ export class TelemedicineRecordingService {
     try {
       await fs.unlink(recording.filePath)
     } catch (error) {
-      console.error('[Recording] Erro ao excluir arquivo:', error)
+      logger.error('[Recording] Erro ao excluir arquivo:', error)
     }
 
     // Excluir tokens de acesso
@@ -459,11 +460,11 @@ export class TelemedicineRecordingService {
         await this.permanentlyDeleteRecording(recording.id)
         deletedCount++
       } catch (error) {
-        console.error(`[Recording] Erro ao excluir gravação ${recording.id}:`, error)
+        logger.error(`[Recording] Erro ao excluir gravação ${recording.id}:`, error)
       }
     }
 
-    console.log(`[Recording] ${deletedCount} gravações antigas excluídas`)
+    logger.info(`[Recording] ${deletedCount} gravações antigas excluídas`)
     return deletedCount
   }
 }

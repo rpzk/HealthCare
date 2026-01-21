@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface InsightItem {
   id: string
@@ -53,7 +54,7 @@ export function QuestionnaireInsights({ userId }: Props) {
         setInsights(data)
       }
     } catch (error) {
-      console.error('Erro ao carregar insights:', error)
+      logger.error('Erro ao carregar insights:', error)
     } finally {
       setLoading(false)
     }

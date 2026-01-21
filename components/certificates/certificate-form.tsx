@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
 import { FileText, Loader2, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 interface CertificateFormProps {
   patientId: string
@@ -91,7 +92,7 @@ export function CertificateForm({ patientId, patientName, consultationId, onSucc
       setObservations('')
 
     } catch (error: unknown) {
-      console.error('[Certificate] Erro:', error)
+      logger.error('[Certificate] Erro:', error)
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Erro ao emitir atestado',

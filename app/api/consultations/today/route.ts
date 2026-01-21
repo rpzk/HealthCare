@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { logger } from '@/lib/logger'
 
 // GET - Consultas de hoje
 export const GET = withAuth(async (request, { user }) => {
@@ -37,7 +38,7 @@ export const GET = withAuth(async (request, { user }) => {
       { doctorId: searchParams.get('doctorId') }
     )
 
-    console.error('Erro ao buscar consultas de hoje:', error)
+    logger.error('Erro ao buscar consultas de hoje:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

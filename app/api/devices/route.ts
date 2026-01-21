@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Listar dispositivos conectados
 export async function GET(request: NextRequest) {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(enrichedDevices)
   } catch (error) {
-    console.error('Error fetching devices:', error)
+    logger.error('Error fetching devices:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar dispositivos' },
       { status: 500 }
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(device, { status: 201 })
   } catch (error) {
-    console.error('Error creating device:', error)
+    logger.error('Error creating device:', error)
     return NextResponse.json(
       { error: 'Erro ao registrar dispositivo' },
       { status: 500 }
@@ -151,7 +152,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting device:', error)
+    logger.error('Error deleting device:', error)
     return NextResponse.json(
       { error: 'Erro ao remover dispositivo' },
       { status: 500 }

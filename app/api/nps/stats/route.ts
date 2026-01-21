@@ -9,6 +9,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NpsService } from "@/lib/nps-service";
 import type { Session } from "next-auth";
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
       recentDetractors,
     });
   } catch (error: any) {
-    console.error("Erro ao obter estatísticas NPS:", error);
+    logger.error("Erro ao obter estatísticas NPS:", error);
     return NextResponse.json(
       { error: error.message || "Erro ao obter estatísticas" },
       { status: 500 }

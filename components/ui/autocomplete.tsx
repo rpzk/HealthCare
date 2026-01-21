@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface AutocompleteOption {
   id: string
@@ -70,7 +71,7 @@ export function Autocomplete({
         setOptions(data.results)
       }
     } catch (error) {
-      console.error('Autocomplete fetch error:', error)
+      logger.error('Autocomplete fetch error:', error)
       setOptions([])
     } finally {
       setLoading(false)

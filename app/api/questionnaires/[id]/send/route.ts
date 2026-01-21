@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { emailService } from '@/lib/email-service'
 import { QuestionnaireNotificationService } from '@/lib/questionnaire-notification-service'
 
@@ -97,7 +99,7 @@ export async function POST(
     }, { status: 201 })
 
   } catch (error: any) {
-    console.error('Error sending questionnaire:', error)
+    logger.error('Error sending questionnaire:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -132,7 +134,7 @@ export async function GET(
     return NextResponse.json(questionnaires)
 
   } catch (error: any) {
-    console.error('Error listing sent questionnaires:', error)
+    logger.error('Error listing sent questionnaires:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

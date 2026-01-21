@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { aiAnomalyDetector } from '@/lib/ai-anomaly-detector'
 import { createRedisRateLimiter } from '@/lib/redis-integration'
+import { logger } from '@/lib/logger'
 
 const handler = withAdminAuthUnlimited(async (request) => {
   const { searchParams } = new URL(request.url)
@@ -32,7 +33,7 @@ const handler = withAdminAuthUnlimited(async (request) => {
         return NextResponse.json(await getAllAIAnalytics())
     }
   } catch (error) {
-    console.error('AI Analytics API Error:', error)
+    logger.error('AI Analytics API Error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch AI analytics' },
       { status: 500 }

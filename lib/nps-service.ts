@@ -7,6 +7,7 @@
 
 import { WhatsAppService } from './whatsapp-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface NpsData {
   consultationId: string
@@ -272,11 +273,11 @@ Leva apenas 30 segundos! 😊`
         // Delay de 2 segundos entre envios
         await new Promise(resolve => setTimeout(resolve, 2000))
       } catch (error) {
-        console.error(`[NPS] Erro ao enviar para consulta ${consultation.id}:`, error)
+        logger.error(`[NPS] Erro ao enviar para consulta ${consultation.id}:`, error)
       }
     }
 
-    console.log(`[NPS] ${sent} pesquisas enviadas`)
+    logger.info(`[NPS] ${sent} pesquisas enviadas`)
     return sent
   }
 
@@ -294,7 +295,7 @@ Leva apenas 30 segundos! 😊`
       }
     })
 
-    console.log(`[NPS] Detrator identificado: ${response.patient.name} (Score: ${response.score})`)
+    logger.info(`[NPS] Detrator identificado: ${response.patient.name} (Score: ${response.score})`)
   }
 
   /**

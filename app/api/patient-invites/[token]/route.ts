@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { emailService } from '@/lib/email-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -223,7 +224,7 @@ export async function GET(
       } : null
     })
   } catch (error) {
-    console.error('Error validating invite:', error)
+    logger.error('Error validating invite:', error)
     return NextResponse.json(
       { error: 'Erro ao validar convite' },
       { status: 500 }
@@ -503,7 +504,7 @@ export async function POST(
       isExistingUser: result.isExistingUser
     }, { status: 201 })
   } catch (error) {
-    console.error('Error accepting invite:', error)
+    logger.error('Error accepting invite:', error)
 
     if (error instanceof Error && error.message === 'Você precisa aceitar todos os termos para continuar') {
       return NextResponse.json(
@@ -609,7 +610,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error resending invite:', error)
+    logger.error('Error resending invite:', error)
     return NextResponse.json({ error: 'Erro ao reenviar convite' }, { status: 500 })
   }
 }

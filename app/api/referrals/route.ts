@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { ReferralsService } from '@/lib/referrals-service'
 import { referralQuerySchema, createReferralSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
+import { logger } from '@/lib/logger'
 
 // GET - Buscar encaminhamentos
 export const GET = withAuth(async (request, { user: _user }) => {
@@ -29,7 +30,7 @@ export const GET = withAuth(async (request, { user: _user }) => {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Erro ao buscar encaminhamentos:', error)
+    logger.error('Erro ao buscar encaminhamentos:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -64,7 +65,7 @@ export const POST = withAuth(async (request, { user }) => {
 
     return NextResponse.json(referral, { status: 201 })
   } catch (error) {
-    console.error('Erro ao criar encaminhamento:', error)
+    logger.error('Erro ao criar encaminhamento:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Todos os roles que são considerados profissionais de saúde
 const PROFESSIONAL_ROLES = [
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    console.log('[API my-consultations] Sessão:', JSON.stringify({
+    logger.info('[API my-consultations] Sessão:', JSON.stringify({
       hasSession: !!session,
       email: session?.user?.email,
       role: session?.user?.role,
@@ -31,21 +32,21 @@ export async function GET(request: NextRequest) {
     }))
 
     if (!session?.user?.email) {
-      console.log('[API my-consultations] Sem sessão ou email')
+      logger.info('[API my-consultations] Sem sessão ou email')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const userRole = session.user.role
     const isProfessional = PROFESSIONAL_ROLES.includes(userRole)
     
-    console.log('[API my-consultations] Verificação de role:', {
+    logger.info('[API my-consultations] Verificação de role:', {
       userRole,
       isProfessional,
       allowedRoles: PROFESSIONAL_ROLES
     })
 
     if (!isProfessional) {
-      console.log('[API my-consultations] Role não permitido:', userRole)
+      logger.info('[API my-consultations] Role não permitido:', userRole)
       return NextResponse.json({ error: 'Only professionals can access this' }, { status: 403 })
     }
 
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
       stats,
     })
   } catch (error) {
-    console.error('Error fetching consultations:', error)
+    logger.error('Error fetching consultations:', error)
     return NextResponse.json({ error: 'Failed to fetch consultations' }, { status: 500 })
   }
 }
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
       consultation: updated,
     })
   } catch (error) {
-    console.error('Error updating consultation:', error)
+    logger.error('Error updating consultation:', error)
     return NextResponse.json({ error: 'Failed to update consultation' }, { status: 500 })
   }
 }

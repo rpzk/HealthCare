@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { WaitingRoomService } from '@/lib/waiting-room-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       success,
     })
   } catch (error: any) {
-    console.error('Erro ao notificar paciente:', error)
+    logger.error('Erro ao notificar paciente:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao notificar paciente' },
       { status: 500 }

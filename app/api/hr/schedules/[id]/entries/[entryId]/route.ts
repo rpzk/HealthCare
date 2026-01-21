@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // PATCH - Update entry (confirm, modify shift, etc)
 export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
@@ -53,7 +54,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(updated)
   } catch (error: any) {
-    console.error('Error updating entry:', error)
+    logger.error('Error updating entry:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar entrada', details: error.message },
       { status: 500 }
@@ -97,7 +98,7 @@ export const DELETE = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting entry:', error)
+    logger.error('Error deleting entry:', error)
     return NextResponse.json(
       { error: 'Erro ao excluir entrada', details: error.message },
       { status: 500 }

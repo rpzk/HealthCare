@@ -14,6 +14,7 @@ import {
 import { getBranding } from '@/lib/branding-service'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const RenderRequestSchema = z.object({
   documentType: z.string(),
@@ -224,7 +225,7 @@ export async function POST(
       },
     })
   } catch (error) {
-    console.error('Error rendering template:', error)
+    logger.error('Error rendering template:', error)
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -21,6 +21,7 @@ import { promisify } from 'util';
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { format } from 'date-fns';
+import { logger } from '@/lib/logger'
 
 // Optional dependencies - uncomment to enable S3 and Google Drive uploads
 // npm install @aws-sdk/client-s3 googleapis archiver
@@ -92,7 +93,7 @@ export class BackupService {
     };
 
     try {
-      console.log('[Backup] Iniciando backup completo...');
+      logger.info('[Backup] Iniciando backup completo...');
 
       // 1. Backup do PostgreSQL
       const dbBackup = await this.backupPostgreSQL();
@@ -140,7 +141,7 @@ export class BackupService {
         await this.sendNotification(result);
       }
 
-      console.log('[Backup] Concluído:', result.success ? 'SUCESSO' : 'COM ERROS');
+      logger.info('[Backup] Concluído:', result.success ? 'SUCESSO' : 'COM ERROS');
 
       return result;
     } catch (error) {
@@ -166,7 +167,7 @@ export class BackupService {
       const stats = statSync(backupPath);
       const sizeMB = stats.size / (1024 * 1024);
 
-      console.log(`[Backup] PostgreSQL: ${sizeMB.toFixed(2)} MB`);
+      logger.info(`[Backup] PostgreSQL: ${sizeMB.toFixed(2)} MB`);
 
       return {
         success: true,
@@ -174,7 +175,7 @@ export class BackupService {
         sizeMB: Math.round(sizeMB * 100) / 100
       };
     } catch (error) {
-      console.error('[Backup] PostgreSQL falhou:', error);
+      logger.error('[Backup] PostgreSQL falhou:', error);
       return {
         success: false,
         error: String(error)
@@ -212,7 +213,7 @@ export class BackupService {
       const stats = statSync(backupPath);
       const sizeMB = stats.size / (1024 * 1024);
 
-      console.log(`[Backup] Arquivos: ${sizeMB.toFixed(2)} MB`);
+      logger.info(`[Backup] Arquivos: ${sizeMB.toFixed(2)} MB`);
 
       return {
         success: true,
@@ -220,7 +221,7 @@ export class BackupService {
         sizeMB: Math.round(sizeMB * 100) / 100
       };
     } catch (error) {
-      console.error('[Backup] Arquivos falhou:', error);
+      logger.error('[Backup] Arquivos falhou:', error);
       return {
         success: false,
         error: String(error)
@@ -234,7 +235,7 @@ export class BackupService {
    */
   private async uploadToS3(filePaths: string[]): Promise<boolean> {
     if (!this.config.s3Bucket) {
-      console.warn('[Backup] S3 não configurado. Instale @aws-sdk/client-s3 para habilitar.');
+      logger.warn('[Backup] S3 não configurado. Instale @aws-sdk/client-s3 para habilitar.');
       return false;
     }
 
@@ -252,13 +253,13 @@ export class BackupService {
       //     Body: fileStream
       //   });
       //   await s3Client.send(command);
-      //   console.log(`[Backup] Uploaded to S3: ${filename}`);
+      //   logger.info(`[Backup] Uploaded to S3: ${filename}`);
       // }
       
-      console.log('[Backup] S3 upload skipped (AWS SDK not installed)');
+      logger.info('[Backup] S3 upload skipped (AWS SDK not installed)');
       return false;
     } catch (error) {
-      console.error('[Backup] S3 upload falhou:', error);
+      logger.error('[Backup] S3 upload falhou:', error);
       return false;
     }
   }
@@ -272,7 +273,7 @@ export class BackupService {
       // Assumir que GOOGLE_CREDENTIALS está em ENV
       const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}');
       if (!credentials.client_email) {
-        console.warn('[Backup] Google Drive não configurado');
+        logger.warn('[Backup] Google Drive não configurado');
         return false;
       }
 
@@ -285,7 +286,7 @@ export class BackupService {
       // });
       // const drive = google.drive({ version: 'v3', auth });
 
-      console.log('[Backup] Google Drive upload skipped (googleapis SDK not installed)');
+      logger.info('[Backup] Google Drive upload skipped (googleapis SDK not installed)');
       return false;
 
       // Uncomment the following after: npm install googleapis
@@ -301,11 +302,11 @@ export class BackupService {
       //     },
       //     fields: 'id'
       //   });
-      //   console.log(`[Backup] Uploaded to Google Drive: ${filename} (${response.data.id})`);
+      //   logger.info(`[Backup] Uploaded to Google Drive: ${filename} (${response.data.id})`);
       // }
       // return true;
     } catch (error) {
-      console.error('[Backup] Google Drive upload falhou:', error);
+      logger.error('[Backup] Google Drive upload falhou:', error);
       return false;
     }
   }
@@ -326,11 +327,11 @@ export class BackupService {
 
         if (age > retentionMs) {
           unlinkSync(filePath);
-          console.log(`[Backup] Removido backup antigo: ${file}`);
+          logger.info(`[Backup] Removido backup antigo: ${file}`);
         }
       }
     } catch (error) {
-      console.error('[Backup] Rotação de backups falhou:', error);
+      logger.error('[Backup] Rotação de backups falhou:', error);
     }
   }
 
@@ -339,7 +340,7 @@ export class BackupService {
    */
   private async sendNotification(result: BackupResult): Promise<void> {
     // TODO: Integrar com serviço de email (NodeMailer, SendGrid, etc.)
-    console.log('[Backup] Notificação:', {
+    logger.info('[Backup] Notificação:', {
       success: result.success,
       errors: result.errors,
       sizes: result.size
@@ -351,7 +352,7 @@ export class BackupService {
    */
   async testRestore(backupFile: string): Promise<boolean> {
     try {
-      console.log('[Backup] Iniciando teste de restore...');
+      logger.info('[Backup] Iniciando teste de restore...');
 
       // Criar database temporário
       const testDbName = `healthcare_restore_test_${Date.now()}`;
@@ -364,14 +365,14 @@ export class BackupService {
       // Validar (query simples)
       const { stdout } = await execAsync(`PGPASSWORD="${this.config.postgresPassword}" psql -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} -d ${testDbName} -c "SELECT COUNT(*) FROM users;"`);
 
-      console.log('[Backup] Teste de restore SUCESSO:', stdout);
+      logger.info('[Backup] Teste de restore SUCESSO:', stdout);
 
       // Limpar database de teste
       await execAsync(`PGPASSWORD="${this.config.postgresPassword}" dropdb -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} ${testDbName}`);
 
       return true;
     } catch (error) {
-      console.error('[Backup] Teste de restore FALHOU:', error);
+      logger.error('[Backup] Teste de restore FALHOU:', error);
       return false;
     }
   }

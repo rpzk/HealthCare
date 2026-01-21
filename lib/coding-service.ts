@@ -6,6 +6,7 @@ import * as PrismaNS from '@prisma/client'
 const { CodeSystemKind, DiagnosisStatus, DiagnosisCertainty } = PrismaNS as any
 import Redis from 'ioredis'
 import { medicalAI } from '@/lib/advanced-medical-ai'
+import { logger } from '@/lib/logger'
 
 // ---- Simple cache (Redis + memory fallback) ----
 let _redis: Redis | null = null
@@ -125,7 +126,7 @@ export const CodingService = {
       } catch (e) {
         // Redis read failed — fallback to DB search
         // eslint-disable-next-line no-console
-        console.debug('FTS cache read failed', e)
+        logger.debug('FTS cache read failed', e)
       }
     }
     let results: { id: string; code: string; display: string }[] = []
@@ -140,7 +141,7 @@ export const CodingService = {
       } catch (e) {
         // Full-text query failed — fallback to Prisma-based search below
         // eslint-disable-next-line no-console
-        console.debug('FTS search failed, falling back', e)
+        logger.debug('FTS search failed, falling back', e)
       }
     }
     if (!results.length) {
@@ -173,7 +174,7 @@ export const CodingService = {
         await redis.setex(cacheKey, 30, JSON.stringify(results))
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.debug('Failed to set FTS cache in redis', e)
+        logger.debug('Failed to set FTS cache in redis', e)
       }
     }
     return results

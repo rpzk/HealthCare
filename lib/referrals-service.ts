@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export interface ReferralFilters {
   search?: string
@@ -84,7 +85,7 @@ export class ReferralsService {
 
       return { total, referrals }
     } catch (error) {
-      console.error('[ReferralsService] Error fetching referrals:', error)
+      logger.error('[ReferralsService] Error fetching referrals:', error)
       throw error
     }
   }

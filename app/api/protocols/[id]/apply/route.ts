@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   request: NextRequest,
@@ -130,7 +131,7 @@ export async function POST(
       data
     })
   } catch (error) {
-    console.error('Erro ao aplicar protocolo:', error)
+    logger.error('Erro ao aplicar protocolo:', error)
     return NextResponse.json(
       { error: 'Erro ao aplicar protocolo' },
       { status: 500 }

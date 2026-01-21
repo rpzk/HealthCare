@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const roomId = params?.id as string
   if (!roomId) return NextResponse.json({ error: 'roomId ausente' }, { status: 400 })
   const body = await req.json().catch((err: unknown) => {
-    console.warn('Invalid JSON in tele signal POST', err)
+    logger.warn('Invalid JSON in tele signal POST', err)
     return null
   })
   if (!body) return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     await pub.quit()
   } catch (err: unknown) {
-    console.warn('Error quitting redis publisher', err)
+    logger.warn('Error quitting redis publisher', err)
   }
   return NextResponse.json({ ok: true })
 }

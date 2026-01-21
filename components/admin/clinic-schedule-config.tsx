@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Clock, Save, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface DaySchedule {
   dayOfWeek: number
@@ -47,7 +48,7 @@ export function ClinicScheduleConfig() {
         setSchedules(data.schedules)
       }
     } catch (error) {
-      console.error('Error loading clinic schedules:', error)
+      logger.error('Error loading clinic schedules:', error)
       toast.error('Erro ao carregar horários da clínica')
     } finally {
       setLoading(false)
@@ -89,7 +90,7 @@ export function ClinicScheduleConfig() {
       toast.success('Horários da clínica atualizados!')
       setHasChanges(false)
     } catch (error) {
-      console.error('Error saving clinic schedules:', error)
+      logger.error('Error saving clinic schedules:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao salvar horários')
     } finally {
       setSaving(false)

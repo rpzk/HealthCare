@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
+import { logger } from '@/lib/logger'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
 
 // GET /api/prescriptions/[id]
@@ -10,7 +11,7 @@ export const GET = withAuth(async (_req, { params }) => {
     if (!item) return NextResponse.json({ error: 'Prescrição não encontrada' }, { status: 404 })
     return NextResponse.json(item)
   } catch (error) {
-    console.error('Erro ao buscar prescrição:', error)
+    logger.error('Erro ao buscar prescrição:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 })
@@ -27,7 +28,7 @@ export const PATCH = withAuth(async (req, { params, user }) => {
     const updated = await PrescriptionsServiceDb.update(id, body)
     return NextResponse.json(updated)
   } catch (error) {
-    console.error('Erro ao atualizar prescrição:', error)
+    logger.error('Erro ao atualizar prescrição:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 })
@@ -39,7 +40,7 @@ export const DELETE = withAuth(async (_req, { params }) => {
     const result = await PrescriptionsServiceDb.remove(id)
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Erro ao excluir prescrição:', error)
+    logger.error('Erro ao excluir prescrição:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 })

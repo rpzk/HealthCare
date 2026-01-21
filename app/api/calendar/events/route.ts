@@ -15,6 +15,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { addMinutes } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -139,7 +140,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ events })
 
   } catch (error) {
-    console.error('[Calendar Events] Error:', error)
+    logger.error('[Calendar Events] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar eventos' },
       { status: 500 }

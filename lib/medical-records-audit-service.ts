@@ -70,12 +70,12 @@ class MedicalRecordsAuditService {
         }
       });
     } catch (dbError) {
-      console.error('Failed to persist audit log to database:', dbError);
+      logger.error('Failed to persist audit log to database:', dbError);
       // Fallback to console
     }
 
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG_AUDIT) {
-      console.log('[Medical Records Audit]', {
+      logger.info('[Medical Records Audit]', {
         action: audit.action,
         resourceId: audit.resourceId,
         userId: audit.userId,
@@ -86,7 +86,7 @@ class MedicalRecordsAuditService {
 
     // Log errors prominently
     if (!audit.success && audit.error) {
-      console.error('[Medical Records Audit Error]', {
+      logger.error('[Medical Records Audit Error]', {
         action: audit.action,
         resourceId: audit.resourceId,
         error: audit.error
@@ -258,7 +258,7 @@ class MedicalRecordsAuditService {
     // In Phase 3, this will query the database
     // For now, return empty array
     if (process.env.DEBUG_AUDIT) {
-      console.log('[Audit Trail] Retrieving for record:', recordId)
+      logger.info('[Audit Trail] Retrieving for record:', recordId)
     }
     return []
   }
@@ -270,7 +270,7 @@ class MedicalRecordsAuditService {
   async getUserOperations(userId: string, limit: number = 100): Promise<AuditLog[]> {
     // In Phase 3, this will query the database
     if (process.env.DEBUG_AUDIT) {
-      console.log('[User Operations] Retrieving for user:', userId, 'limit:', limit)
+      logger.info('[User Operations] Retrieving for user:', userId, 'limit:', limit)
     }
     return []
   }
@@ -281,7 +281,7 @@ class MedicalRecordsAuditService {
   async getSensitiveOperations(limit: number = 100): Promise<AuditLog[]> {
     // In Phase 3, this will query the database
     if (process.env.DEBUG_AUDIT) {
-      console.log('[Sensitive Operations] Retrieving with limit:', limit)
+      logger.info('[Sensitive Operations] Retrieving with limit:', limit)
     }
     return []
   }

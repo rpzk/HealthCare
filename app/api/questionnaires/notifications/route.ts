@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(enrichedNotifications)
   } catch (error: any) {
-    console.error('Erro ao buscar notificações:', error)
+    logger.error('Erro ao buscar notificações:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar notificações' },
       { status: 500 }

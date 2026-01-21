@@ -9,6 +9,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 const execAsync = promisify(exec)
 
@@ -67,12 +68,12 @@ export async function POST(request: NextRequest) {
       // Executar script de restauração
       const restoreScript = `bash /home/umbrel/HealthCare/scripts/restore-database.sh "${filename}"`
 
-      console.log('[Restore] Iniciando restauração:', filename)
+      logger.info('[Restore] Iniciando restauração:', filename)
 
       const { stdout, stderr } = await execAsync(restoreScript)
 
-      console.log('[Restore] Sucesso')
-      console.log(stdout)
+      logger.info('[Restore] Sucesso')
+      logger.info(stdout)
 
       return NextResponse.json({
         success: true,
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
         details: stdout,
       })
     } catch (err: any) {
-      console.error('[Restore] Erro ao executar script:', err)
+      logger.error('[Restore] Erro ao executar script:', err)
       return NextResponse.json(
         {
           success: false,
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error) {
-    console.error('[Backups Restore] Error:', error)
+    logger.error('[Backups Restore] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao restaurar backup' },
       { status: 500 }

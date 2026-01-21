@@ -1,6 +1,7 @@
 import ollamaClient from './ollama-client'
 import { prisma } from '@/lib/prisma'
 import type { Consultation, VitalSigns as VitalSignsModel, Prescription as PrescriptionModel, ExamRequest as ExamRequestModel, MedicalRecord as MedicalRecordModel } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 const model = ollamaClient.getGenerativeModel({ model: process.env.OLLAMA_MODEL || 'qwen2.5:3b' })
 
@@ -67,7 +68,7 @@ export class MedicalAgentService {
 
       return patient
     } catch (error) {
-      console.error('Erro ao coletar dados do paciente:', error)
+      logger.error('Erro ao coletar dados do paciente:', error)
       throw new Error('Não foi possível coletar os dados do paciente')
     }
   }
@@ -156,7 +157,7 @@ Seja preciso, detalhado e baseie-se em evidências médicas.
       return this.parseAnalysisResponse(analysisText, patientData)
 
     } catch (error) {
-      console.error('Erro na análise do histórico:', error)
+      logger.error('Erro na análise do histórico:', error)
       throw new Error('Não foi possível analisar o histórico do paciente')
     }
   }
@@ -209,7 +210,7 @@ Considere SEMPRE o histórico completo para contextualizar as decisões.
       return this.parseEvolutionResponse(evolutionText)
 
     } catch (error) {
-      console.error('Erro na geração de evolução:', error)
+      logger.error('Erro na geração de evolução:', error)
       throw new Error('Não foi possível gerar sugestão de evolução')
     }
   }
@@ -248,7 +249,7 @@ Identifique:
       return result.response.text()
 
     } catch (error) {
-      console.error('Erro na análise de tendências:', error)
+      logger.error('Erro na análise de tendências:', error)
       return 'Erro ao analisar tendências dos sinais vitais'
     }
   }

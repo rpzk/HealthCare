@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(templatesWithCount)
 
   } catch (error: any) {
-    console.error('Error fetching questionnaire templates:', error)
+    logger.error('Error fetching questionnaire templates', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

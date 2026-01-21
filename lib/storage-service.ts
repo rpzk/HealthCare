@@ -20,6 +20,7 @@ import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { SystemSettingsService } from './system-settings-service';
+import { logger } from '@/lib/logger'
 
 // Configuração com fallback para .env
 const ENCRYPTION_KEY = process.env.RECORDING_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || randomBytes(32).toString('hex');
@@ -284,7 +285,7 @@ export async function cleanupOldRecordings(daysOld: number = 90): Promise<number
   // - Deletar em batch
   // - Retornar número de arquivos deletados
   
-  console.log(`Cleanup de gravações com mais de ${daysOld} dias não implementado ainda`);
+  logger.info(`Cleanup de gravações com mais de ${daysOld} dias não implementado ainda`);
   return 0;
 }
 

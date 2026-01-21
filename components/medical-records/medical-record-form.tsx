@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { logger } from '@/lib/logger'
 
 export interface MedicalRecordFormProps {
   recordId?: string
@@ -148,7 +149,7 @@ export function MedicalRecordForm({
         router.push(`/medical-records/${result.id}`)
       }
     } catch (error) {
-      console.error('Error saving medical record:', error)
+      logger.error('Error saving medical record:', error)
       showToast(
         'Erro',
         error instanceof Error ? error.message : 'Erro ao salvar prontuário'

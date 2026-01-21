@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { startOfMonth, endOfMonth } from 'date-fns'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 export const GET = withAuth(async (req: NextRequest) => {
@@ -46,7 +47,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       recordsThisMonth: 0 // TODO: Add logic to count records this month if needed
     })
   } catch (error) {
-    console.error('Error fetching stats:', error)
+    logger.error('Error fetching stats:', error)
     return NextResponse.json(
       { error: 'Failed to fetch statistics' },
       { status: 500 }

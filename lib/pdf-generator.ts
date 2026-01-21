@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit'
 import path from 'path'
 import { generateCertificateQRCode } from './qrcode-generator';
+import { logger } from '@/lib/logger'
 
 export type CertificatePdfInput = {
   clinic: { name: string; address?: string; phone?: string; logoUrl?: string; headerUrl?: string; footerText?: string };
@@ -30,7 +31,7 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     try {
       qrBuffer = await generateCertificateQRCode(input.validationUrl)
     } catch (e) {
-      console.warn('Failed to generate QR code:', e)
+      logger.warn('Failed to generate QR code:', e)
     }
   }
   return await new Promise<Buffer>((resolve, reject) => {
@@ -108,7 +109,7 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
         doc.image(qrBuffer, 450, doc.y - 80, { width: 80, height: 80 });
         doc.moveDown(3);
       } catch (e) {
-        console.warn('Failed to render QR code in PDF:', e);
+        logger.warn('Failed to render QR code in PDF:', e);
       }
     }
     

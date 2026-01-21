@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { ExamRequestsService } from '@/lib/exam-requests-service'
 import { examRequestQuerySchema, createExamRequestSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
+import { logger } from '@/lib/logger'
 
 // GET - Buscar solicitações de exames
 export const GET = withAuth(async (request, { user: _user }) => {
@@ -29,7 +30,7 @@ export const GET = withAuth(async (request, { user: _user }) => {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Erro ao buscar solicitações de exame:', error)
+    logger.error('Erro ao buscar solicitações de exame:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -65,7 +66,7 @@ export const POST = withAuth(async (request, { user }) => {
 
     return NextResponse.json(examRequest, { status: 201 })
   } catch (error) {
-    console.error('Erro ao criar solicitação de exame:', error)
+    logger.error('Erro ao criar solicitação de exame:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

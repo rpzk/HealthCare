@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import path from 'path'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (e: any) {
-    console.error('[User Backup] Error:', e)
+    logger.error('[User Backup] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao exportar usuário' }, { status: 500 })
   }
 }

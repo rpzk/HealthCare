@@ -91,7 +91,7 @@ export async function renderPrometheus(prisma?: { auditLog?: { count: () => Prom
       // don't fail rendering metrics if audit log query fails - log at debug level
       // keeps the catch from being an empty block (ESLint no-empty)
       // eslint-disable-next-line no-console
-      console.debug('renderPrometheus: unable to count audit logs', e)
+      logger.debug('renderPrometheus: unable to count audit logs', e)
     }
   }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { QuestionnaireNotificationService } from '@/lib/questionnaire-notification-service'
+import { logger } from '@/lib/logger'
 
 // GET - Obter questionário por token (acesso público para paciente)
 export async function GET(
@@ -97,7 +98,7 @@ export async function GET(
     })
 
   } catch (error: any) {
-    console.error('Error fetching questionnaire:', error)
+    logger.error('Error fetching questionnaire:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -262,7 +263,7 @@ export async function POST(
     })
 
   } catch (error: any) {
-    console.error('Error saving answers:', error)
+    logger.error('Error saving answers:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

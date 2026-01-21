@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast'
 import { CheckCircle, XCircle, Clock, Calendar, User, Phone, Mail, AlertCircle, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface Patient {
   id: string
@@ -85,7 +86,7 @@ export function PendingAppointmentsManager() {
         setSummary(data.summary)
       }
     } catch (error) {
-      console.error('Error loading appointments:', error)
+      logger.error('Error loading appointments:', error)
       toast({
         title: 'Erro',
         description: 'Falha ao carregar agendamentos',

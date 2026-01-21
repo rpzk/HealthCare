@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 import {
   Sparkles,
   Heart,
@@ -188,7 +189,7 @@ export function StrengthsAssessment() {
 
       setStrengths(data.strengths || [])
     } catch (error) {
-      console.error('Erro ao carregar forças:', error)
+      logger.error('Erro ao carregar forças:', error)
       toast({ title: 'Erro', description: 'Falha ao carregar dados', variant: 'destructive' })
     } finally {
       setLoading(false)

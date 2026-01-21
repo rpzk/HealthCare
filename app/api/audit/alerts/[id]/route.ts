@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { advancedAuditService } from '@/lib/advanced-audit-service';
+import { logger } from '@/lib/logger'
 
 /**
  * PATCH /api/audit/alerts/[id]
@@ -52,7 +53,7 @@ export async function PATCH(
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error('[Audit] Erro ao atualizar alerta:', error);
+    logger.error('[Audit] Erro ao atualizar alerta:', error);
     return NextResponse.json(
       { error: 'Erro ao atualizar alerta' },
       { status: 500 }
@@ -89,7 +90,7 @@ export async function GET(
 
     return NextResponse.json(details, { status: 200 });
   } catch (error) {
-    console.error('[Audit] Erro ao buscar detalhes:', error);
+    logger.error('[Audit] Erro ao buscar detalhes:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar detalhes' },
       { status: 500 }

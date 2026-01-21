@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { logger } from '@/lib/logger'
 
 interface MedicalAgentPanelProps {
   patientId: string
@@ -70,7 +71,7 @@ export function MedicalAgentPanel({ patientId, patientName }: MedicalAgentPanelP
       setExpandedSections(['summary'])
 
     } catch (error) {
-      console.error('Erro na análise:', error)
+      logger.error('Erro na análise:', error)
       // Dados de demonstração
       setAnalysisResult({
         clinicalSummary: `Análise completa do histórico do paciente ${patientName}:\n\n` +

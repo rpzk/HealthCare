@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Todos os roles que são considerados profissionais de saúde
 const PROFESSIONAL_ROLES = [
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       schedules,
     })
   } catch (error) {
-    console.error('Error fetching schedules:', error)
+    logger.error('Error fetching schedules:', error)
     return NextResponse.json(
       { error: 'Failed to fetch schedules' },
       { status: 500 }
@@ -145,7 +146,7 @@ export async function PUT(request: NextRequest) {
       updated: updatedSchedules.reduce((acc, result) => acc + result.count, 0),
     })
   } catch (error) {
-    console.error('Error updating schedules:', error)
+    logger.error('Error updating schedules:', error)
     return NextResponse.json(
       { error: 'Failed to update schedules' },
       { status: 500 }

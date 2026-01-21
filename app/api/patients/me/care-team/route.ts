@@ -8,6 +8,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { translateAccessLevel } from '@/lib/patient-access'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
       totalMembros: formattedTeam.length
     })
   } catch (error) {
-    console.error('Error fetching care team:', error)
+    logger.error('Error fetching care team:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar equipe de cuidado' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const POST = withAuth(async (request: NextRequest, { user, params }) => {
   try {
@@ -42,7 +43,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
 
     // TODO: Implement actual email sending
     // For now, return success response
-    console.log(`[PRESCRIPTION SHARE] Enviando para ${method}:`, {
+    logger.info(`[PRESCRIPTION SHARE] Enviando para ${method}:`, {
       prescriptionId: id,
       patient: prescription.patient?.name,
       recipient: recipientEmail,
@@ -57,7 +58,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     })
 
   } catch (error) {
-    console.error('Erro ao enviar prescrição:', error)
+    logger.error('Erro ao enviar prescrição:', error)
     return NextResponse.json(
       { error: 'Erro ao enviar prescrição' },
       { status: 500 }

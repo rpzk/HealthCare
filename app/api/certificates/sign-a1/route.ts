@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/certificates/sign-a1
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Sign A1] Erro:', error)
+    logger.error('[Sign A1] Erro:', error)
     return NextResponse.json(
       {
         error: 'Erro ao assinar atestado',

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
@@ -115,7 +116,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       }
     }, { status: 201 })
   } catch (error) {
-    console.error('Error uploading document:', error)
+    logger.error('Error uploading document:', error)
     return NextResponse.json(
       { error: 'Erro ao fazer upload do documento' },
       { status: 500 }
@@ -151,7 +152,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json({ data: documents })
   } catch (error) {
-    console.error('Error fetching documents:', error)
+    logger.error('Error fetching documents:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar documentos' },
       { status: 500 }

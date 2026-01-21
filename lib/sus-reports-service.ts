@@ -6,6 +6,7 @@
 import type { Consultation, Patient } from '@prisma/client'
 import { startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface DailyReportParams {
   healthUnitId: string
@@ -105,7 +106,7 @@ export class SUSReportsService {
 
       return report
     } catch (error) {
-      console.error('Erro ao gerar relatório diário:', error)
+      logger.error('Erro ao gerar relatório diário:', error)
       throw error
     }
   }
@@ -273,7 +274,7 @@ export class SUSReportsService {
 
       return report
     } catch (error) {
-      console.error('Erro ao gerar relatório mensal:', error)
+      logger.error('Erro ao gerar relatório mensal:', error)
       throw error
     }
   }
@@ -361,7 +362,7 @@ export class SUSReportsService {
 
       return report
     } catch (error) {
-      console.error('Erro ao gerar relatório de situação de saúde:', error)
+      logger.error('Erro ao gerar relatório de situação de saúde:', error)
       throw error
     }
   }
@@ -377,7 +378,7 @@ export class SUSReportsService {
         take: 12 // Últimos 12 meses
       })
     } catch (error) {
-      console.error('Erro ao buscar relatórios mensais:', error)
+      logger.error('Erro ao buscar relatórios mensais:', error)
       throw error
     }
   }
@@ -410,7 +411,7 @@ export class SUSReportsService {
         take: 30 // Últimos 30 dias
       })
     } catch (error) {
-      console.error('Erro ao buscar relatórios diários:', error)
+      logger.error('Erro ao buscar relatórios diários:', error)
       throw error
     }
   }

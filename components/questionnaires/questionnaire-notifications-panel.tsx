@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface QuestionnaireNotification {
   id: string
@@ -57,7 +58,7 @@ export function QuestionnaireNotificationsPanel({ userId }: Props) {
         setNotifications(data)
       }
     } catch (error) {
-      console.error('Erro ao carregar notificações:', error)
+      logger.error('Erro ao carregar notificações:', error)
     } finally {
       setLoading(false)
     }
@@ -81,7 +82,7 @@ export function QuestionnaireNotificationsPanel({ userId }: Props) {
         prev.map(n => n.id === id ? { ...n, read: true } : n)
       )
     } catch (error) {
-      console.error('Erro ao marcar como lido:', error)
+      logger.error('Erro ao marcar como lido:', error)
     }
   }
 
@@ -92,7 +93,7 @@ export function QuestionnaireNotificationsPanel({ userId }: Props) {
       })
       setNotifications(prev => prev.filter(n => n.id !== id))
     } catch (error) {
-      console.error('Erro ao deletar notificação:', error)
+      logger.error('Erro ao deletar notificação:', error)
     }
   }
 
@@ -103,7 +104,7 @@ export function QuestionnaireNotificationsPanel({ userId }: Props) {
       })
       setNotifications(prev => prev.map(n => ({ ...n, read: true })))
     } catch (error) {
-      console.error('Erro ao marcar todas como lidas:', error)
+      logger.error('Erro ao marcar todas como lidas:', error)
     }
   }
 

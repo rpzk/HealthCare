@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // ========================================
 // TIPOS
@@ -133,7 +134,7 @@ class MercadoPagoService {
         paymentUrl: result.init_point, // Link de pagamento
       }
     } catch (error) {
-      console.error('[MercadoPago] Error:', error)
+      logger.error('[MercadoPago] Error:', error)
       return { success: false, error: 'Erro ao conectar com MercadoPago' }
     }
   }
@@ -160,7 +161,7 @@ class MercadoPagoService {
 
       return statusMap[payment.status] || 'pending'
     } catch (error) {
-      console.error('[MercadoPago] Error checking status:', error)
+      logger.error('[MercadoPago] Error checking status:', error)
       return 'pending'
     }
   }
@@ -199,7 +200,7 @@ class PixService {
         pixKey,
       }
     } catch (error) {
-      console.error('[PIX] Error:', error)
+      logger.error('[PIX] Error:', error)
       return { success: false, error: 'Erro ao gerar código PIX' }
     }
   }
@@ -365,7 +366,7 @@ export class PaymentGatewayService {
         metadata: data,
       }
     } catch (error) {
-      console.error('[Webhook] Error processing MercadoPago:', error)
+      logger.error('[Webhook] Error processing MercadoPago:', error)
       return null
     }
   }
@@ -402,7 +403,7 @@ export class PaymentGatewayService {
 
       return false
     } catch (error) {
-      console.error('[PaymentGateway] Error updating transaction:', error)
+      logger.error('[PaymentGateway] Error updating transaction:', error)
       return false
     }
   }
@@ -429,7 +430,7 @@ export class PaymentGatewayService {
 
       return await WhatsAppService.sendMessage({ to: phoneNumber, message })
     } catch (error) {
-      console.error('[PaymentGateway] Error sending WhatsApp:', error)
+      logger.error('[PaymentGateway] Error sending WhatsApp:', error)
       return false
     }
   }

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/navigation/page-header'
 import { SearchFilter } from '@/components/search/search-filter'
 import { ConsultationForm } from './consultation-form'
+import { logger } from '@/lib/logger'
 
 interface Consultation {
   id: string
@@ -113,7 +114,7 @@ export function ConsultationsList() {
       }
     } catch (err) {
       const error = err as Error
-      console.error('Erro ao buscar consultas:', error)
+      logger.error('Erro ao buscar consultas:', error)
       setError(error.message || 'Erro ao carregar consultas')
       setConsultations([])
     } finally {
@@ -142,7 +143,7 @@ export function ConsultationsList() {
       await fetchConsultations()
     } catch (err) {
       const error = err as Error
-      console.error(`Erro ao ${action} consulta:`, error)
+      logger.error(`Erro ao ${action} consulta:`, error)
       setError(error.message)
     } finally {
       setFormLoading(false)
@@ -499,7 +500,7 @@ export function ConsultationsList() {
                     }
                   } catch (error) {
                     const err = error as Error
-                    console.error('Erro ao criar consulta:', err)
+                    logger.error('Erro ao criar consulta:', err)
                     throw err
                   }
                 }}

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { syncConsultationsToGoogleCalendar } from '@/lib/google-calendar'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Google Calendar Sync] Error:', error)
+    logger.error('[Google Calendar Sync] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao sincronizar com Google Calendar' },
       { status: 500 }

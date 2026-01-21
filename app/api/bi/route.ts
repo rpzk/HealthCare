@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { BIService } from '@/lib/bi-service'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 
@@ -23,7 +24,7 @@ export const GET = withAuth(async (req, { user }) => {
       consultationHistory
     })
   } catch (error) {
-    console.error('[BI_API_ERROR]', error)
+    logger.error('[BI_API_ERROR]', error)
     return new NextResponse('Internal Error', { status: 500 })
   }
 })

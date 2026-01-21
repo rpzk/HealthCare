@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { paymentGateway } from '@/lib/payment-gateway-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * Webhook do MercadoPago
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    console.log('[MercadoPago Webhook] Received:', body)
+    logger.info('[MercadoPago Webhook] Received:', body)
 
     // Validar assinatura do webhook (em produção)
     // const signature = request.headers.get('x-signature')
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('[MercadoPago Webhook] Error:', error)
+    logger.error('[MercadoPago Webhook] Error:', error)
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
   }
 }

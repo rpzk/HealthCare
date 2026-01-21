@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export type SettingCategory = 'GENERAL' | 'EMAIL' | 'SECURITY' | 'SYSTEM'
 
@@ -35,7 +36,7 @@ const fallbackManager = {
       if (!fs.existsSync(FALLBACK_FILE_PATH)) return {}
       return JSON.parse(fs.readFileSync(FALLBACK_FILE_PATH, 'utf-8'))
     } catch (e) {
-      console.warn('Failed to read fallback settings file:', e)
+      logger.warn('Failed to read fallback settings file:', e)
       return {}
     }
   },
@@ -45,7 +46,7 @@ const fallbackManager = {
       this.ensureDirectory()
       fs.writeFileSync(FALLBACK_FILE_PATH, JSON.stringify(data, null, 2))
     } catch (e) {
-      console.error('Failed to write fallback settings file:', e)
+      logger.error('Failed to write fallback settings file:', e)
     }
   },
 
@@ -86,7 +87,7 @@ export const settings = {
       const fallback = fallbackManager.get(key)
       return fallback ?? defaultValue
     } catch (error) {
-      console.warn(`[settings] Failed to fetch setting ${key} from DB, trying fallback...`, error)
+      logger.warn(`[settings] Failed to fetch setting ${key} from DB, trying fallback...`, error)
       const fallback = fallbackManager.get(key)
       return fallback ?? defaultValue
     }
@@ -103,7 +104,7 @@ export const settings = {
         create: { key, value, category, description: description || null, isPublic: false }
       })
     } catch (error) {
-      console.error(`[settings] Database error saving ${key}, fallback was used:`, error)
+      logger.error(`[settings] Database error saving ${key}, fallback was used:`, error)
     }
   },
 
@@ -129,7 +130,7 @@ export const settings = {
 
       return result
     } catch (error) {
-      console.warn('[settings] Failed to fetch settings from DB, trying fallback...', error)
+      logger.warn('[settings] Failed to fetch settings from DB, trying fallback...', error)
       keys.forEach(key => {
         const val = fallbackManager.get(key)
         if (val !== null) result[key] = val
@@ -146,7 +147,7 @@ export const settings = {
         orderBy: { key: 'asc' }
       })
     } catch (error) {
-      console.warn('[settings] Failed to fetch settings by category from DB', error)
+      logger.warn('[settings] Failed to fetch settings by category from DB', error)
     }
 
     const fileSettings = fallbackManager.getAllByCategory(category)

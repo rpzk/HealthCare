@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 // GET - HR Dashboard summary
@@ -160,7 +161,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       activeSchedules
     })
   } catch (error: any) {
-    console.error('Error fetching HR dashboard:', error)
+    logger.error('Error fetching HR dashboard:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar dashboard', details: error.message },
       { status: 500 }

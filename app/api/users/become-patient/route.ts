@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BiometricDataType } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // POST - Usuário existente ativa seu perfil de paciente
 export async function POST(request: NextRequest) {
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
-    console.error('Error creating patient profile:', error)
+    logger.error('Error creating patient profile:', error)
     return NextResponse.json(
       { error: 'Erro ao criar perfil de paciente' },
       { status: 500 }
@@ -173,7 +174,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error checking patient status:', error)
+    logger.error('Error checking patient status:', error)
     return NextResponse.json(
       { error: 'Erro ao verificar status' },
       { status: 500 }

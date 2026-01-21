@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { backupService } from '@/lib/backup-service';
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/backup/trigger
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Backup] Disparado manualmente por ${session.user.email}`);
+    logger.info(`[Backup] Disparado manualmente por ${session.user.email}`);
 
     const result = await backupService.runFullBackup();
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('[Backup] Erro ao executar:', error);
+    logger.error('[Backup] Erro ao executar:', error);
     return NextResponse.json(
       { error: 'Erro ao executar backup' },
       { status: 500 }

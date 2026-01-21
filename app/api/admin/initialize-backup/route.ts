@@ -12,6 +12,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       message: 'Backup schedule not enabled. Set ENABLE_BACKUP_SCHEDULE=true or run in production'
     }, { status: 400 })
   } catch (error) {
-    console.error('Failed to initialize backup schedule:', error)
+    logger.error('Failed to initialize backup schedule:', error)
     return NextResponse.json({
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error'

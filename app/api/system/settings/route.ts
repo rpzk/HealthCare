@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { SystemSettingsService, SettingCategory } from '@/lib/system-settings-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       settings,
     })
   } catch (error: any) {
-    console.error('Erro ao listar configurações:', error)
+    logger.error('Erro ao listar configurações:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao listar configurações' },
       { status: 500 }
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Debug log
     if (key === 'SMTP_PASS') {
-      console.log('[SMTP_PASS] Recebido no backend:', {
+      logger.info('[SMTP_PASS] Recebido no backend:', {
         key,
         valueLength: value?.length,
         provided: typeof value === 'string' ? value.trim().length > 0 : value !== undefined,
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
       message: 'Configuração salva com sucesso',
     })
   } catch (error: any) {
-    console.error('Erro ao salvar configuração:', error)
+    logger.error('Erro ao salvar configuração:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao salvar configuração' },
       { status: 500 }
@@ -216,7 +217,7 @@ export async function PUT(request: NextRequest) {
       message: `${settings.length} configurações atualizadas com sucesso`,
     })
   } catch (error: any) {
-    console.error('Erro ao atualizar configurações:', error)
+    logger.error('Erro ao atualizar configurações:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao atualizar configurações' },
       { status: 500 }
@@ -271,7 +272,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Configuração removida com sucesso',
     })
   } catch (error: any) {
-    console.error('Erro ao remover configuração:', error)
+    logger.error('Erro ao remover configuração:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao remover configuração' },
       { status: 500 }

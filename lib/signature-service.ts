@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
+import { logger } from '@/lib/logger'
 
 /**
  * Signature Service - Digital signing for medical certificates
@@ -57,7 +58,7 @@ export function signWithPKILocal(
       timestamp: new Date(),
     }
   } catch (error) {
-    console.error('PKI_LOCAL signing failed:', error)
+    logger.error('PKI_LOCAL signing failed:', error)
     throw error
   }
 }
@@ -93,7 +94,7 @@ export function verifyWithPKILocal(
       message: valid ? 'Signature verified' : 'Signature invalid',
     }
   } catch (error) {
-    console.error('PKI_LOCAL verification failed:', error)
+    logger.error('PKI_LOCAL verification failed:', error)
     return {
       valid: false,
       method: 'PKI_LOCAL',

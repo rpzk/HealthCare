@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -65,8 +66,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           // Only same room messages are published on this channel
           send('signal', evt)
         } catch (e: unknown) {
-          if (e instanceof Error) console.warn('Invalid message in redis onMessage:', e.message)
-          else console.warn('Invalid message in redis onMessage:', String(e))
+          if (e instanceof Error) logger.warn('Invalid message in redis onMessage:', e.message)
+          else logger.warn('Invalid message in redis onMessage:', String(e))
           send('error', { error: 'invalid message' })
         }
       }
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         try {
           controller.enqueue(encoder.encode(`:ka\n\n`))
         } catch (err: unknown) {
-          console.warn('Failed to enqueue keepalive event', err)
+          logger.warn('Failed to enqueue keepalive event', err)
         }
       }, 15000)
 
@@ -85,31 +86,31 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         try {
           sub.off('message', onMessage)
         } catch (err: unknown) {
-          console.warn('Error removing redis message listener', err)
+          logger.warn('Error removing redis message listener', err)
         }
 
         try {
           sub.unsubscribe(channel)
         } catch (err: unknown) {
-          console.warn('Error unsubscribing redis channel', err)
+          logger.warn('Error unsubscribing redis channel', err)
         }
 
         try {
           sub.quit()
         } catch (err: unknown) {
-          console.warn('Error quitting redis connection', err)
+          logger.warn('Error quitting redis connection', err)
         }
 
         try {
           clearInterval(ka)
         } catch (err: unknown) {
-          console.warn('Error clearing keepalive interval', err)
+          logger.warn('Error clearing keepalive interval', err)
         }
 
         try {
           controller.close()
         } catch (err: unknown) {
-          console.warn('Error closing stream controller', err)
+          logger.warn('Error closing stream controller', err)
         }
       }
 
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           req.signal.addEventListener('abort', cleanup)
         }
       } catch (err: unknown) {
-        console.warn('Error attaching abort listener to request signal', err)
+        logger.warn('Error attaching abort listener to request signal', err)
       }
     }
   })

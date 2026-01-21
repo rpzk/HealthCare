@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const templateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ templates })
   } catch (error) {
-    console.error('Error fetching templates:', error)
+    logger.error('Error fetching templates:', error)
     return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
   }
 }
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
       template,
     })
   } catch (error) {
-    console.error('Error creating template:', error)
+    logger.error('Error creating template:', error)
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
     }
@@ -143,7 +144,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Template removido com sucesso',
     })
   } catch (error) {
-    console.error('Error deleting template:', error)
+    logger.error('Error deleting template:', error)
     return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 })
   }
 }

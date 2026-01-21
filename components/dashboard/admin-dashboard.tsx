@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
+import { logger } from '@/lib/logger'
 import {
   Select,
   SelectContent,
@@ -91,7 +92,7 @@ export function AdminDashboard() {
       const result = await response.json()
       setData(result.data)
     } catch (err) {
-      console.error('Erro ao carregar dados:', err)
+      logger.error('Erro ao carregar dados:', err)
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
       setLoading(false)

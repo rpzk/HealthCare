@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { DocumentTemplateService } from '@/lib/document-templates/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const CreateTemplateSchema = z.object({
   name: z.string().min(3).max(255),
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Error fetching templates:', error)
+    logger.error('Error fetching templates:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar templates' },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(template, { status: 201 })
   } catch (error) {
-    console.error('Error creating template:', error)
+    logger.error('Error creating template:', error)
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(

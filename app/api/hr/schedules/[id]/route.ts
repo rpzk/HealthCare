@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Get schedule with entries
 export const GET = withAuth(async (req: NextRequest, { params, user }) => {
@@ -34,7 +35,7 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(schedule)
   } catch (error: any) {
-    console.error('Error fetching schedule:', error)
+    logger.error('Error fetching schedule:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar escala', details: error.message },
       { status: 500 }
@@ -79,7 +80,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(schedule)
   } catch (error: any) {
-    console.error('Error updating schedule:', error)
+    logger.error('Error updating schedule:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar escala', details: error.message },
       { status: 500 }
@@ -109,7 +110,7 @@ export const DELETE = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting schedule:', error)
+    logger.error('Error deleting schedule:', error)
     return NextResponse.json(
       { error: 'Erro ao excluir escala', details: error.message },
       { status: 500 }

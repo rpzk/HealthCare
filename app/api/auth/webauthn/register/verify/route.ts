@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { verifyRegistrationResponseForUser } from '@/lib/webauthn'
 import type { RegistrationResponseJSON } from '@simplewebauthn/typescript-types'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ verified: true })
   } catch (error: any) {
-    console.error('Erro ao verificar registro WebAuthn:', error)
+    logger.error('Erro ao verificar registro WebAuthn:', error)
     return NextResponse.json({ error: error?.message || 'Erro interno' }, { status: 500 })
   }
 }

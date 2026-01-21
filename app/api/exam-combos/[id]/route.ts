@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { logger } from '@/lib/logger'
 
 // Schema de validação para editar combo
 const UpdateExamComboSchema = z.object({
@@ -77,7 +78,7 @@ export async function GET(
 
     return NextResponse.json(combo);
   } catch (error) {
-    console.error('Erro ao buscar combo:', error);
+    logger.error('Erro ao buscar combo:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar combo' },
       { status: 500 }
@@ -214,7 +215,7 @@ export async function PUT(
         { status: 400 }
       );
     }
-    console.error('Erro ao atualizar combo:', error);
+    logger.error('Erro ao atualizar combo:', error);
     return NextResponse.json(
       { error: 'Erro ao atualizar combo' },
       { status: 500 }
@@ -263,7 +264,7 @@ export async function DELETE(
       message: `Combo "${existingCombo.name}" excluído com sucesso`,
     });
   } catch (error) {
-    console.error('Erro ao excluir combo:', error);
+    logger.error('Erro ao excluir combo:', error);
     return NextResponse.json(
       { error: 'Erro ao excluir combo' },
       { status: 500 }

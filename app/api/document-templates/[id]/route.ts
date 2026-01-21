@@ -6,6 +6,7 @@ import { auth } from '@/auth'
 import { DocumentTemplateService } from '@/lib/document-templates/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const UpdateTemplateSchema = z.object({
   name: z.string().min(3).max(255).optional(),
@@ -56,7 +57,7 @@ export async function GET(
 
     return NextResponse.json(template)
   } catch (error) {
-    console.error('Error fetching template:', error)
+    logger.error('Error fetching template:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar template' },
       { status: 500 }
@@ -104,7 +105,7 @@ export async function PUT(
 
     return NextResponse.json(updated)
   } catch (error) {
-    console.error('Error updating template:', error)
+    logger.error('Error updating template:', error)
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -158,7 +159,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting template:', error)
+    logger.error('Error deleting template:', error)
     return NextResponse.json(
       { error: 'Erro ao deletar template' },
       { status: 500 }

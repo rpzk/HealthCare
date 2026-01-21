@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { settings, SettingCategory } from '@/lib/settings'
 import { settingsQuerySchema, createSettingSchema } from '@/lib/validation-schemas-api'
+import { logger } from '@/lib/logger'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     await settings.set(key, value, category, description)
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error saving setting:', error)
+    logger.error('Error saving setting:', error)
     const message = error.message || 'Unknown error'
     
     // Erro específico de tabela inexistente (Postgres)

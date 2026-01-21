@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { exchangeCodeForTokens, GOOGLE_CALENDAR_SCOPES } from '@/lib/google-calendar'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Verificar erro do Google
     if (error) {
-      console.error('[Google Calendar Callback] Error from Google:', error)
+      logger.error('[Google Calendar Callback] Error from Google:', error)
       return NextResponse.redirect(
         new URL(`/settings/integrations?error=${encodeURIComponent('Autorização negada pelo Google')}`, request.url)
       )
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
     )
 
   } catch (error) {
-    console.error('[Google Calendar Callback] Error:', error)
+    logger.error('[Google Calendar Callback] Error:', error)
     return NextResponse.redirect(
       new URL('/settings/integrations?error=Erro ao conectar Google Calendar', request.url)
     )

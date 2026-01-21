@@ -9,6 +9,7 @@ import { FileText, Calendar, Clock, Download, QrCode, Loader2, Ban } from 'lucid
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { A1SignButton } from '@/components/a1-sign-button'
+import { logger } from '@/lib/logger'
 
 interface CertificatesListProps {
   patientId?: string
@@ -34,7 +35,7 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
         setCertificates(data.certificates)
       }
     } catch (error) {
-      console.error('[Certificates] Erro ao carregar:', error)
+      logger.error('[Certificates] Erro ao carregar:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os atestados',
@@ -197,7 +198,7 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
                         a.remove();
                         URL.revokeObjectURL(url);
                       } catch (err) {
-                        console.error(err);
+                        logger.error(err);
                       }
                     }}
                   >

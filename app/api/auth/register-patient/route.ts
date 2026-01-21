@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { hash } from 'bcryptjs'
 import { encrypt, hashCPF } from '@/lib/crypto'
 import { serializeAllergies, normalizeBloodType, normalizeCPF } from '@/lib/patient-schemas'
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('[Patient Registration] Error:', error)
+    logger.error('[Patient Registration] Error:', error)
 
     // Erro específico de constraint unique
     if (error.code === 'P2002') {

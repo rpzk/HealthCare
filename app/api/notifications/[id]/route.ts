@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { NotificationService } from '@/lib/notification-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
+import { logger } from '@/lib/logger'
 
 interface RouteParams {
   params: {
@@ -28,7 +29,7 @@ export const PATCH = withAuth(async (request, { params, user }) => {
     )
 
   } catch (error: any) {
-    console.error('Erro ao atualizar notificação:', error)
+    logger.error('Erro ao atualizar notificação:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -45,7 +46,7 @@ export const DELETE = withAuth(async (request, { params, user }) => {
       message: 'Notificação excluída com sucesso'
     })
   } catch (error: any) {
-    console.error('Erro ao excluir notificação:', error)
+    logger.error('Erro ao excluir notificação:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FileSignature, Loader2, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { toastApiError } from '@/lib/toast-api-error'
+import { logger } from '@/lib/logger'
 
 interface A1SignButtonProps {
   certificateId: string
@@ -64,7 +65,7 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
       }
 
     } catch (error) {
-      console.error('Erro ao assinar:', error)
+      logger.error('Erro ao assinar:', error)
       toast({
         title: 'Erro ao assinar',
         description: error instanceof Error ? error.message : 'Erro desconhecido',

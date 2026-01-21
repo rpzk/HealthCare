@@ -6,6 +6,7 @@ import Redis from 'ioredis'
 import prisma from '@/lib/prisma'
 import { WhatsAppService } from './whatsapp-service'
 import { SystemSettingsService } from './system-settings-service'
+import { logger } from '@/lib/logger'
 
 let redis: Redis | null = null
 
@@ -25,7 +26,7 @@ async function getRedisClient(): Promise<Redis | null> {
     await redis.connect()
     return redis
   } catch (error) {
-    console.warn('Redis não disponível para sala de espera:', error)
+    logger.warn('Redis não disponível para sala de espera:', error)
     return null
   }
 }
@@ -69,7 +70,7 @@ export class WaitingRoomService {
     try {
       await client.zadd(key, score, payload)
     } catch (error) {
-      console.error('Erro ao adicionar paciente à fila:', error)
+      logger.error('Erro ao adicionar paciente à fila:', error)
       throw new Error('Erro ao entrar na sala de espera')
     }
   }
@@ -93,7 +94,7 @@ export class WaitingRoomService {
         }
       }
     } catch (error) {
-      console.error('Erro ao remover paciente da fila:', error)
+      logger.error('Erro ao remover paciente da fila:', error)
     }
   }
 
@@ -128,7 +129,7 @@ export class WaitingRoomService {
         joinedAt: new Date(payload.joinedAt),
       }
     } catch (error) {
-      console.error('Erro ao obter próximo paciente:', error)
+      logger.error('Erro ao obter próximo paciente:', error)
       return null
     }
   }
@@ -168,7 +169,7 @@ export class WaitingRoomService {
 
       return patients
     } catch (error) {
-      console.error('Erro ao listar fila:', error)
+      logger.error('Erro ao listar fila:', error)
       return []
     }
   }
@@ -208,7 +209,7 @@ export class WaitingRoomService {
         estimatedWait,
       }
     } catch (error) {
-      console.error('Erro ao obter posição:', error)
+      logger.error('Erro ao obter posição:', error)
       return null
     }
   }

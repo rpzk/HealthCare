@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/certificates/validate/[number]/[year]
@@ -39,7 +40,7 @@ export async function GET(
     return NextResponse.json(result)
 
   } catch (error: unknown) {
-    console.error('[Certificates] Erro ao validar atestado:', error)
+    logger.error('[Certificates] Erro ao validar atestado:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao validar atestado' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(exams)
 
   } catch (error) {
-    console.error('Erro ao buscar exames do paciente:', error)
+    logger.error('Erro ao buscar exames do paciente:', error)
     return NextResponse.json(
       { error: 'Erro ao carregar exames' },
       { status: 500 }

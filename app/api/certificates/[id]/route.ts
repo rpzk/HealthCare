@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * DELETE /api/certificates/[id]
@@ -40,7 +41,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
 
   } catch (error: unknown) {
-    console.error('[Certificates] Erro ao revogar atestado:', error)
+    logger.error('[Certificates] Erro ao revogar atestado:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao revogar atestado' },
       { status: 500 }
@@ -95,7 +96,7 @@ export async function GET(
     return NextResponse.json({ certificate })
 
   } catch (error: unknown) {
-    console.error('[Certificates] Erro ao buscar atestado:', error)
+    logger.error('[Certificates] Erro ao buscar atestado:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao buscar atestado' },
       { status: 500 }

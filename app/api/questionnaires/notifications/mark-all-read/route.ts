@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // PATCH - Marcar todas as notificações como lidas
 export async function PATCH(req: NextRequest) {
@@ -29,7 +30,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Erro ao marcar todas como lidas:', error)
+    logger.error('Erro ao marcar todas como lidas:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar notificações' },
       { status: 500 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { WhatsAppService } from '@/lib/whatsapp-service'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const sendMessageSchema = z.object({
   phoneNumber: z.string().min(10).max(15),
@@ -56,7 +57,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       message: 'Mensagem enviada com sucesso'
     })
   } catch (error) {
-    console.error('Error sending WhatsApp:', error)
+    logger.error('Error sending WhatsApp:', error)
     return NextResponse.json(
       { error: 'Erro ao enviar mensagem WhatsApp' },
       { status: 500 }

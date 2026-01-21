@@ -7,6 +7,7 @@ import { prisma } from './prisma'
 import { signCertificate } from './signature-service'
 import fs from 'fs/promises'
 import path from 'path'
+import { logger } from '@/lib/logger'
 
 /**
  * Cartório Integration - Digital Filing Service
@@ -115,7 +116,7 @@ export const CartorioService = {
       // 4. Store protocol in database
       // 5. Handle Cartório-specific error responses
 
-      console.log('[Cartório Integration] Submission prepared:', {
+      logger.info('[Cartório Integration] Submission prepared:', {
         cartorioId,
         certificateId,
         protocolNumber,
@@ -128,7 +129,7 @@ export const CartorioService = {
         timestamp: new Date()
       }
     } catch (error) {
-      console.error('[Cartório Error]', error)
+      logger.error('[Cartório Error]', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -156,7 +157,7 @@ export const CartorioService = {
       // 3. Map status codes to our enum
       // 4. Return with any details/messages
 
-      console.log('[Cartório] Checking status:', protocolNumber)
+      logger.info('[Cartório] Checking status:', protocolNumber)
       return {
         status: 'PROCESSING',
         details: 'Consulta em progresso no cartório'
@@ -265,7 +266,7 @@ export const SUSService = {
       // 4. Receive SUS record ID
       // 5. Handle SUS-specific error responses (invalid CPF, SUS number, etc.)
 
-      console.log('[SUS Integration] Medical record registration prepared:', {
+      logger.info('[SUS Integration] Medical record registration prepared:', {
         susRegistration,
         certificateId,
         susRecordId
@@ -277,7 +278,7 @@ export const SUSService = {
         timestamp: new Date()
       }
     } catch (error) {
-      console.error('[SUS Error]', error)
+      logger.error('[SUS Error]', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -309,7 +310,7 @@ export const SUSService = {
       // 3. Parse SUS response with historical data
       // 4. Format and return
 
-      console.log('[SUS] Querying history for:', cpf)
+      logger.info('[SUS] Querying history for:', cpf)
       return {
         found: false,
         error: 'SUS API integration not yet configured'
@@ -441,7 +442,7 @@ export const GovernmentProtocolService = {
       // 4. Receive official protocol ID and timestamp
       // 5. Handle government-specific error responses
 
-      console.log('[Government Protocol] Submission prepared:', {
+      logger.info('[Government Protocol] Submission prepared:', {
         protocolType,
         certificateId,
         governmentProtocolId
@@ -453,7 +454,7 @@ export const GovernmentProtocolService = {
         timestamp: new Date()
       }
     } catch (error) {
-      console.error('[Government Protocol Error]', error)
+      logger.error('[Government Protocol Error]', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -475,7 +476,7 @@ export const GovernmentProtocolService = {
   }> {
     try {
       // TODO: Query government system for protocol verification
-      console.log('[Government] Verifying protocol:', governmentProtocolId)
+      logger.info('[Government] Verifying protocol:', governmentProtocolId)
       return {
         verified: false,
         error: 'Government API integration not yet configured'
@@ -561,7 +562,7 @@ async function extractDoctorCPF(certificateId: string): Promise<string> {
     
     return certificate?.doctor?.person?.cpf || 'XXX.XXX.XXX-XX'
   } catch (error) {
-    console.error('[Integration] Error fetching doctor CPF:', error)
+    logger.error('[Integration] Error fetching doctor CPF:', error)
     return 'XXX.XXX.XXX-XX'
   }
 }
@@ -586,7 +587,7 @@ async function extractCNES(certificateId: string): Promise<string> {
     // Por enquanto, retorna placeholder
     return 'XXXXXX'
   } catch (error) {
-    console.error('[Integration] Error fetching CNES:', error)
+    logger.error('[Integration] Error fetching CNES:', error)
     return 'XXXXXX'
   }
 }

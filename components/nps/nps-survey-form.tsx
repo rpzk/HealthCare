@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger'
 
 interface NpsSurveyFormProps {
   consultationId: string;
@@ -66,7 +67,7 @@ export function NpsSurveyForm({ consultationId, doctorName, onSubmit }: NpsSurve
       }
       
     } catch (error) {
-      console.error('Erro ao enviar NPS:', error);
+      logger.error('Erro ao enviar NPS:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao enviar pesquisa');
     } finally {
       setSubmitting(false);

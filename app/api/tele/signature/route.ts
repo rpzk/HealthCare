@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       message: 'Assinatura registrada com sucesso',
     })
   } catch (error: any) {
-    console.error('Erro ao salvar assinatura:', error)
+    logger.error('Erro ao salvar assinatura:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao salvar assinatura' },
       { status: 500 }

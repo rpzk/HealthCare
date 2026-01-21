@@ -7,6 +7,7 @@ import { readdir, stat } from 'fs/promises'
 import path from 'path'
 import { SystemSettingsService } from '@/lib/system-settings-service'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 const execAsync = promisify(exec)
 
@@ -77,14 +78,14 @@ export async function GET(request: NextRequest) {
         backups: validBackups,
       })
     } catch (err) {
-      console.error('Error reading backup directory:', err)
+      logger.error('Error reading backup directory:', err)
       return NextResponse.json(
         { success: true, count: 0, backups: [], message: 'Nenhum backup encontrado' },
         { status: 200 }
       )
     }
   } catch (error) {
-    console.error('[Backups] Error:', error)
+    logger.error('[Backups] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao listar backups' },
       { status: 500 }
@@ -129,10 +130,10 @@ export async function POST(request: NextRequest) {
       SystemSettingsService.get('GDRIVE_IMPERSONATE_EMAIL'),
     ])
 
-    console.log('[Backup] Debug - SA length:', gdriveServiceAccountJson?.length || 0)
-    console.log('[Backup] Debug - Folder ID:', gdriveFolderId?.substring(0, 20) || 'VAZIO')
+    logger.info('[Backup] Debug - SA length:', gdriveServiceAccountJson?.length || 0)
+    logger.info('[Backup] Debug - Folder ID:', gdriveFolderId?.substring(0, 20) || 'VAZIO')
     if (gdriveServiceAccountJson) {
-      console.log('[Backup] Debug - SA is valid JSON:', 
+      logger.info('[Backup] Debug - SA is valid JSON:', 
         gdriveServiceAccountJson.includes('client_email') ? 'YES' : 'NO')
     }
 
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
       
       if (gdriveServiceAccountJson) {
         await fs.writeFile(tempSAFile, gdriveServiceAccountJson, 'utf8')
-        console.log('[Backup] Service Account salvo em:', tempSAFile)
+        logger.info('[Backup] Service Account salvo em:', tempSAFile)
       }
 
       const { stdout, stderr } = await execAsync(`bash "${scriptPath}"`, {
@@ -167,11 +168,11 @@ export async function POST(request: NextRequest) {
         try {
           await fs.unlink(tempSAFile)
         } catch (e) {
-          console.warn('[Backup] Erro ao deletar arquivo temp:', e)
+          logger.warn('[Backup] Erro ao deletar arquivo temp:', e)
         }
       }
       
-      console.log('[Backup] Sucesso:', stdout)
+      logger.info('[Backup] Sucesso:', stdout)
 
       // Determinar o último backup pelo arquivo de log mais recente
       const backupDir = process.env.BACKUPS_DIR || '/app/backups'
@@ -207,14 +208,14 @@ export async function POST(request: NextRequest) {
         })
       }
     } catch (err: any) {
-      console.error('[Backup] Erro ao executar script:', err)
+      logger.error('[Backup] Erro ao executar script:', err)
       return NextResponse.json(
         { success: false, error: err.message || 'Erro ao criar backup' },
         { status: 500 }
       )
     }
   } catch (error) {
-    console.error('[Backups POST] Error:', error)
+    logger.error('[Backups POST] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao criar backup' },
       { status: 500 }
@@ -268,14 +269,14 @@ export async function DELETE(request: NextRequest) {
         message: 'Backup deletado com sucesso',
       })
     } catch (err: any) {
-      console.error('[Backup Delete] Error:', err)
+      logger.error('[Backup Delete] Error:', err)
       return NextResponse.json(
         { error: 'Erro ao deletar backup' },
         { status: 500 }
       )
     }
   } catch (error) {
-    console.error('[Backups DELETE] Error:', error)
+    logger.error('[Backups DELETE] Error:', error)
     return NextResponse.json(
       { error: 'Erro ao deletar backup' },
       { status: 500 }

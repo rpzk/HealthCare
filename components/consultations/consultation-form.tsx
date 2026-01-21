@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Clock, User, FileText, X, AlertCircle } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface Patient {
   id: string
@@ -119,7 +120,7 @@ export function ConsultationForm({
         setPatients(data.patients || [])
       }
     } catch (error) {
-      console.error('Erro ao carregar pacientes:', error)
+      logger.error('Erro ao carregar pacientes:', error)
     }
   }
 
@@ -132,7 +133,7 @@ export function ConsultationForm({
         setDoctors(data.doctors || [])
       }
     } catch (error) {
-      console.error('Erro ao carregar médicos:', error)
+      logger.error('Erro ao carregar médicos:', error)
     }
   }
 
@@ -151,7 +152,7 @@ export function ConsultationForm({
         setError(error.error || 'Erro ao carregar horários')
       }
     } catch (error) {
-      console.error('Erro ao carregar horários:', error)
+      logger.error('Erro ao carregar horários:', error)
       setError('Erro ao carregar horários disponíveis')
     } finally {
       setLoadingSlots(false)

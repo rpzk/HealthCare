@@ -1,4 +1,5 @@
 import { incCounter, setGauge } from './metrics'
+import { logger } from '@/lib/logger'
 
 // Evita executar warmup em contextos indevidos (build/edge/test)
 const isNode = typeof process !== 'undefined' && process.versions?.node
@@ -29,7 +30,7 @@ export async function warmupPrisma(retries: number = 5) {
       const err = e as Error
       incCounter('prisma_warmup_fail_total', { attempt: String(i+1) })
       if (i === retries-1) {
-        console.error('[prisma-warmup] Falha final:', err.message)
+        logger.error('[prisma-warmup] Falha final:', err.message)
       } else {
         const backoff = 200 * Math.pow(2,i)
         await new Promise(r=>setTimeout(r, backoff))

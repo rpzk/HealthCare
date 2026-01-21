@@ -8,6 +8,7 @@ import { prisma } from './prisma'
 import fs from 'fs/promises'
 import path from 'path'
 import { execSync } from 'child_process'
+import { logger } from '@/lib/logger'
 
 const BACKUP_DIR = path.join(process.cwd(), 'private', 'backups')
 const RETENTION_DAYS = 365
@@ -89,9 +90,9 @@ export async function createDailyBackup(): Promise<{
       // Remove uncompressed version
       await fs.unlink(backupPath)
 
-      console.log('[Backup Service] Backup created:', compressedFilename)
+      logger.info('[Backup Service] Backup created:', compressedFilename)
     } catch (compressError) {
-      console.warn(
+      logger.warn(
         '[Backup Service] Compression failed, keeping uncompressed backup:',
         compressError
       )
@@ -123,7 +124,7 @@ export async function createDailyBackup(): Promise<{
       timestamp
     }
   } catch (error) {
-    console.error('[Backup Service Error]', error)
+    logger.error('[Backup Service Error]', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -195,8 +196,8 @@ export async function restoreFromBackup(
 
     const backupData = JSON.parse(jsonContent)
 
-    console.log('[Backup Service] Restoring from backup:', backupFilename)
-    console.log('[Backup Service] Found', backupData.totalCertificates, 'certificates')
+    logger.info('[Backup Service] Restoring from backup:', backupFilename)
+    logger.info('[Backup Service] Found', backupData.totalCertificates, 'certificates')
 
     // Log restoration operation
     await prisma.auditLog.create({
@@ -220,7 +221,7 @@ export async function restoreFromBackup(
       timestamp: new Date()
     }
   } catch (error) {
-    console.error('[Backup Restore Error]', error)
+    logger.error('[Backup Restore Error]', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -283,7 +284,7 @@ export async function listBackups(): Promise<{
       backups: backups.sort((a, b) => b.date.getTime() - a.date.getTime())
     }
   } catch (error) {
-    console.error('[Backup List Error]', error)
+    logger.error('[Backup List Error]', error)
     return {
       backups: [],
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -308,7 +309,7 @@ async function cleanupOldBackups(): Promise<void> {
 
       if (age > maxAge) {
         await fs.unlink(filepath)
-        console.log(`[Backup Cleanup] Removed old backup: ${file}`)
+        logger.info(`[Backup Cleanup] Removed old backup: ${file}`)
 
         // Log cleanup
         await prisma.auditLog.create({
@@ -328,7 +329,7 @@ async function cleanupOldBackups(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error('[Backup Cleanup Error]', error)
+    logger.error('[Backup Cleanup Error]', error)
   }
 }
 
@@ -365,23 +366,23 @@ export function initializeBackupSchedule(): void {
     // Run backup immediately
     createDailyBackup()
       .then((result) => {
-        console.log('[Backup Schedule] Daily backup completed:', result)
+        logger.info('[Backup Schedule] Daily backup completed:', result)
       })
       .catch((error) => {
-        console.error('[Backup Schedule] Daily backup failed:', error)
+        logger.error('[Backup Schedule] Daily backup failed:', error)
       })
 
     // Schedule for every 24 hours after first run
     setInterval(() => {
       createDailyBackup()
         .then((result) => {
-          console.log('[Backup Schedule] Daily backup completed:', result)
+          logger.info('[Backup Schedule] Daily backup completed:', result)
         })
         .catch((error) => {
-          console.error('[Backup Schedule] Daily backup failed:', error)
+          logger.error('[Backup Schedule] Daily backup failed:', error)
         })
     }, 24 * 60 * 60 * 1000)
   }, timeUntilBackup)
 
-  console.log(`[Backup Schedule] Next backup scheduled in ${timeUntilBackup / 1000 / 60} minutes`)
+  logger.info(`[Backup Schedule] Next backup scheduled in ${timeUntilBackup / 1000 / 60} minutes`)
 }

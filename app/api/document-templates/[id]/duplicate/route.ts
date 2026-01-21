@@ -6,6 +6,7 @@
 import { auth } from '@/auth'
 import { DocumentTemplateService } from '@/lib/document-templates/service'
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   req: NextRequest,
@@ -26,7 +27,7 @@ export async function POST(
 
     return NextResponse.json(newTemplate, { status: 201 })
   } catch (error) {
-    console.error('Error duplicating template:', error)
+    logger.error('Error duplicating template:', error)
 
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

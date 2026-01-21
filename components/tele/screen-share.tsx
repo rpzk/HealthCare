@@ -16,6 +16,7 @@ import { Monitor, MonitorOff, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger'
 
 interface ScreenShareProps {
   onStreamChange?: (stream: MediaStream | null) => void;
@@ -57,7 +58,7 @@ export function ScreenShare({ onStreamChange, showPreview = true }: ScreenShareP
       toast.success('Compartilhamento de tela iniciado');
       
     } catch (error) {
-      console.error('Erro ao compartilhar tela:', error);
+      logger.error('Erro ao compartilhar tela:', error);
       
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {

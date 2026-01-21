@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { WaitingRoomService } from '@/lib/waiting-room-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       position,
     })
   } catch (error: any) {
-    console.error('Erro ao entrar na sala de espera:', error)
+    logger.error('Erro ao entrar na sala de espera:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao entrar na sala de espera' },
       { status: 500 }
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
       })
     }
   } catch (error: any) {
-    console.error('Erro ao consultar sala de espera:', error)
+    logger.error('Erro ao consultar sala de espera:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao consultar sala de espera' },
       { status: 500 }
@@ -120,7 +121,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
     })
   } catch (error: any) {
-    console.error('Erro ao sair da sala de espera:', error)
+    logger.error('Erro ao sair da sala de espera:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao sair da sala de espera' },
       { status: 500 }

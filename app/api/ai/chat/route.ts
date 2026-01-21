@@ -8,6 +8,7 @@ import prisma from '@/lib/prisma'
 import { TermAudience } from '@prisma/client'
 import { assertUserAcceptedTerms } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 // Schema de validação para chat IA
 const aiChatSchema = z.object({
@@ -157,7 +158,7 @@ Por favor, responda de forma profissional e detalhada:`
       }
     })
   } catch (error) {
-    console.error('Erro na API de chat:', error)
+    logger.error('Erro na API de chat:', error)
     
     // Log de auditoria para erro
     auditLogger.logError(

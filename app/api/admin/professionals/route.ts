@@ -8,6 +8,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ professionals })
   } catch (error) {
-    console.error('Erro ao listar profissionais:', error)
+    logger.error('Erro ao listar profissionais:', error)
     return NextResponse.json({ error: 'Erro ao listar profissionais' }, { status: 500 })
   }
 }
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Erro ao criar profissional:', error)
+    logger.error('Erro ao criar profissional:', error)
     return NextResponse.json({ error: 'Erro ao criar profissional' }, { status: 500 })
   }
 }
@@ -206,7 +207,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ message: 'Profissional atualizado', professional: user })
   } catch (error) {
-    console.error('Erro ao atualizar profissional:', error)
+    logger.error('Erro ao atualizar profissional:', error)
     return NextResponse.json({ error: 'Erro ao atualizar profissional' }, { status: 500 })
   }
 }

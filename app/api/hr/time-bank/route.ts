@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Get time bank entries and balance
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -64,7 +65,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching time bank:', error)
+    logger.error('Error fetching time bank:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar banco de horas', details: error.message },
       { status: 500 }
@@ -123,7 +124,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(entry, { status: 201 })
   } catch (error: any) {
-    console.error('Error adding time bank entry:', error)
+    logger.error('Error adding time bank entry:', error)
     return NextResponse.json(
       { error: 'Erro ao adicionar entrada', details: error.message },
       { status: 500 }

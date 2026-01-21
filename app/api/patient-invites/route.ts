@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto'
 import { BiometricDataType } from '@prisma/client'
 import { BIOMETRIC_DATA_INFO } from '@/lib/biometric-data-info'
 import { emailService } from '@/lib/email-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(invites)
   } catch (error) {
-    console.error('Error fetching invites:', error)
+    logger.error('Error fetching invites:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar convites' },
       { status: 500 }
@@ -313,7 +314,7 @@ export async function POST(request: NextRequest) {
       ...(emailError ? { emailError } : {})
     }, { status: 201 })
   } catch (error) {
-    console.error('Error creating invite:', error)
+    logger.error('Error creating invite:', error)
     return NextResponse.json(
       { error: 'Erro ao criar convite' },
       { status: 500 }
@@ -362,7 +363,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error canceling invite:', error)
+    logger.error('Error canceling invite:', error)
     return NextResponse.json(
       { error: 'Erro ao cancelar convite' },
       { status: 500 }

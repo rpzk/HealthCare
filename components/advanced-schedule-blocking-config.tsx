@@ -11,6 +11,7 @@ import { BulkDateUpload } from '@/components/bulk-date-upload'
 import { CalendarDatePicker } from '@/components/calendar-date-picker'
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface ShiftTemplate {
   id: string
@@ -69,7 +70,7 @@ export function AdvancedScheduleBlockingConfig() {
         setExceptions(data.exceptions || [])
       }
     } catch (error) {
-      console.error('Error loading exceptions:', error)
+      logger.error('Error loading exceptions:', error)
       toast.error('Erro ao carregar bloqueios')
     } finally {
       setLoading(false)
@@ -143,7 +144,7 @@ export function AdvancedScheduleBlockingConfig() {
         toast.warning(`${failCount} data(s) falharam. Verifique dados duplicados.`)
       }
     } catch (error) {
-      console.error('Error adding blocks:', error)
+      logger.error('Error adding blocks:', error)
       toast.error('Erro ao adicionar bloqueios')
     } finally {
       setSaving(false)

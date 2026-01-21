@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Banco de conhecimento clínico simplificado para sugestões
 // Em produção, isso seria substituído por um LLM real (GPT-4, Claude, etc.)
@@ -456,7 +457,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Error in AI suggestions:', error)
+    logger.error('Error in AI suggestions:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao processar sugestões' },
       { status: 500 }

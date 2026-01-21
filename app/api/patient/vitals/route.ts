@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sanitizeText } from '@/lib/sanitization'
+import { logger } from '@/lib/logger'
 
 interface VitalPayload {
   systolicBP?: number
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(formattedVitals)
   } catch (error) {
-    console.error('Erro ao buscar sinais vitais:', error)
+    logger.error('Erro ao buscar sinais vitais:', error)
     return NextResponse.json(
       { error: 'Erro ao carregar sinais vitais' },
       { status: 500 }
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, id: created.id })
   } catch (error) {
-    console.error('Erro ao registrar sinais vitais:', error)
+    logger.error('Erro ao registrar sinais vitais:', error)
     return NextResponse.json(
       { error: 'Erro ao registrar sinais vitais' },
       { status: 500 }

@@ -9,6 +9,7 @@ import { RecordingService } from '@/lib/recording-service'
 import prisma from '@/lib/prisma'
 import { getAudienceForRole, assertUserAcceptedTerms } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -47,7 +48,7 @@ export async function GET(
       url,
     })
   } catch (error: any) {
-    console.error('Erro ao obter URL:', error)
+    logger.error('Erro ao obter URL:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao obter gravação' },
       { status: error.message === 'Acesso negado' ? 403 : 500 }
@@ -89,7 +90,7 @@ export async function DELETE(
       success: true,
     })
   } catch (error: any) {
-    console.error('Erro ao excluir gravação:', error)
+    logger.error('Erro ao excluir gravação:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao excluir gravação' },
       { status: error.message === 'Acesso negado' ? 403 : 500 }

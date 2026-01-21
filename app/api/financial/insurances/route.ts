@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const createInsuranceSchema = z.object({
   name: z.string().min(2),
@@ -39,7 +40,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json({ data: insurances })
   } catch (error) {
-    console.error('Error fetching insurances:', error)
+    logger.error('Error fetching insurances:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar convênios' },
       { status: 500 }
@@ -70,7 +71,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(insurance, { status: 201 })
   } catch (error) {
-    console.error('Error creating insurance:', error)
+    logger.error('Error creating insurance:', error)
     return NextResponse.json(
       { error: 'Erro ao criar convênio' },
       { status: 500 }

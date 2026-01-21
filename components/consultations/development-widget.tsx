@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { logger } from '@/lib/logger'
 import {
   Brain,
   Gem,
@@ -167,7 +168,7 @@ export function ConsultationDevelopmentWidget({
           lastAssessment: latestStratum?.completedAt || latestStrengths?.completedAt,
         })
       } catch (error) {
-        console.error('Error loading patient development data:', error)
+        logger.error('Error loading patient development data:', error)
       } finally {
         setLoading(false)
       }

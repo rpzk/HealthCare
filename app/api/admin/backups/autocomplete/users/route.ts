@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/admin/backups/autocomplete/users?q=termo
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, results })
   } catch (e: any) {
-    console.error('[Autocomplete Users] Error:', e)
+    logger.error('[Autocomplete Users] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao buscar usuários' }, { status: 500 })
   }
 }

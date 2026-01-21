@@ -12,6 +12,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 // Evita execução em build/SSG: rota puramente dinâmica
 export const dynamic = 'force-dynamic'
@@ -50,7 +51,7 @@ const getHandler = withAdminAuthUnlimited(async (request, { user }) => {
       }
     })
   } catch (error) {
-    console.error('Erro ao listar documentos:', error)
+    logger.error('Erro ao listar documentos:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -97,7 +98,7 @@ const postHandler = withAdminAuthUnlimited(async (request, { user }) => {
     }, { status: 501 })
 
   } catch (error) {
-    console.error('Erro ao processar documento:', error)
+    logger.error('Erro ao processar documento:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

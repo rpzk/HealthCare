@@ -21,6 +21,7 @@ import {
   Filter
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface ReassessmentSchedule {
   id: string
@@ -93,7 +94,7 @@ export function ReassessmentCalendar() {
       setSchedules(data.schedules || [])
       setStats(data.stats || null)
     } catch (error) {
-      console.error('Error fetching schedules:', error)
+      logger.error('Error fetching schedules:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os agendamentos',
@@ -161,7 +162,7 @@ export function ReassessmentCalendar() {
       setSelectedSchedules(new Set())
       fetchSchedules()
     } catch (error) {
-      console.error('Error sending reminders:', error)
+      logger.error('Error sending reminders:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível enviar os lembretes',

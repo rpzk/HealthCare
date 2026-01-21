@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { MedicationService } from '@/lib/medication-service'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(validation)
   } catch (error) {
-    console.error('Erro na validação de prescrição:', error)
+    logger.error('Erro na validação de prescrição:', error)
     return NextResponse.json(
       { error: 'Erro ao validar prescrição' },
       { status: 500 }

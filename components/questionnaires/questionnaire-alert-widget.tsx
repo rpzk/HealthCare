@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { logger } from '@/lib/logger'
 
 interface QuestionnaireAlert {
   count: number
@@ -38,7 +39,7 @@ export function QuestionnaireAlertWidget() {
         setAlerts(data)
       }
     } catch (error) {
-      console.error('Erro ao buscar alertas:', error)
+      logger.error('Erro ao buscar alertas:', error)
     } finally {
       setLoading(false)
     }

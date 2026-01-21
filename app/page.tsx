@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth'
 import { LandingPage } from '@/components/landing/landing-page'
 import { prisma } from '@/lib/prisma'
 import { checkPendingTerms } from '@/lib/check-pending-terms'
+import { logger } from '@/lib/logger'
 
 export const metadata: Metadata = {
   title: 'HealthCare - Sistema Completo de Gestão em Saúde',
@@ -43,7 +44,7 @@ export default async function HomePage() {
         redirect(`/terms/accept?returnTo=${encodeURIComponent(returnTo)}`)
       }
     } catch (error) {
-      console.error('Erro ao verificar termos pendentes:', error)
+      logger.error('Erro ao verificar termos pendentes:', error)
       // Continua o fluxo normal em caso de erro
     }
     

@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { NpsService } from '@/lib/nps-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
       ...result,
     })
   } catch (error: any) {
-    console.error('Erro no cron de NPS:', error)
+    logger.error('Erro no cron de NPS:', error)
     return NextResponse.json(
       { error: error.message || 'Erro ao enviar pesquisas' },
       { status: 500 }

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NpsService } from "@/lib/nps-service";
+import { logger } from "@/lib/logger";
 import type { Session } from "next-auth";
 
 export const runtime = 'nodejs'
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       doctorName: consultation.doctor?.name ?? null,
     });
   } catch (error: any) {
-    console.error("Erro ao submeter NPS:", error);
+    logger.error("Erro ao submeter NPS:", error);
     return NextResponse.json(
       { error: error.message || "Erro ao submeter resposta" },
       { status: 500 }
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
       response,
     });
   } catch (error: any) {
-    console.error("Erro ao consultar NPS:", error);
+    logger.error("Erro ao consultar NPS:", error);
     return NextResponse.json(
       { error: error.message || "Erro ao consultar NPS" },
       { status: 500 }

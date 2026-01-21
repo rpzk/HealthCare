@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger'
 
 interface DigitalSignaturePadProps {
   consultationId: string;
@@ -167,7 +168,7 @@ export function DigitalSignaturePad({
       onClose();
       
     } catch (error) {
-      console.error('Erro ao salvar assinatura:', error);
+      logger.error('Erro ao salvar assinatura:', error);
       toast.error('Erro ao salvar assinatura');
     } finally {
       setSaving(false);

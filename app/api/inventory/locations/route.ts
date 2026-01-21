@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
 
 import type { Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // GET - List storage locations
 export const GET = withAuth(async (req: NextRequest) => {
@@ -31,7 +32,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
     return NextResponse.json(locations)
   } catch (error: unknown) {
-    if (error instanceof Error) console.error('Error fetching locations:', error)
+    if (error instanceof Error) logger.error('Error fetching locations:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar localizações', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -67,7 +68,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       return NextResponse.json({ error: 'Nome já existe' }, { status: 400 })
     }
 
-    if (error instanceof Error) console.error('Error creating location:', error)
+    if (error instanceof Error) logger.error('Error creating location:', error)
     return NextResponse.json(
       { error: 'Erro ao criar localização', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

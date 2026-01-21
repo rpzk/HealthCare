@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { SUSReportsService } from '@/lib/sus-reports-service'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(report, { status: 201 })
   } catch (error) {
-    console.error('[SUS] Erro ao gerar relatório mensal:', error)
+    logger.error('[SUS] Erro ao gerar relatório mensal:', error)
     return NextResponse.json(
       { error: 'Erro ao gerar relatório mensal' },
       { status: 500 }
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(reports, { status: 200 })
   } catch (error) {
-    console.error('[SUS] Erro ao buscar relatórios mensais:', error)
+    logger.error('[SUS] Erro ao buscar relatórios mensais:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar relatórios' },
       { status: 500 }

@@ -5,6 +5,7 @@ import { appointmentQuerySchema, createAppointmentSchema, safeParseQueryParams }
 import { z } from 'zod'
 import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -98,7 +99,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error: any) {
-    console.error('Error fetching appointments:', error)
+    logger.error('Error fetching appointments:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar agendamentos', details: error.message },
       { status: 500 }
@@ -207,13 +208,13 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
           status: 'SCHEDULED',
         })
       } catch (emailError) {
-        console.error('Error sending appointment confirmation email:', emailError)
+        logger.error('Error sending appointment confirmation email:', emailError)
       }
     }
 
     return NextResponse.json(consultation, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating appointment:', error)
+    logger.error('Error creating appointment:', error)
     return NextResponse.json(
       { error: 'Erro ao criar agendamento', details: error.message },
       { status: 500 }

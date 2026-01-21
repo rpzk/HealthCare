@@ -9,6 +9,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 /**
  * GET - Estatísticas gerais do sistema de segurança
@@ -154,7 +155,7 @@ export const GET = withAdminAuthUnlimited(async (request: NextRequest, { user })
       error.message
     )
 
-    console.error('Erro na API de segurança admin:', error)
+    logger.error('Erro na API de segurança admin:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -283,7 +284,7 @@ export const POST = withAdminAuthUnlimited(async (request: NextRequest, { user }
       error.message
     )
 
-    console.error('Erro na ação administrativa de segurança:', error)
+    logger.error('Erro na ação administrativa de segurança:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

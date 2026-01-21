@@ -2,6 +2,7 @@ import ollamaClient from './ollama-client'
 import { incCounter, observeHistogram, setGauge } from './metrics'
 import { startSpan } from './tracing'
 import { checkAndConsumeAIQuota } from './ai-quota'
+import { logger } from '@/lib/logger'
 
 if (!process.env.OLLAMA_URL) {
   // Silenced in production - Ollama is optional
@@ -191,7 +192,7 @@ Responda em formato JSON estruturado:
     } catch (error) {
       incCounter('ai_request_total', { type: 'symptom_analysis', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'symptom_analysis' })
-      console.error('Erro na análise de sintomas:', error)
+      logger.error('Erro na análise de sintomas:', error)
       this.recordFailure()
       throw new Error('Erro ao analisar sintomas')
     }
@@ -251,7 +252,7 @@ Responda em formato JSON:
     } catch (error) {
       incCounter('ai_request_total', { type: 'drug_interaction', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'drug_interaction' })
-      console.error('Erro na verificação de interações:', error)
+      logger.error('Erro na verificação de interações:', error)
       this.recordFailure()
       throw new Error('Erro ao verificar interações medicamentosas')
     }
@@ -308,7 +309,7 @@ Responda em formato JSON:
     } catch (error) {
       incCounter('ai_request_total', { type: 'medical_summary', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'medical_summary' })
-      console.error('Erro na geração de resumo:', error)
+      logger.error('Erro na geração de resumo:', error)
       this.recordFailure()
       throw new Error('Erro ao gerar resumo médico')
     }
@@ -355,7 +356,7 @@ Responda em formato JSON estruturado com sua análise.
     } catch (error) {
       incCounter('ai_request_total', { type: 'vital_signs', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'vital_signs' })
-      console.error('Erro na análise de sinais vitais:', error)
+      logger.error('Erro na análise de sinais vitais:', error)
       this.recordFailure()
       throw new Error('Erro ao analisar sinais vitais')
     }
@@ -407,7 +408,7 @@ Responda em formato JSON estruturado com o plano completo.
     } catch (error) {
       incCounter('ai_request_total', { type: 'treatment_plan', status: 'error' })
       observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'treatment_plan' })
-      console.error('Erro na sugestão de tratamento:', error)
+      logger.error('Erro na sugestão de tratamento:', error)
       this.recordFailure()
       throw new Error('Erro ao sugerir plano de tratamento')
     }

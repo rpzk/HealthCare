@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET patient's own appointments
 export const GET = withAuth(async (req: NextRequest, { user }) => {
@@ -34,7 +35,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json({ data: appointments })
   } catch (error) {
-    console.error('Error fetching patient appointments:', error)
+    logger.error('Error fetching patient appointments:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar consultas' },
       { status: 500 }
@@ -114,7 +115,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json(consultation, { status: 201 })
   } catch (error) {
-    console.error('Error creating appointment:', error)
+    logger.error('Error creating appointment:', error)
     return NextResponse.json(
       { error: 'Erro ao agendar consulta' },
       { status: 500 }

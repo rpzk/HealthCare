@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import { 
   Video, VideoOff, Mic, MicOff, PhoneOff, 
   AlertCircle, Loader2, Maximize, Minimize, RefreshCw, Wifi,
@@ -47,7 +48,7 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
         if (json?.iceServers) setIceServers(json.iceServers)
       } catch (e) {
         // Non-fatal — keep default ICE servers
-        console.warn('Failed to load ICE config', e)
+        logger.warn('Failed to load ICE config', e)
       }
     })()
   }, [])
@@ -70,7 +71,7 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       pcRef.current?.close()
       esRef.current?.close()
     } catch (err: unknown) {
-      console.warn('Error during cleanup', err)
+      logger.warn('Error during cleanup', err)
     }
   }, [])
 
@@ -80,7 +81,7 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       try {
         cleanup()
       } catch (e) {
-        console.warn('Error during cleanup', e)
+        logger.warn('Error during cleanup', e)
       }
     }
   }, [cleanup])
@@ -174,16 +175,16 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
               await pc.addIceCandidate(data.candidate)
             } catch (e) {
               // ignore candidate insertion errors
-              console.warn('Failed to add ICE candidate', e)
+              logger.warn('Failed to add ICE candidate', e)
             }
           }
         } catch (err: unknown) {
-          console.error('Signaling error:', err)
+          logger.error('Signaling error:', err)
         }
       })
       
       es.onerror = () => {
-        console.warn('EventSource reconnecting...')
+        logger.warn('EventSource reconnecting...')
       }
 
       pc.onicecandidate = (ev) => {
@@ -208,7 +209,7 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       setJoined(true)
       setStatus('connecting')
     } catch (err: unknown) {
-      console.error('Erro ao entrar:', err)
+      logger.error('Erro ao entrar:', err)
       setStatus('idle')
       if (err instanceof Error) {
         if ((err as Error).name === 'NotAllowedError') {
@@ -279,7 +280,7 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
         }
       }
     } catch (err) {
-      console.error('Screen share error:', err)
+      logger.error('Screen share error:', err)
     }
   }
 

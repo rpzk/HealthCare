@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { logger } from '@/lib/logger'
 
 // Configuração do localizador para português brasileiro
 const locales = { 'pt-BR': ptBR }
@@ -160,8 +161,8 @@ export function CalendarView() {
       
       setEvents(formattedEvents)
     } catch (error: unknown) {
-      if (error instanceof Error) console.error('Erro ao carregar eventos:', error)
-      else console.error('Erro ao carregar eventos:', String(error))
+      if (error instanceof Error) logger.error('Erro ao carregar eventos:', error)
+      else logger.error('Erro ao carregar eventos:', String(error))
     } finally {
       setLoading(false)
     }

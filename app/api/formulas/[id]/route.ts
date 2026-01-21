@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { 
   getFormulaById, 
   updateFormula, 
@@ -37,7 +38,7 @@ export async function GET(
     return NextResponse.json(formula)
 
   } catch (error) {
-    console.error('Erro ao buscar fórmula:', error)
+    logger.error('Erro ao buscar fórmula:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar fórmula' },
       { status: 500 }
@@ -87,7 +88,7 @@ export async function PUT(
     return NextResponse.json(formula)
 
   } catch (error) {
-    console.error('Erro ao atualizar fórmula:', error)
+    logger.error('Erro ao atualizar fórmula:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar fórmula' },
       { status: 500 }
@@ -120,7 +121,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Erro ao desativar fórmula:', error)
+    logger.error('Erro ao desativar fórmula:', error)
     return NextResponse.json(
       { error: 'Erro ao desativar fórmula' },
       { status: 500 }

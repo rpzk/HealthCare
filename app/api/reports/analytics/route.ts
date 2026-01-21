@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { startOfMonth, endOfMonth, startOfYear, subMonths, format } from 'date-fns'
+import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 
@@ -182,7 +183,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       satisfaction: satisfactionScores
     })
   } catch (error) {
-    console.error('Error generating analytics:', error)
+    logger.error('Error generating analytics:', error)
     return NextResponse.json(
       { error: 'Erro ao gerar relatórios' },
       { status: 500 }

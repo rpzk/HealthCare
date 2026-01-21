@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
       message: 'Papel ativo atualizado com sucesso'
     })
   } catch (error) {
-    console.error('Erro ao definir papel ativo:', error)
+    logger.error('Erro ao definir papel ativo:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

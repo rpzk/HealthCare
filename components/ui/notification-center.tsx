@@ -25,6 +25,7 @@ import {
   User
 } from 'lucide-react'
 import { NotificationService, Notification, NotificationPriority, NotificationType } from '@/lib/notification-service'
+import { logger } from '@/lib/logger'
 
 export function NotificationCenter() {
   const router = useRouter()
@@ -42,7 +43,7 @@ export function NotificationCenter() {
         setUnreadCount(data.filter((n: Notification) => !n.read).length)
       }
     } catch (error) {
-      console.error('Erro ao buscar notificações:', error)
+      logger.error('Erro ao buscar notificações:', error)
     } finally {
       setLoading(false)
     }
@@ -65,7 +66,7 @@ export function NotificationCenter() {
         setUnreadCount(prev => Math.max(0, prev - 1))
       }
     } catch (error) {
-      console.error('Erro ao marcar notificação como lida:', error)
+      logger.error('Erro ao marcar notificação como lida:', error)
     }
   }
 
@@ -80,7 +81,7 @@ export function NotificationCenter() {
         setUnreadCount(0)
       }
     } catch (error) {
-      console.error('Erro ao marcar todas como lidas:', error)
+      logger.error('Erro ao marcar todas como lidas:', error)
     }
   }
 
@@ -98,7 +99,7 @@ export function NotificationCenter() {
         }
       }
     } catch (error) {
-      console.error('Erro ao excluir notificação:', error)
+      logger.error('Erro ao excluir notificação:', error)
     }
   }
 

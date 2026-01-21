@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Loader2, CheckCircle } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface IcpBrasilSignButtonProps {
   certificateId: string
@@ -32,7 +33,7 @@ export function IcpBrasilSignButton({
       setIsLoading(true)
       setError(null)
 
-      console.log('[ICP-Brasil] Iniciando assinatura para certificado:', certificateId)
+      logger.info('[ICP-Brasil] Iniciando assinatura para certificado:', certificateId)
 
       const response = await fetch('/api/certificates/sign', {
         method: 'POST',
@@ -49,7 +50,7 @@ export function IcpBrasilSignButton({
 
       const data = await response.json()
 
-      console.log('[ICP-Brasil] Assinatura concluída:', {
+      logger.info('[ICP-Brasil] Assinatura concluída:', {
         certificateId: data.certificateId,
         method: data.method,
         timestamp: data.timestamp
@@ -59,7 +60,7 @@ export function IcpBrasilSignButton({
       onSuccess?.(data)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
-      console.error('[ICP-Brasil] Erro:', errorMessage)
+      logger.error('[ICP-Brasil] Erro:', errorMessage)
       setError(errorMessage)
       onError?.(errorMessage)
     } finally {

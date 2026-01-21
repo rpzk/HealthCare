@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/with-auth'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const POST = withAuth(async (request: NextRequest, { user, params }) => {
   try {
@@ -76,7 +77,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
         password
       )
     } catch (sigError: any) {
-      console.error('Erro ao assinar atestado médico:', {
+      logger.error('Erro ao assinar atestado médico:', {
         error: sigError?.message,
         certificateId: userCertificate.id,
         userId: user.id
@@ -128,7 +129,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     })
 
   } catch (error) {
-    console.error('Erro ao assinar atestado médico:', error)
+    logger.error('Erro ao assinar atestado médico:', error)
     return NextResponse.json(
       { error: 'Erro interno ao assinar documento' },
       { status: 500 }

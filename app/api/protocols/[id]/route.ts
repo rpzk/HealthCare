@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
@@ -60,7 +61,7 @@ export async function GET(
 
     return NextResponse.json({ protocol })
   } catch (error) {
-    console.error('Erro ao buscar protocolo:', error)
+    logger.error('Erro ao buscar protocolo:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar protocolo' },
       { status: 500 }
@@ -201,7 +202,7 @@ export async function PATCH(
 
     return NextResponse.json({ protocol })
   } catch (error) {
-    console.error('Erro ao atualizar protocolo:', error)
+    logger.error('Erro ao atualizar protocolo:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar protocolo' },
       { status: 500 }
@@ -242,7 +243,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Erro ao remover protocolo:', error)
+    logger.error('Erro ao remover protocolo:', error)
     return NextResponse.json(
       { error: 'Erro ao remover protocolo' },
       { status: 500 }

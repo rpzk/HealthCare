@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withPatientAuth } from '@/lib/advanced-auth'
+import { logger } from '@/lib/logger'
 
 // GET /api/users - Listar usuários (profissionais de saúde)
 export const GET = withPatientAuth(async (req, { user }) => {
@@ -59,7 +60,7 @@ export const GET = withPatientAuth(async (req, { user }) => {
 
     return NextResponse.json({ users: formattedUsers })
   } catch (error) {
-    console.error('Erro ao buscar usuários:', error)
+    logger.error('Erro ao buscar usuários:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
+import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET /api/prescriptions/[id]/signature
 export const GET = withAuth(async (_req, { params, user }) => {
@@ -45,7 +47,7 @@ export const GET = withAuth(async (_req, { params, user }) => {
       certificate: signed.certificate,
     })
   } catch (error) {
-    console.error('Erro ao obter assinatura da prescrição:', error)
+    logger.error('Erro ao obter assinatura da prescrição:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 })

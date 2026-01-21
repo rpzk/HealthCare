@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 interface RouteParams {
   params: {
@@ -159,7 +160,7 @@ export const PATCH = withDoctorAuth(async (request: NextRequest, { params, user 
     })
 
   } catch (error: any) {
-    console.error('Erro ao salvar consulta completa:', error)
+    logger.error('Erro ao salvar consulta completa:', error)
     
     auditLogger.logError(
       user.id,

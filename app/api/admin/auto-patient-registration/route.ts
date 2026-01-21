@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { patientRegistrationAI } from '@/lib/patient-registration-ai'
 import { encrypt } from '@/lib/crypto'
+import { logger } from '@/lib/logger'
 
 /**
  * 👥 API para Cadastro Automático de Pacientes
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
 
   } catch (error) {
-    console.error('Erro no cadastro automático:', error)
+    logger.error('Erro no cadastro automático:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

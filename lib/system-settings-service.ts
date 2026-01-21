@@ -11,6 +11,7 @@
 
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Chave de criptografia do .env (deve ser mantida em .env)
 const MASTER_KEY_RAW = process.env.ENCRYPTION_KEY || ''
@@ -29,9 +30,9 @@ const KEY_BYTES = (() => {
 const HAS_MASTER_KEY = !!KEY_BYTES
 
 if (!HAS_MASTER_KEY) {
-  console.warn('⚠️ ENCRYPTION_KEY não configurada — valores sensíveis serão salvos sem criptografia')
+  logger.warn('⚠️ ENCRYPTION_KEY não configurada — valores sensíveis serão salvos sem criptografia')
 } else if (MASTER_KEY_RAW.length !== 64 || !isHex(MASTER_KEY_RAW)) {
-  console.warn('⚠️ ENCRYPTION_KEY não está em hex (64 chars). Usando derivação SHA-256 para criptografia.')
+  logger.warn('⚠️ ENCRYPTION_KEY não está em hex (64 chars). Usando derivação SHA-256 para criptografia.')
 }
 
 // Cache em memória (TTL: 5 minutos)
@@ -169,7 +170,7 @@ export class SystemSettingsService {
         return value
       }
     } catch (error) {
-      console.error(`Erro ao buscar setting ${key}:`, error)
+      logger.error(`Erro ao buscar setting ${key}:`, error)
     }
 
     // 3. Fallback para .env
@@ -207,7 +208,7 @@ export class SystemSettingsService {
     // Criptografar se possível; caso contrário, salvar sem criptografia para não bloquear persistência
     const shouldEncrypt = encrypted && HAS_MASTER_KEY
     if (encrypted && !HAS_MASTER_KEY) {
-      console.warn(`[SystemSettingsService] ENCRYPTION_KEY ausente/curta; salvando ${key} sem criptografia`)
+      logger.warn(`[SystemSettingsService] ENCRYPTION_KEY ausente/curta; salvando ${key} sem criptografia`)
     }
 
     const finalValue = shouldEncrypt ? this.encrypt(value) : value
@@ -315,12 +316,12 @@ export class SystemSettingsService {
           return value
         } catch (e) {
           // Se não conseguir descriptografar um registro, tenta o próximo
-          console.error(`Erro ao descriptografar ${s.key}:`, e)
+          logger.error(`Erro ao descriptografar ${s.key}:`, e)
           continue
         }
       }
     } catch (e) {
-      console.error('Erro ao buscar senha SMTP no banco:', e)
+      logger.error('Erro ao buscar senha SMTP no banco:', e)
     }
 
     // Fallback para env vars

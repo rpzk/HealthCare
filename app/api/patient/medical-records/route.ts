@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(records)
 
   } catch (error) {
-    console.error('Erro ao buscar histórico médico:', error)
+    logger.error('Erro ao buscar histórico médico:', error)
     return NextResponse.json(
       { error: 'Erro ao carregar histórico' },
       { status: 500 }

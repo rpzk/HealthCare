@@ -203,9 +203,9 @@ export async function seedDefaultTemplates(userId: string) {
         },
         userId
       )
-      console.log(`✓ Template "${template.name}" criado com sucesso`)
+      logger.info(`✓ Template "${template.name}" criado com sucesso`)
     } catch (error) {
-      console.error(`✗ Erro ao criar template "${template.name}":`, error)
+      logger.error(`✗ Erro ao criar template "${template.name}":`, error)
     }
   }
 }

@@ -16,6 +16,7 @@ import { Video, Square, Pause, Play, Upload, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger'
 
 interface RecordingControlsProps {
   consultationId: string;
@@ -160,7 +161,7 @@ export function RecordingControls({
       toast.success('Gravação iniciada');
       
     } catch (error) {
-      console.error('Erro ao iniciar gravação:', error);
+      logger.error('Erro ao iniciar gravação:', error);
       toast.error('Erro ao iniciar gravação');
     }
   };
@@ -237,7 +238,7 @@ export function RecordingControls({
       }
       
     } catch (error) {
-      console.error('Erro ao fazer upload:', error);
+      logger.error('Erro ao fazer upload:', error);
       toast.error('Erro ao salvar gravação');
       
       // Download local como fallback

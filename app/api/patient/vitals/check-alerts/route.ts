@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 function classify(value: number, t: { criticalLow?: number | null; warningLow?: number | null; normalMin?: number | null; normalMax?: number | null; warningHigh?: number | null; criticalHigh?: number | null }) {
   if (t.criticalLow !== null && t.criticalLow !== undefined && value < t.criticalLow) return 'CRITICAL_LOW'
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ alerts })
   } catch (error) {
-    console.error('Error checking alerts:', error)
+    logger.error('Error checking alerts:', error)
     return NextResponse.json({ error: 'Erro ao avaliar alertas' }, { status: 500 })
   }
 }

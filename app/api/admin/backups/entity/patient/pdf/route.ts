@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import { enqueueAIJob } from '@/lib/ai-queue-factory'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       message: 'Exportação iniciada. Você pode acompanhar o progresso.',
     })
   } catch (e: any) {
-    console.error('[Patient PDF Export] Error:', e)
+    logger.error('[Patient PDF Export] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao processar solicitação' }, { status: 500 })
   }
 }

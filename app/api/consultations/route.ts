@@ -4,6 +4,7 @@ import { rateLimiters } from '@/lib/rate-limiter'
 import { withConsultationAuth } from '@/lib/advanced-auth'
 import { ConsultationType } from '@prisma/client'
 import { consultationQuerySchema, createConsultationSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
+import { logger } from '@/lib/logger'
 
 // GET - Listar consultas (protegido por autenticação)
 export const GET = withConsultationAuth(async (request, { user }) => {
@@ -41,7 +42,7 @@ export const GET = withConsultationAuth(async (request, { user }) => {
     }
     return resp
   } catch (error) {
-    console.error('Erro ao buscar consultas:', error)
+    logger.error('Erro ao buscar consultas:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -91,7 +92,7 @@ export const POST = withConsultationAuth(async (request, { user }) => {
     return resp
 
   } catch (error: any) {
-    console.error('Erro ao criar consulta:', error)
+    logger.error('Erro ao criar consulta:', error)
     
     if (error.message.includes('não encontrado') || 
         error.message.includes('já existe uma consulta')) {

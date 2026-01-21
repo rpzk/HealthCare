@@ -9,6 +9,7 @@ import {
   getCategories,
 } from '@/lib/document-templates/variables'
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
       total: TEMPLATE_VARIABLES.length,
     })
   } catch (error) {
-    console.error('Error fetching variables:', error)
+    logger.error('Error fetching variables:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar variáveis' },
       { status: 500 }

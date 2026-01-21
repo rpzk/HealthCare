@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { logger } from '@/lib/logger'
 
 export interface AuthUser {
   id: string
@@ -101,7 +102,7 @@ export async function authMiddleware(
 
     // Log de auditoria (opcional em desenvolvimento)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🔐 Acesso autorizado: ${user.email} (${user.role}) - ${request.method} ${request.url}`)
+      logger.info(`🔐 Acesso autorizado: ${user.email} (${user.role}) - ${request.method} ${request.url}`)
     }
 
     return {
@@ -110,7 +111,7 @@ export async function authMiddleware(
     }
 
   } catch (error) {
-    console.error('Erro no middleware de autenticação:', error)
+    logger.error('Erro no middleware de autenticação:', error)
     return {
       success: false,
       error: 'Erro interno de autenticação',

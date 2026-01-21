@@ -6,6 +6,7 @@ import path from 'path'
 import { promisify } from 'util'
 import { exec } from 'child_process'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 const execAsync = promisify(exec)
 
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: true, message: 'Backup reenviado ao Google Drive com sucesso.' })
     } catch (e: any) {
-      console.error('[Backup Upload] Error:', e)
+      logger.error('[Backup Upload] Error:', e)
       return NextResponse.json({ success: false, error: e?.message || 'Falha no upload para o Drive' }, { status: 500 })
     } finally {
       // Limpeza de temporários
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       try { await fs.unlink(rcloneConfig) } catch {}
     }
   } catch (error) {
-    console.error('[Backups Upload POST] Error:', error)
+    logger.error('[Backups Upload POST] Error:', error)
     return NextResponse.json({ error: 'Erro ao reenviar backup' }, { status: 500 })
   }
 }

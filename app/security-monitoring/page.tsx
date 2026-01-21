@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Shield, Users, Activity, ListChecks } from 'lucide-react'
 import type { SecurityOverviewResponse } from './types'
 import { isSecurityOverviewResponse } from './validation'
+import { logger } from '@/lib/logger'
 
 // Server Component settings
 export const dynamic = 'force-dynamic'
@@ -32,18 +33,18 @@ async function fetchSecurityOverview(): Promise<FetchResult<SecurityOverviewResp
     })
     if (!res.ok) {
       const text = await res.text()
-      console.error('[SecurityMonitoring][fetch] Falha', res.status, text)
+      logger.error('[SecurityMonitoring][fetch] Falha', res.status, text)
       return { data: null, error: `Status ${res.status}: ${text.slice(0, 400)}`, status: res.status }
     }
     const json: unknown = await res.json()
     if (!isSecurityOverviewResponse(json)) {
-      console.error('[SecurityMonitoring][fetch] Resposta inesperada', json)
+      logger.error('[SecurityMonitoring][fetch] Resposta inesperada', json)
       return { data: null, error: 'Resposta da API em formato inesperado.', status: res.status }
     }
     return { data: json, error: null, status: res.status }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error('[SecurityMonitoring][fetch] Exceção', message)
+    logger.error('[SecurityMonitoring][fetch] Exceção', message)
     return { data: null, error: message, status: 0 }
   }
 }

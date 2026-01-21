@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import path from 'path'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, items })
   } catch (e: any) {
-    console.error('[Backups Files] Error:', e)
+    logger.error('[Backups Files] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao listar arquivos' }, { status: 500 })
   }
 }

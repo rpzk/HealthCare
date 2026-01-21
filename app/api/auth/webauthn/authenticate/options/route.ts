@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAuthenticationOptions } from '@/lib/webauthn'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
     const options = await createAuthenticationOptions(body.email, req as any)
     return NextResponse.json(options)
   } catch (error: any) {
-    console.error('Erro ao gerar options de autenticação WebAuthn:', error)
+    logger.error('Erro ao gerar options de autenticação WebAuthn:', error)
     return NextResponse.json({ error: error?.message || 'Erro interno' }, { status: 500 })
   }
 }

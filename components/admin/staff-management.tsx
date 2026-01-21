@@ -54,6 +54,7 @@ import {
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { toastApiError } from '@/lib/toast-api-error'
+import { logger } from '@/lib/logger'
 
 interface StaffMember {
   id: string
@@ -137,7 +138,7 @@ export function StaffManagement() {
         toastApiError(data, 'Erro ao carregar profissionais')
       }
     } catch (error) {
-      console.error('Erro ao carregar staff:', error)
+      logger.error('Erro ao carregar staff:', error)
       toast({ title: 'Erro', description: 'Não foi possível carregar os profissionais', variant: 'destructive' })
     } finally {
       setLoading(false)

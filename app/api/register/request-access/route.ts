@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
 import { EmailService } from '@/lib/email-service'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
     if (err?.name === 'ZodError') {
       return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
     }
-    console.error('[REGISTER_REQUEST_ACCESS]', err)
+    logger.error('[REGISTER_REQUEST_ACCESS]', err)
     return NextResponse.json({ error: 'Erro interno.' }, { status: 500 })
   }
 }

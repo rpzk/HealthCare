@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import path from 'path'
 import { stat, readFile } from 'fs/promises'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (e: any) {
-    console.error('[Backups Files Download] Error:', e)
+    logger.error('[Backups Files Download] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao baixar arquivo' }, { status: 500 })
   }
 }

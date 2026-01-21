@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import path from 'path'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -30,7 +31,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('[Delete File] Error:', e)
+    logger.error('[Delete File] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao deletar arquivo' }, { status: 500 })
   }
 }

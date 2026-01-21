@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Get specific leave request
 export const GET = withAuth(async (req: NextRequest, { params, user }) => {
@@ -35,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(request)
   } catch (error: any) {
-    console.error('Error fetching leave request:', error)
+    logger.error('Error fetching leave request:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar solicitação', details: error.message },
       { status: 500 }
@@ -181,7 +182,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json(updated)
   } catch (error: any) {
-    console.error('Error updating leave request:', error)
+    logger.error('Error updating leave request:', error)
     return NextResponse.json(
       { error: 'Erro ao atualizar solicitação', details: error.message },
       { status: 500 }
@@ -232,7 +233,7 @@ export const DELETE = withAuth(async (req: NextRequest, { params, user }) => {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error deleting leave request:', error)
+    logger.error('Error deleting leave request:', error)
     return NextResponse.json(
       { error: 'Erro ao excluir solicitação', details: error.message },
       { status: 500 }

@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { MedicationService } from '@/lib/medication-service'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(formatted)
   } catch (error) {
-    console.error('Erro no autocomplete de medicamentos:', error)
+    logger.error('Erro no autocomplete de medicamentos:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar sugestões' },
       { status: 500 }

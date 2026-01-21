@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { DeviceDataSource, ReadingType, ReadingContext, Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 // POST - Iniciar sessão de sincronização
 export async function POST(request: NextRequest) {
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       throw error
     }
   } catch (error) {
-    console.error('Error syncing data:', error)
+    logger.error('Error syncing data:', error)
     return NextResponse.json(
       { error: 'Erro ao sincronizar dados' },
       { status: 500 }
@@ -163,7 +164,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(sessions)
   } catch (error) {
-    console.error('Error fetching sync history:', error)
+    logger.error('Error fetching sync history:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar histórico' },
       { status: 500 }

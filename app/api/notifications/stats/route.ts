@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { NotificationService } from '@/lib/notification-service'
 import { withAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { logger } from '@/lib/logger'
 
 export const GET = withAuth(async (request, { user }) => {
   try {
@@ -28,7 +29,7 @@ export const GET = withAuth(async (request, { user }) => {
       error.message
     )
 
-    console.error('Erro ao buscar estatísticas de notificações:', error)
+    logger.error('Erro ao buscar estatísticas de notificações:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -77,7 +78,7 @@ export const POST = withAuth(async (request, { user }) => {
       error.message
     )
 
-    console.error('Erro ao marcar todas como lidas:', error)
+    logger.error('Erro ao marcar todas como lidas:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

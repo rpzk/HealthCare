@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email-service'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 // Roles que podem convidar e quem podem convidar
 const INVITE_PERMISSIONS: Record<string, string[]> = {
@@ -56,12 +57,12 @@ export async function POST(req: Request) {
     if (existingInvite) {
       // Mesmo com convite existente, reenvia o email
       const existingLink = `${baseUrl}/register/${existingInvite.token}`
-      console.log('[invites] Convite existente encontrado, reenviando email para:', email)
+      logger.info('[invites] Convite existente encontrado, reenviando email para:', email)
       try {
         const emailSent = await emailService.sendInviteEmail(email, existingLink)
-        console.log('[invites] Reenvio resultado:', emailSent ? '✅ Sucesso' : '❌ Falhou')
+        logger.info('[invites] Reenvio resultado:', emailSent ? '✅ Sucesso' : '❌ Falhou')
       } catch (emailError) {
-        console.error('[invites] Failed to resend invite email:', emailError)
+        logger.error('[invites] Failed to resend invite email:', emailError)
       }
       
       return NextResponse.json({
@@ -90,12 +91,12 @@ export async function POST(req: Request) {
 
     // Tentar enviar e-mail (não falha a requisição se o e-mail falhar)
     const link = `${baseUrl}/register/${invite.token}`
-    console.log('[invites] Tentando enviar e-mail de convite para:', email)
+    logger.info('[invites] Tentando enviar e-mail de convite para:', email)
     try {
       const emailSent = await emailService.sendInviteEmail(email, link)
-      console.log('[invites] Resultado do envio:', emailSent ? '✅ Sucesso' : '❌ Falhou')
+      logger.info('[invites] Resultado do envio:', emailSent ? '✅ Sucesso' : '❌ Falhou')
     } catch (emailError) {
-      console.error('[invites] Failed to send invite email:', emailError)
+      logger.error('[invites] Failed to send invite email:', emailError)
     }
 
     return NextResponse.json({
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
     })
 
   } catch (error) {
-    console.error('Error creating invite:', error)
+    logger.error('Error creating invite:', error)
     return new NextResponse('Internal Server Error', { status: 500 })
   }
 }

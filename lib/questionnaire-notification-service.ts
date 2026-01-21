@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * Serviço para gerenciar notificações de questionários
@@ -28,7 +29,7 @@ export class QuestionnaireNotificationService {
         },
       })
     } catch (error) {
-      console.error('Erro ao criar notificação de envio:', error)
+      logger.error('Erro ao criar notificação de envio:', error)
     }
   }
 
@@ -59,7 +60,7 @@ export class QuestionnaireNotificationService {
         },
       })
     } catch (error) {
-      console.error('Erro ao criar notificação de conclusão:', error)
+      logger.error('Erro ao criar notificação de conclusão:', error)
     }
   }
 
@@ -90,7 +91,7 @@ export class QuestionnaireNotificationService {
         },
       })
     } catch (error) {
-      console.error('Erro ao criar notificação de expiração:', error)
+      logger.error('Erro ao criar notificação de expiração:', error)
     }
   }
 
@@ -131,7 +132,7 @@ export class QuestionnaireNotificationService {
         },
       })
     } catch (error) {
-      console.error('Erro ao criar notificação de análise IA:', error)
+      logger.error('Erro ao criar notificação de análise IA:', error)
     }
   }
 
@@ -160,7 +161,7 @@ export class QuestionnaireNotificationService {
         )
       )
     } catch (error) {
-      console.error('Erro ao criar notificações em lote:', error)
+      logger.error('Erro ao criar notificações em lote:', error)
     }
   }
 
@@ -189,10 +190,10 @@ export class QuestionnaireNotificationService {
         },
       })
 
-      console.log(`Notificações antigas limpas: ${result.count}`)
+      logger.info(`Notificações antigas limpas: ${result.count}`)
       return result.count
     } catch (error) {
-      console.error('Erro ao limpar notificações antigas:', error)
+      logger.error('Erro ao limpar notificações antigas:', error)
       return 0
     }
   }

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
 import { Video, Square, AlertCircle, Clock, CheckCircle } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
   Dialog,
   DialogContent,
@@ -129,7 +130,7 @@ export function VideoRecordingControls({
             
             sequenceNumberRef.current++
           } catch (error) {
-            console.error('[Recording] Erro ao enviar chunk:', error)
+            logger.error('[Recording] Erro ao enviar chunk:', error)
           }
         }
       }
@@ -151,7 +152,7 @@ export function VideoRecordingControls({
       })
 
     } catch (error: unknown) {
-      console.error('[Recording] Erro ao iniciar gravação:', error)
+      logger.error('[Recording] Erro ao iniciar gravação:', error)
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Não foi possível iniciar a gravação',
@@ -192,7 +193,7 @@ export function VideoRecordingControls({
       })
 
     } catch (error: unknown) {
-      console.error('[Recording] Erro ao finalizar gravação:', error)
+      logger.error('[Recording] Erro ao finalizar gravação:', error)
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Erro ao finalizar gravação',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { TermAudience } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   try {
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true })
 
   } catch (error: any) {
-    console.error('Registration error:', error)
+    logger.error('Registration error:', error)
     return NextResponse.json(
       { error: error.message || 'Erro interno do servidor', code: 'INTERNAL_ERROR' },
       { status: 500 }

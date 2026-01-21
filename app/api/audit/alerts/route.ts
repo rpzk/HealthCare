@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { advancedAuditService } from '@/lib/advanced-audit-service';
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/audit/alerts
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(alerts, { status: 200 });
   } catch (error) {
-    console.error('[Audit] Erro ao listar alertas:', error);
+    logger.error('[Audit] Erro ao listar alertas:', error);
     return NextResponse.json(
       { error: 'Erro ao listar alertas' },
       { status: 500 }

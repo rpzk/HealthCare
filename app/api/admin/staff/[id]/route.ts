@@ -10,6 +10,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 interface RouteParams {
   params: { id: string }
@@ -69,7 +70,7 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, data: user })
   } catch (error) {
-    console.error('[staff] Error:', error)
+    logger.error('[staff] Error:', error)
     return NextResponse.json({ error: 'Erro ao buscar profissional' }, { status: 500 })
   }
 }
@@ -188,7 +189,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
-    console.error('[staff] Error:', error)
+    logger.error('[staff] Error:', error)
     return NextResponse.json({ error: 'Erro ao atualizar profissional' }, { status: 500 })
   }
 }
@@ -232,7 +233,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       message: `${updated.name} foi desativado`
     })
   } catch (error) {
-    console.error('[staff] Error:', error)
+    logger.error('[staff] Error:', error)
     return NextResponse.json({ error: 'Erro ao remover profissional' }, { status: 500 })
   }
 }

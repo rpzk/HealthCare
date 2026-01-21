@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,7 +75,7 @@ export async function GET() {
 
     return NextResponse.json({ dimensions })
   } catch (error) {
-    console.error('Error fetching health dimensions:', error)
+    logger.error('Error fetching health dimensions:', error)
     return NextResponse.json({ error: 'Erro ao carregar dimensões de saúde' }, { status: 500 })
   }
 }

@@ -7,6 +7,7 @@ import {
   getAudienceForRole,
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -90,7 +91,7 @@ export async function GET(
 
     return NextResponse.json(user)
   } catch (error) {
-    console.error('Erro ao buscar papéis:', error)
+    logger.error('Erro ao buscar papéis:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -191,7 +192,7 @@ export async function POST(
 
     return NextResponse.json(assignedRole, { status: 201 })
   } catch (error) {
-    console.error('Erro ao atribuir papel:', error)
+    logger.error('Erro ao atribuir papel:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -292,7 +293,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Erro ao remover papel:', error)
+    logger.error('Erro ao remover papel:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

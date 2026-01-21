@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { logger } from '@/lib/logger'
 import {
   BarChart,
   Bar,
@@ -131,7 +132,7 @@ export function DevelopmentAnalytics() {
         setData(json)
       }
     } catch (error) {
-      console.error('Error loading analytics:', error)
+      logger.error('Error loading analytics:', error)
     } finally {
       setLoading(false)
     }

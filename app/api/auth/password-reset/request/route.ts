@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email-service'
 import { createRedisRateLimiter } from '@/lib/redis-integration'
+import { logger } from '@/lib/logger'
 import {
   generatePasswordResetToken,
   getBaseUrlFromRequest,
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
     })
 
     if (!result.success) {
-      console.error('Falha ao enviar email de reset de senha:', result.error)
+      logger.error('Falha ao enviar email de reset de senha:', result.error)
     }
 
     return okResponse
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
     }
 
-    console.error('Erro no request de reset de senha:', error)
+    logger.error('Erro no request de reset de senha:', error)
     // não vazar detalhes
     return NextResponse.json({ ok: true })
   }

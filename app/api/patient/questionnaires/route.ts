@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 
 import { sanitizeSearchQuery, sanitizeText } from '@/lib/sanitization'
+import { logger } from '@/lib/logger'
 
 type StatusFilter = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED'
 
@@ -130,7 +131,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ questionnaires: ordered })
   } catch (error) {
-    console.error('Error fetching patient questionnaires (self):', error)
+    logger.error('Error fetching patient questionnaires (self):', error)
     return NextResponse.json({ error: 'Erro ao carregar questionários' }, { status: 500 })
   }
 }

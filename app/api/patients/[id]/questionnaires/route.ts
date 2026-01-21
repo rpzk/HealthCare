@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - Listar questionários de um paciente específico
 export async function GET(
@@ -42,7 +43,7 @@ export async function GET(
     return NextResponse.json(questionnaires)
 
   } catch (error: any) {
-    console.error('Error fetching patient questionnaires:', error)
+    logger.error('Error fetching patient questionnaires:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

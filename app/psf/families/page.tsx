@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
+import { logger } from '@/lib/logger'
 import {
   Table,
   TableBody,
@@ -40,7 +41,7 @@ export default async function FamiliesPage() {
       });
     }
   } catch (error) {
-    console.error("Failed to fetch families (likely build time or DB offline):", error);
+    logger.error("Failed to fetch families (likely build time or DB offline):", error);
     // Return empty array to allow build to proceed
     families = [];
   }

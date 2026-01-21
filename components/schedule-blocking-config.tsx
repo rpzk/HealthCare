@@ -18,6 +18,7 @@ import { Calendar, Trash2, AlertCircle, Save, Loader2, Plus } from 'lucide-react
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface ScheduleException {
   id: string
@@ -82,7 +83,7 @@ export function ScheduleBlockingConfig() {
         setExceptions(data.exceptions || [])
       }
     } catch (error) {
-      console.error('Error loading exceptions:', error)
+      logger.error('Error loading exceptions:', error)
       toast.error('Erro ao carregar bloqueios')
     } finally {
       setLoading(false)
@@ -127,7 +128,7 @@ export function ScheduleBlockingConfig() {
       setBlockType('VACATION')
       await loadExceptions()
     } catch (error) {
-      console.error('Error adding block:', error)
+      logger.error('Error adding block:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao criar bloqueio')
     } finally {
       setSaving(false)
@@ -150,7 +151,7 @@ export function ScheduleBlockingConfig() {
       toast.success('Bloqueio removido')
       await loadExceptions()
     } catch (error) {
-      console.error('Error deleting block:', error)
+      logger.error('Error deleting block:', error)
       toast.error('Erro ao remover bloqueio')
     } finally {
       setSaving(false)

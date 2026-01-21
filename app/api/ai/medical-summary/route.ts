@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import { TermAudience } from '@prisma/client'
 import { assertUserAcceptedTerms } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
+import { logger } from '@/lib/logger'
 
 // Schema de validação para geração de resumo médico
 const medicalSummarySchema = z.object({
@@ -129,7 +130,7 @@ export const POST = withDoctorAuth(async (request, { user }) => {
     })
 
   } catch (error: any) {
-    console.error('Erro ao gerar resumo médico:', error)
+    logger.error('Erro ao gerar resumo médico:', error)
 
     // Log de erro
     auditLogger.logError(

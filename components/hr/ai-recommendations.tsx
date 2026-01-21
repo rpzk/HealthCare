@@ -23,6 +23,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { logger } from '@/lib/logger'
 
 interface Recommendation {
   id: string
@@ -124,7 +125,7 @@ export function AIRecommendations({ patientId, compact = false }: AIRecommendati
       setContext(data.context || null)
       setGeneratedAt(data.generatedAt || null)
     } catch (error) {
-      console.error('Error fetching recommendations:', error)
+      logger.error('Error fetching recommendations:', error)
       toast({
         title: 'Erro',
         description: 'Não foi possível gerar recomendações',

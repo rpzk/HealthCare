@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import fs from 'fs'
 import path from 'path'
+import { logger } from '@/lib/logger'
 
 // Forçar runtime dinâmico para evitar execução durante build
 export const runtime = 'nodejs'
@@ -50,7 +51,7 @@ function saveResetRecord(record: ResetRecord) {
     const recentHistory = history.slice(-50)
     fs.writeFileSync(RESET_LOG_FILE, JSON.stringify(recentHistory, null, 2))
   } catch (error) {
-    console.error('Erro ao salvar registro de reset:', error)
+    logger.error('Erro ao salvar registro de reset:', error)
   }
 }
 
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
       lastReset: history[history.length - 1] || null
     })
   } catch (error) {
-    console.error('Erro ao buscar histórico:', error)
+    logger.error('Erro ao buscar histórico:', error)
     return NextResponse.json(
       { error: 'Erro ao buscar histórico de resets' },
       { status: 500 }
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
     const totalToDelete = Object.values(stats).reduce((a, b) => a + b, 0)
 
     // Executar deleções
-    console.log(`[RESET ${resetId}] Iniciando deleção de dados transacionais...`)
+    logger.info(`[RESET ${resetId}] Iniciando deleção de dados transacionais...`)
 
     // Deletar em ordem de dependência
     await prisma.examResult.deleteMany({})
@@ -188,7 +189,7 @@ export async function POST(request: NextRequest) {
     }
     saveResetRecord(finalRecord)
 
-    console.log(`[RESET ${resetId}] ✅ Reset concluído com sucesso`)
+    logger.info(`[RESET ${resetId}] ✅ Reset concluído com sucesso`)
 
     return NextResponse.json({
       success: true,
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error(`[${resetId}] Erro no reset:`, error)
+    logger.error(`[${resetId}] Erro no reset:`, error)
 
     // Registrar falha
     if (resetId) {

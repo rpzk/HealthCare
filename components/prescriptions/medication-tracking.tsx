@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { Calendar, Pill, CheckCircle2, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 interface MedicationTime {
   id: string
@@ -37,7 +38,7 @@ export function MedicationTracking({ prescriptionId }: MedicationTrackingProps) 
       const data = await res.json()
       setMedications(data.data)
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast.error('Erro ao carregar medicações')
     } finally {
       setLoading(false)
@@ -69,7 +70,7 @@ export function MedicationTracking({ prescriptionId }: MedicationTrackingProps) 
       // Recarregar lista
       fetchMedications()
     } catch (error) {
-      console.error('Erro:', error)
+      logger.error('Erro:', error)
       toast.error('Erro ao registrar medicação')
     } finally {
       setSubmitting(null)

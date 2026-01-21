@@ -7,6 +7,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import forge from 'node-forge'
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 /**
  * POST /api/certificates/upload-a1
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
       }
       
     } catch (error) {
-      console.error('Erro ao validar certificado:', error)
+      logger.error('Erro ao validar certificado:', error)
       return NextResponse.json(
         {
           error: 'Erro ao processar certificado',
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Upload A1] Erro:', error)
+    logger.error('[Upload A1] Erro:', error)
     return NextResponse.json(
       {
         error: 'Erro ao fazer upload do certificado',
@@ -254,7 +255,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ certificates })
 
   } catch (error) {
-    console.error('[List Certificates] Erro:', error)
+    logger.error('[List Certificates] Erro:', error)
     return NextResponse.json(
       { error: 'Erro ao listar certificados' },
       { status: 500 }

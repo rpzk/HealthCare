@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import * as PrismaNS from '@prisma/client'
 const { StratumLevel } = PrismaNS as any
 import { auditLogger, AuditAction } from '@/lib/audit-logger'
+import { logger } from '@/lib/logger'
 
 export interface UpsertCBOGroupInput { code: string; name: string; level: number; parentCode?: string }
 export interface UpsertOccupationInput { code: string; title: string; description?: string; groupCode?: string; synonyms?: string[] }
@@ -20,7 +21,7 @@ export const OccupationCapabilityService = {
       create: { code: input.code, name: input.name, level: input.level, parentId: parent?.id }
     })
     // auditoria genérica (sem usuário explícito aqui - caller deve complementar depois se necessário)
-  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'CBOGroup', { resourceId: res.id }) } catch (e) { console.debug('Audit log (CBOGroup) failed', e) }
+  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'CBOGroup', { resourceId: res.id }) } catch (e) { logger.debug('Audit log (CBOGroup) failed', e) }
     return res
   },
   async upsertOccupation(input: UpsertOccupationInput, actor?: { id:string; email?:string; role?:string }) {
@@ -30,7 +31,7 @@ export const OccupationCapabilityService = {
       update: { title: input.title, description: input.description, groupId: group?.id, synonyms: input.synonyms ? JSON.stringify(input.synonyms) : undefined },
       create: { code: input.code, title: input.title, description: input.description, groupId: group?.id, synonyms: input.synonyms ? JSON.stringify(input.synonyms) : undefined }
     })
-  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'Occupation', { resourceId: res.id }) } catch (e) { console.debug('Audit log (Occupation) failed', e) }
+  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'Occupation', { resourceId: res.id }) } catch (e) { logger.debug('Audit log (Occupation) failed', e) }
     return res
   },
   async createJobRole(input: CreateJobRoleInput, actor?: { id:string; email?:string; role?:string }) {
@@ -44,7 +45,7 @@ export const OccupationCapabilityService = {
       tasks: input.tasks,
       capabilitiesJson: input.capabilities ? JSON.stringify(input.capabilities) : undefined
     }})
-  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'JobRole', { resourceId: res.id }) } catch (e) { console.debug('Audit log (JobRole) failed', e) }
+  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'JobRole', { resourceId: res.id }) } catch (e) { logger.debug('Audit log (JobRole) failed', e) }
     return res
   },
   async assignUserRole(input: AssignUserRoleInput, actor?: { id:string; email?:string; role?:string }) {
@@ -53,7 +54,7 @@ export const OccupationCapabilityService = {
       update: { active: true },
       create: { userId: input.userId, jobRoleId: input.jobRoleId }
     })
-  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'UserJobRole', { resourceId: res.id }) } catch (e) { console.debug('Audit log (UserJobRole) failed', e) }
+  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.DATA_IMPORT, 'UserJobRole', { resourceId: res.id }) } catch (e) { logger.debug('Audit log (UserJobRole) failed', e) }
     return res
   },
   async evaluateCapability(input: CapabilityEvaluationInput, actor?: { id:string; email?:string; role?:string }) {
@@ -78,7 +79,7 @@ export const OccupationCapabilityService = {
             if (typeof gapVal === 'string' && gapVal.length) gapPenalty = 0.1
             capabilityScores[k] = Math.max(0, Math.min(1, (weights[k] || 0) - gapPenalty))
           }
-        } catch (e) { console.debug('Failed parsing jobRole capabilitiesJson', e) }
+        } catch (e) { logger.debug('Failed parsing jobRole capabilitiesJson', e) }
       }
     }
     const res = await (prisma as any).capabilityEvaluation.create({ data: {
@@ -93,7 +94,7 @@ export const OccupationCapabilityService = {
       recommendations: input.recommendations,
       capabilityScores: capabilityScores ? JSON.stringify(capabilityScores) : undefined
     }})
-  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.CAPABILITY_EVALUATION_CREATE, 'CapabilityEvaluation', { resourceId: res.id }) } catch (e) { console.debug('Audit log (CapabilityEvaluation) failed', e) }
+  try { auditLogger.log(actor?.id||'system', actor?.email||'system@local', actor?.role||'SYSTEM', AuditAction.CAPABILITY_EVALUATION_CREATE, 'CapabilityEvaluation', { resourceId: res.id }) } catch (e) { logger.debug('Audit log (CapabilityEvaluation) failed', e) }
     return res
   },
   async listUserEvaluations(userId: string, limit=50) {

@@ -17,6 +17,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export type CareTeamAccessLevel = 'FULL' | 'CONSULTATION' | 'LIMITED' | 'EMERGENCY' | 'VIEW_ONLY'
 
@@ -346,7 +347,7 @@ export async function addToCareTeam(
 
     return { success: true }
   } catch (error) {
-    console.error('Error adding to care team:', error)
+    logger.error('Error adding to care team:', error)
     return { success: false, error: 'Erro ao adicionar à equipe de atendimento' }
   }
 }
@@ -371,7 +372,7 @@ export async function removeFromCareTeam(
     })
     return { success: true }
   } catch (error) {
-    console.error('Error removing from care team:', error)
+    logger.error('Error removing from care team:', error)
     return { success: false, error: 'Erro ao remover da equipe de atendimento' }
   }
 }

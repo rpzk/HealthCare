@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { WhatsAppService } from '@/lib/whatsapp-service'
 import { addHours, subHours, isBefore, isAfter, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { logger } from '@/lib/logger'
 
 export class AppointmentConfirmationService {
   /**
@@ -18,7 +19,7 @@ export class AppointmentConfirmationService {
     const tomorrow = addHours(now, 24)
     const dayAfterTomorrow = addHours(tomorrow, 24)
 
-    console.log(`[Confirmation] Enviando lembretes para consultas de ${format(tomorrow, 'dd/MM/yyyy')}`)
+    logger.info(`[Confirmation] Enviando lembretes para consultas de ${format(tomorrow, 'dd/MM/yyyy')}`)
 
     try {
       // Buscar consultas agendadas para as próximas 24-48h
@@ -41,14 +42,14 @@ export class AppointmentConfirmationService {
         }
       })
 
-      console.log(`[Confirmation] Encontradas ${appointments.length} consultas`)
+      logger.info(`[Confirmation] Encontradas ${appointments.length} consultas`)
 
       let successCount = 0
       let errorCount = 0
 
       for (const appointment of appointments) {
         if (!appointment.patient?.phone) {
-          console.log(`[Confirmation] Paciente ${appointment.patient?.name} sem telefone`)
+          logger.info(`[Confirmation] Paciente ${appointment.patient?.name} sem telefone`)
           continue
         }
 
@@ -78,14 +79,14 @@ export class AppointmentConfirmationService {
           // Aguardar 2s entre envios (evitar rate limit)
           await new Promise(resolve => setTimeout(resolve, 2000))
         } catch (error) {
-          console.error(`[Confirmation] Erro ao enviar para ${appointment.patient.name}:`, error)
+          logger.error(`[Confirmation] Erro ao enviar para ${appointment.patient.name}:`, error)
           errorCount++
         }
       }
 
-      console.log(`[Confirmation] Concluído: ${successCount} enviados, ${errorCount} erros`)
+      logger.info(`[Confirmation] Concluído: ${successCount} enviados, ${errorCount} erros`)
     } catch (error) {
-      console.error('[Confirmation] Erro ao enviar lembretes:', error)
+      logger.error('[Confirmation] Erro ao enviar lembretes:', error)
       throw error
     }
   }
@@ -110,7 +111,7 @@ export class AppointmentConfirmationService {
       })
 
       if (!patient) {
-        console.log(`[Confirmation] Paciente não encontrado: ${patientPhone}`)
+        logger.info(`[Confirmation] Paciente não encontrado: ${patientPhone}`)
         return false
       }
 
@@ -210,7 +211,7 @@ export class AppointmentConfirmationService {
 
       return false
     } catch (error) {
-      console.error('[Confirmation] Erro ao processar confirmação:', error)
+      logger.error('[Confirmation] Erro ao processar confirmação:', error)
       return false
     }
   }
@@ -244,7 +245,7 @@ export class AppointmentConfirmationService {
    * Agenda próximo lembrete (para execução manual ou teste)
    */
   static async scheduleNextReminder(): Promise<void> {
-    console.log('[Confirmation] Agendando próximo lembrete...')
+    logger.info('[Confirmation] Agendando próximo lembrete...')
     
     // Em produção, isso seria configurado no cron job do servidor
     // Exemplo: 0 18 * * * (todos os dias às 18h)

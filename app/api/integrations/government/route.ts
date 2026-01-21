@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { GovernmentProtocolService } from '@/lib/integration-services'
 import { authOptions } from '@/auth'
+import { logger } from '@/lib/logger'
 
 type ProtocolType =
   | 'LABOR_PERMISSION'
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('[Government Protocol API Error]', error)
+    logger.error('[Government Protocol API Error]', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error'
@@ -96,7 +97,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('[Government Verify API Error]', error)
+    logger.error('[Government Verify API Error]', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error'

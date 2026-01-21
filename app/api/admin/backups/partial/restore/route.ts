@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import path from 'path'
 import { promises as fs } from 'fs'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, results })
   } catch (e: any) {
-    console.error('[Partial Restore] Error:', e)
+    logger.error('[Partial Restore] Error:', e)
     return NextResponse.json({ error: e?.message || 'Erro ao restaurar backup parcial' }, { status: 500 })
   }
 }

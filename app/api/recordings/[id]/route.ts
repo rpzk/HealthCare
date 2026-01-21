@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { TelemedicineRecordingService } from '@/lib/telemedicine-recording-service'
+import { logger } from '@/lib/logger'
 
 /**
  * DELETE /api/recordings/[id]
@@ -29,7 +30,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
 
   } catch (error: unknown) {
-    console.error('[Recording] Erro ao excluir gravação:', error)
+    logger.error('[Recording] Erro ao excluir gravação:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao excluir gravação' },
       { status: 500 }

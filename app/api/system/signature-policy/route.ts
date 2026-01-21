@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSignaturePolicy } from '@/lib/signature-policy'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -9,7 +10,7 @@ export async function GET() {
     const policy = await getSignaturePolicy()
     return NextResponse.json({ success: true, policy })
   } catch (error: any) {
-    console.error('Erro ao obter policy de assinatura:', error)
+    logger.error('Erro ao obter policy de assinatura:', error)
     return NextResponse.json({ error: 'Erro ao obter configurações' }, { status: 500 })
   }
 }
