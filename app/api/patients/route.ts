@@ -49,8 +49,14 @@ export const GET = withPatientAuth(async (req, { user }) => {
       page,
       limit
     ))
-    // Aplicar masking na coleção
-    const masked = { ...result, patients: applyPatientsCollectionMasking(result.patients) }
+    // Aplicar masking na coleção; para perfis clínicos mantemos campos clínicos
+    const clinicalRoles = ['DOCTOR','NURSE','PHYSIOTHERAPIST','PSYCHOLOGIST','HEALTH_AGENT','TECHNICIAN','PHARMACIST','DENTIST','NUTRITIONIST','SOCIAL_WORKER','OTHER','ADMIN'] as const
+    const exposeClinical = clinicalRoles.includes(user.role as typeof clinicalRoles[number])
+    const isAdmin = user.role === 'ADMIN'
+    const masked = {
+      ...result,
+      patients: applyPatientsCollectionMasking(result.patients, { exposeClinical, isAdmin })
+    }
     
     // Transformar para o formato esperado pelo frontend
     const response = {

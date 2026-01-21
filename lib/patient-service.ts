@@ -2,6 +2,7 @@ import { Gender, RiskLevel, Prisma } from '@prisma/client'
 import { getPatientAccessFilter } from '@/lib/patient-access'
 import { prisma } from '@/lib/prisma'
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
+import { normalizeBloodType, parseAllergies, serializeAllergies } from '@/lib/patient-schemas'
 
 async function getPrisma() {
   return prisma
@@ -14,10 +15,11 @@ export interface PatientCreateData {
   cpf?: string
   birthDate: Date
   gender: Gender
+  bloodType?: string | null
+  allergies?: string | string[]
   emergencyContact?: string
   address?: string
   medicalHistory?: string
-  allergies?: string
   currentMedications?: string
   riskLevel?: RiskLevel
   insuranceNumber?: string
@@ -150,13 +152,14 @@ export class PatientService {
           email: patient.email,
           phone: patient.phone,
           cpf: decrypt(patient.cpf as string | null),
+          bloodType: normalizeBloodType(patient.bloodType),
           age: this.calculateAge(patient.birthDate),
           gender: patient.gender,
           riskLevel: patient.riskLevel,
           emergencyContact: patient.emergencyContact,
           address: patient.address,
           medicalHistory: decrypt(patient.medicalHistory as string | null),
-          allergies: decrypt(patient.allergies as string | null),
+          allergies: parseAllergies(decrypt(patient.allergies as string | null)),
           currentMedications: decrypt(patient.currentMedications as string | null),
           insuranceNumber: patient.insuranceNumber,
           doctor: patient.User ? {
@@ -267,8 +270,9 @@ export class PatientService {
       return {
         ...patient,
         cpf: decrypt(patient.cpf as string | null),
+        bloodType: normalizeBloodType(patient.bloodType),
         medicalHistory: decrypt(patient.medicalHistory as string | null),
-        allergies: decrypt(patient.allergies as string | null),
+        allergies: parseAllergies(decrypt(patient.allergies as string | null)),
         currentMedications: decrypt(patient.currentMedications as string | null),
         age: this.calculateAge(patient.birthDate),
         doctor: patient.User ? {
@@ -318,7 +322,16 @@ export class PatientService {
         personId = newPerson.id
       }
 
-      // 3. Criar o Paciente vinculado à Pessoa
+      // 3. Preparar dados para criação
+      const allergiesArray = typeof data.allergies === 'string' 
+        ? parseAllergies(data.allergies)
+        : Array.isArray(data.allergies) 
+          ? data.allergies 
+          : []
+      
+      const bloodTypeNormalized = normalizeBloodType(data.bloodType as string | undefined)
+      
+      // 4. Criar o Paciente vinculado à Pessoa
       const patient = await prisma.patient.create({
         data: {
           name: data.name,
@@ -328,10 +341,11 @@ export class PatientService {
           cpfHash: data.cpf ? hashCPF(data.cpf) : undefined,
           birthDate: data.birthDate,
           gender: data.gender,
+          bloodType: bloodTypeNormalized,
           emergencyContact: data.emergencyContact,
           address: data.address,
           medicalHistory: data.medicalHistory ? encrypt(data.medicalHistory) : undefined,
-          allergies: data.allergies ? encrypt(data.allergies) : undefined,
+          allergies: allergiesArray.length > 0 ? encrypt(serializeAllergies(allergiesArray)) : undefined,
           currentMedications: data.currentMedications ? encrypt(data.currentMedications) : undefined,
           riskLevel: data.riskLevel || 'BAIXO',
           insuranceNumber: data.insuranceNumber,
@@ -354,8 +368,9 @@ export class PatientService {
       return {
         ...patient,
         cpf: decrypt(patient.cpf as string | null),
+        bloodType: normalizeBloodType(patient.bloodType),
         medicalHistory: decrypt(patient.medicalHistory as string | null),
-        allergies: decrypt(patient.allergies as string | null),
+        allergies: parseAllergies(decrypt(patient.allergies as string | null)),
         currentMedications: decrypt(patient.currentMedications as string | null)
       }
     } catch (error) {
@@ -373,11 +388,19 @@ export class PatientService {
       const updateData: Record<string, unknown> = { ...data }
       if (data.cpf) {
         updateData.cpf = encrypt(data.cpf)
-  updateData.cpfHash = hashCPF(data.cpf)
+        updateData.cpfHash = hashCPF(data.cpf)
       }
       if (data.medicalHistory) updateData.medicalHistory = encrypt(data.medicalHistory)
-      if (data.allergies) updateData.allergies = encrypt(data.allergies)
+      if (data.allergies) {
+        const allergiesArray = typeof data.allergies === 'string' 
+          ? parseAllergies(data.allergies)
+          : Array.isArray(data.allergies) 
+            ? data.allergies 
+            : []
+        updateData.allergies = allergiesArray.length > 0 ? encrypt(serializeAllergies(allergiesArray)) : null
+      }
       if (data.currentMedications) updateData.currentMedications = encrypt(data.currentMedications)
+      if (data.bloodType !== undefined) updateData.bloodType = normalizeBloodType(data.bloodType as string)
 
       const patient = await prisma.patient.update({
         where: { id },
@@ -395,8 +418,9 @@ export class PatientService {
       return {
         ...patient,
         cpf: decrypt(patient.cpf as string | null),
+        bloodType: normalizeBloodType(patient.bloodType),
         medicalHistory: decrypt(patient.medicalHistory as string | null),
-        allergies: decrypt(patient.allergies as string | null),
+        allergies: parseAllergies(decrypt(patient.allergies as string | null)),
         currentMedications: decrypt(patient.currentMedications as string | null)
       }
     } catch (error) {

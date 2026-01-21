@@ -5,6 +5,9 @@ export interface MaskOptions {
   maskCpf?: boolean
   maskContact?: boolean
   partialEmail?: boolean
+  exposeClinical?: boolean // when true, keep clinical fields like allergies/currentMedications
+  isAdmin?: boolean // when true, expose ALL data (no masking)
+  isSelf?: boolean // when true, expose ALL data (user accessing own data)
 }
 
 interface PatientData {
@@ -34,19 +37,33 @@ export function maskEmail(email?: string | null) {
 
 export function applyPatientMasking(patient: PatientData, opts: MaskOptions = {}) {
   if (!patient) return patient
-  const { maskCpf = true, maskContact = true, partialEmail = true } = opts
+  
+  const { 
+    maskCpf = true, 
+    maskContact = true, 
+    partialEmail = true, 
+    exposeClinical = false,
+    isAdmin = false,
+    isSelf = false
+  } = opts
+  
+  // Admin e próprio usuário veem TUDO sem mascaramento
+  if (isAdmin || isSelf) {
+    return patient
+  }
+  
   return {
     ...patient,
     cpf: maskCpf ? maskCPF(patient.cpf) : patient.cpf,
     email: partialEmail ? maskEmail(patient.email) : patient.email,
     phone: maskContact ? (patient.phone ? patient.phone.replace(/.(?=.{4})/g,'*') : null) : patient.phone,
     emergencyContact: maskContact ? undefined : patient.emergencyContact,
-    medicalHistory: undefined, // nunca expor em listagens padrão
-    allergies: undefined,
-    currentMedications: undefined
+    medicalHistory: exposeClinical ? patient.medicalHistory : undefined,
+    allergies: exposeClinical ? patient.allergies : undefined,
+    currentMedications: exposeClinical ? patient.currentMedications : undefined
   }
 }
 
-export function applyPatientsCollectionMasking(list: PatientData[]) {
-  return list.map(p => applyPatientMasking(p))
+export function applyPatientsCollectionMasking(list: PatientData[], opts: MaskOptions = {}) {
+  return list.map(p => applyPatientMasking(p, opts))
 }

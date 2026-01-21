@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hash } from 'bcryptjs'
+import { encrypt, hashCPF } from '@/lib/crypto'
+import { serializeAllergies, normalizeBloodType, normalizeCPF } from '@/lib/patient-schemas'
 import { z } from 'zod'
 
 const registerSchema = z.object({
@@ -107,12 +109,13 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           name: data.name,
           email: data.email,
-          cpf: data.cpf,
+          cpf: encrypt(normalizeCPF(data.cpf)),
+          cpfHash: hashCPF(data.cpf),
           birthDate: new Date(data.birthDate),
           gender: data.gender,
           phone: data.phone,
-          bloodType: data.bloodType || null,
-          allergies: data.allergies ? data.allergies.join(', ') : null,
+          bloodType: normalizeBloodType(data.bloodType),
+          allergies: data.allergies?.length ? encrypt(serializeAllergies(data.allergies)) : null,
           emergencyContact: data.emergencyContact ? JSON.stringify(data.emergencyContact) : null,
           address: null, // Endereço em formato antigo (descontinuado)
         },

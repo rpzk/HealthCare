@@ -678,14 +678,14 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                     disabled={loading}
                   >
                     <option value="">Selecione</option>
-                    <option value="A_POSITIVE">A+</option>
-                    <option value="A_NEGATIVE">A-</option>
-                    <option value="B_POSITIVE">B+</option>
-                    <option value="B_NEGATIVE">B-</option>
-                    <option value="AB_POSITIVE">AB+</option>
-                    <option value="AB_NEGATIVE">AB-</option>
-                    <option value="O_POSITIVE">O+</option>
-                    <option value="O_NEGATIVE">O-</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
                   </select>
                 </div>
 

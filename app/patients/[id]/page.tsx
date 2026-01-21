@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
 import { HydrationGuard } from '@/components/hydration-guard'
 import { PatientDetailsContent } from '@/components/patients/patient-details-content'
+import { decrypt, hashCPF } from '@/lib/crypto'
 
 export const metadata: Metadata = {
   title: 'Detalhes do Paciente - Sistema de Prontuário Eletrônico',
@@ -44,6 +45,31 @@ export default async function PatientDetailsPage({ params }: PageProps) {
     notFound()
   }
 
+  // Merge data from any duplicate record matched by CPF hash (if present)
+  let mergedBloodType: string | null | undefined = patient.bloodType
+  let mergedAllergies: string | null | undefined = decrypt(patient.allergies as string | null)
+  const decryptedCpf = decrypt(patient.cpf as string | null)
+  const cpfHash = hashCPF(decryptedCpf || undefined)
+
+  if ((!mergedBloodType || mergedBloodType === '') && cpfHash) {
+    const counterpart = await prisma.patient.findFirst({
+      where: { cpfHash },
+      select: { id: true, bloodType: true, allergies: true },
+    })
+    if (counterpart) {
+      if (counterpart.bloodType) mergedBloodType = counterpart.bloodType
+      const counterpartAllergies = decrypt(counterpart.allergies as string | null)
+      if (!mergedAllergies && counterpartAllergies) mergedAllergies = counterpartAllergies
+    }
+  }
+
+  const patientView = {
+    ...patient,
+    cpf: decryptedCpf,
+    bloodType: mergedBloodType || null,
+    allergies: mergedAllergies || null,
+  }
+
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       <Header />
@@ -51,17 +77,17 @@ export default async function PatientDetailsPage({ params }: PageProps) {
         <Sidebar />
         <main className="flex-1 ml-64 p-6">
           <PageHeader
-            title={patient.name}
-            description={`CPF: ${patient.cpf || 'Não informado'} • ${patient.email || 'Email não informado'}`}
+            title={patientView.name}
+            description={`CPF: ${patientView.cpf || 'Não informado'} • ${patientView.email || 'Email não informado'}`}
             breadcrumbs={[
               { label: 'Pacientes', href: '/patients' },
-              { label: patient.name }
+              { label: patientView.name }
             ]}
             showBackButton={true}
             showHomeButton={true}
           />
           <HydrationGuard fallback={<div className="text-sm text-gray-500">Carregando...</div>}>
-            <PatientDetailsContent patient={patient} />
+            <PatientDetailsContent patient={patientView} />
           </HydrationGuard>
         </main>
       </div>
