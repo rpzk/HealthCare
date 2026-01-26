@@ -17,10 +17,17 @@ export const logger = pino({
     }
   },
   timestamp: pino.stdTimeFunctions.isoTime
-})
+}) as unknown as Omit<pino.Logger, 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'> & {
+  trace: (...args: unknown[]) => void
+  debug: (...args: unknown[]) => void
+  info: (...args: unknown[]) => void
+  warn: (...args: unknown[]) => void
+  error: (...args: unknown[]) => void
+  fatal: (...args: unknown[]) => void
+}
 
 export function childLogger(ctx: Record<string, unknown>) {
-  return logger.child(ctx)
+  return logger.child(ctx) as typeof logger
 }
 
 export function createRequestId() {

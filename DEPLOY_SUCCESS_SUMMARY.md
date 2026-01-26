@@ -308,10 +308,9 @@ Papéis permitidos:
 ## 📊 Métricas de Sucesso
 
 ### **Performance**
-- ⚡ Tempo de carregamento: < 2s
-- ⚡ Tempo de resposta API: < 100ms
-- ⚡ Polling eficiente (30s/60s)
-- ⚡ Cache de queries otimizado
+- Metas sugeridas (não medidas automaticamente por este documento):
+  - Tempo de carregamento e resposta aceitáveis para o seu ambiente
+  - Polling/cache ajustados conforme uso real
 
 ### **Qualidade de Código**
 - ✅ TypeScript strict mode: 0 erros
@@ -320,11 +319,7 @@ Papéis permitidos:
 - ✅ Service layer pattern
 
 ### **Cobertura de Features**
-- ✅ Dashboard completo: 100%
-- ✅ Notificações automáticas: 100%
-- ✅ Insights de IA: 100%
-- ✅ Integração com menu: 100%
-- ✅ Documentação: 100%
+- Itens implementados devem ser conferidos no código e validados em runtime (não há medição automática aqui).
 
 ---
 

@@ -12,6 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Dialog, DialogContent, DialogDescription, DialogHeader as ModalHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   Stethoscope,
   User,
@@ -19,6 +22,9 @@ import {
   Clock,
   FileText,
   AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Link as LinkIcon,
   Loader2,
 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -75,6 +81,16 @@ export default function ReferralDetailPage() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
   const [openCancelDialog, setOpenCancelDialog] = useState(false)
 
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
+  const [isSigned, setIsSigned] = useState(false)
+  const [signatureValid, setSignatureValid] = useState(false)
+  const [signatureReason, setSignatureReason] = useState<string | null>(null)
+  const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
+
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [password, setPassword] = useState('')
+  const [signing, setSigning] = useState(false)
+
   useEffect(() => {
     const fetchReferral = async () => {
       try {
@@ -84,6 +100,31 @@ export default function ReferralDetailPage() {
         
         const data = await response.json()
         setReferral(data.referral || data)
+
+        // Fetch signature metadata (do not assume legal validity)
+        const sigRes = await fetch(`/api/referrals/${id}/signature`)
+        if (sigRes.ok) {
+          const s = await sigRes.json()
+          if (s?.signed) {
+            setIsSigned(true)
+            setSignatureValid(!!s?.valid)
+            setSignatureReason(s?.reason ?? null)
+            setVerificationUrl(s?.verificationUrl ?? null)
+          } else {
+            setIsSigned(false)
+            setSignatureValid(false)
+            setSignatureReason(null)
+            setVerificationUrl(null)
+          }
+        }
+
+        // Load signature policy
+        const policyRes = await fetch('/api/system/signature-policy')
+        if (policyRes.ok) {
+          const p = await policyRes.json()
+          const flag = !!p?.policy?.requireSignature?.referral
+          setRequireSignBeforePrint(flag)
+        }
       } catch (err) {
         console.error('Erro ao buscar referência:', err)
         toast({
@@ -98,6 +139,44 @@ export default function ReferralDetailPage() {
 
     if (id) fetchReferral()
   }, [id, toast])
+
+  const handleSign = async () => {
+    if (!password) return
+    if (!id) return
+    setSigning(true)
+    try {
+      const res = await fetch(`/api/referrals/${id}/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || 'Erro ao assinar')
+      }
+
+      const result = await res.json()
+      setIsSigned(true)
+      setSignatureValid(true)
+      setSignatureReason(null)
+      if (result?.verificationUrl) setVerificationUrl(result.verificationUrl)
+      setShowPasswordDialog(false)
+      setPassword('')
+      toast({
+        title: 'Encaminhamento assinado!',
+        description: 'Assinatura registrada. Use “Verificar” para checar janela/estado do certificado.',
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro ao assinar',
+        description: (err as Error).message,
+        variant: 'destructive',
+      })
+    } finally {
+      setSigning(false)
+    }
+  }
 
   const handleDelete = async () => {
     try {
@@ -221,7 +300,7 @@ export default function ReferralDetailPage() {
             />
 
             {/* Status Info */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-2">
@@ -239,6 +318,55 @@ export default function ReferralDetailPage() {
                     <Badge className="w-fit" variant="outline">
                       {PRIORITY_LABELS[referral.priority as keyof typeof PRIORITY_LABELS] || referral.priority}
                     </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Assinatura</p>
+                    <Badge
+                      variant="outline"
+                      className={
+                        signatureValid
+                          ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200'
+                          : isSigned
+                            ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200'
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                      }
+                    >
+                      {signatureValid ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      <span className="ml-1">{signatureValid ? 'Validada' : isSigned ? 'Registrada' : 'Não assinada'}</span>
+                    </Badge>
+                    {!signatureValid && isSigned && signatureReason && (
+                      <p className="text-xs text-muted-foreground">Motivo: {signatureReason}</p>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      {!isSigned && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowPasswordDialog(true)}
+                        >
+                          Assinar
+                        </Button>
+                      )}
+                      {verificationUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(verificationUrl!, '_blank')}
+                        >
+                          <LinkIcon className="h-4 w-4 mr-1" />
+                          Verificar
+                        </Button>
+                      )}
+                    </div>
+                    {!isSigned && requireSignBeforePrint && (
+                      <p className="text-xs text-muted-foreground">
+                        Política: assinatura recomendada antes de imprimir/compartilhar.
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -400,6 +528,40 @@ export default function ReferralDetailPage() {
         isLoading={isDeleting}
         onConfirm={handleDelete}
       />
+
+      <Dialog open={showPasswordDialog} onOpenChange={(open) => {
+        setShowPasswordDialog(open)
+        if (!open) setPassword('')
+      }}>
+        <DialogContent className="max-w-md">
+          <ModalHeader>
+            <DialogTitle>Assinar encaminhamento</DialogTitle>
+            <DialogDescription>
+              Informe a senha do seu certificado A1 para assinar este documento.
+            </DialogDescription>
+          </ModalHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Senha do certificado</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowPasswordDialog(false)} disabled={signing}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSign} disabled={signing || !password}>
+                {signing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Assinar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

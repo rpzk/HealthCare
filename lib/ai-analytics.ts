@@ -7,6 +7,7 @@ export interface AIAnalytics {
   drugInteractions: number
   medicalSummaries: number
   criticalAlerts: number
+  // Derived from real AIAnalysis.confidence when available; 0 means no data
   accuracyRate: number
   topSymptoms: Array<{ symptom: string; count: number }>
   topDiagnoses: Array<{ diagnosis: string; count: number }>
@@ -17,10 +18,41 @@ export interface AIAnalytics {
   }
   dailyUsage: Array<{ date: string; analyses: number }>
   responseTime: {
-    average: number
-    fastest: number
-    slowest: number
+    average: number | null
+    fastest: number | null
+    slowest: number | null
   }
+}
+
+type AiUsageType = 'symptom_analysis' | 'drug_interaction' | 'medical_summary'
+
+function startOfDay(d: Date) {
+  const x = new Date(d)
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+
+function dateKey(d: Date) {
+  return d.toISOString().slice(0, 10)
+}
+
+function confidenceToPercent(avg: number | null): number {
+  if (!avg || !isFinite(avg)) return 0
+  // Heuristic: some pipelines store confidence as 0..1, others as 0..100
+  const pct = avg <= 1 ? avg * 100 : avg
+  return Math.max(0, Math.min(100, Math.round(pct * 10) / 10))
+}
+
+function extractDurationMs(metadata: unknown): number | null {
+  if (!metadata || typeof metadata !== 'object') return null
+  const m = metadata as Record<string, unknown>
+  const candidate = m.durationMs ?? m.responseTimeMs ?? m.latencyMs
+  if (typeof candidate === 'number' && isFinite(candidate) && candidate >= 0) return candidate
+  if (typeof candidate === 'string') {
+    const parsed = Number(candidate)
+    if (isFinite(parsed) && parsed >= 0) return parsed
+  }
+  return null
 }
 
 export class AIAnalyticsService {
@@ -30,42 +62,74 @@ export class AIAnalyticsService {
     const endDate = dateTo || new Date()
 
     try {
-      // Criar tabela de logs de IA se não existir (simulação)
-      const mockAnalytics: AIAnalytics = {
-        totalAnalyses: 1247,
-        symptomAnalyses: 856,
-        drugInteractions: 234,
-        medicalSummaries: 157,
-        criticalAlerts: 23,
-        accuracyRate: 94.7,
-        topSymptoms: [
-          { symptom: 'Dor de cabeça', count: 156 },
-          { symptom: 'Febre', count: 134 },
-          { symptom: 'Tosse', count: 98 },
-          { symptom: 'Fadiga', count: 87 },
-          { symptom: 'Dor abdominal', count: 76 }
-        ],
-        topDiagnoses: [
-          { diagnosis: 'Infecção respiratória', count: 89 },
-          { diagnosis: 'Enxaqueca', count: 67 },
-          { diagnosis: 'Gastroenterite', count: 45 },
-          { diagnosis: 'Hipertensão', count: 34 },
-          { diagnosis: 'Diabetes', count: 23 }
-        ],
-        interactionsBySeverity: {
-          mild: 145,
-          moderate: 67,
-          severe: 22
+      const from = startOfDay(startDate)
+      const to = endDate
+
+      // AIQuotaUsage is our real, durable counter source.
+      const quotaRows = await prisma.aIQuotaUsage.findMany({
+        where: {
+          date: { gte: from, lte: to },
+          type: { in: ['symptom_analysis', 'drug_interaction', 'medical_summary'] }
         },
-        dailyUsage: this.generateDailyUsageData(30),
-        responseTime: {
-          average: 2.3,
-          fastest: 0.8,
-          slowest: 5.2
-        }
+        select: { type: true, date: true, count: true }
+      })
+
+      const totalsByType: Record<string, number> = { symptom_analysis: 0, drug_interaction: 0, medical_summary: 0 }
+      const dailyMap = new Map<string, number>()
+      for (const row of quotaRows) {
+        const t = row.type
+        const c = row.count || 0
+        if (t in totalsByType) totalsByType[t] += c
+        const k = dateKey(row.date)
+        dailyMap.set(k, (dailyMap.get(k) || 0) + c)
       }
 
-      return mockAnalytics
+      // Confidence/latency from AIAnalysis when available (real data)
+      const analyses = await prisma.aIAnalysis.findMany({
+        where: { createdAt: { gte: from, lte: to } },
+        select: { confidence: true, metadata: true }
+      })
+      const confidences = analyses.map((a) => a.confidence).filter((n) => typeof n === 'number' && isFinite(n)) as number[]
+      const avgConfidence = confidences.length ? (confidences.reduce((a, b) => a + b, 0) / confidences.length) : null
+
+      const durations = analyses
+        .map((a) => extractDurationMs(a.metadata))
+        .filter((n): n is number => typeof n === 'number' && isFinite(n))
+      const avgDuration = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null
+      const minDuration = durations.length ? Math.min(...durations) : null
+      const maxDuration = durations.length ? Math.max(...durations) : null
+
+      // Build daily series covering the full range, filling gaps with 0 (absence of records)
+      const days: Array<{ date: string; analyses: number }> = []
+      const cursor = new Date(from)
+      const endDay = startOfDay(to)
+      while (cursor <= endDay) {
+        const k = dateKey(cursor)
+        days.push({ date: k, analyses: dailyMap.get(k) || 0 })
+        cursor.setDate(cursor.getDate() + 1)
+      }
+
+      const symptomAnalyses = totalsByType.symptom_analysis
+      const drugInteractions = totalsByType.drug_interaction
+      const medicalSummaries = totalsByType.medical_summary
+
+      return {
+        totalAnalyses: symptomAnalyses + drugInteractions + medicalSummaries,
+        symptomAnalyses,
+        drugInteractions,
+        medicalSummaries,
+        criticalAlerts: 0,
+        accuracyRate: confidenceToPercent(avgConfidence),
+        topSymptoms: [],
+        topDiagnoses: [],
+        interactionsBySeverity: { mild: 0, moderate: 0, severe: 0 },
+        dailyUsage: days,
+        responseTime: {
+          average: avgDuration,
+          fastest: minDuration,
+          slowest: maxDuration,
+        },
+      }
     } catch (error) {
       logger.error({ error }, 'Erro ao buscar analytics de IA')
       throw new Error('Erro ao buscar estatísticas de IA')
@@ -74,23 +138,29 @@ export class AIAnalyticsService {
 
   // Registrar uso da IA (para estatísticas reais)
   static async logAIUsage(
-    type: 'symptom_analysis' | 'drug_interaction' | 'medical_summary',
+    type: AiUsageType,
     patientId?: string,
     doctorId?: string,
     responseTime?: number,
     metadata?: Record<string, unknown>
   ) {
     try {
-      // Em uma implementação real, salvaríamos em uma tabela ai_logs
-      logger.debug({
-        type,
-        patientId,
-        doctorId,
-        responseTime,
-        timestamp: new Date(),
-        metadata
-      }, 'AI Usage logged')
-      
+      // Persist usage counters (real) in AIQuotaUsage
+      const today = startOfDay(new Date())
+      await prisma.aIQuotaUsage.upsert({
+        where: { userId_type_date: { userId: doctorId || 'unknown', type, date: today } },
+        create: {
+          userId: doctorId || 'unknown',
+          type,
+          date: today,
+          count: 1,
+        },
+        update: {
+          count: { increment: 1 },
+        },
+      })
+
+      logger.debug({ type, patientId, doctorId, responseTime, metadata }, 'AI Usage logged')
       return true
     } catch (error) {
       logger.error({ error }, 'Erro ao registrar uso da IA')
@@ -101,19 +171,38 @@ export class AIAnalyticsService {
   // Buscar estatísticas por médico
   static async getDoctorAIStats(doctorId: string) {
     try {
-      // Mock data para estatísticas do médico
+      const from = startOfDay(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+      const rows = await prisma.aIQuotaUsage.findMany({
+        where: {
+          userId: doctorId,
+          date: { gte: from },
+          type: { in: ['symptom_analysis', 'drug_interaction', 'medical_summary'] },
+        },
+        select: { type: true, count: true },
+      })
+
+      const totals: Record<string, number> = { symptom_analysis: 0, drug_interaction: 0, medical_summary: 0 }
+      for (const r of rows) totals[r.type] = (totals[r.type] || 0) + (r.count || 0)
+
+      const symptomAnalyses = totals.symptom_analysis
+      const drugChecks = totals.drug_interaction
+      const summariesGenerated = totals.medical_summary
+      const totalUsage = symptomAnalyses + drugChecks + summariesGenerated
+
+      const favoriteFeatures = [
+        { feature: 'Análise de Sintomas', usage: symptomAnalyses },
+        { feature: 'Interações Medicamentosas', usage: drugChecks },
+        { feature: 'Resumos Automáticos', usage: summariesGenerated },
+      ].filter((f) => f.usage > 0)
+
       return {
-        totalUsage: 156,
-        symptomAnalyses: 98,
-        drugChecks: 34,
-        summariesGenerated: 24,
-        averageResponseTime: 2.1,
-        accuracyFeedback: 96.2,
-        favoriteFeatures: [
-          { feature: 'Análise de Sintomas', usage: 63 },
-          { feature: 'Interações Medicamentosas', usage: 22 },
-          { feature: 'Resumos Automáticos', usage: 15 }
-        ]
+        totalUsage,
+        symptomAnalyses,
+        drugChecks,
+        summariesGenerated,
+        averageResponseTime: null,
+        accuracyFeedback: null,
+        favoriteFeatures,
       }
     } catch (error) {
       logger.error({ error, doctorId }, 'Erro ao buscar stats do médico')
@@ -121,90 +210,73 @@ export class AIAnalyticsService {
     }
   }
 
-  // Gerar dados de uso diário (mock)
-  private static generateDailyUsageData(days: number) {
-    const data = []
-    const today = new Date()
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
-      
-      // Simular variação realista de uso
-      const baseUsage = 35
-      const variation = Math.random() * 20 - 10
-      const weekendFactor = [0, 6].includes(date.getDay()) ? 0.6 : 1
-      
-      data.push({
-        date: date.toISOString().split('T')[0],
-        analyses: Math.max(0, Math.round((baseUsage + variation) * weekendFactor))
-      })
-    }
-    
-    return data
-  }
-
   // Obter métricas de performance em tempo real
   static async getPerformanceMetrics() {
+    // Only return real, queryable signals; avoid hardcoded values.
+    const start = Date.now()
+    const today = startOfDay(new Date())
+    const todayUsage = await prisma.aIQuotaUsage.aggregate({
+      where: { date: { gte: today } },
+      _sum: { count: true },
+    })
+    const dbMs = Date.now() - start
     return {
       aiServiceStatus: 'online',
-      averageResponseTime: 2.3,
-      successRate: 98.7,
-      queueSize: 0,
-      activeAnalyses: 3,
-      todayUsage: 47,
-      peakUsageToday: '14:30',
-      systemLoad: 'low'
+      dbQueryMs: dbMs,
+      todayUsage: todayUsage._sum.count || 0,
     }
   }
 
   // Buscar tendências de diagnósticos
   static async getDiagnosisTrends(period: 'week' | 'month' | 'quarter') {
-    const mockTrends = {
-      week: [
-        { diagnosis: 'COVID-19', trend: '+15%', cases: 23 },
-        { diagnosis: 'Gripe', trend: '+8%', cases: 45 },
-        { diagnosis: 'Hipertensão', trend: '-3%', cases: 67 }
-      ],
-      month: [
-        { diagnosis: 'Diabetes', trend: '+12%', cases: 156 },
-        { diagnosis: 'Ansiedade', trend: '+25%', cases: 89 },
-        { diagnosis: 'Artrite', trend: '-5%', cases: 34 }
-      ],
-      quarter: [
-        { diagnosis: 'Obesidade', trend: '+18%', cases: 234 },
-        { diagnosis: 'Depressão', trend: '+22%', cases: 178 },
-        { diagnosis: 'DPOC', trend: '-8%', cases: 67 }
-      ]
+    const days = period === 'week' ? 7 : period === 'quarter' ? 90 : 30
+    const now = new Date()
+    const currentFrom = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+    const previousFrom = new Date(now.getTime() - 2 * days * 24 * 60 * 60 * 1000)
+
+    const [current, previous] = await Promise.all([
+      prisma.aIAnalysis.findMany({
+        where: { createdAt: { gte: currentFrom, lte: now } },
+        select: { suggestions: true },
+      }),
+      prisma.aIAnalysis.findMany({
+        where: { createdAt: { gte: previousFrom, lt: currentFrom } },
+        select: { suggestions: true },
+      }),
+    ])
+
+    const countSuggestions = (rows: Array<{ suggestions: string[] }>) => {
+      const map = new Map<string, number>()
+      for (const r of rows) {
+        for (const s of r.suggestions || []) {
+          const key = String(s).trim()
+          if (!key) continue
+          map.set(key, (map.get(key) || 0) + 1)
+        }
+      }
+      return map
     }
-    
-    return mockTrends[period] || mockTrends.month
+
+    const cur = countSuggestions(current)
+    const prev = countSuggestions(previous)
+    const allKeys = Array.from(cur.keys())
+
+    return allKeys
+      .map((diagnosis) => {
+        const cases = cur.get(diagnosis) || 0
+        const prevCases = prev.get(diagnosis) || 0
+        const trendPct = prevCases === 0 ? (cases === 0 ? 0 : 100) : ((cases - prevCases) / prevCases) * 100
+        const trend = `${trendPct >= 0 ? '+' : ''}${Math.round(trendPct)}%`
+        return { diagnosis, trend, cases }
+      })
+      .sort((a, b) => b.cases - a.cases)
+      .slice(0, 10)
   }
 
   // Alertas e recomendações do sistema
   static async getSystemRecommendations() {
-    return [
-      {
-        type: 'performance',
-        priority: 'medium',
-        title: 'Otimização de Performance',
-        description: 'Considere cache de resultados frequentes para melhorar tempo de resposta',
-        action: 'Implementar cache Redis'
-      },
-      {
-        type: 'accuracy',
-        priority: 'high',
-        title: 'Feedback de Precisão',
-        description: 'Taxa de precisão em 94.7% - considere treinamento adicional',
-        action: 'Revisar casos com baixa precisão'
-      },
-      {
-        type: 'usage',
-        priority: 'low',
-        title: 'Pico de Uso',
-        description: 'Uso intenso detectado entre 14:00-16:00',
-        action: 'Monitorar recursos do servidor'
-      }
-    ]
+    // Only return recommendations derived from real data sources.
+    // For now, no computed recommendation engine is available.
+    return []
   }
 }

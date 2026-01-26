@@ -15,6 +15,7 @@ export type AIJobType =
   | 'symptom_analysis'
   | 'transcribe_and_generate_soap'
   | 'transcribe_and_generate_soap_draft'
+  | 'patient_pdf_export'
   | 'drug_interaction_check'
   | 'medical_summary'
   | 'vital_signs_analysis'
@@ -73,8 +74,13 @@ class BullMQQueue implements AIQueueImplementation {
     
     const { enqueueAI } = await import('./ai-bullmq-queue')
     const job = await enqueueAI(jobType, payload, options)
-    
-    return { id: job.id }
+
+    const id = job.id ? String(job.id) : undefined
+    if (!id) {
+      throw new Error('Falha ao enfileirar job: id ausente')
+    }
+
+    return { id }
   }
 
   async getJobStatus(jobId: string) {

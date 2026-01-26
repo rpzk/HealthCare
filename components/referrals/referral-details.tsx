@@ -151,7 +151,7 @@ export default function ReferralDetails({ id }: { id: string }) {
         <div className="bg-green-50 border border-green-200 p-3 rounded-md flex items-center text-green-800 text-sm">
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           <div className="flex items-center gap-3">
-            <span>Documento assinado digitalmente.</span>
+            <span>Assinatura registrada no sistema.</span>
             {verificationUrl && (
               <Button
                 variant="link"
@@ -167,7 +167,7 @@ export default function ReferralDetails({ id }: { id: string }) {
 
       {!isSigned && requireSignBeforePrint && (
         <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md text-yellow-900 text-sm">
-          Este documento deve ser assinado digitalmente antes de imprimir ou compartilhar.
+          Este documento requer assinatura registrada antes de imprimir ou compartilhar.
         </div>
       )}
 

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Componente de Assinatura Digital para Teleconsulta
+ * Componente de assinatura manuscrita (desenho) para Teleconsulta
  * 
  * Features:
  * - Canvas para desenhar assinatura
@@ -179,7 +179,7 @@ export function DigitalSignaturePad({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Assinatura Digital</DialogTitle>
+          <DialogTitle>Assinatura (desenho)</DialogTitle>
           <DialogDescription>
             Por favor, assine no espaço abaixo utilizando o mouse ou touchscreen
           </DialogDescription>
@@ -265,7 +265,7 @@ export function SignatureButton({ consultationId, onSignatureSaved }: SignatureB
         size="sm"
       >
         <Pencil className="w-4 h-4 mr-2" />
-        Assinar Digitalmente
+        Assinar (desenho)
       </Button>
       
       <DigitalSignaturePad

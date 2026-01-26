@@ -42,11 +42,11 @@ interface DashboardData {
   examsThisMonth: number
   totalRecords: number
   recordsThisMonth: number
-  pendingExams: number
-  cancelledConsultations: number
-  averageConsultationsPerDay: number
-  patientGrowthRate: number
-  monthlyRevenue: number
+  pendingExams: number | null
+  cancelledConsultations: number | null
+  averageConsultationsPerDay: number | null
+  patientGrowthRate: number | null
+  monthlyRevenue: number | null
   popularSpecialties: SpecialtyStat[]
   ageDistribution: AgeGroup[]
   genderDistribution: GenderGroup[]
@@ -64,11 +64,11 @@ export default function DashboardReportsPage() {
     examsThisMonth: 0,
     totalRecords: 0,
     recordsThisMonth: 0,
-    pendingExams: 0,
-    cancelledConsultations: 0,
-    averageConsultationsPerDay: 0,
-    patientGrowthRate: 0,
-    monthlyRevenue: 0,
+    pendingExams: null,
+    cancelledConsultations: null,
+    averageConsultationsPerDay: null,
+    patientGrowthRate: null,
+    monthlyRevenue: null,
     popularSpecialties: [],
     ageDistribution: [],
     genderDistribution: []
@@ -89,11 +89,11 @@ export default function DashboardReportsPage() {
             examsThisMonth: data.examsThisMonth || 0,
             totalRecords: data.totalRecords || 0,
             recordsThisMonth: data.recordsThisMonth || 0,
-            pendingExams: 0,
-            cancelledConsultations: 0,
-            averageConsultationsPerDay: 0,
-            patientGrowthRate: 0,
-            monthlyRevenue: 0,
+            pendingExams: null,
+            cancelledConsultations: null,
+            averageConsultationsPerDay: null,
+            patientGrowthRate: null,
+            monthlyRevenue: null,
             popularSpecialties: [],
             ageDistribution: [],
             genderDistribution: []
@@ -150,28 +150,28 @@ export default function DashboardReportsPage() {
   const performanceMetrics: PerformanceMetric[] = [
     {
       title: 'Média de Consultas/Dia',
-      value: dashboardData.averageConsultationsPerDay.toFixed(1),
+      value: dashboardData.averageConsultationsPerDay == null ? 'Não disponível' : dashboardData.averageConsultationsPerDay.toFixed(1),
       unit: 'consultas',
       icon: TrendingUp,
       color: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Taxa de Crescimento',
-      value: dashboardData.patientGrowthRate.toFixed(1),
+      value: dashboardData.patientGrowthRate == null ? 'Não disponível' : dashboardData.patientGrowthRate.toFixed(1),
       unit: '% ao mês',
       icon: TrendingUp,
       color: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Receita Mensal',
-      value: `R$ ${dashboardData.monthlyRevenue.toLocaleString()}`,
+      value: dashboardData.monthlyRevenue == null ? 'Não disponível' : `R$ ${dashboardData.monthlyRevenue.toLocaleString()}`,
       unit: '',
       icon: TrendingUp,
       color: 'text-emerald-600 dark:text-emerald-400'
     },
     {
       title: 'Exames Pendentes',
-      value: dashboardData.pendingExams,
+      value: dashboardData.pendingExams == null ? 'Não disponível' : dashboardData.pendingExams,
       unit: 'exames',
       icon: AlertCircle,
       color: 'text-yellow-600 dark:text-yellow-400'
@@ -237,9 +237,17 @@ export default function DashboardReportsPage() {
                   <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
                   <metric.icon className={`h-4 w-4 ${metric.color}`} />
                 </div>
+                {(() => {
+                  const showUnit = typeof metric.value === 'number'
+                  return (
                 <p className="text-xl font-bold text-foreground">
-                  {metric.value} {metric.unit && <span className="text-sm font-normal text-muted-foreground">{metric.unit}</span>}
+                  {metric.value}{' '}
+                  {showUnit && metric.unit ? (
+                    <span className="text-sm font-normal text-muted-foreground">{metric.unit}</span>
+                  ) : null}
                 </p>
+                  )
+                })()}
               </div>
             ))}
           </div>
@@ -255,29 +263,36 @@ export default function DashboardReportsPage() {
             <CardDescription>Top 5 especialidades por número de consultas</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {dashboardData.popularSpecialties.map((specialty, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{index + 1}</span>
+            {dashboardData.popularSpecialties.length ? (
+              <div className="space-y-3">
+                {dashboardData.popularSpecialties.map((specialty, index) => {
+                  const maxCount = Math.max(...dashboardData.popularSpecialties.map((s) => s.count))
+                  const pct = maxCount > 0 ? (specialty.count / maxCount) * 100 : 0
+
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{index + 1}</span>
+                        </div>
+                        <span className="font-medium text-foreground">{specialty.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-20 h-2 bg-muted rounded-full">
+                          <div
+                            className="h-2 bg-purple-600 dark:bg-purple-400 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <Badge variant="outline">{specialty.count}</Badge>
+                      </div>
                     </div>
-                    <span className="font-medium text-foreground">{specialty.name}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 h-2 bg-muted rounded-full">
-                      <div 
-                        className="h-2 bg-purple-600 dark:bg-purple-400 rounded-full"
-                        style={{ 
-                          width: `${(specialty.count / Math.max(...dashboardData.popularSpecialties.map(s => s.count))) * 100}%`
-                        }}
-                      ></div>
-                    </div>
-                    <Badge variant="outline">{specialty.count}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Não disponível</p>
+            )}
           </CardContent>
         </Card>
 
@@ -288,27 +303,34 @@ export default function DashboardReportsPage() {
             <CardDescription>Pacientes agrupados por idade</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {dashboardData.ageDistribution.map((age, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="font-medium text-foreground">{age.range} anos</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 h-2 bg-muted rounded-full">
-                      <div 
-                        className="h-2 bg-blue-600 dark:bg-blue-400 rounded-full"
-                        style={{ 
-                          width: `${(age.count / Math.max(...dashboardData.ageDistribution.map(a => a.count))) * 100}%`
-                        }}
-                      ></div>
+            {dashboardData.ageDistribution.length ? (
+              <div className="space-y-3">
+                {dashboardData.ageDistribution.map((age, index) => {
+                  const maxCount = Math.max(...dashboardData.ageDistribution.map((a) => a.count))
+                  const pct = maxCount > 0 ? (age.count / maxCount) * 100 : 0
+
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <span className="font-medium text-foreground">{age.range} anos</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-20 h-2 bg-muted rounded-full">
+                          <div
+                            className="h-2 bg-blue-600 dark:bg-blue-400 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <Badge variant="outline">{age.count}</Badge>
+                      </div>
                     </div>
-                    <Badge variant="outline">{age.count}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Não disponível</p>
+            )}
           </CardContent>
         </Card>
       </div>      {/* Distribuição por Gênero */}
@@ -318,20 +340,28 @@ export default function DashboardReportsPage() {
           <CardDescription>Proporção de pacientes por gênero</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {dashboardData.genderDistribution.map((gender, index) => (
-              <div key={index} className="text-center p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-center mb-2">
-                  <Users className={`h-8 w-8 ${index === 0 ? 'text-pink-600 dark:text-pink-400' : 'text-blue-600 dark:text-blue-400'}`} />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{gender.count}</p>
-                <p className="text-sm text-muted-foreground">{gender.gender}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((gender.count / dashboardData.totalPatients) * 100).toFixed(1)}%
-                </p>
-              </div>
-            ))}
-          </div>
+          {dashboardData.genderDistribution.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {dashboardData.genderDistribution.map((gender, index) => {
+                const pct = dashboardData.totalPatients > 0 ? (gender.count / dashboardData.totalPatients) * 100 : null
+
+                return (
+                  <div key={index} className="text-center p-4 bg-muted rounded-lg">
+                    <div className="flex items-center justify-center mb-2">
+                      <Users className={`h-8 w-8 ${index === 0 ? 'text-pink-600 dark:text-pink-400' : 'text-blue-600 dark:text-blue-400'}`} />
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{gender.count}</p>
+                    <p className="text-sm text-muted-foreground">{gender.gender}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {pct == null ? '—' : `${pct.toFixed(1)}%`}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Não disponível</p>
+          )}
         </CardContent>
       </Card>
 
@@ -349,7 +379,7 @@ export default function DashboardReportsPage() {
               <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
               <div>
                 <p className="font-medium text-yellow-900 dark:text-yellow-300">
-                  {dashboardData.pendingExams} exames pendentes
+                  {dashboardData.pendingExams == null ? 'Exames pendentes: não disponível' : `${dashboardData.pendingExams} exames pendentes`}
                 </p>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   Há exames aguardando agendamento ou resultados
@@ -361,7 +391,7 @@ export default function DashboardReportsPage() {
               <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
               <div>
                 <p className="font-medium text-red-900 dark:text-red-300">
-                  {dashboardData.cancelledConsultations} consultas canceladas este mês
+                  {dashboardData.cancelledConsultations == null ? 'Cancelamentos do mês: não disponível' : `${dashboardData.cancelledConsultations} consultas canceladas este mês`}
                 </p>
                 <p className="text-sm text-red-700 dark:text-red-300">
                   Monitor de cancelamentos para otimizar agenda
@@ -373,10 +403,10 @@ export default function DashboardReportsPage() {
               <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
               <div>
                 <p className="font-medium text-blue-900 dark:text-blue-300">
-                  Próxima revisão mensal em 5 dias
+                  Revisão mensal (lembrete)
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Prepare os relatórios mensais para a reunião gerencial
+                  Programe um lembrete no calendário para revisar relatórios e indicadores
                 </p>
               </div>
             </div>

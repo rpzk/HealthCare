@@ -40,11 +40,18 @@ export async function GET(_request: NextRequest, { params }: { params: { hash: s
     const cert = record.certificate
     const withinValidity = cert.isActive && cert.notBefore <= now && cert.notAfter >= now
 
+    const reason = !withinValidity
+      ? 'CERTIFICADO_FORA_DA_JANELA_DE_VALIDADE_OU_INATIVO'
+      : record.isValid
+        ? null
+        : 'ASSINATURA_NAO_VERIFICADA_CRIPTOGRAFICAMENTE'
+
     // This endpoint validates metadata and certificate validity window.
     // Full cryptographic verification should be done using the original content
     // and the certificate public key at the client or a dedicated HSM/verification service.
     const result = {
       valid: withinValidity && record.isValid,
+      reason,
       signature: {
         id: record.id,
         documentType: record.documentType,
@@ -57,13 +64,13 @@ export async function GET(_request: NextRequest, { params }: { params: { hash: s
       certificate: cert,
       validation: {
         validatedAt: new Date(),
-        method: 'METADATA_AND_VALIDITY_WINDOW',
+        method: 'METADATA_AND_VALIDITY_WINDOW_ONLY',
       }
     }
 
     return NextResponse.json(result)
   } catch (error: any) {
-    logger.error('Erro ao validar assinatura digital:', error)
+    logger.error('Erro ao validar assinatura:', error)
     return NextResponse.json(
       { error: error?.message || 'Erro ao validar assinatura' },
       { status: 500 }

@@ -25,7 +25,7 @@ export function CertificateSignatureExample({
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Assinatura Digital</CardTitle>
+        <CardTitle>Assinatura</CardTitle>
         <CardDescription>
           Assine este atestado médico
         </CardDescription>
@@ -57,7 +57,7 @@ export function CertificateSignatureExample({
 
         <div className="text-xs text-muted-foreground pt-2 border-t">
           <p>
-            💡 Para implementar assinatura digital com certificado ICP-Brasil,
+            💡 Para implementar assinatura com certificado ICP-Brasil,
             integre com o provedor de certificação de sua escolha.
           </p>
         </div>

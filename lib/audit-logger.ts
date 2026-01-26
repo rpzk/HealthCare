@@ -3,6 +3,8 @@
  * Registra ações críticas no sistema para compliance e segurança
  */
 
+import { logger } from '@/lib/logger'
+
 export interface AuditLog {
   userId: string
   userEmail: string

@@ -5,12 +5,17 @@ import { withConsultationAuth } from '@/lib/advanced-auth'
 import { ConsultationType } from '@prisma/client'
 import { consultationQuerySchema, createConsultationSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
 import { logger } from '@/lib/logger'
-import { handleApiError, ApiError } from '@/lib/api-error-handler'
+
+type RateLimitOk = {
+  allowed: true
+  headers?: Record<string, string>
+}
 
 // GET - Listar consultas (protegido por autenticação)
 export const GET = withConsultationAuth(async (request, { user }) => {
   const rateLimitResult = rateLimiters.consultations(request, user.id)
-  if ((rateLimitResult as any)?.status === 429) return rateLimitResult as any
+  if (rateLimitResult instanceof NextResponse) return rateLimitResult
+  const rateLimitOk = rateLimitResult as RateLimitOk
   try {
     const { searchParams } = new URL(request.url)
     
@@ -38,12 +43,12 @@ export const GET = withConsultationAuth(async (request, { user }) => {
     const result = await ConsultationService.getConsultations(filters, page, limit)
 
     const resp = NextResponse.json(result)
-    if ((rateLimitResult as any)?.headers) {
-      Object.entries((rateLimitResult as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
+    if (rateLimitOk.headers) {
+      Object.entries(rateLimitOk.headers).forEach(([k, v]) => resp.headers.set(k, v))
     }
     return resp
   } catch (error) {
-    logger.error('Erro ao buscar consultas:', error)
+    logger.error({ err: error }, 'Erro ao buscar consultas')
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -54,7 +59,8 @@ export const GET = withConsultationAuth(async (request, { user }) => {
 // POST - Criar nova consulta (protegido por autenticação)
 export const POST = withConsultationAuth(async (request, { user }) => {
   const rateLimitResult = rateLimiters.consultations(request, user.id)
-  if ((rateLimitResult as any)?.status === 429) return rateLimitResult as any
+  if (rateLimitResult instanceof NextResponse) return rateLimitResult
+  const rateLimitOk = rateLimitResult as RateLimitOk
   try {
     const body = await request.json()
 
@@ -87,18 +93,19 @@ export const POST = withConsultationAuth(async (request, { user }) => {
       message: 'Consulta criada com sucesso',
       consultation
     }, { status: 201 })
-    if ((rateLimitResult as any)?.headers) {
-      Object.entries((rateLimitResult as any).headers as Record<string,string>).forEach(([k,v]) => resp.headers.set(k, v))
+    if (rateLimitOk.headers) {
+      Object.entries(rateLimitOk.headers).forEach(([k, v]) => resp.headers.set(k, v))
     }
     return resp
 
   } catch (error) {
-    logger.error('Erro ao criar consulta:', error)
+    logger.error({ err: error }, 'Erro ao criar consulta')
+
+    const message = error instanceof Error ? error.message : ''
     
-    if (error.message.includes('não encontrado') || 
-        error.message.includes('já existe uma consulta')) {
+    if (message.includes('não encontrado') || message.includes('já existe uma consulta')) {
       return NextResponse.json(
-        { error: error.message },
+        { error: message },
         { status: 400 }
       )
     }
@@ -107,8 +114,8 @@ export const POST = withConsultationAuth(async (request, { user }) => {
       { error: 'Erro interno do servidor' },
       { status: 500 }
     )
-    if ((rateLimitResult as any)?.headers) {
-      Object.entries((rateLimitResult as any).headers as Record<string,string>).forEach(([k,v]) => respErr.headers.set(k, v))
+    if (rateLimitOk.headers) {
+      Object.entries(rateLimitOk.headers).forEach(([k, v]) => respErr.headers.set(k, v))
     }
     return respErr
   }

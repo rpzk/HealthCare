@@ -1,5 +1,5 @@
 /**
- * Componente: Botão de Assinatura com Certificado ICP-Brasil
+ * Componente: Botão de assinatura com certificado A1
  */
 
 'use client'
@@ -84,10 +84,10 @@ export function IcpBrasilSignButton({
         ) : success ? (
           <>
             <CheckCircle className="w-4 h-4 mr-2" />
-            Assinado com ICP-Brasil A1
+            Assinatura registrada (A1)
           </>
         ) : (
-          '🔐 Assinar com Certificado Digital'
+          '🔐 Assinar com Certificado A1'
         )}
       </Button>
 
@@ -99,7 +99,7 @@ export function IcpBrasilSignButton({
       )}
 
       <p className="text-xs text-gray-600 mt-2">
-        Assinatura digital com certificado ICP-Brasil A1 (local)
+        Assinatura com certificado A1 (ICP-Brasil) registrada no sistema
       </p>
     </div>
   )

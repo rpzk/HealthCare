@@ -219,7 +219,7 @@ export default function DigitalSignaturesAdminPage() {
         <div>
           <p className="text-sm text-muted-foreground">Governança & Segurança</p>
           <h1 className="text-2xl font-semibold text-foreground">Assinaturas Digitais</h1>
-          <p className="text-sm text-muted-foreground">Certificados ICP-Brasil e documentos assinados</p>
+          <p className="text-sm text-muted-foreground">Certificados digitais e registros de assinatura</p>
         </div>
         <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -324,7 +324,7 @@ export default function DigitalSignaturesAdminPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Certificados</CardTitle>
-              <p className="text-sm text-muted-foreground">ICP-Brasil (A1/A3/A4)</p>
+              <p className="text-sm text-muted-foreground">ICP-Brasil (A1)</p>
             </div>
             <Badge variant="outline">{certificates.length}</Badge>
           </CardHeader>
@@ -542,10 +542,13 @@ export default function DigitalSignaturesAdminPage() {
                   <p className="text-sm">
                     {validationResult
                       ? validationResult.valid
-                        ? 'Assinatura válida (janela e metadados)'
-                        : 'Assinatura inválida'
+                        ? 'Registro consistente (janela/estado do certificado)'
+                        : 'Registro não validado'
                       : 'Revalide para checar'}
                   </p>
+                  {!validationResult?.valid && validationResult?.reason && (
+                    <p className="text-xs text-muted-foreground">Motivo: {validationResult.reason}</p>
+                  )}
                   {validationResult?.certificate && (
                     <p className="text-xs text-muted-foreground">Cert: {validationResult.certificate.serialNumber}</p>
                   )}

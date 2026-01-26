@@ -3,6 +3,8 @@
  * Previne XSS, SQL Injection e outros ataques de injeção
  */
 
+import { logger } from '@/lib/logger'
+
 /**
  * Remove caracteres HTML perigosos de uma string
  */
@@ -202,6 +204,7 @@ export function logInjectionAttempt(
     ip?: string
   }
 ): void {
+  // Keep this import local to avoid pulling logger in environments that don't use it
   logger.warn('[SECURITY] Possible injection attempt detected:', {
     input: input.slice(0, 100), // Log only first 100 chars
     ...context,

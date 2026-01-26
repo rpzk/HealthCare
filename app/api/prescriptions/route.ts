@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { withAuth, validateRequestBody } from '@/lib/with-auth'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
+import type { MedicationItem } from '@/lib/prescriptions-service'
 import { validatePrescription } from '@/lib/validation-schemas'
 import { logger } from '@/lib/logger'
-import type { Prescription } from '@/types'
 
 // GET - Buscar prescrições médicas
 export const GET = withAuth(async (request, { user: _user }) => {
@@ -40,13 +40,14 @@ export const POST = withAuth(async (request, { user }) => {
     if (!validation.success) return validation.response!
 
     const data = validation.data!
-    let created: Prescription | undefined
+    type ApiPrescription = ReturnType<(typeof PrescriptionsServiceDb)['toApiShape']>
+    let created: ApiPrescription | undefined
     try {
       created = await PrescriptionsServiceDb.create({
         patientId: data.patientId,
         doctorId: user.id,
-        medications: data.medications as Prescription['medications'],
-        notes: (data as Record<string, any>).observations,
+        medications: data.medications as MedicationItem[],
+        notes: data.observations,
         status: 'ACTIVE',
       })
     } catch (innerErr) {

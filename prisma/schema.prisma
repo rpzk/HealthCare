@@ -41,6 +41,7 @@ model User {
   termAcceptances        TermAcceptance[]
   protocols              Protocol[] // Protocolos criados pelo médico
   stratumAssessments     StratumAssessment[]    @relation("UserStratumAssessments")
+  morStratumValidations  StratumAssessment[]    @relation("StratumAssessmentMoR")
   strengthAssessments    StrengthAssessment[]   @relation("UserStrengthAssessments")
   developmentPlans       DevelopmentPlan[]      @relation("UserDevelopmentPlans")
 
@@ -125,8 +126,14 @@ model User {
   createdDocumentTemplates    DocumentTemplate[]        @relation("TemplateCreatedBy")
   generatedDocuments          GeneratedDocument[]       @relation("GeneratedDocsByDoctor")
 
+  // Organização (RO/SST): gestor direto (Manager) e subordinados
+  managerUserId String?
+  manager       User?   @relation("UserManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  directReports User[]  @relation("UserManager")
+
   @@index([acsAssignedMicroAreaId])
   @@index([assignedAreaId])
+  @@index([managerUserId])
   @@map("users")
 }
 
@@ -717,6 +724,9 @@ model Consultation {
   // NPS da consulta
   npsResponse NpsResponse?
 
+  // Assinaturas (imagem) vinculadas à teleconsulta
+  teleconsultationSignatures TeleconsultationSignature[]
+
   // ============================================
   // SSF INTEGRATION - New Relations
   // ============================================
@@ -731,6 +741,24 @@ model Consultation {
   // ============================================
 
   @@map("consultations")
+}
+
+model TeleconsultationSignature {
+  id             String   @id @default(cuid())
+  consultationId String
+  signerId       String
+  signerRole     String
+  mimeType       String
+  filePath       String
+  fileSize       Int
+  sha256         String?
+  createdAt      DateTime @default(now())
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  @@index([consultationId])
+  @@index([signerId])
+  @@map("teleconsultation_signatures")
 }
 
 model Prescription {
@@ -1266,6 +1294,7 @@ model JobRole {
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
   evaluations        CapabilityEvaluation[]
+  stratumAssessments StratumAssessment[]
   occupation         Occupation?            @relation(fields: [occupationId], references: [id])
   userAssignments    UserJobRole[]
   stratumProfile     JobStratumProfile?
@@ -1319,6 +1348,7 @@ model CapabilityEvaluation {
 model StratumAssessment {
   id                String                      @id @default(cuid())
   userId            String
+  jobRoleId         String?
   assessmentType    AssessmentType              @default(SELF)
   status            AssessmentStatus            @default(IN_PROGRESS)
   calculatedStratum StratumLevel?
@@ -1328,10 +1358,20 @@ model StratumAssessment {
   completedAt       DateTime?
   expiresAt         DateTime? // Assessments expiram após 1 ano
   notes             String?
+
+  // Validação MoR (Manager-Once-Removed) para role-assessments
+  morUserId      String?
+  morValidatedAt DateTime?
+  morEvidence    String?
+
   user              User                        @relation("UserStratumAssessments", fields: [userId], references: [id])
+  jobRole           JobRole?                    @relation(fields: [jobRoleId], references: [id])
+  morUser           User?                       @relation("StratumAssessmentMoR", fields: [morUserId], references: [id])
   responses         StratumAssessmentResponse[]
 
   @@index([userId, status])
+  @@index([jobRoleId, status])
+  @@index([morUserId, morValidatedAt])
   @@index([completedAt])
   @@map("stratum_assessments")
 }

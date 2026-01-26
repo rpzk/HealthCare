@@ -8,6 +8,8 @@ import {
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
 import { logger } from '@/lib/logger'
+import { encrypt, hashCPF } from '@/lib/crypto'
+import { normalizeCPF, parseBirthDateYYYYMMDDToNoonUtc } from '@/lib/patient-schemas'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -70,8 +72,15 @@ export async function POST(req: NextRequest) {
 
       // Verificar se CPF já existe
       if (cpf) {
+        const cpfDigits = normalizeCPF(String(cpf))
+        const cpfHash = hashCPF(cpfDigits)
         const existingPatient = await prisma.patient.findFirst({
-          where: { cpf }
+          where: {
+            OR: [
+              cpfHash ? { cpfHash } : undefined,
+              { person: { cpf: cpfDigits } },
+            ].filter(Boolean) as any,
+          }
         })
         if (existingPatient) {
           return NextResponse.json({ 
@@ -88,15 +97,17 @@ export async function POST(req: NextRequest) {
       }
 
       // Criar paciente
+      const birth = parseBirthDateYYYYMMDDToNoonUtc(String(birthDate))
+      const cpfDigits = cpf ? normalizeCPF(String(cpf)) : null
       const newPatient = await prisma.patient.create({
         data: {
           name,
-          cpf: cpf || null,
-          birthDate: new Date(birthDate),
+          cpf: cpfDigits ? encrypt(cpfDigits) : null,
+          cpfHash: cpfDigits ? hashCPF(cpfDigits) : null,
+          birthDate: birth,
           gender: gender || 'OTHER',
           phone: phone || null,
           email: user.email,
-          userId: userId, // Vincular ao usuário
         }
       })
 
@@ -122,20 +133,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
       }
 
-      // Verificar se paciente já está vinculado a outro usuário
-      if (patient.userId && patient.userId !== userId) {
-        return NextResponse.json({ 
-          error: 'Este paciente já está vinculado a outro usuário' 
-        }, { status: 400 })
+      // Verificar se paciente já está vinculado a outro usuário (link real é User.patientId)
+      const alreadyLinked = await prisma.user.findFirst({
+        where: { patientId },
+        select: { id: true },
+      })
+      if (alreadyLinked && alreadyLinked.id !== userId) {
+        return NextResponse.json({ error: 'Este paciente já está vinculado a outro usuário' }, { status: 400 })
       }
 
       linkedPatientId = patientId
-
-      // Atualizar paciente com o userId
-      await prisma.patient.update({
-        where: { id: patientId },
-        data: { userId: userId }
-      })
 
       // Atualizar usuário com o patientId
       await prisma.user.update({

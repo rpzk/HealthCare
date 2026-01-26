@@ -39,6 +39,44 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
     { urls: 'stun:stun1.l.google.com:19302' }
   ])
 
+  const offerInFlightRef = useRef(false)
+
+  const sendSignal = useCallback(async (payload: any) => {
+    await fetch(`/api/tele/rooms/${roomId}/signal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  }, [roomId])
+
+  const maybeSendOffer = useCallback(async () => {
+    const pc = pcRef.current
+    if (!pc) return
+    if (offerInFlightRef.current) return
+    // Only create a new offer when stable.
+    if (pc.signalingState !== 'stable') return
+
+    offerInFlightRef.current = true
+    try {
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+      await pc.setLocalDescription(offer)
+      await sendSignal({ type: 'offer', sdp: offer.sdp, from: clientId })
+      setStatus('connecting')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError('Erro ao iniciar chamada')
+      // surface more detail for debugging
+      logger.warn('Failed to create/send offer', err)
+      setStatus('failed')
+      setRemoteConnected(false)
+      setConnectionQuality(null)
+      // best-effort show details
+      setError(prev => prev || 'Erro ao iniciar chamada')
+    } finally {
+      offerInFlightRef.current = false
+    }
+  }, [clientId, sendSignal])
+
   // Load ICE config
   useEffect(() => {
     (async () => {
@@ -157,18 +195,40 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
       es.addEventListener('signal', async (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data)
+          if (data.type === 'peer_joined') {
+            // If the patient joined, trigger negotiation
+            if (data.kind === 'patient') {
+              await maybeSendOffer()
+            }
+            return
+          }
+
+          if (data.type === 'ready') {
+            // Peer explicitly requests negotiation
+            await maybeSendOffer()
+            return
+          }
+
           if (data.type === 'offer') {
-            await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp })
-            const answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            await fetch(`/api/tele/rooms/${roomId}/signal`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: 'answer', sdp: answer.sdp, from: clientId })
-            })
+            try {
+              await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp })
+              const answer = await pc.createAnswer()
+              await pc.setLocalDescription(answer)
+              await sendSignal({ type: 'answer', sdp: answer.sdp, from: clientId })
+            } catch (e: unknown) {
+              logger.warn('Failed handling remote offer', e)
+              setError('Erro ao negociar chamada')
+              setStatus('failed')
+            }
           } else if (data.type === 'answer') {
             if (!pc.currentRemoteDescription) {
-              await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
+              try {
+                await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
+              } catch (e: unknown) {
+                logger.warn('Failed handling remote answer', e)
+                setError('Erro ao negociar chamada')
+                setStatus('failed')
+              }
             }
             } else if (data.type === 'candidate' && data.candidate) {
             try {
@@ -189,24 +249,12 @@ export default function TeleRoom({ roomId, userId, patientName }: Props) {
 
       pc.onicecandidate = (ev) => {
         if (ev.candidate) {
-          fetch(`/api/tele/rooms/${roomId}/signal`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'candidate', candidate: ev.candidate, from: clientId })
-          })
+          void sendSignal({ type: 'candidate', candidate: ev.candidate, from: clientId })
         }
       }
 
-      // Create offer
-      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-      await pc.setLocalDescription(offer)
-      await fetch(`/api/tele/rooms/${roomId}/signal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'offer', sdp: offer.sdp, from: clientId })
-      })
-
       setJoined(true)
+      // Wait for patient to join, then negotiate.
       setStatus('connecting')
     } catch (err: unknown) {
       logger.error('Erro ao entrar:', err)

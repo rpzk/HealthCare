@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
 import { emailService } from '@/lib/email-service'
 import { QuestionnaireNotificationService } from '@/lib/questionnaire-notification-service'
 

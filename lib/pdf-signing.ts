@@ -1,10 +1,12 @@
 /**
- * Signs a PDF with an A1 digital certificate.
- * Includes hash, timestamp, and QR code for legal validity (ICP-Brasil).
+ * Utilities for stamping a PDF with integrity metadata (hash/timestamp) and optional QR code.
+ *
+ * Important: this module DOES NOT implement ICP-Brasil (A1) cryptographic PDF signing.
+ * If you need legal digital signature, use a real A1 signing implementation.
  */
 
-import * as crypto from 'crypto'
 import { createHash } from 'crypto'
+import QRCode from 'qrcode'
 
 export interface PdfSigningOptions {
   pdf: Buffer
@@ -23,12 +25,7 @@ export interface SignatureMetadata {
   signer: string
   reason: string
   location: string
-  certificate?: {
-    subject?: string
-    issuer?: string
-    validFrom?: string
-    validTo?: string
-  }
+  mode?: 'INTEGRITY_ONLY'
 }
 
 /**
@@ -43,6 +40,8 @@ export async function signPdf(options: PdfSigningOptions): Promise<{
 }> {
   const {
     pdf,
+    certificatePath,
+    certificatePassword,
     signerName = 'Sistema de Prontuário Eletrônico',
     reason = 'Exportação de Prontuário do Paciente',
     location = 'Hospital/Clínica',
@@ -50,38 +49,43 @@ export async function signPdf(options: PdfSigningOptions): Promise<{
     includeTimestamp = true,
   } = options
 
+  // This module does not implement A1/ICP-Brasil PDF signing.
+  // Refuse to proceed if caller tries to use certificate inputs.
+  if (certificatePath || certificatePassword) {
+    throw new Error(
+      'Assinatura ICP-Brasil (A1) para PDF não está implementada neste módulo. Use o fluxo de assinatura A1 real.'
+    )
+  }
+
   // Generate hash of the PDF
   const hash = createHash('sha256').update(pdf).digest('hex')
   const timestamp = new Date().toISOString()
 
-  // Build signature metadata (placeholder)
+  // Build integrity metadata (not a legal digital signature)
   const metadata: SignatureMetadata = {
     hash,
     timestamp,
     signer: signerName,
     reason,
     location,
-    certificate: {
-      subject: 'CN=Sistema de Saúde Digital, O=Healthcare, C=BR',
-      issuer: 'CN=AC Raiz, O=ICP-Brasil, C=BR',
-      validFrom: new Date().toISOString(),
-      validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
-    },
+    mode: 'INTEGRITY_ONLY',
   }
 
-  // For now, return the original PDF with metadata appended
-  // In production:
-  // 1. Use node-signpdf library with proper A1 certificate
-  // 2. Add visual signature appearance to the PDF
-  // 3. Embed the signature metadata
-  // 4. Add timestamps from a trusted authority (RFC 3161)
-  // 5. Include QR code linking to signature verification
+  if (!includeTimestamp) {
+    metadata.timestamp = ''
+  }
 
-  // Append metadata to PDF (as comment)
-  const metadataJson = Buffer.from(
-    `\n%PDF-Metadata\n${JSON.stringify(metadata)}\n%%EOF`
-  )
+  // Append metadata to PDF as a trailing comment block.
+  // Note: this is NOT an embedded cryptographic signature, only an integrity stamp.
+  const marker = '\n%HEALTHCARE-INTEGRITY-METADATA\n'
+  const metadataJson = Buffer.from(`${marker}${JSON.stringify(metadata)}\n`)
   const signedPdf = Buffer.concat([pdf, metadataJson])
+
+  // Optionally generate a QR code buffer (PNG) for external use.
+  // We do not embed it visually into the PDF here.
+  if (includeQrCode) {
+    // no-op here; callers may use generateSignatureQrCode
+  }
 
   return {
     signedPdf,
@@ -94,13 +98,18 @@ export async function signPdf(options: PdfSigningOptions): Promise<{
  * In production, use proper certificate chain validation.
  */
 export function verifyPdfSignature(pdf: Buffer, metadata: SignatureMetadata): boolean {
-  // Placeholder verification
-  // In production:
-  // 1. Extract signature from PDF
-  // 2. Validate certificate chain against AC Raiz
-  // 3. Verify timestamp from trusted authority
-  // 4. Validate hash matches PDF content
-  return true
+  // Verifies integrity stamp by recomputing SHA-256 hash.
+  // If the PDF contains an appended metadata marker, the hash is computed
+  // over the original PDF bytes (before the marker).
+  try {
+    const marker = Buffer.from('\n%HEALTHCARE-INTEGRITY-METADATA\n')
+    const idx = pdf.lastIndexOf(marker)
+    const originalPdf = idx >= 0 ? pdf.subarray(0, idx) : pdf
+    const computed = createHash('sha256').update(originalPdf).digest('hex')
+    return computed === metadata.hash
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -111,10 +120,13 @@ export async function generateSignatureQrCode(
   pdfHash: string,
   verificationUrl: string
 ): Promise<Buffer> {
-  // Placeholder: in production, use qrcode library to generate actual QR code
-  // Example: new QRCode().toBuffer(`${verificationUrl}?hash=${pdfHash}`)
-  const qrcodeText = `${verificationUrl}?hash=${pdfHash}`
-  return Buffer.from(qrcodeText) // Placeholder
+  const qrcodeText = `${verificationUrl}?hash=${encodeURIComponent(pdfHash)}`
+  return QRCode.toBuffer(qrcodeText, {
+    type: 'image/png',
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    width: 256,
+  })
 }
 
 /**
@@ -125,12 +137,9 @@ export function addSignatureAppearance(
   metadata: SignatureMetadata,
   qrCodeImage?: Buffer
 ): Buffer {
-  // Placeholder: in production, use pdf-lib or similar to add visual elements
-  // This would include:
-  // 1. Signature block with signer name and timestamp
-  // 2. QR code image
-  // 3. Certificate thumbprint
-  // 4. "Documento assinado digitalmente" badge
+  // Intentionally left as a no-op.
+  // If you add a visual block, do NOT label it as a legally/cryptographically validated signature unless
+  // you actually implement a cryptographic signature.
   return pdf
 }
 
@@ -141,7 +150,8 @@ export async function timestampSignature(
   pdfHash: string,
   timestampServiceUrl?: string
 ): Promise<string> {
-  // Placeholder: in production, call a RFC 3161 timestamp authority
-  // Example providers: AC Raiz Certificadora (Serpro), Serpro Timestamp, etc.
+  // This function currently returns a local timestamp.
+  // It does NOT call an RFC 3161 TSA and therefore should not be treated as legally binding.
+  // If/when a TSA is implemented, `timestampServiceUrl` will be required.
   return new Date().toISOString()
 }

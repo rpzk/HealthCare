@@ -36,8 +36,11 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
     return NextResponse.json({ error: 'patientId e soap são obrigatórios' }, { status: 400 })
   }
 
-  const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { userId: true } })
-  if (!patient?.userId) {
+  const patientUser = await prisma.user.findFirst({
+    where: { patientId },
+    select: { id: true },
+  })
+  if (!patientUser?.id) {
     return NextResponse.json(
       { error: 'Paciente sem conta vinculada para consentimento de IA', code: 'PATIENT_NO_USER' },
       { status: 403 }
@@ -47,7 +50,7 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
   try {
     await assertUserAcceptedTerms({
       prisma,
-      userId: patient.userId,
+      userId: patientUser.id,
       audience: TermAudience.PATIENT,
       gates: ['AI'],
     })

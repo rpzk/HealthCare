@@ -9,7 +9,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
@@ -27,8 +26,12 @@ interface SearchResult {
   href: string
 }
 
-// TODO: Implement real search API integration
-const mockSearchResults: SearchResult[] = []
+interface PatientSearchResult {
+  id: string
+  name: string
+  email: string
+  phone?: string | null
+}
 
 const getTypeLabel = (type: string) => {
   const labels = {
@@ -59,15 +62,41 @@ export function GlobalSearch() {
   const router = useRouter()
 
   useEffect(() => {
-    if (searchTerm.length > 2) {
-      // Simular busca
-      const filtered = mockSearchResults.filter(item =>
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setResults(filtered)
-    } else {
+    const term = searchTerm.trim()
+    if (term.length < 3) {
       setResults([])
+      return
+    }
+
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/patients/search?q=${encodeURIComponent(term)}`, {
+          signal: controller.signal
+        })
+        if (!response.ok) {
+          setResults([])
+          return
+        }
+
+        const data = (await response.json()) as PatientSearchResult[]
+        const mapped: SearchResult[] = data.map((p) => ({
+          id: p.id,
+          title: p.name,
+          description: p.email || p.phone || '',
+          type: 'patient',
+          href: `/patients/${p.id}`
+        }))
+        setResults(mapped)
+      } catch (error) {
+        if ((error as any)?.name === 'AbortError') return
+        setResults([])
+      }
+    }, 250)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
     }
   }, [searchTerm])
 
@@ -92,7 +121,7 @@ export function GlobalSearch() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Buscar pacientes, consultas..."
+            placeholder="Buscar pacientes..."
             className="pl-10 pr-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,7 +150,7 @@ export function GlobalSearch() {
               <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
             ) : results.length === 0 ? (
               <div className="p-4 text-sm text-gray-500">
-                Digite pelo menos 3 caracteres para buscar...
+                Digite pelo menos 3 caracteres para buscar pacientes...
               </div>
             ) : (
               <CommandGroup>

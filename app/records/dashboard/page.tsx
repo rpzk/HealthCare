@@ -22,8 +22,8 @@ interface StatsData {
     total: number
     critical: number
     high: number
-    averageVersion: number
-    maxVersion: number
+    averageVersion: number | null
+    maxVersion: number | null
   }
   distribution: {
     byType: Array<{ type: string; count: number }>
@@ -199,7 +199,9 @@ export default function MedicalRecordsDashboard() {
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Activity className="h-6 w-6 text-purple-600" />
               </div>
-              <span className="text-2xl font-bold text-gray-900">{stats.summary.averageVersion}</span>
+              <span className="text-2xl font-bold text-gray-900">
+                {stats.summary.averageVersion ?? '—'}
+              </span>
             </div>
             <h3 className="text-sm font-medium text-gray-600">Média de Versões</h3>
           </div>

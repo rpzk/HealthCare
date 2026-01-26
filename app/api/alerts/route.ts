@@ -11,9 +11,27 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const userId = session.user.id
+    const lookup = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { patientId: true, email: true },
+    })
+
+    const patient = lookup?.patientId
+      ? await prisma.patient.findUnique({ where: { id: lookup.patientId }, select: { id: true } })
+      : lookup?.email
+        ? await prisma.patient.findFirst({
+            where: { email: { equals: lookup.email, mode: 'insensitive' } },
+            select: { id: true },
+          })
+        : null
+
+    if (!patient) {
+      return NextResponse.json({ alerts: [] })
+    }
+
+    const patientId = patient.id
     const alerts = await prisma.readingThreshold.findMany({
-      where: { patient: { userId } },
+      where: { patientId },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -50,7 +68,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'type e min/max são obrigatórios' }, { status: 400 })
     }
 
-    const patient = await prisma.patient.findFirst({ where: { userId: session.user.id }, select: { id: true, email: true, name: true } })
+    const lookup = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { patientId: true, email: true },
+    })
+
+    const patient = lookup?.patientId
+      ? await prisma.patient.findUnique({ where: { id: lookup.patientId }, select: { id: true } })
+      : lookup?.email
+        ? await prisma.patient.findFirst({
+            where: { email: { equals: lookup.email, mode: 'insensitive' } },
+            select: { id: true },
+          })
+        : null
+
     if (!patient) return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
 
     const created = await prisma.readingThreshold.create({

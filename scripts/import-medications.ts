@@ -124,6 +124,9 @@ function mapPrescriptionType(v: any): PrescriptionType | undefined {
 function mapSex(v: any): 'M' | 'F' | undefined {
   if (!v && v !== 0) return undefined
   const s = String(v).trim().toUpperCase()
+  // alguns datasets do SSF usam ids (patterns_sex): 1=Masculino, 2=Feminino
+  if (s === '1') return 'M'
+  if (s === '2') return 'F'
   if (s === 'M' || s === 'MALE' || s === 'MASCULINO') return 'M'
   if (s === 'F' || s === 'FEMALE' || s === 'FEMININO') return 'F'
   return undefined
@@ -150,27 +153,75 @@ function buildMedicationData(r: Row): Prisma.MedicationCreateInput {
   const data: Prisma.MedicationCreateInput = {
     name: String(name).trim(),
     synonym: (get('synonym', 'sinonimo') as string) || null,
-    tradeName: (get('tradename', 'fantasia', 'nome fantasia', 'marca') as string) || null,
-    prescriptionType: mapPrescriptionType(get('prescriptiontype', 'tipo', 'tipo de receita')) || PrescriptionType.SYMPTOMATIC,
-    basicPharmacy: toBool(get('basicpharmacy', 'basica', 'farmacia basica')) ?? false,
+    tradeName: (get('tradename', 'fantasia', 'nome fantasia', 'marca', 'brand') as string) || null,
+    prescriptionType: mapPrescriptionType(get('prescriptiontype', 'tipo', 'tipo de receita', 'prescription_type')) || PrescriptionType.SYMPTOMATIC,
+
+    basicPharmacy: toBool(get('basicpharmacy', 'basica', 'farmacia basica', 'basic_unit')) ?? false,
     municipalPharmacy: toBool(get('municipalpharmacy', 'municipal')) ?? false,
-    statePharmacy: toBool(get('statepharmacy', 'estadual')) ?? false,
-    homePharmacy: toBool(get('homepharmacy', 'domiciliar')) ?? false,
+    statePharmacy: toBool(get('statepharmacy', 'estadual', 'state')) ?? false,
+    homePharmacy: toBool(get('homepharmacy', 'domiciliar', 'home_hospitalization')) ?? false,
     popularPharmacy: toBool(get('popularpharmacy', 'popular', 'farmacia popular')) ?? false,
-    hospitalPharmacy: toBool(get('hospitalpharmacy', 'hospitalar')) ?? false,
-    commercialPharmacy: toBool(get('commercialpharmacy', 'comercial')) ?? false,
-    compoundPharmacy: toBool(get('compoundpharmacy', 'manipulado')) ?? false,
-    route: (get('route', 'via', 'uso') as string) || null,
-    form: (get('form', 'formato', 'forma') as string) || null,
+    hospitalPharmacy: toBool(get('hospitalpharmacy', 'hospitalar', 'hospital')) ?? false,
+    commercialPharmacy: toBool(get('commercialpharmacy', 'comercial', 'comercial')) ?? false,
+    compoundPharmacy: toBool(get('compoundpharmacy', 'manipulado', 'manipulated')) ?? false,
+
+    susCode: (get('suscode', 'sus_code', 'codigo sus', 'código sus') as string) || null,
+
+    instructions: (get('instructions', 'orientacao', 'orientação', 'guidance') as string) || null,
+    notes: (get('notes', 'notas') as string) || null,
+    description: (get('description', 'descricao', 'descrição') as string) || null,
+    warnings: (get('warnings', 'warning', 'advertencias', 'advertências') as string) || null,
+    interactions: (get('interactions', 'interacoes', 'interações') as string) || null,
+    observations: (get('observations', 'observacoes', 'observações') as string) || null,
+
+    // Restrições
+    // OBS: em alguns fixtures SSF, sex vem como id de tabela patterns_sex; quando não for 1/2, ignoramos.
+    // OBS: min/max podem vir preenchidos com 0; tratamos 0 como "sem restrição".
+    minAge: (() => {
+      const v = toNumber(get('minage', 'idade_min', 'idade minima', 'min'))
+      return v && v > 0 ? v : undefined
+    })(),
+    maxAge: (() => {
+      const v = toNumber(get('maxage', 'idade_max', 'idade maxima', 'max'))
+      return v && v > 0 ? v : undefined
+    })(),
+    sexRestriction: mapSex(get('sexrestriction', 'sexo', 'sex')) || null,
+    validityDays: (() => {
+      const v = toNumber(get('validitydays', 'validity_days', 'validade', 'validity'))
+      return v && v > 0 ? v : undefined
+    })(),
+
+    // Apresentação
+    route: (get('route', 'via', 'uso', 'use') as string) || null,
     unit: (get('unit', 'unidade') as string) || null,
-    strength: (get('strength', 'concentracao', 'dose') as string) || null,
-    dosePerKg: toNumber(get('doseperkg', 'dose_kilo', 'dose/kg')),
-    defaultFrequency: toNumber(get('defaultfrequency', 'frequencia')),
-    defaultDuration: toNumber(get('defaultduration', 'duracao')),
-    maxQuantity: toNumber(get('maxquantity', 'quantidade')),
-    minAge: toNumber(get('minage', 'idade_min', 'idade minima')),
-    maxAge: toNumber(get('maxage', 'idade_max', 'idade maxima')),
-    sexRestriction: mapSex(get('sexrestriction', 'sexo')) || null,
+    form: (get('form', 'formato', 'forma') as string) || null,
+    packaging: (get('packaging', 'recipiente', 'container') as string) || null,
+    packageSize: (() => {
+      const v = toNumber(get('packagesize', 'capacidade', 'capacity'))
+      return v && v > 0 ? v : undefined
+    })(),
+    strength: (() => {
+      const direct = get('strength', 'concentracao', 'concentração', 'dose')
+      if (direct !== undefined && direct !== null && String(direct).trim() !== '') return String(direct).trim()
+      const weight = get('weight')
+      const unit = get('unit', 'unidade')
+      if (weight !== undefined && weight !== null && String(weight).trim() !== '') {
+        const w = String(weight).trim()
+        const u = unit !== undefined && unit !== null && String(unit).trim() !== '' ? String(unit).trim() : ''
+        return `${w}${u ? ' ' + u : ''}`
+      }
+      return null
+    })(),
+
+    // Dosagem
+    dosePerKg: toNumber(get('doseperkg', 'dose_kilo', 'dose/kg', 'dose_weight')),
+    maxDailyDosePerKg: toNumber(get('maxdailydoseperkg', 'dose_max', 'dosemax')),
+    defaultFrequency: toNumber(get('defaultfrequency', 'frequencia', 'frequência', 'dose_freq')),
+    defaultDuration: (() => {
+      const v = toNumber(get('defaultduration', 'duracao', 'duração', 'length'))
+      return v && v > 0 ? v : undefined
+    })(),
+    maxQuantity: toNumber(get('maxquantity', 'quantidade', 'amount')),
     active: toBool(get('active', 'ativo')) ?? true,
   }
   return data

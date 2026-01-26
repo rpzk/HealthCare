@@ -296,11 +296,13 @@ export async function listBackups(): Promise<{
  * Clean up backups older than RETENTION_DAYS
  * Runs automatically after each backup
  */
-async function cleanupOldBackups(): Promise<void> {
+export async function cleanupOldBackups(): Promise<{ success: boolean; deletedBackups: number; error?: string }> {
   try {
     const files = await fs.readdir(BACKUP_DIR)
     const now = Date.now()
     const maxAge = RETENTION_DAYS * 24 * 60 * 60 * 1000
+
+    let deletedBackups = 0
 
     for (const file of files) {
       const filepath = path.join(BACKUP_DIR, file)
@@ -309,6 +311,7 @@ async function cleanupOldBackups(): Promise<void> {
 
       if (age > maxAge) {
         await fs.unlink(filepath)
+        deletedBackups++
         logger.info(`[Backup Cleanup] Removed old backup: ${file}`)
 
         // Log cleanup
@@ -328,8 +331,10 @@ async function cleanupOldBackups(): Promise<void> {
         })
       }
     }
+    return { success: true, deletedBackups }
   } catch (error) {
     logger.error('[Backup Cleanup Error]', error)
+    return { success: false, deletedBackups: 0, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }
 

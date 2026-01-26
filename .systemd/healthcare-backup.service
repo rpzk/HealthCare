@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=umbrel
-ExecStart=/home/umbrel/HealthCare/scripts/backup-database.sh
+ExecStart=/bin/bash /home/umbrel/HealthCare/scripts/backup-local.sh
 StandardOutput=journal
 StandardError=journal
 

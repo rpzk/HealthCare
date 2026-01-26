@@ -6,8 +6,26 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { emailService } from '@/lib/email-service'
 import { logger } from '@/lib/logger'
+import { encrypt, hashCPF } from '@/lib/crypto'
+import { normalizeBloodType } from '@/lib/patient-schemas'
 
 export const runtime = 'nodejs'
+
+function isLocalhostUrl(url: string) {
+  return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(url)
+}
+
+function resolveBaseUrl(request: NextRequest) {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+  if (envUrl && !isLocalhostUrl(envUrl)) return envUrl
+
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const host = forwardedHost || request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'http'
+  if (host) return `${proto}://${host}`
+
+  return envUrl || 'http://localhost:3000'
+}
 
 // Info dos tipos biométricos
 const BIOMETRIC_DATA_INFO: Record<string, {
@@ -249,6 +267,7 @@ export async function POST(
       birthDate,
       gender,
       cpf,
+      bloodType,
       allergies,
       emergencyContact,
       additionalData
@@ -316,6 +335,11 @@ export async function POST(
 
     // Criar paciente e usuário em transação
     const result = await prisma.$transaction(async (tx) => {
+      const cpfRaw = (cpf || invite.cpf || '').toString().trim()
+      const cpfDigits = cpfRaw ? cpfRaw.replace(/\D/g, '') : ''
+      const cpfToStore = cpfDigits ? encrypt(cpfDigits) : null
+      const cpfHash = cpfDigits ? hashCPF(cpfDigits) : null
+
       // 1. Criar registro de paciente
       const patient = await tx.patient.create({
         data: {
@@ -324,12 +348,12 @@ export async function POST(
           phone: phone || invite.phone,
           birthDate: effectiveBirthDate,
           gender: gender || invite.gender || 'OTHER',
-          cpf: cpf || invite.cpf,
+          cpf: cpfToStore,
+          cpfHash,
           allergies: allergies || invite.allergies,
+          bloodType: normalizeBloodType(bloodType),
           emergencyContact: emergencyContact || invite.emergencyContact,
           address,
-          // Vincular userId se já existir usuário
-          userId: existingUser?.id
         }
       })
 
@@ -352,12 +376,6 @@ export async function POST(
           }
         })
         userId = newUser.id
-
-        // Garantir vínculo inverso (Patient.userId) para as APIs do portal do paciente
-        await tx.patient.update({
-          where: { id: patient.id },
-          data: { userId: newUser.id },
-        })
       } else {
         // 3. Se usuário existe, apenas vincular ao paciente
         await tx.user.update({
@@ -569,7 +587,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Envio de e-mail está desabilitado no sistema' }, { status: 400 })
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = resolveBaseUrl(request)
     const inviteLink = `${baseUrl}/invite/${token}`
 
     const inviterName = invite.invitedBy?.name || 'Profissional'
@@ -578,26 +596,41 @@ export async function PATCH(
 
     const result = await emailService.sendEmail({
       to: invite.email,
-      subject: 'Convite para cadastro no HealthCare',
+      subject: '📩 Convite para cadastro no HealthCare',
       html: `
-        <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.4;">
-          <h2 style="margin: 0 0 8px;">Reenvio de convite</h2>
-          <p style="margin: 0 0 12px;">
-            <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
-            convidou você para se cadastrar no sistema HealthCare.
-          </p>
-          ${safeMessage ? `
-            <div style="margin: 12px 0; padding: 12px; background: #f7f7f7; border-left: 4px solid #2563eb;">
-              <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
-              <div>${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 24px; border-radius: 10px 10px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">
+              <a href="${inviteLink}" style="color: #fff; text-decoration: none;">📩 Convite de Cadastro</a>
+            </h1>
+          </div>
+
+          <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 16px; margin: 0 0 10px;">Olá!</p>
+
+            <p style="font-size: 15px; color: #4b5563; margin: 0 0 14px;">
+              <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
+              convidou você para se cadastrar no sistema HealthCare.
+            </p>
+
+            ${safeMessage ? `
+              <div style="margin: 12px 0; padding: 12px; background: #fff; border-left: 4px solid #2563eb;">
+                <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
+                <div style="font-size: 14px; color: #111;">${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+              </div>
+            ` : ''}
+
+            <div style="text-align: center; margin: 22px 0;">
+              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                Aceitar convite
+              </a>
             </div>
-          ` : ''}
-          <p style="margin: 16px 0;">
-            <a href="${inviteLink}" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 6px;">Aceitar convite</a>
-          </p>
-          <p style="margin: 0; font-size: 12px; color: #666;">Se preferir, copie e cole este link no navegador:</p>
-          <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${inviteLink}</p>
-          <p style="margin: 16px 0 0; font-size: 12px; color: #666;">Este link expira em ${Math.max(1, Math.ceil((invite.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} dias.</p>
+
+            <p style="margin: 0; font-size: 12px; color: #6b7280;">Se preferir, copie e cole este link no navegador:</p>
+            <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${inviteLink}</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="margin: 0; font-size: 12px; color: #9ca3af;">Este link expira em ${Math.max(1, Math.ceil((invite.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} dias.</p>
+          </div>
         </div>
       `,
       text: `Reenvio de convite para cadastro no HealthCare. Acesse: ${inviteLink}`,

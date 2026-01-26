@@ -17,7 +17,7 @@ function getRedisConnection() {
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const rl = rateLimiters.consultations(req)
+  const rl = rateLimiters.dashboard(req)
   if (rl instanceof NextResponse) return rl
   const roomId = params?.id as string
   if (!roomId) return NextResponse.json({ error: 'roomId ausente' }, { status: 400 })

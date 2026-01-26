@@ -3,10 +3,14 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { hash } from 'bcryptjs'
 import { encrypt, hashCPF } from '@/lib/crypto'
-import { serializeAllergies, normalizeBloodType, normalizeCPF } from '@/lib/patient-schemas'
+import {
+  serializeAllergies,
+  normalizeBloodType,
+  normalizeCPF,
+  parseBirthDateYYYYMMDDToNoonUtc,
+} from '@/lib/patient-schemas'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
-import type { BloodType } from '@/types'
 
 const registerSchema = z.object({
   // Dados da conta
@@ -79,9 +83,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const existingPatientByEmail = await prisma.patient.findUnique({
+      where: { email: data.email },
+      select: { id: true },
+    })
+
+    if (existingPatientByEmail) {
+      return NextResponse.json(
+        { error: 'Este email já está cadastrado como paciente' },
+        { status: 409 }
+      )
+    }
+
     // Verificar se CPF já existe
+    const cpfDigits = normalizeCPF(data.cpf)
+    const cpfHashValue = hashCPF(cpfDigits)
+
+    const cpfOrConditions: Prisma.PatientWhereInput[] = []
+    if (cpfHashValue) cpfOrConditions.push({ cpfHash: cpfHashValue })
+    cpfOrConditions.push({ person: { cpf: cpfDigits } })
+
     const existingPatientByCpf = await prisma.patient.findFirst({
-      where: { cpf: data.cpf },
+      where: {
+        OR: cpfOrConditions,
+      },
+      select: { id: true },
     })
 
     if (existingPatientByCpf) {
@@ -109,12 +135,11 @@ export async function POST(request: NextRequest) {
       // Criar paciente
       const patient = await tx.patient.create({
         data: {
-          userId: user.id,
           name: data.name,
           email: data.email,
-          cpf: encrypt(normalizeCPF(data.cpf)),
-          cpfHash: hashCPF(data.cpf),
-          birthDate: new Date(data.birthDate),
+          cpf: encrypt(cpfDigits),
+          cpfHash: cpfHashValue,
+          birthDate: parseBirthDateYYYYMMDDToNoonUtc(data.birthDate),
           gender: data.gender,
           phone: data.phone,
           bloodType: normalizeBloodType(data.bloodType),
@@ -122,6 +147,11 @@ export async function POST(request: NextRequest) {
           emergencyContact: data.emergencyContact ? JSON.stringify(data.emergencyContact) : null,
           address: null, // Endereço em formato antigo (descontinuado)
         },
+      })
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: { patientId: patient.id },
       })
 
       // Criar endereço se fornecido
@@ -170,14 +200,14 @@ export async function POST(request: NextRequest) {
     if (error && typeof error === 'object' && 'code' in error) {
       const prismaError = error as Prisma.PrismaClientKnownRequestError
       if (prismaError.code === 'P2002') {
-        const field = prismaError.meta?.target?.[0]
+        const field = (prismaError.meta?.target as string[] | undefined)?.[0]
         if (field === 'email') {
           return NextResponse.json(
             { error: 'Este email já está cadastrado' },
             { status: 409 }
           )
         }
-        if (field === 'cpf') {
+        if (field === 'cpfHash' || field === 'cpf') {
           return NextResponse.json(
             { error: 'Este CPF já está cadastrado' },
             { status: 409 }

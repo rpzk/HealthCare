@@ -12,7 +12,7 @@ export class ApiError extends Error {
   constructor(
     public readonly statusCode: number,
     message: string,
-    public readonly details?: Record<string, any>
+    public readonly details?: Record<string, unknown>
   ) {
     super(message)
     this.name = 'ApiError'
@@ -21,7 +21,7 @@ export class ApiError extends Error {
 
 export function handleApiError(error: unknown): NextResponse {
   if (error instanceof ApiError) {
-    logger.warn(`API Error [${error.statusCode}]`, error, error.details)
+    logger.warn({ err: error, details: error.details, statusCode: error.statusCode }, 'API Error')
     return NextResponse.json(
       { error: error.message, ...(error.details && { details: error.details }) },
       { status: error.statusCode }
@@ -29,7 +29,7 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    logger.error('Database error', error, { code: error.code })
+    logger.error({ err: error, code: error.code }, 'Database error')
     
     if (error.code === 'P2002') {
       const field = (error.meta?.target as string[] | undefined)?.[0]
@@ -53,7 +53,7 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   if (error instanceof Prisma.PrismaClientValidationError) {
-    logger.error('Database validation error', error)
+    logger.error({ err: error }, 'Database validation error')
     return NextResponse.json(
       { error: 'Invalid database query' },
       { status: 400 }
@@ -61,7 +61,7 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   if (error instanceof SyntaxError) {
-    logger.error('JSON parse error', error)
+    logger.error({ err: error }, 'JSON parse error')
     return NextResponse.json(
       { error: 'Invalid JSON in request body' },
       { status: 400 }
@@ -69,14 +69,14 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   if (error instanceof Error) {
-    logger.error('Unhandled error', error)
+    logger.error({ err: error }, 'Unhandled error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
 
-  logger.error('Unknown error type', new Error('Unknown error'), { error })
+  logger.error({ err: new Error('Unknown error'), error }, 'Unknown error type')
   return NextResponse.json(
     { error: 'Internal server error' },
     { status: 500 }

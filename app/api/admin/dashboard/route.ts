@@ -213,25 +213,25 @@ export async function GET(request: NextRequest) {
 
     // Calcular métricas
     const totalConsultationsThisPeriod = consultationsThisPeriod
-    const cancellationRate = totalConsultationsThisPeriod > 0 
-      ? Math.round((cancelledConsultations / totalConsultationsThisPeriod) * 100) 
-      : 0
-    const noShowRate = totalConsultationsThisPeriod > 0 
-      ? Math.round((noShowConsultations / totalConsultationsThisPeriod) * 100) 
-      : 0
+    const cancellationRate = totalConsultationsThisPeriod > 0
+      ? Math.round((cancelledConsultations / totalConsultationsThisPeriod) * 100)
+      : null
+    const noShowRate = totalConsultationsThisPeriod > 0
+      ? Math.round((noShowConsultations / totalConsultationsThisPeriod) * 100)
+      : null
 
     // Calcular crescimento
-    const patientGrowth = previousPeriodPatients > 0 
+    const patientGrowth = previousPeriodPatients > 0
       ? Math.round(((newPatientsThisPeriod - previousPeriodPatients) / previousPeriodPatients) * 100)
-      : newPatientsThisPeriod > 0 ? 100 : 0
+      : null
 
     const consultationGrowth = previousPeriodConsultations > 0
       ? Math.round(((consultationsThisPeriod - previousPeriodConsultations) / previousPeriodConsultations) * 100)
-      : consultationsThisPeriod > 0 ? 100 : 0
+      : null
 
     const userGrowth = previousMonthUsers > 0
       ? Math.round(((newUsersThisMonth - previousMonthUsers) / previousMonthUsers) * 100)
-      : newUsersThisMonth > 0 ? 100 : 0
+      : null
 
     // Calcular dias no período para média
     const daysInPeriod = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)))
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (noShowRate > 10) {
+    if (typeof noShowRate === 'number' && noShowRate > 10) {
       alerts.push({
         id: 'high-noshow',
         type: 'warning',
@@ -285,8 +285,8 @@ export async function GET(request: NextRequest) {
         },
         topProfessionals: topProfessionals.map(p => ({
           id: p.doctorId,
-          name: professionalMap.get(p.doctorId)?.name || 'Desconhecido',
-          role: professionalMap.get(p.doctorId)?.speciality || professionalMap.get(p.doctorId)?.role || '',
+          name: professionalMap.get(p.doctorId)?.name ?? null,
+          role: professionalMap.get(p.doctorId)?.speciality ?? professionalMap.get(p.doctorId)?.role ?? null,
           consultations: p._count.id
         })),
         alerts,

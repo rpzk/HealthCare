@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
 
 /**
  * GET /api/medical-records/stats
@@ -23,10 +24,20 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
     }
 
     if (user.role === 'PATIENT') {
-      const patient = await prisma.patient.findFirst({
-        where: { userId: user.id },
-        select: { id: true }
+      const lookup = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { patientId: true, email: true },
       })
+
+      const patient = lookup?.patientId
+        ? await prisma.patient.findUnique({ where: { id: lookup.patientId }, select: { id: true } })
+        : lookup?.email
+          ? await prisma.patient.findFirst({
+              where: { email: { equals: lookup.email, mode: 'insensitive' } },
+              select: { id: true },
+            })
+          : null
+
       if (!patient) {
         return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
       }
@@ -39,6 +50,19 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
     // 1. Total records
     const totalRecords = await prisma.medicalRecord.count({ where: baseWhere })
 
+    // 1b. Version stats (real data; null when there are no records)
+    const versionStats = await prisma.medicalRecord.aggregate({
+      where: baseWhere,
+      _avg: { version: true },
+      _max: { version: true }
+    })
+
+    const averageVersion =
+      typeof versionStats._avg.version === 'number'
+        ? Math.round(versionStats._avg.version * 100) / 100
+        : null
+    const maxVersion = typeof versionStats._max.version === 'number' ? versionStats._max.version : null
+
     // 2. Records by type
     const recordsByType = await prisma.medicalRecord.groupBy({
       by: ['recordType'],
@@ -49,6 +73,13 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
     // 3. Records by severity (using severity field from schema)
     const recordsBySeverity = await prisma.medicalRecord.groupBy({
       by: ['severity'],
+      where: baseWhere,
+      _count: { id: true }
+    })
+
+    // 4. Records by priority (priority is a string in schema)
+    const recordsByPriority = await prisma.medicalRecord.groupBy({
+      by: ['priority'],
       where: baseWhere,
       _count: { id: true }
     })
@@ -65,19 +96,21 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
       select: {
         createdAt: true,
         recordType: true,
-        severity: true
+        severity: true,
+        priority: true
       },
       orderBy: { createdAt: 'asc' }
     })
 
-    // Group by day (using severity as proxy for priority temporarily)
+    // Group by day
     const activityByDay = recentRecords.reduce((acc, record) => {
       const day = record.createdAt.toISOString().split('T')[0]
       if (!acc[day]) {
         acc[day] = { date: day, count: 0, critical: 0, high: 0 }
       }
       acc[day].count++
-      if (record.severity === 'HIGH') acc[day].high++
+      if (record.priority === 'CRITICAL') acc[day].critical++
+      if (record.priority === 'HIGH') acc[day].high++
       return acc
     }, {} as Record<string, { date: string; count: number; critical: number; high: number }>)
 
@@ -104,10 +137,12 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
 
       topPatients = patientStats.map(stat => {
         const patient = patients.find(p => p.id === stat.patientId)
+        const cpfDigits = decrypt(patient?.cpf || null)?.replace(/\D/g, '') || null
+        const maskedCpf = cpfDigits ? `***${cpfDigits.slice(-4)}` : null
         return {
           patientId: stat.patientId,
-          name: patient?.name || 'Desconhecido',
-          cpf: patient?.cpf ? `***${patient.cpf.slice(-4)}` : 'N/A',
+          name: patient?.name ?? null,
+          cpf: maskedCpf,
           recordCount: stat._count.id
         }
       })
@@ -127,11 +162,11 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
 
     // 9. Count records by severity
     const criticalCount = await prisma.medicalRecord.count({
-      where: { ...baseWhere, severity: 'HIGH' }
+      where: { ...baseWhere, priority: 'CRITICAL' }
     })
 
     const highCount = await prisma.medicalRecord.count({
-      where: { ...baseWhere, severity: 'MEDIUM' }
+      where: { ...baseWhere, priority: 'HIGH' }
     })
 
     return NextResponse.json({
@@ -144,15 +179,18 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
         total: totalRecords,
         critical: criticalCount,
         high: highCount,
-        averageVersion: 1, // Placeholder
-        maxVersion: 1 // Placeholder
+        averageVersion,
+        maxVersion
       },
       distribution: {
         byType: recordsByType.map(r => ({
           type: r.recordType,
           count: r._count.id
         })),
-        byPriority: [], // Priority is string, not enum - skip for now
+        byPriority: recordsByPriority.map(r => ({
+          priority: r.priority,
+          count: r._count.id
+        })),
         bySeverity: recordsBySeverity.map(r => ({
           severity: r.severity,
           count: r._count.id
@@ -164,7 +202,7 @@ export const GET = withAuth(async (request: NextRequest, { user }) => {
         id: r.id,
         title: r.title,
         type: r.recordType,
-        priority: r.severity, // Using severity as priority proxy
+        priority: r.priority,
         severity: r.severity,
         createdAt: r.createdAt.toISOString(),
         patientName: user.role !== 'PATIENT' ? r.patient?.name : '***'

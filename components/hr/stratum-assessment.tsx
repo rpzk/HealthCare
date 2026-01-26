@@ -1,11 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Slider } from '@/components/ui/slider'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { logger } from '@/lib/logger'
 import {
@@ -33,7 +38,7 @@ interface Question {
   id: string
   category: string
   questionText: string
-  questionType: string
+  questionType: 'SCENARIO' | 'SCALE' | 'RANKING' | 'OPEN'
   options: Option[]
   stratumMapping: Record<string, { timeSpanMonths: number; score: number; stratum: string }>
   weight: number
@@ -44,15 +49,39 @@ interface Assessment {
   id: string
   userId: string
   status: string
+  assessmentType?: string
+  jobRoleId?: string | null
   calculatedStratum?: string
   timeSpanMonths?: number
-  confidenceScore?: number
+  confidenceScore?: number | null
+  morUserId?: string | null
+  morValidatedAt?: string | null
+  morEvidence?: string | null
+  jobRole?: { id: string; title: string } | null
+  morUser?: { id: string; name: string | null; email: string | null } | null
+  responses?: Array<{ questionId: string; answer: string }>
 }
 
 interface AssessmentResult {
   stratum: string
   timeSpanMonths: number
-  confidence: number
+  confidence: number | null
+}
+
+type StratumAssessmentMode = 'SELF' | 'ROLE'
+
+type JobRoleListItem = {
+  id: string
+  title: string
+  requiredMinStratum: string
+  requiredMaxStratum: string | null
+  stratumProfile?: {
+    minStratum: string
+    optimalStratum: string
+    maxStratum: string | null
+    timeSpanMinMonths: number
+    timeSpanMaxMonths: number | null
+  } | null
 }
 
 const categoryIcons: Record<string, typeof Brain> = {
@@ -116,20 +145,46 @@ const stratumDescriptions: Record<string, { title: string; timeSpan: string; des
   }
 }
 
-export function StratumAssessment() {
+export function StratumAssessment({ mode = 'SELF' }: { mode?: StratumAssessmentMode } = {}) {
   const { data: session } = useSession()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [assessment, setAssessment] = useState<Assessment | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, unknown>>({})
   const [result, setResult] = useState<AssessmentResult | null>(null)
   const [showResult, setShowResult] = useState(false)
+  const [quickTimeSpanMonths, setQuickTimeSpanMonths] = useState('')
+  const [quickConfidencePct, setQuickConfidencePct] = useState('')
+  const [quickNotes, setQuickNotes] = useState('')
+
+  const [jobRoles, setJobRoles] = useState<JobRoleListItem[]>([])
+  const [jobRolesLoading, setJobRolesLoading] = useState(false)
+  const [selectedJobRoleId, setSelectedJobRoleId] = useState<string>('')
 
   useEffect(() => {
     loadData()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selectedJobRoleId])
+
+  const loadJobRoles = async () => {
+    try {
+      setJobRolesLoading(true)
+      const res = await fetch('/api/job-roles?limit=200')
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: 'Erro', description: data?.error || 'Falha ao carregar cargos', variant: 'destructive' })
+        return
+      }
+      setJobRoles(data.roles || [])
+    } catch (error) {
+      logger.error('Erro ao carregar job roles:', error)
+      toast({ title: 'Erro', description: 'Falha ao carregar cargos', variant: 'destructive' })
+    } finally {
+      setJobRolesLoading(false)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -139,18 +194,26 @@ export function StratumAssessment() {
       const questionsRes = await fetch('/api/stratum/questions')
       const questionsData = await questionsRes.json()
 
-      if (questionsData.questions?.length === 0) {
-        // Seed questions
-        await fetch('/api/stratum/seed', { method: 'POST' })
-        const retryRes = await fetch('/api/stratum/questions')
-        const retryData = await retryRes.json()
-        setQuestions(retryData.questions || [])
-      } else {
-        setQuestions(questionsData.questions || [])
+      setQuestions(questionsData.questions || [])
+
+      if (mode === 'ROLE' && jobRoles.length === 0 && !jobRolesLoading) {
+        await loadJobRoles()
       }
 
+      // ROLE mode requires JobRole selection to filter assessments
+      if (mode === 'ROLE' && !selectedJobRoleId) {
+        setAssessment(null)
+        setResult(null)
+        setShowResult(false)
+        setCurrentIndex(0)
+        setAnswers({})
+        return
+      }
+
+      const filterQuery = mode === 'ROLE' ? `&jobRoleId=${encodeURIComponent(selectedJobRoleId)}` : ''
+
       // Carregar ou criar assessment
-      const assessmentsRes = await fetch('/api/stratum/assessments?status=IN_PROGRESS')
+      const assessmentsRes = await fetch(`/api/stratum/assessments?status=IN_PROGRESS${filterQuery}`)
       const assessmentsData = await assessmentsRes.json()
 
       if (assessmentsData.assessments?.length > 0) {
@@ -158,14 +221,14 @@ export function StratumAssessment() {
         setAssessment(existing)
         
         // Restaurar respostas anteriores
-        const savedAnswers: Record<string, string> = {}
+        const savedAnswers: Record<string, unknown> = {}
         for (const response of existing.responses || []) {
           savedAnswers[response.questionId] = JSON.parse(response.answer)
         }
         setAnswers(savedAnswers)
       } else {
         // Verificar se já completou
-        const completedRes = await fetch('/api/stratum/assessments?status=COMPLETED')
+        const completedRes = await fetch(`/api/stratum/assessments?status=COMPLETED${filterQuery}`)
         const completedData = await completedRes.json()
         
         if (completedData.assessments?.length > 0) {
@@ -174,7 +237,7 @@ export function StratumAssessment() {
           setResult({
             stratum: latest.calculatedStratum,
             timeSpanMonths: latest.timeSpanMonths,
-            confidence: latest.confidenceScore
+            confidence: latest.confidenceScore ?? null
           })
           setShowResult(true)
         }
@@ -190,10 +253,20 @@ export function StratumAssessment() {
   const startAssessment = async () => {
     try {
       setLoading(true)
+
+      if (mode === 'ROLE' && !selectedJobRoleId) {
+        toast({ title: 'Erro', description: 'Selecione um cargo (JobRole) para iniciar.', variant: 'destructive' })
+        return
+      }
+
       const response = await fetch('/api/stratum/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assessmentType: 'SELF' })
+        body: JSON.stringify(
+          mode === 'ROLE'
+            ? { assessmentType: 'MANAGER', jobRoleId: selectedJobRoleId }
+            : { assessmentType: 'SELF' }
+        )
       })
       const data = await response.json()
       setAssessment(data.assessment)
@@ -207,14 +280,84 @@ export function StratumAssessment() {
     }
   }
 
-  const saveAnswer = async (questionId: string, answer: string) => {
+  const completeManualAssessment = async () => {
+    try {
+      if (mode === 'ROLE' && !selectedJobRoleId) {
+        toast({ title: 'Erro', description: 'Selecione um cargo (JobRole) antes de concluir.', variant: 'destructive' })
+        return
+      }
+
+      const months = Number(quickTimeSpanMonths)
+      if (!Number.isFinite(months) || months <= 0) {
+        toast({ title: 'Erro', description: 'Informe o Time Span em meses (maior que 0).', variant: 'destructive' })
+        return
+      }
+
+      let confidenceScore: number | undefined
+      if (quickConfidencePct.trim().length > 0) {
+        const pct = Number(quickConfidencePct)
+        if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+          toast({ title: 'Erro', description: 'Confiança deve ser 0 a 100.', variant: 'destructive' })
+          return
+        }
+        confidenceScore = Math.round((pct / 100) * 100) / 100
+      }
+
+      setLoading(true)
+
+      let assessmentId = assessment?.id
+      if (!assessmentId || assessment?.status === 'COMPLETED') {
+        const createRes = await fetch('/api/stratum/assessments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            mode === 'ROLE'
+              ? { assessmentType: 'MANAGER', jobRoleId: selectedJobRoleId }
+              : { assessmentType: 'SELF' }
+          )
+        })
+        const createData = await createRes.json()
+        assessmentId = createData.assessment?.id
+        setAssessment(createData.assessment)
+      }
+
+      const response = await fetch('/api/stratum/assessments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assessmentId,
+          action: 'complete_manual',
+          timeSpanMonths: Math.round(months),
+          confidenceScore,
+          notes: quickNotes
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        toast({ title: 'Erro', description: data?.error || 'Falha ao concluir avaliação rápida', variant: 'destructive' })
+        return
+      }
+
+      setResult(data.result)
+      setShowResult(true)
+      toast({ title: 'Avaliação concluída!', description: 'Resultado calculado pelo Time Span informado.' })
+    } catch (error) {
+      logger.error('Erro ao concluir avaliação rápida:', error)
+      toast({ title: 'Erro', description: 'Falha ao concluir avaliação rápida', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const saveAnswer = async (questionId: string, answer: unknown) => {
     if (!assessment) return
 
     setAnswers(prev => ({ ...prev, [questionId]: answer }))
     setSaving(true)
 
     try {
-      await fetch('/api/stratum/responses', {
+      const res = await fetch('/api/stratum/responses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,11 +366,27 @@ export function StratumAssessment() {
           answer
         })
       })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast({ title: 'Erro', description: data?.error || 'Falha ao salvar resposta', variant: 'destructive' })
+      }
     } catch (error) {
       logger.error('Erro ao salvar resposta:', error)
+      toast({ title: 'Erro', description: 'Falha ao salvar resposta', variant: 'destructive' })
     } finally {
       setSaving(false)
     }
+  }
+
+  function isAnswered(question: Question, value: unknown) {
+    if (question.questionType === 'OPEN') {
+      if (!value || typeof value !== 'object') return false
+      const anyValue = value as Record<string, unknown>
+      const ts = Number(anyValue.timeSpanMonths)
+      return Number.isFinite(ts) && ts > 0
+    }
+    return typeof value === 'string' && value.trim().length > 0
   }
 
   const completeAssessment = async () => {
@@ -256,7 +415,7 @@ export function StratumAssessment() {
 
   const currentQuestion = questions[currentIndex]
   const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0
-  const allAnswered = questions.every(q => answers[q.id])
+  const allAnswered = questions.every(q => isAnswered(q, answers[q.id]))
 
   if (loading) {
     return (
@@ -284,6 +443,25 @@ export function StratumAssessment() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {mode === 'ROLE' && (
+              <div className="p-4 bg-white rounded-xl shadow-sm border">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Cargo (JobRole)</div>
+                    <div className="font-medium text-gray-900">{assessment?.jobRole?.title || selectedJobRoleId}</div>
+                  </div>
+                  <Badge variant={assessment?.morValidatedAt ? 'default' : 'outline'}>
+                    {assessment?.morValidatedAt ? 'Validado (MoR)' : 'Pendente MoR'}
+                  </Badge>
+                </div>
+                {assessment?.morUser && !assessment?.morValidatedAt && (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    MoR designado: {assessment.morUser.name || assessment.morUser.email || assessment.morUser.id}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="text-center p-6 bg-white rounded-xl shadow-sm">
               <Badge className="mb-4 text-lg px-4 py-2 bg-blue-600">
                 {result.stratum}
@@ -311,7 +489,7 @@ export function StratumAssessment() {
                 <Target className="h-6 w-6 mx-auto text-green-600 mb-2" />
                 <p className="text-sm text-gray-500">Confiança</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {Math.round(result.confidence * 100)}%
+                  {typeof result.confidence === 'number' ? `${Math.round(result.confidence * 100)}%` : '—'}
                 </p>
               </div>
             </div>
@@ -343,19 +521,74 @@ export function StratumAssessment() {
             <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
               <Brain className="h-8 w-8 text-blue-600" />
             </div>
-            <CardTitle className="text-2xl">Avaliação de Capacidade para o Trabalho</CardTitle>
+            <CardTitle className="text-2xl">
+              {mode === 'ROLE' ? 'Avaliação de Cargo (RO/SST)' : 'Avaliação de Capacidade para o Trabalho'}
+            </CardTitle>
             <CardDescription className="text-base mt-2">
-              Baseado na teoria de Elliott Jaques sobre Time Span of Discretion
+              {mode === 'ROLE'
+                ? 'Gestor define o Time Span do cargo; MoR valida com evidência.'
+                : 'Baseado na teoria de Elliott Jaques sobre Time Span of Discretion'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {mode === 'ROLE' && (
+              <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-medium">Selecione o cargo (JobRole)</h4>
+                  {jobRolesLoading && (
+                    <span className="text-sm text-muted-foreground inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Carregando…
+                    </span>
+                  )}
+                </div>
+
+                <Select
+                  value={selectedJobRoleId}
+                  onValueChange={(value) => {
+                    setSelectedJobRoleId(value)
+                    setAssessment(null)
+                    setAnswers({})
+                    setCurrentIndex(0)
+                    setResult(null)
+                    setShowResult(false)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cargo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobRoles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {!jobRolesLoading && jobRoles.length === 0 && (
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <div>Nenhum cargo (JobRole) cadastrado. O fluxo de avaliação de cargo depende disso.</div>
+                    <Button asChild type="button" variant="outline" size="sm">
+                      <Link href="/admin/job-roles">Abrir cadastro de Job Roles (Admin)</Link>
+                    </Button>
+                  </div>
+                )}
+
+                {selectedJobRoleId && assessment?.morUser && (
+                  <div className="text-sm text-muted-foreground">
+                    MoR designado: {assessment.morUser.name || assessment.morUser.email || assessment.morUser.id}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="p-4 bg-gray-50 rounded-lg">
               <h4 className="font-medium mb-2">O que é isso?</h4>
               <p className="text-sm text-gray-600">
-                Esta avaliação mede seu horizonte temporal de planejamento - 
-                a capacidade natural de trabalhar com tarefas de diferentes complexidades 
-                e prazos. Não é um teste de inteligência, mas uma medida de como você 
-                naturalmente processa e planeja o trabalho.
+                {mode === 'ROLE'
+                  ? 'Esta avaliação captura o Time Span do cargo (horizonte temporal de decisão) conforme definido pelo gestor. O MoR valida oficialmente com evidência.'
+                  : 'Esta avaliação mede seu horizonte temporal de planejamento - a capacidade natural de trabalhar com tarefas de diferentes complexidades e prazos. Não é um teste de inteligência, mas uma medida de como você naturalmente processa e planeja o trabalho.'}
               </p>
             </div>
 
@@ -374,15 +607,74 @@ export function StratumAssessment() {
             <div className="p-4 bg-amber-50 rounded-lg">
               <p className="text-sm text-amber-800">
                 <strong>Tempo estimado:</strong> 10-15 minutos<br />
-                <strong>Questões:</strong> {questions.length} cenários situacionais<br />
+                <strong>Questões:</strong> {questions.length > 0 ? `${questions.length} cenários situacionais` : 'nenhuma questão cadastrada'}<br />
                 <strong>Dica:</strong> Responda com sua primeira intuição, sem pensar demais.
               </p>
             </div>
 
-            <Button onClick={startAssessment} className="w-full" size="lg">
-              Iniciar Avaliação
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={startAssessment}
+                className="w-full"
+                size="lg"
+                disabled={questions.length === 0 || (mode === 'ROLE' && !selectedJobRoleId)}
+              >
+                Iniciar Questionário
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              {questions.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  Sem questões cadastradas. Para usar o questionário, cadastre questões reais via Admin.
+                </p>
+              )}
+            </div>
+
+            <Card className="border border-blue-200 bg-blue-50/50">
+              <CardHeader>
+                <CardTitle className="text-base">Avaliação rápida (Time Span)</CardTitle>
+                <CardDescription>
+                  Informe o horizonte temporal (meses) e conclua imediatamente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">Time Span (meses)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={quickTimeSpanMonths}
+                      onChange={(e) => setQuickTimeSpanMonths(e.target.value)}
+                      placeholder="Ex: 12"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">Confiança (0-100) (opcional)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={quickConfidencePct}
+                      onChange={(e) => setQuickConfidencePct(e.target.value)}
+                      placeholder="Ex: 80"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm text-gray-700">Evidências/observações (opcional)</label>
+                  <Textarea
+                    value={quickNotes}
+                    onChange={(e) => setQuickNotes(e.target.value)}
+                    placeholder="Descreva exemplos reais de entregas e horizontes de decisão."
+                  />
+                </div>
+
+                <Button onClick={completeManualAssessment} className="w-full">
+                  Concluir avaliação rápida
+                </Button>
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       </div>
@@ -400,6 +692,38 @@ export function StratumAssessment() {
   }
 
   const CategoryIcon = categoryIcons[currentQuestion.category] || Brain
+
+  const currentAnswer = answers[currentQuestion.id]
+  const canProceed = isAnswered(currentQuestion, currentAnswer)
+
+  const goNext = async () => {
+    if (!currentQuestion) return
+    if (!assessment) return
+    if (!canProceed) return
+
+    // Persist OPEN answer on navigation
+    if (currentQuestion.questionType === 'OPEN') {
+      await saveAnswer(currentQuestion.id, currentAnswer)
+    }
+
+    setCurrentIndex(currentIndex + 1)
+  }
+
+  const goPrev = () => {
+    setCurrentIndex(Math.max(0, currentIndex - 1))
+  }
+
+  const finish = async () => {
+    if (!currentQuestion) return
+    if (!assessment) return
+    if (!allAnswered) return
+
+    if (currentQuestion.questionType === 'OPEN') {
+      await saveAnswer(currentQuestion.id, currentAnswer)
+    }
+
+    await completeAssessment()
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -436,31 +760,229 @@ export function StratumAssessment() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {currentQuestion.options.map((option) => {
-            const isSelected = answers[currentQuestion.id] === option.id
-            return (
-              <button
-                key={option.id}
-                onClick={() => saveAnswer(currentQuestion.id, option.id)}
-                className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                  isSelected
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                  }`}>
-                    {isSelected && <CheckCircle className="h-4 w-4 text-white" />}
-                  </div>
-                  <span className={isSelected ? 'text-blue-900' : 'text-gray-700'}>
-                    {option.text}
-                  </span>
+          {currentQuestion.questionType === 'OPEN' ? (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-sm text-gray-700">Resposta (opcional)</label>
+                <Textarea
+                  value={
+                    typeof currentAnswer === 'object' && currentAnswer
+                      ? String((currentAnswer as any).text ?? '')
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const existing = (typeof currentAnswer === 'object' && currentAnswer ? currentAnswer : {}) as any
+                    setAnswers(prev => ({
+                      ...prev,
+                      [currentQuestion.id]: {
+                        ...existing,
+                        text: e.target.value
+                      }
+                    }))
+                  }}
+                  placeholder="Descreva sua resposta (se aplicável)."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-sm text-gray-700">Time Span desta resposta (meses)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={
+                      typeof currentAnswer === 'object' && currentAnswer
+                        ? String((currentAnswer as any).timeSpanMonths ?? '')
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const existing = (typeof currentAnswer === 'object' && currentAnswer ? currentAnswer : {}) as any
+                      const raw = e.target.value
+                      const num = raw === '' ? null : Number(raw)
+                      setAnswers(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: {
+                          ...existing,
+                          timeSpanMonths: num
+                        }
+                      }))
+                    }}
+                    placeholder="Ex: 12"
+                  />
                 </div>
-              </button>
-            )
-          })}
+                <div className="space-y-1">
+                  <label className="text-sm text-gray-700">Score (0..1) (opcional)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={
+                      typeof currentAnswer === 'object' && currentAnswer
+                        ? String((currentAnswer as any).score ?? '')
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const existing = (typeof currentAnswer === 'object' && currentAnswer ? currentAnswer : {}) as any
+                      const raw = e.target.value
+                      const num = raw === '' ? null : Number(raw)
+                      setAnswers(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: {
+                          ...existing,
+                          score: num
+                        }
+                      }))
+                    }}
+                    placeholder="Ex: 0.7"
+                  />
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-500">
+                Para questões OPEN, o cálculo usa o Time Span informado acima.
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => saveAnswer(currentQuestion.id, currentAnswer)}
+                disabled={!canProceed || saving}
+              >
+                Salvar resposta
+              </Button>
+            </div>
+          ) : (
+            <>
+              {currentQuestion.questionType === 'SCALE' && currentQuestion.options.length >= 2 ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{currentQuestion.options[0]?.text}</span>
+                      <span>{currentQuestion.options[currentQuestion.options.length - 1]?.text}</span>
+                    </div>
+
+                    <Slider
+                      min={0}
+                      max={currentQuestion.options.length - 1}
+                      step={1}
+                      value={(() => {
+                        const selected = typeof currentAnswer === 'string' ? currentAnswer : ''
+                        const idx = currentQuestion.options.findIndex((o) => o.id === selected)
+                        return idx >= 0 ? [idx] : undefined
+                      })()}
+                      defaultValue={[0]}
+                      onValueChange={(vals) => {
+                        const idx = vals?.[0]
+                        const option = currentQuestion.options[idx]
+                        if (!option) return
+                        setAnswers((prev) => ({ ...prev, [currentQuestion.id]: option.id }))
+                      }}
+                      onValueCommit={(vals) => {
+                        const idx = vals?.[0]
+                        const option = currentQuestion.options[idx]
+                        if (!option) return
+                        void saveAnswer(currentQuestion.id, option.id)
+                      }}
+                    />
+
+                    <div className="pt-1">
+                      {(() => {
+                        const count = currentQuestion.options.length
+                        const showAll = count <= 7
+                        const indices = showAll
+                          ? Array.from({ length: count }, (_, i) => i)
+                          : [0, Math.floor((count - 1) / 2), count - 1]
+
+                        return (
+                          <div className="flex items-start justify-between gap-2">
+                            {indices.map((idx) => (
+                              <div key={idx} className="flex-1">
+                                <div className="mx-auto h-1.5 w-1.5 rounded-full bg-gray-300" />
+                                <div className="mt-1 text-[11px] leading-tight text-gray-500 text-center line-clamp-2">
+                                  {currentQuestion.options[idx]?.text}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
+                    </div>
+
+                    <div className="text-sm text-gray-700">
+                      Selecionado:{' '}
+                      <span className="font-medium">
+                        {(() => {
+                          const selected = typeof currentAnswer === 'string' ? currentAnswer : ''
+                          const opt = currentQuestion.options.find((o) => o.id === selected)
+                          return opt?.text || '—'
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    {currentQuestion.options.map((option) => {
+                      const selected = typeof currentAnswer === 'string' ? currentAnswer : ''
+                      const isSelected = selected === option.id
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => saveAnswer(currentQuestion.id, option.id)}
+                          className={`w-full p-3 text-left rounded-lg border transition-all ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                              }`}
+                            >
+                              {isSelected && <CheckCircle className="h-3 w-3 text-white" />}
+                            </div>
+                            <span className={isSelected ? 'text-blue-900' : 'text-gray-700'}>
+                              {option.text}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                currentQuestion.options.map((option) => {
+                  const selected = typeof currentAnswer === 'string' ? currentAnswer : ''
+                  const isSelected = selected === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => saveAnswer(currentQuestion.id, option.id)}
+                      className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                            isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                          }`}
+                        >
+                          {isSelected && <CheckCircle className="h-4 w-4 text-white" />}
+                        </div>
+                        <span className={isSelected ? 'text-blue-900' : 'text-gray-700'}>
+                          {option.text}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -468,7 +990,7 @@ export function StratumAssessment() {
       <div className="flex justify-between">
         <Button
           variant="outline"
-          onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+          onClick={goPrev}
           disabled={currentIndex === 0}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -477,15 +999,15 @@ export function StratumAssessment() {
 
         {currentIndex < questions.length - 1 ? (
           <Button
-            onClick={() => setCurrentIndex(currentIndex + 1)}
-            disabled={!answers[currentQuestion.id]}
+            onClick={goNext}
+            disabled={!canProceed}
           >
             Próxima
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
           <Button
-            onClick={completeAssessment}
+            onClick={finish}
             disabled={!allAnswered}
             className="bg-green-600 hover:bg-green-700"
           >
@@ -504,7 +1026,7 @@ export function StratumAssessment() {
             className={`w-3 h-3 rounded-full transition-all ${
               idx === currentIndex
                 ? 'bg-blue-600 scale-125'
-                : answers[q.id]
+                : isAnswered(q, answers[q.id])
                 ? 'bg-green-500'
                 : 'bg-gray-300'
             }`}

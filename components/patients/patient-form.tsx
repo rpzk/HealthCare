@@ -55,8 +55,19 @@ export type PatientFormData = {
   longitude?: number | null
 }
 
+type PatientAddress = {
+  street: string
+  number: string
+  complement?: string | null
+  neighborhood?: string | null
+  city: string
+  state: string
+  zipCode?: string | null
+  isPrimary?: boolean
+}
+
 interface PatientFormProps {
-  patient?: Partial<PatientFormData> & { userAccount?: { id?: string; role?: string } }
+  patient?: Partial<PatientFormData> & { userAccount?: { id?: string; role?: string }; addresses?: PatientAddress[] }
   onSubmit: (data: PatientFormData) => Promise<void>
   onCancel: () => void
   loading?: boolean
@@ -81,7 +92,42 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     return { street, number, complement: '', neighborhood: rest, city: '', state: '', zipCode: '' }
   }
   
-  const parsedAddr = parseAddress(patient?.address)
+  const getAddressSeed = (): {
+    street: string
+    number: string
+    complement: string
+    neighborhood: string
+    city: string
+    state: string
+    zipCode: string
+  } => {
+    const addresses = patient?.addresses || []
+    const primary = addresses.find((a) => a.isPrimary) || addresses[0]
+    if (primary) {
+      return {
+        street: primary.street || '',
+        number: primary.number || '',
+        complement: primary.complement || '',
+        neighborhood: primary.neighborhood || '',
+        city: primary.city || '',
+        state: primary.state || '',
+        zipCode: primary.zipCode || '',
+      }
+    }
+
+    const parsed = parseAddress(patient?.address)
+    return {
+      street: parsed.street || '',
+      number: parsed.number || '',
+      complement: '',
+      neighborhood: parsed.neighborhood || '',
+      city: parsed.city || '',
+      state: parsed.state || '',
+      zipCode: parsed.zipCode || '',
+    }
+  }
+
+  const addressSeed = getAddressSeed()
 
   // Normaliza data de nascimento para campo date input (ISO yyyy-mm-dd)
   const getBirthDateString = (b?: string | Date) => {
@@ -120,16 +166,16 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     cpf: formatCPFValue(patient?.cpf),
     rg: patient?.rg || '',
     birthDate: getBirthDateString(patient?.birthDate),
-    gender: patient?.gender || 'FEMALE',
+    gender: patient?.gender || '',
     phone: formatPhoneValue(patient?.phone),
     // Campos de endereço separados para melhor UX
-    street: parsedAddr.street,
-    number: parsedAddr.number,
-    complement: '',
-    neighborhood: parsedAddr.neighborhood,
-    city: parsedAddr.city,
-    state: parsedAddr.state,
-    zipCode: parsedAddr.zipCode,
+    street: addressSeed.street,
+    number: addressSeed.number,
+    complement: addressSeed.complement,
+    neighborhood: addressSeed.neighborhood,
+    city: addressSeed.city,
+    state: addressSeed.state,
+    zipCode: addressSeed.zipCode,
     // Dados do usuário vinculado
     userId: patient?.userAccount?.id || patient?.userId || '',
     userRole: patient?.userAccount?.role || 'PATIENT',
@@ -183,6 +229,12 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     }
   }
 
+  const formatZipCode = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8)
+    if (digits.length <= 5) return digits
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  }
+
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     
@@ -196,6 +248,11 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
     // Máscara de Telefone
     if (name === 'phone') {
       formattedValue = formatPhone(value)
+    }
+
+    // Máscara de CEP
+    if (name === 'zipCode') {
+      formattedValue = formatZipCode(value)
     }
 
     setFormData(prev => ({
@@ -215,10 +272,11 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
           if (!data.erro) {
             setFormData(prev => ({
               ...prev,
-              address: data.logradouro,
+              street: data.logradouro || prev.street,
+              neighborhood: data.bairro || prev.neighborhood,
               city: data.localidade,
               state: data.uf,
-              // Mantém o CEP formatado se desejar
+              zipCode: formatZipCode(cep),
             }))
             
             // Tentar buscar coordenadas
@@ -577,7 +635,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.street}
                       onChange={handleChange}
                       disabled={loading}
-                      placeholder="Rua das Flores"
+                      placeholder="Digite o logradouro"
                     />
                   </div>
 
@@ -590,7 +648,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.number}
                       onChange={handleChange}
                       disabled={loading}
-                      placeholder="123"
+                      placeholder="Digite o número"
                     />
                   </div>
 
@@ -603,7 +661,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.complement}
                       onChange={handleChange}
                       disabled={loading}
-                      placeholder="Apto 101, Bloco B"
+                      placeholder="Digite o complemento"
                     />
                   </div>
 
@@ -616,7 +674,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.neighborhood}
                       onChange={handleChange}
                       disabled={loading}
-                      placeholder="Centro"
+                      placeholder="Digite o bairro"
                     />
                   </div>
 
@@ -629,7 +687,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       value={formData.city}
                       onChange={handleChange}
                       disabled={loading}
-                      placeholder="São Paulo"
+                      placeholder="Digite a cidade"
                     />
                   </div>
 
@@ -641,7 +699,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       name="state"
                       value={formData.state}
                       onChange={handleChange}
-                      placeholder="SP"
+                      placeholder="UF"
                       maxLength={2}
                       disabled={loading}
                     />
@@ -655,7 +713,7 @@ export default function PatientForm({ patient, onSubmit, onCancel }: PatientForm
                       name="zipCode"
                       value={formData.zipCode}
                       onChange={handleChange}
-                      placeholder="01234-567"
+                      placeholder="Digite o CEP"
                       disabled={loading}
                     />
                   </div>

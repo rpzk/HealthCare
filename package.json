@@ -22,6 +22,7 @@
     "backup:db": "bash scripts/backup-db.sh",
     "import:medications": "tsx scripts/import-medications.ts",
     "import:patients": "tsx scripts/import-patients.ts",
+    "import:jobroles:from-occupations": "tsx scripts/create-jobroles-from-occupations.ts",
     "export:master-data": "tsx scripts/export-master-data.ts",
     "seed:master-data": "tsx prisma/seed-master-data.ts",
     "db:reset:safe": "tsx scripts/reset-with-seed.ts",

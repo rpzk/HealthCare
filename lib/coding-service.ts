@@ -20,6 +20,11 @@ function getRedis(): Redis | null {
     } else {
       _redis = new Redis({ host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT||'6379') })
     }
+
+    _redis.on('error', (err: NodeJS.ErrnoException) => {
+      if (err?.code === 'ECONNREFUSED') return
+      logger.warn({ err }, 'Redis error (coding-service cache)')
+    })
   } catch { /* ignore */ }
   _redisTried = true
   return _redis

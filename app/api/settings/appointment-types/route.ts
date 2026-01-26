@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withPatientAuth, withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { logger } from '@/lib/logger'
+import { SystemSettingsService } from '@/lib/system-settings-service'
 
 interface ServiceType {
   id: string
@@ -33,10 +34,22 @@ const DEFAULT_SERVICES: ServiceType[] = [
 ]
 
 const SETTING_KEY = 'appointment_types'
+const DIRECT_BOOKING_KEY = 'PATIENT_DIRECT_BOOKING_ENABLED'
+
+const parseBoolean = (value: string | undefined, defaultValue: boolean) => {
+  if (value == null) return defaultValue
+  const normalized = String(value).trim().toLowerCase()
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
+  return defaultValue
+}
 
 // GET /api/settings/appointment-types - Retorna tipos de atendimento configurados
 export const GET = withPatientAuth(async (req, { user }) => {
   try {
+    const directRaw = await SystemSettingsService.get(DIRECT_BOOKING_KEY, 'false')
+    const directBookingEnabled = parseBoolean(directRaw, false)
+
     // Tentar buscar configuração do sistema
     const setting = await prisma.systemSetting.findUnique({
       where: { key: SETTING_KEY }
@@ -47,17 +60,17 @@ export const GET = withPatientAuth(async (req, { user }) => {
         const services = JSON.parse(setting.value) as ServiceType[]
         // Filtrar apenas serviços ativos
         const activeServices = services.filter(s => s.isActive !== false)
-        return NextResponse.json({ services: activeServices })
+        return NextResponse.json({ services: activeServices, directBookingEnabled })
       } catch {
         // Se falhar ao parsear, retornar padrão
       }
     }
 
     // Retornar serviços padrão se não houver configuração
-    return NextResponse.json({ services: DEFAULT_SERVICES })
+    return NextResponse.json({ services: DEFAULT_SERVICES, directBookingEnabled })
   } catch (error) {
     logger.error('Erro ao buscar tipos de atendimento:', error)
-    return NextResponse.json({ services: DEFAULT_SERVICES })
+    return NextResponse.json({ services: DEFAULT_SERVICES, directBookingEnabled: false })
   }
 })
 

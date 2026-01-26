@@ -14,6 +14,8 @@ import {
   restoreFromBackup as restoreCertificates
 } from './certificate-backup-service'
 import { logger } from './logger'
+import { readdir, stat } from 'fs/promises'
+import { join } from 'path'
 
 export type BackupType = 'system' | 'certificates' | 'all'
 
@@ -119,14 +121,14 @@ export class BackupOrchestrator {
       // Execute backups based on type
       if (type === 'system' || type === 'all') {
         result.systemBackup = await this.runSystemBackup()
-        if (!result.systemBackup.success) {
+        if (!result.systemBackup?.success) {
           result.errors.push('System backup failed')
         }
       }
 
       if (type === 'certificates' || type === 'all') {
         result.certificateBackup = await this.runCertificateBackup()
-        if (!result.certificateBackup.success) {
+        if (!result.certificateBackup?.success) {
           result.errors.push('Certificate backup failed')
         }
       }
@@ -210,37 +212,50 @@ export class BackupOrchestrator {
     try {
       logger.info({ type }, 'Testing backup restore')
 
-      if (type === 'system') {
-        const testResult = await backupService.testRestore()
-        
-        return {
-          success: testResult.success,
-          backupType: type,
-          message: testResult.success 
-            ? 'System backup restore test successful' 
-            : 'System backup restore test failed',
-          errors: testResult.errors || []
-        }
-      } else if (type === 'certificates') {
-        // Certificate restore requires specific backup path
+      if (type === 'certificates') {
         return {
           success: false,
           backupType: type,
-          message: 'Certificate restore requires specific backup path',
+          message: 'Certificate restore test requires a specific backup file',
           errors: ['Use restoreCertificateBackup(backupPath) instead']
         }
-      } else {
-        // Test both
-        const systemTest = await backupService.testRestore()
-        
-        return {
-          success: systemTest.success,
-          backupType: 'all',
-          message: systemTest.success 
-            ? 'All backup tests successful' 
-            : 'Some backup tests failed',
-          errors: systemTest.errors || []
+      }
+
+      // Try to find the most recent DB backup file created by BackupService.
+      const backupDir = process.env.BACKUP_DIR || './backups'
+      const files = await readdir(backupDir).catch(() => [])
+      const candidates = files
+        .filter(f => f.startsWith('db_backup_'))
+        .map(f => join(backupDir, f))
+
+      let latest: { file: string; mtimeMs: number } | null = null
+      for (const file of candidates) {
+        try {
+          const s = await stat(file)
+          if (!latest || s.mtimeMs > latest.mtimeMs) {
+            latest = { file, mtimeMs: s.mtimeMs }
+          }
+        } catch {
+          // ignore unreadable
         }
+      }
+
+      if (!latest) {
+        return {
+          success: false,
+          backupType: type,
+          message: 'No backup file found to test restore',
+          errors: [`No db_backup_* found in ${backupDir}`]
+        }
+      }
+
+      const ok = await backupService.testRestore(latest.file)
+
+      return {
+        success: ok,
+        backupType: type,
+        message: ok ? 'System backup restore test successful' : 'System backup restore test failed',
+        errors: ok ? [] : ['Restore test failed']
       }
     } catch (error) {
       logger.error({ error, type }, 'Restore test failed')

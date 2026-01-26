@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BiometricDataType } from '@prisma/client'
 import { logger } from '@/lib/logger'
+import { encrypt, hashCPF } from '@/lib/crypto'
+import { normalizeCPF, parseBirthDateYYYYMMDDToNoonUtc, serializeAllergies } from '@/lib/patient-schemas'
 
 // POST - Usuário existente ativa seu perfil de paciente
 export async function POST(request: NextRequest) {
@@ -50,8 +52,15 @@ export async function POST(request: NextRequest) {
 
     // Verificar se CPF já existe (se fornecido)
     if (cpf) {
+      const cpfDigits = normalizeCPF(String(cpf))
+      const cpfHash = hashCPF(cpfDigits)
       const existingCpf = await prisma.patient.findFirst({
-        where: { cpf }
+        where: {
+          OR: [
+            cpfHash ? { cpfHash } : undefined,
+            { person: { cpf: cpfDigits } },
+          ].filter(Boolean) as any,
+        }
       })
       if (existingCpf) {
         return NextResponse.json(
@@ -71,21 +80,28 @@ export async function POST(request: NextRequest) {
 
     // Criar paciente e vincular ao usuário em uma transação
     const result = await prisma.$transaction(async (tx) => {
+      const birth = parseBirthDateYYYYMMDDToNoonUtc(String(birthDate))
+      const cpfDigits = cpf ? normalizeCPF(String(cpf)) : null
+
       // 1. Criar registro de paciente
       const patient = await tx.patient.create({
         data: {
           name: existingUser!.name,
           email: existingUser!.email,
-          birthDate: new Date(birthDate),
+          birthDate: birth,
           gender,
           phone: phone || existingUser!.phone,
-          cpf,
+          cpf: cpfDigits ? encrypt(cpfDigits) : null,
+          cpfHash: cpfDigits ? hashCPF(cpfDigits) : null,
           address,
-          emergencyContact,
-          allergies,
-          medicalHistory,
-          currentMedications,
-          userId: session.user.id
+          emergencyContact: emergencyContact
+            ? (typeof emergencyContact === 'string' ? emergencyContact : JSON.stringify(emergencyContact))
+            : null,
+          allergies: Array.isArray(allergies)
+            ? encrypt(serializeAllergies(allergies))
+            : (typeof allergies === 'string' && allergies.trim() ? encrypt(allergies) : null),
+          medicalHistory: typeof medicalHistory === 'string' && medicalHistory.trim() ? encrypt(medicalHistory) : null,
+          currentMedications: typeof currentMedications === 'string' && currentMedications.trim() ? encrypt(currentMedications) : null
         }
       })
 

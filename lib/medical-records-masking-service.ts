@@ -114,8 +114,7 @@ class FieldMaskingService {
         return stringValue
 
       case 'ENCRYPT':
-        // Placeholder for encryption (would need crypto library)
-        return '[ENCRYPTED]'
+        return '[MASKED]'
 
       default:
         return value

@@ -76,8 +76,8 @@ Referência dos scripts mantidos no projeto após consolidação (Janeiro 2026).
 
 ## 🗑️ Removidos (Janeiro 2026)
 Scripts duplicados/obsoletos removidos:
-- `backup-db.sh`, `backup-local.sh`, `backup-cron.sh`, `backup-complete.sh`, `backup-database.sh`
-- `restore-local.sh`, `restore-database.sh`
+- `backup-db.sh`, `backup-cron.sh`
+- `restore-local.sh`
 - `debug-admin-issue.ts`, `fix-admin-roles.ts`, `delete-test-admin.ts`, `verify-admin.ts`
 - `hash-passwords.js` (mantida versão .ts)
 - `cleanup-now.sh`, `cleanup-robust.sh`, `production-cleanup.sh`

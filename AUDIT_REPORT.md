@@ -349,11 +349,12 @@ WHERE bloodType IS NOT NULL;
 
 ## 🎯 Métricas de Sucesso
 
-- ✅ **0 schemas duplicados** para Patient
-- ✅ **100% dos allergies** como array
-- ✅ **100% dos bloodTypes** no formato `A+`/`A-`
-- ✅ **100% dos campos sensíveis** criptografados
-- ✅ **0 datas inválidas** aceitas
+- Metas/objetivos (não medidos automaticamente por este documento):
+   - Reduzir schemas duplicados de Patient
+   - Normalizar `allergies` para array
+   - Normalizar `bloodType` para o formato `A+`/`A-`
+   - Criptografia de campos sensíveis (depende do que está efetivamente criptografado no código + dados existentes)
+   - Rejeitar datas inválidas nos endpoints relevantes
 
 ---
 

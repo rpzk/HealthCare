@@ -11,15 +11,37 @@ import { signPdf } from '@/lib/pdf-signing'
 import prisma from '@/lib/prisma'
 import { promises as fs } from 'fs'
 import { logger } from '@/lib/logger'
+import type { AIJobType } from './ai-queue-factory'
 
 const connection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379')
 }
 
+function attachRedisErrorHandler(client: Redis, context: string) {
+  client.on('error', (err: NodeJS.ErrnoException) => {
+    // During build/dev, Redis might not be running; avoid noisy logs.
+    if (err?.code === 'ECONNREFUSED') return
+    logger.warn({ err, context }, 'Redis error')
+  })
+}
+
 export const aiQueue = new Queue('ai-jobs', { connection })
 const events = new QueueEvents('ai-jobs', { connection })
-const redis = new Redis(connection)
+const redis = new Redis({
+  ...connection,
+  lazyConnect: true,
+  maxRetriesPerRequest: 2,
+})
+
+// Ensure BullMQ/ioredis clients always have error listeners.
+void aiQueue.client
+  .then((client) => attachRedisErrorHandler(client as unknown as Redis, 'bullmq:aiQueue'))
+  .catch(() => undefined)
+void events.client
+  .then((client) => attachRedisErrorHandler(client as unknown as Redis, 'bullmq:events'))
+  .catch(() => undefined)
+attachRedisErrorHandler(redis, 'ai-cancel-flag')
 
 async function checkCancelled(jobId: string) {
   try {
@@ -122,7 +144,12 @@ new Worker('ai-jobs', async job => {
 
           // Step 3: Sign PDF
           await job.updateProgress({ step: 'signing_pdf', pct: 75 })
-          await updateJobProgress(exportId, 'signing_pdf', 75, 'Assinando documento digitalmente...')
+          await updateJobProgress(
+            exportId,
+            'signing_pdf',
+            75,
+            'Gerando carimbo de integridade (hash) do documento...'
+          )
           
           const { signedPdf, metadata } = await signPdf({ pdf })
 
@@ -191,11 +218,20 @@ events.on('failed', ({ jobId, failedReason }) => {
 })
 
 export async function enqueueAI(
-  type: 'symptom_analysis' | 'transcribe_and_generate_soap' | 'transcribe_and_generate_soap_draft' | 'patient_pdf_export',
+  type: AIJobType,
   payload: Record<string, unknown>,
   opts: JobsOptions = {}
 ) {
   incCounter('ai_queue_jobs_total', { type })
   return aiQueue.add(type, { payload }, opts)
+}
+
+export async function cancelAIJob(jobId: string): Promise<void> {
+  const key = `ai-job:cancel:${jobId}`
+  try {
+    await redis.set(key, '1', 'EX', 60 * 60 * 24)
+  } catch (e) {
+    logger.warn({ err: e, jobId }, 'Failed to set cancel flag for AI job')
+  }
 }
 

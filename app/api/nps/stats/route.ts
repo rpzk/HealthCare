@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
         createdAt: r.createdAt,
       }));
 
-    const responseRate = totalResponses > 0 ? 100 : 0; // Sem tracking de envios, assume 100% das respostas coletadas
+    // Sem tracking de envios (denominador), não é possível calcular taxa de resposta de forma confiável.
+    const responseRate: number | null = null;
 
     return NextResponse.json({
       npsScore,

@@ -30,17 +30,10 @@ export async function checkAndConsumeAIQuota(userId: string, type: string) {
       throw new Error('Limite diário de uso de IA atingido')
     }
   } catch (e) {
-    // Fallback: incrementar criando um registro sintético em AIInteraction e então contar
+    // Fallback: NÃO criar dados sintéticos.
+    // Se a tabela agregada falhar (ex: migração pendente), aplicamos quota via contagem dos registros reais.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const enumType = type.toUpperCase().replace(/-/g,'_') as any
-    await prisma.aIInteraction.create({
-      data: {
-        userId,
-        type: enumType,
-        prompt: '[quota_increment]',
-        response: '[placeholder]'
-      }
-    })
     const count = await prisma.aIInteraction.count({ where:{ userId, type: enumType, createdAt: { gte: today } } })
     if (count > limit) {
       incCounter('ai_quota_exceeded_total', { type })

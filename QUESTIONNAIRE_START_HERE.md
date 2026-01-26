@@ -1,6 +1,6 @@
-# 🎉 Projeto de Dashboard de Questionários - Conclusão Final
+# Projeto de Dashboard de Questionários
 
-## ✅ Status: COMPLETO E PRONTO PARA PRODUÇÃO
+Status: implementado no repositório (validação operacional depende do seu ambiente/configuração).
 
 ---
 
@@ -39,13 +39,13 @@
 ```
 
 ### Validação
-```
-✅ 35/36 verificações passaram
-✅ 100% funcionalidade implementada
-✅ 100% documentação completa
-✅ 0 erros de build
-✅ 0 problemas de segurança
-```
+
+Este documento não executa testes automaticamente. Recomenda-se validar no seu ambiente:
+
+- `npm run lint`
+- `npm run type-check`
+- `npm run build`
+- Smoke tests descritos em [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)
 
 ---
 

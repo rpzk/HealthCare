@@ -80,8 +80,11 @@ export default function PerfilPacientePage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [form, setForm] = useState({
+    name: '',
+    birthDate: '',
     phone: '',
     cpf: '',
+    gender: '',
     street: '',
     number: '',
     complement: '',
@@ -103,8 +106,11 @@ export default function PerfilPacientePage() {
   useEffect(() => {
     if (profile) {
       setForm({
+        name: profile.name || '',
+        birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : '',
         phone: profile.phone || '',
         cpf: profile.cpf || '',
+        gender: profile.gender || '',
         street: profile.address?.street || '',
         number: profile.address?.number || '',
         complement: profile.address?.complement || '',
@@ -120,6 +126,12 @@ export default function PerfilPacientePage() {
       })
     }
   }, [profile])
+
+  const formatZipCode = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8)
+    if (digits.length <= 5) return digits
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  }
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -146,6 +158,10 @@ export default function PerfilPacientePage() {
   }
 
   const handleFormChange = (field: string, value: string) => {
+    if (field === 'zipCode') {
+      setForm((prev) => ({ ...prev, zipCode: formatZipCode(value) }))
+      return
+    }
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -155,12 +171,18 @@ export default function PerfilPacientePage() {
     setSuccessMsg('')
 
     const payload: any = {}
+    const trimmedName = form.name?.trim()
+    const trimmedBirthDate = form.birthDate?.trim()
     const trimmedPhone = form.phone?.trim()
     const trimmedCpf = form.cpf?.trim()
     const trimmedBloodType = form.bloodType?.trim()
+    const trimmedGender = form.gender?.trim()
+    if (trimmedName) payload.name = trimmedName
+    if (trimmedBirthDate) payload.birthDate = trimmedBirthDate
     if (trimmedPhone) payload.phone = trimmedPhone
     if (trimmedCpf) payload.cpf = trimmedCpf
     if (trimmedBloodType) payload.bloodType = trimmedBloodType
+    if (trimmedGender) payload.gender = trimmedGender
     if (form.allergies) {
       payload.allergies = form.allergies.split(',').map((s) => s.trim()).filter(Boolean)
     }
@@ -211,6 +233,30 @@ export default function PerfilPacientePage() {
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
     }
     return name.substring(0, 2).toUpperCase()
+  }
+
+  const formatBirthDatePtBR = (birthDateIso: string | null | undefined) => {
+    if (!birthDateIso) return '—'
+    const dateOnly = String(birthDateIso).slice(0, 10)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      const safe = new Date(`${dateOnly}T12:00:00.000Z`)
+      if (!isNaN(safe.getTime())) {
+        return format(safe, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+      }
+    }
+    try {
+      return format(parseISO(String(birthDateIso)), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+    } catch {
+      return '—'
+    }
+  }
+
+  const formatGenderPtBR = (gender: string | null | undefined) => {
+    if (!gender) return '—'
+    if (gender === 'MALE') return 'Masculino'
+    if (gender === 'FEMALE') return 'Feminino'
+    if (gender === 'OTHER') return 'Outro'
+    return String(gender)
   }
 
   if (loading) {
@@ -303,10 +349,7 @@ export default function PerfilPacientePage() {
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Data de Nascimento</p>
                 <p className="font-medium">
-                  {profile?.birthDate 
-                    ? format(parseISO(profile.birthDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                    : '—'
-                  }
+                  {formatBirthDatePtBR(profile?.birthDate)}
                 </p>
               </div>
             </div>
@@ -317,6 +360,15 @@ export default function PerfilPacientePage() {
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Telefone</p>
                 <p className="font-medium">{profile?.phone || '—'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4">
+              <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
+                <Shield className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground">Sexo</p>
+                <p className="font-medium">{formatGenderPtBR(profile?.gender)}</p>
               </div>
             </div>
             <div className="flex items-center gap-4 p-4">
@@ -497,6 +549,14 @@ export default function PerfilPacientePage() {
           </DialogHeader>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Nome</Label>
+              <Input value={form.name} onChange={(e) => handleFormChange('name', e.target.value)} placeholder="Digite seu nome" />
+            </div>
+            <div className="space-y-2">
+              <Label>Data de nascimento</Label>
+              <Input type="date" value={form.birthDate} onChange={(e) => handleFormChange('birthDate', e.target.value)} />
+            </div>
             <div className="space-y-2">
               <Label>Telefone</Label>
               <Input
@@ -510,8 +570,21 @@ export default function PerfilPacientePage() {
               <Input
                 value={form.cpf}
                 onChange={(e) => handleFormChange('cpf', e.target.value)}
-                placeholder="000.000.000-00"
+                placeholder="Digite o CPF"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Sexo</Label>
+              <Select value={form.gender} onValueChange={(value) => handleFormChange('gender', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MALE">Masculino</SelectItem>
+                  <SelectItem value="FEMALE">Feminino</SelectItem>
+                  <SelectItem value="OTHER">Outro</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Tipo sanguíneo</Label>
@@ -532,7 +605,7 @@ export default function PerfilPacientePage() {
               <Input
                 value={form.allergies}
                 onChange={(e) => handleFormChange('allergies', e.target.value)}
-                placeholder="Amendoim, Penicilina"
+                placeholder="Separe por vírgulas"
               />
             </div>
 
@@ -565,7 +638,7 @@ export default function PerfilPacientePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>CEP</Label>
-                  <Input value={form.zipCode} onChange={(e) => handleFormChange('zipCode', e.target.value)} />
+                  <Input value={form.zipCode} onChange={(e) => handleFormChange('zipCode', e.target.value)} placeholder="Digite o CEP" />
                 </div>
               </div>
             </div>

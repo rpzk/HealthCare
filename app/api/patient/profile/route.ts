@@ -4,14 +4,24 @@ import { authOptions } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
 import { decrypt, encrypt, hashCPF } from '@/lib/crypto'
-import { parseAllergies, serializeAllergies, normalizeBloodType } from '@/lib/patient-schemas'
+import {
+  parseAllergies,
+  serializeAllergies,
+  normalizeBloodType,
+  cpfSchema,
+  bloodTypeSchema,
+  formatCPF,
+  parseBirthDateYYYYMMDDToNoonUtc,
+  serializeBirthDateToIsoNoonUtc,
+} from '@/lib/patient-schemas'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import type { Address } from '@prisma/client'
 import type { BloodType } from '@/types'
 
-interface PatientWhereClause {
-  OR: Array<{ userId?: string } | { email?: string }>
+type PatientLookup = {
+  patientId: string | null
+  email: string | null
 }
 
 interface PatientResponse {
@@ -47,9 +57,12 @@ interface EmergencyContactResponse {
 export const dynamic = 'force-dynamic'
 
 const updateSchema = z.object({
+  name: z.string().min(2).max(120).optional(),
+  birthDate: z.string().optional(),
   phone: z.string().min(8).max(20).optional(),
-  cpf: z.string().min(11).max(14).optional(),
-  bloodType: z.enum(['A+','A-','B+','B-','AB+','AB-','O+','O-']).optional(),
+  cpf: cpfSchema.optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).nullable().optional(),
+  bloodType: bloodTypeSchema.optional(),
   allergies: z.array(z.string().min(1)).optional(),
   emergencyContact: z.object({
     name: z.string().min(1),
@@ -76,16 +89,28 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id
-    const userEmail = session.user.email
 
-    // Buscar o paciente vinculado a este usuário
-    const whereClause: PatientWhereClause = { OR: [{ userId }] }
-    if (userEmail) whereClause.OR.push({ email: userEmail })
-
-    const patient = await prisma.patient.findFirst({
-      where: whereClause,
-      include: { addresses: true }
+    const lookup = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { patientId: true, email: true },
     })
+
+    const patientLookup: PatientLookup = {
+      patientId: lookup?.patientId ?? null,
+      email: lookup?.email ?? null,
+    }
+
+    const patient = patientLookup.patientId
+      ? await prisma.patient.findUnique({
+          where: { id: patientLookup.patientId },
+          include: { addresses: true },
+        })
+      : patientLookup.email
+        ? await prisma.patient.findFirst({
+            where: { email: { equals: patientLookup.email, mode: 'insensitive' } },
+            include: { addresses: true },
+          })
+        : null
 
     if (!patient) {
       return NextResponse.json({ 
@@ -100,8 +125,8 @@ export async function GET(req: NextRequest) {
       name: patient.name,
       email: patient.email,
       phone: patient.phone,
-      cpf: decrypt(patient.cpf as string | null),
-      birthDate: patient.birthDate?.toISOString() || null,
+      cpf: formatCPF(decrypt(patient.cpf as string | null)),
+      birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate),
       gender: patient.gender,
       bloodType: normalizeBloodType(patient.bloodType),
       // the schema stores a free-form 'address' string and a relation 'addresses' -> we surface the primary address if present
@@ -179,11 +204,27 @@ export async function PUT(req: NextRequest) {
 
     const data = parsed.data
 
-    // Buscar paciente
-    const patient = await prisma.patient.findFirst({
-      where: { userId },
-      include: { addresses: true },
+    const lookup = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { patientId: true, email: true },
     })
+
+    const patientLookup: PatientLookup = {
+      patientId: lookup?.patientId ?? null,
+      email: lookup?.email ?? null,
+    }
+
+    const patient = patientLookup.patientId
+      ? await prisma.patient.findUnique({
+          where: { id: patientLookup.patientId },
+          include: { addresses: true },
+        })
+      : patientLookup.email
+        ? await prisma.patient.findFirst({
+            where: { email: { equals: patientLookup.email, mode: 'insensitive' } },
+            include: { addresses: true },
+          })
+        : null
 
     if (!patient) {
       return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
@@ -191,14 +232,26 @@ export async function PUT(req: NextRequest) {
 
     // Montar updates
     const patientUpdate: Prisma.PatientUpdateInput = {}
-    if (data.phone) patientUpdate.phone = data.phone
-    if (data.cpf) {
-      const cpfValue = data.cpf.trim()
-      if (cpfValue) {
-        patientUpdate.cpf = encrypt(cpfValue)
-        patientUpdate.cpfHash = hashCPF(cpfValue)
+    if (data.name) patientUpdate.name = data.name
+    if (data.birthDate) {
+      const raw = String(data.birthDate).trim()
+      const dateOnly = raw.slice(0, 10)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        patientUpdate.birthDate = parseBirthDateYYYYMMDDToNoonUtc(dateOnly)
+      } else {
+        const parsedDate = new Date(raw)
+        if (isNaN(parsedDate.getTime())) {
+          return NextResponse.json({ error: 'Data de nascimento inválida' }, { status: 400 })
+        }
+        patientUpdate.birthDate = parseBirthDateYYYYMMDDToNoonUtc(parsedDate.toISOString().slice(0, 10))
       }
     }
+    if (data.phone) patientUpdate.phone = data.phone
+    if (data.cpf) {
+      patientUpdate.cpf = encrypt(data.cpf)
+      patientUpdate.cpfHash = hashCPF(data.cpf)
+    }
+    if (data.gender != null) patientUpdate.gender = data.gender
     if (data.bloodType) patientUpdate.bloodType = normalizeBloodType(data.bloodType)
     if (data.allergies && data.allergies.length > 0) {
       patientUpdate.allergies = encrypt(serializeAllergies(data.allergies))
@@ -207,6 +260,7 @@ export async function PUT(req: NextRequest) {
 
     // Atualizar endereço primário
     if (data.address) {
+      const normalizedZip = data.address.zipCode ? data.address.zipCode.replace(/\D/g, '') : ''
       const primary = patient.addresses.find((a) => a.isPrimary) || patient.addresses[0]
       if (primary) {
         await prisma.address.update({
@@ -218,7 +272,7 @@ export async function PUT(req: NextRequest) {
             neighborhood: data.address.neighborhood || null,
             city: data.address.city,
             state: data.address.state,
-            zipCode: data.address.zipCode || null,
+            zipCode: normalizedZip || null,
             isPrimary: true,
           },
         })
@@ -232,7 +286,7 @@ export async function PUT(req: NextRequest) {
             neighborhood: data.address.neighborhood || null,
             city: data.address.city,
             state: data.address.state,
-            zipCode: data.address.zipCode || null,
+            zipCode: normalizedZip || null,
             isPrimary: true,
           },
         })
@@ -240,11 +294,25 @@ export async function PUT(req: NextRequest) {
     }
 
     // Atualizar paciente
-    const updated = await prisma.patient.update({
-      where: { id: patient.id },
-      data: patientUpdate,
-      include: { addresses: true },
-    })
+    let updated
+    try {
+      updated = await prisma.patient.update({
+        where: { id: patient.id },
+        data: patientUpdate,
+        include: { addresses: true },
+      })
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const target = Array.isArray(e.meta?.target) ? e.meta?.target : []
+        if (target.includes('cpfHash')) {
+          return NextResponse.json(
+            { error: 'CPF já cadastrado para outro paciente' },
+            { status: 409 }
+          )
+        }
+      }
+      throw e
+    }
 
     return NextResponse.json({
       success: true,
@@ -252,7 +320,7 @@ export async function PUT(req: NextRequest) {
       patient: {
         id: updated.id,
         phone: updated.phone,
-        cpf: decrypt(updated.cpf as string | null),
+        cpf: formatCPF(decrypt(updated.cpf as string | null)),
         bloodType: normalizeBloodType(updated.bloodType),
         allergies: parseAllergies(decrypt(updated.allergies as string | null)),
         emergencyContact: (function() {

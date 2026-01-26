@@ -6,12 +6,19 @@ import { join } from 'path'
 import { existsSync } from 'fs'
 import { logger } from '@/lib/logger'
 
+export const runtime = 'nodejs'
+
 export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
-    // Get patient record
-    const patient = await prisma.patient.findFirst({
-      where: { userId: user.id }
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { patientId: true, email: true },
     })
+
+    const patientIdFromUser = dbUser?.patientId ?? null
+    const patient = patientIdFromUser
+      ? await prisma.patient.findUnique({ where: { id: patientIdFromUser }, select: { id: true, name: true } })
+      : await prisma.patient.findFirst({ where: { email: dbUser?.email ?? user.email }, select: { id: true, name: true } })
 
     if (!patient) {
       return NextResponse.json({ error: 'Registro de paciente não encontrado' }, { status: 404 })
@@ -116,7 +123,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       }
     }, { status: 201 })
   } catch (error) {
-    logger.error('Error uploading document:', error)
+    logger.error({ err: error }, 'Error uploading document')
     return NextResponse.json(
       { error: 'Erro ao fazer upload do documento' },
       { status: 500 }
@@ -127,9 +134,15 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 // GET patient's uploaded documents
 export const GET = withAuth(async (req: NextRequest, { user }) => {
   try {
-    const patient = await prisma.patient.findFirst({
-      where: { userId: user.id }
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { patientId: true, email: true },
     })
+
+    const patientIdFromUser = dbUser?.patientId ?? null
+    const patient = patientIdFromUser
+      ? await prisma.patient.findUnique({ where: { id: patientIdFromUser }, select: { id: true } })
+      : await prisma.patient.findFirst({ where: { email: dbUser?.email ?? user.email }, select: { id: true } })
 
     if (!patient) {
       return NextResponse.json({ error: 'Registro de paciente não encontrado' }, { status: 404 })
@@ -152,7 +165,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json({ data: documents })
   } catch (error) {
-    logger.error('Error fetching documents:', error)
+    logger.error({ err: error }, 'Error fetching documents')
     return NextResponse.json(
       { error: 'Erro ao buscar documentos' },
       { status: 500 }

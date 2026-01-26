@@ -2,17 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { handleApiError, ApiError } from '@/lib/api-error-handler'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
-import { handleApiError, ApiError } from '@/lib/api-error-handler'
+import { handleApiError } from '@/lib/api-error-handler'
 
 export const runtime = 'nodejs'
 
-function isAdminSession(session: any) {
-  const role = session?.user?.role
-  const availableRoles = (session?.user as any)?.availableRoles
-  return role === 'ADMIN' || (Array.isArray(availableRoles) && availableRoles.includes('ADMIN'))
+function isAdminSession(session: unknown): boolean {
+  if (!session || typeof session !== 'object') return false
+  const user = (session as { user?: unknown }).user
+  if (!user || typeof user !== 'object') return false
+
+  const role = (user as { role?: unknown }).role
+  const availableRoles = (user as { availableRoles?: unknown }).availableRoles
+
+  const isAdminRole = role === 'ADMIN'
+  const isAdminAssigned = Array.isArray(availableRoles) && availableRoles.includes('ADMIN')
+  return isAdminRole || isAdminAssigned
 }
 
 // GET - Obter template específico com todas as perguntas
@@ -70,8 +75,8 @@ export async function GET(
     return NextResponse.json(template)
 
   } catch (error) {
-    logger.error('Error fetching template:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error({ err: error }, 'Error fetching template')
+    return handleApiError(error)
   }
 }
 
@@ -222,8 +227,8 @@ export async function PUT(
     return NextResponse.json(template)
 
   } catch (error) {
-    logger.error('Error updating template:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error({ err: error }, 'Error updating template')
+    return handleApiError(error)
   }
 }
 
@@ -293,7 +298,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    logger.error('Error deleting template:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error({ err: error }, 'Error deleting template')
+    return handleApiError(error)
   }
 }

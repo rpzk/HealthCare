@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { startOfDay, endOfDay, addDays } from 'date-fns'
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
+import { formatCPF, serializeBirthDateToIsoNoonUtc } from '@/lib/patient-schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,13 +18,17 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id
-    const userEmail = session.user.email
 
-    // Buscar o paciente vinculado a este usuário
-    const whereClause: any = { OR: [{ userId }] }
-    if (userEmail) whereClause.OR.push({ email: userEmail })
+    const lookup = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { patientId: true, email: true },
+    })
 
-    const patient = await prisma.patient.findFirst({ where: whereClause })
+    const patient = lookup?.patientId
+      ? await prisma.patient.findUnique({ where: { id: lookup.patientId } })
+      : lookup?.email
+        ? await prisma.patient.findFirst({ where: { email: { equals: lookup.email, mode: 'insensitive' } } })
+        : null
 
     if (!patient) {
       return NextResponse.json({ 
@@ -126,8 +132,8 @@ export async function GET(req: NextRequest) {
       patient: {
         id: patient.id,
         name: patient.name,
-        cpf: patient.cpf,
-        birthDate: patient.birthDate
+        cpf: formatCPF(decrypt(patient.cpf as string | null)),
+        birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate)
       },
       medications,
       appointments,

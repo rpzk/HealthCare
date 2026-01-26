@@ -36,23 +36,23 @@ interface AdminStats {
   totalUsers: number
   activeUsers: number
   newUsersThisMonth: number
-  userGrowth: number
+  userGrowth: number | null
   totalPatients: number
   newPatientsThisPeriod: number
-  patientGrowth: number
+  patientGrowth: number | null
   totalConsultationsMonth: number
   consultationsToday: number
   avgConsultationsPerDay: number
-  consultationGrowth: number
-  cancellationRate: number
-  noShowRate: number
+  consultationGrowth: number | null
+  cancellationRate: number | null
+  noShowRate: number | null
   systemHealth: 'healthy' | 'warning' | 'critical'
 }
 
 interface TopProfessional {
   id: string
-  name: string
-  role: string
+  name: string | null
+  role: string | null
   consultations: number
 }
 
@@ -235,11 +235,16 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Taxa de Cancelamento</p>
-                <p className="text-2xl font-bold">{stats.cancellationRate}%</p>
+                <p className="text-2xl font-bold">
+                  {typeof stats.cancellationRate === 'number' ? `${stats.cancellationRate}%` : 'Não disponível'}
+                </p>
               </div>
               <Clock className="h-8 w-8 text-muted-foreground/50" />
             </div>
-            <Progress value={Math.max(0, 100 - stats.cancellationRate * 5)} className="mt-3" />
+            <Progress
+              value={typeof stats.cancellationRate === 'number' ? Math.max(0, 100 - stats.cancellationRate * 5) : 0}
+              className="mt-3"
+            />
             <p className="text-xs text-muted-foreground mt-1">Meta: &lt;10%</p>
           </CardContent>
         </Card>
@@ -249,11 +254,16 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">No-Show (Faltas)</p>
-                <p className="text-2xl font-bold">{stats.noShowRate}%</p>
+                <p className="text-2xl font-bold">
+                  {typeof stats.noShowRate === 'number' ? `${stats.noShowRate}%` : 'Não disponível'}
+                </p>
               </div>
               <AlertTriangle className="h-8 w-8 text-amber-500/50" />
             </div>
-            <Progress value={Math.max(0, 100 - stats.noShowRate * 10)} className="mt-3" />
+            <Progress
+              value={typeof stats.noShowRate === 'number' ? Math.max(0, 100 - stats.noShowRate * 10) : 0}
+              className="mt-3"
+            />
             <p className="text-xs text-muted-foreground mt-1">Meta: &lt;5%</p>
           </CardContent>
         </Card>
@@ -329,8 +339,8 @@ export function AdminDashboard() {
                         {index + 1}
                       </div>
                       <div>
-                        <p className="font-medium">{prof.name}</p>
-                        <p className="text-sm text-muted-foreground">{prof.role || 'Profissional'}</p>
+                        <p className="font-medium">{prof.name ?? 'Não disponível'}</p>
+                        <p className="text-sm text-muted-foreground">{prof.role ?? 'Não disponível'}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -414,7 +424,7 @@ function MetricCard({
 }: { 
   title: string
   value: string
-  change: number
+  change: number | null
   icon: ComponentType<SVGProps<SVGSVGElement>>
   color: 'blue' | 'green' | 'purple' | 'amber' | 'red'
   subtitle?: string
@@ -429,7 +439,7 @@ function MetricCard({
     red: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
   }
 
-  const isPositive = change >= 0
+  const isPositive = typeof change === 'number' ? change >= 0 : true
 
   const card = (
     <Card className={href ? 'cursor-pointer transition-colors hover:bg-muted/40' : undefined}>
@@ -439,7 +449,7 @@ function MetricCard({
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold">{value}</p>
             <div className="flex items-center gap-2 flex-wrap">
-              {!hideChange && (
+              {!hideChange && typeof change === 'number' && (
                 <Badge 
                   variant="secondary" 
                   className={`text-xs ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}

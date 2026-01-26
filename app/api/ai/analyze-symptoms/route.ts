@@ -32,12 +32,15 @@ export const POST = withMedicalAIAuth(async (request, { user }) => {
   const data = validation.data!
 
   if (data?.patientId) {
-    const patient = await prisma.patient.findUnique({ where: { id: data.patientId }, select: { userId: true } })
-    if (patient?.userId) {
+    const patientUser = await prisma.user.findFirst({
+      where: { patientId: data.patientId },
+      select: { id: true },
+    })
+    if (patientUser?.id) {
       try {
         await assertUserAcceptedTerms({
           prisma,
-          userId: patient.userId,
+          userId: patientUser.id,
           audience: TermAudience.PATIENT,
           gates: ['AI'],
         })

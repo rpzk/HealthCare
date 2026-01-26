@@ -9,6 +9,12 @@ export { MedicationAutocomplete } from './medication-autocomplete'
 export { CIDAutocomplete } from './cid-autocomplete'
 export { ExamAutocomplete } from './exam-autocomplete'
 
+// Modais de edição
+export { PrescriptionEditorDialog } from './prescription-editor-dialog'
+export { ExamEditorDialog } from './exam-editor-dialog'
+export { ReferralEditorDialog } from './referral-editor-dialog'
+export { CertificateEditorDialog } from './certificate-editor-dialog'
+
 // Protocolos
 export { ProtocolSelector } from './protocol-selector'
 export { ProtocolCreator } from './protocol-creator'

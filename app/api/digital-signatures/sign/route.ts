@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import prisma from '@/lib/prisma'
-import { logger } from '@/lib/logger'
 import crypto from 'crypto'
 
 export const runtime = 'nodejs'
@@ -86,14 +85,17 @@ export async function POST(request: NextRequest) {
         timestampedAt: timestampToken ? new Date() : null,
         ipAddress: ip || null,
         userAgent: userAgent || null,
-        isValid: true,
-        validatedAt: new Date(),
-        validationResult: 'RECORDED',
+        // IMPORTANT: this endpoint only records the signature payload.
+        // It does not perform cryptographic verification of the signatureValue.
+        isValid: false,
+        validatedAt: null,
+        validationResult: 'RECORDED_UNVERIFIED',
       },
       select: {
         id: true, documentType: true, documentId: true,
         certificateId: true, signerId: true,
         signatureAlgorithm: true, signatureHash: true,
+        isValid: true, validationResult: true,
         timestampedAt: true, createdAt: true,
       }
     })
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, signed: record }, { status: 201 })
   } catch (error: any) {
-    logger.error('Erro ao registrar assinatura digital:', error)
+    logger.error('Erro ao registrar assinatura:', error)
     return NextResponse.json(
       { error: error?.message || 'Erro ao registrar assinatura' },
       { status: 500 }

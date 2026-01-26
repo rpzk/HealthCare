@@ -79,6 +79,34 @@ export function formatCPF(cpf: string | null | undefined): string | null {
 }
 
 /**
+ * Converte uma data para um Date em 12:00 UTC do mesmo dia.
+ * Isso evita divergências de fuso horário (ex.: 10/04 virar 09/04 em UTC-3).
+ */
+export function toNoonUtc(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0, 0))
+}
+
+/**
+ * Faz parse de entrada YYYY-MM-DD para um Date em 12:00 UTC.
+ */
+export function parseBirthDateYYYYMMDDToNoonUtc(value: string): Date {
+  const dateOnly = value.trim().slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+    throw new Error('Data de nascimento inválida (YYYY-MM-DD)')
+  }
+  return new Date(`${dateOnly}T12:00:00.000Z`)
+}
+
+/**
+ * Serializa Date para ISO em 12:00 UTC (string) para evitar shift de dia.
+ */
+export function serializeBirthDateToIsoNoonUtc(value: Date | null | undefined): string | null {
+  if (!value) return null
+  const normalized = toNoonUtc(value)
+  return normalized.toISOString()
+}
+
+/**
  * Parse de alergias - aceita string ou array e retorna array
  */
 export function parseAllergies(value: string | string[] | null | undefined): string[] {
@@ -286,12 +314,19 @@ export const patientUpdateSchema = patientBaseSchema.partial().extend({
  * Campos restritos que o paciente pode editar por conta própria
  */
 export const patientProfileUpdateSchema = z.object({
+  name: z.string().min(2).max(120).optional(),
+
+  // date-only (YYYY-MM-DD) recommended for client payloads
+  birthDate: z.string().optional(),
+
   phone: z.string()
     .min(8)
     .max(20)
     .optional(),
   
   cpf: cpfOptionalSchema,
+
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).nullable().optional(),
   
   bloodType: z.string()
     .nullable()

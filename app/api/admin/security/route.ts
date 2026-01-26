@@ -193,12 +193,12 @@ export const POST = withAdminAuthUnlimited(async (request: NextRequest, { user }
           )
         }
 
-        // Reset manual do rate limiter
-        const fakeRequest = new NextRequest('http://localhost', {
+        // Reset manual do rate limiter (request interno para extrair IP/chave)
+        const internalRequest = new NextRequest('http://localhost', {
           headers: { 'x-forwarded-for': '127.0.0.1' }
         })
         
-        MemoryRateLimiter.resetClient(fakeRequest, params.userId)
+        MemoryRateLimiter.resetClient(internalRequest, params.userId)
 
         auditLogger.logSuccess(
           user.id,

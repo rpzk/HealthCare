@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { handleApiError, ApiError } from '@/lib/api-error-handler'
+import { handleApiError } from '@/lib/api-error-handler'
+import { Prisma } from '@prisma/client'
 export const dynamic = 'force-dynamic'
-
 
 export const runtime = 'nodejs'
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const onlyActive = searchParams.get('active') === 'true'
     const serial = searchParams.get('serialNumber')
 
-    const where: any = {
+    const where: Prisma.DigitalCertificateWhereInput = {
       ...(serial ? { serialNumber: { contains: serial, mode: 'insensitive' } } : {}),
       ...(onlyActive ? { isActive: true } : {}),
     }
@@ -62,10 +62,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ certificates, total, take, skip })
   } catch (error) {
-    logger.error('Erro ao listar certificados digitais', error)
-    return NextResponse.json(
-      { error: error?.message || 'Erro ao listar certificados' },
-      { status: 500 }
-    )
+    logger.error({ err: error }, 'Erro ao listar certificados digitais')
+    return handleApiError(error)
   }
 }

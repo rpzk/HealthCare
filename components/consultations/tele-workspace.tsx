@@ -10,10 +10,12 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { logger } from '@/lib/logger'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { SignatureButton } from '@/components/tele/digital-signature-pad'
 import { 
   Stethoscope, Activity, Save, Mic, MicOff, Loader2, 
   Pill, FileText, TestTube, User, ChevronDown, ChevronUp,
-  AlertCircle
+  AlertCircle, PenTool
 } from 'lucide-react'
 
 type Props = {
@@ -31,6 +33,18 @@ export function TeleWorkspace({ consultationId }: Props) {
   const [processing, setProcessing] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  // Assinaturas (desenho)
+  type TeleSignature = {
+    id: string
+    signerRole: string
+    createdAt: string
+    sha256?: string | null
+  }
+  const [showSignatures, setShowSignatures] = useState(false)
+  const [signaturesLoading, setSignaturesLoading] = useState(false)
+  const [signaturesError, setSignaturesError] = useState<string | null>(null)
+  const [signatures, setSignatures] = useState<TeleSignature[]>([])
 
   // SOAP state
   const [soap, setSoap] = useState({
@@ -73,10 +87,36 @@ export function TeleWorkspace({ consultationId }: Props) {
     }
   }, [consultationId])
 
+  const loadSignatures = useCallback(async () => {
+    try {
+      setSignaturesLoading(true)
+      setSignaturesError(null)
+
+      const res = await fetch(`/api/tele/signature?consultationId=${encodeURIComponent(consultationId)}`)
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || 'Falha ao carregar assinaturas')
+      }
+
+      const items = Array.isArray(data?.data) ? data.data : []
+      setSignatures(items)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      setSignaturesError(message)
+    } finally {
+      setSignaturesLoading(false)
+    }
+  }, [consultationId])
+
   // Load consultation
   useEffect(() => {
     void loadConsultation()
   }, [loadConsultation])
+
+  useEffect(() => {
+    if (!showSignatures) return
+    void loadSignatures()
+  }, [showSignatures, loadSignatures])
 
   // Audio recording for transcription
   const startRecording = async () => {
@@ -193,8 +233,100 @@ export function TeleWorkspace({ consultationId }: Props) {
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
             Salvar
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSignatures(true)}
+          >
+            <PenTool className="h-4 w-4 mr-1" />
+            Assinaturas
+          </Button>
         </div>
       </div>
+
+      <Dialog open={showSignatures} onOpenChange={setShowSignatures}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Assinaturas (desenho)</DialogTitle>
+            <DialogDescription>
+              Registros de assinatura anexados à teleconsulta. Este recurso registra a imagem e metadados no sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between gap-2">
+            <SignatureButton
+              consultationId={consultationId}
+              onSignatureSaved={() => {
+                void loadSignatures()
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void loadSignatures()}
+              disabled={signaturesLoading}
+            >
+              {signaturesLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Atualizar
+            </Button>
+          </div>
+
+          {signaturesError ? (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 text-destructive rounded">
+              <AlertCircle className="h-4 w-4 mt-0.5" />
+              <div className="text-sm">{signaturesError}</div>
+            </div>
+          ) : null}
+
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Registros</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {signaturesLoading ? (
+                <div className="text-sm text-muted-foreground">Carregando...</div>
+              ) : signatures.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Nenhuma assinatura registrada nesta consulta.</div>
+              ) : (
+                signatures.map((sig) => {
+                  const downloadUrl = `/api/tele/signature?consultationId=${encodeURIComponent(consultationId)}&id=${encodeURIComponent(sig.id)}&download=1`
+                  return (
+                    <div key={sig.id} className="flex items-center justify-between gap-2 border rounded p-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {sig.signerRole === 'PATIENT' ? 'Paciente' : sig.signerRole === 'DOCTOR' ? 'Médico(a)' : sig.signerRole}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {new Date(sig.createdAt).toLocaleString('pt-BR')}
+                          {sig.sha256 ? ` • sha256: ${sig.sha256}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          Abrir
+                        </Button>
+                        <a
+                          className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground"
+                          href={downloadUrl}
+                          download
+                        >
+                          Baixar
+                        </a>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
 
       {/* Sinais Vitais - Colapsável */}
       <div className="mb-4">

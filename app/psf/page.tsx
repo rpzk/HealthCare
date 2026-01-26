@@ -63,10 +63,10 @@ export default function PSFPage() {
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              +0% em relação ao mês passado
-            </p>
+              <div className="text-2xl font-bold">—</div>
+              <p className="text-xs text-muted-foreground">
+                Não disponível
+              </p>
           </CardContent>
         </Card>
         <Card>
@@ -77,10 +77,10 @@ export default function PSFPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              0 gestantes, 0 hipertensos
-            </p>
+              <div className="text-2xl font-bold">—</div>
+              <p className="text-xs text-muted-foreground">
+                Não disponível
+              </p>
           </CardContent>
         </Card>
         <Card>
@@ -91,10 +91,10 @@ export default function PSFPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              Meta: 100% de cobertura
-            </p>
+              <div className="text-2xl font-bold">—</div>
+              <p className="text-xs text-muted-foreground">
+                Não disponível
+              </p>
           </CardContent>
         </Card>
         <Card>
@@ -105,10 +105,10 @@ export default function PSFPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              Para hoje
-            </p>
+              <div className="text-2xl font-bold">—</div>
+              <p className="text-xs text-muted-foreground">
+                Não disponível
+              </p>
           </CardContent>
         </Card>
       </div>

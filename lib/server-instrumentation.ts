@@ -1,4 +1,6 @@
 // Captura erros globais para diagnosticar quedas inesperadas no CI
+import { logger } from '@/lib/logger'
+
 const globalWithHooks = global as typeof globalThis & { __errorHooksInstalled?: boolean }
 if (!globalWithHooks.__errorHooksInstalled) {
   globalWithHooks.__errorHooksInstalled = true

@@ -195,7 +195,7 @@ export class TemplateRenderer {
     const replacements: Record<string, any> = {
       'signature.line': '<div class="signature-line">_______________________</div>',
       'signature.digital':
-        '<div class="signature-digital">✓ Assinado Digitalmente</div>',
+        '<div class="signature-digital">✓ Assinatura registrada</div>',
       'signature.date': this.formatDate(signature?.date || now),
     }
 

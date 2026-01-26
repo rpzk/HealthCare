@@ -6,13 +6,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { StratumAssessment } from '@/components/hr/stratum-assessment'
+import { StratumQuestionsAdmin } from '@/components/hr/stratum-questions-admin'
+import { StratumMorInbox } from '@/components/hr/stratum-mor-inbox'
+import { OrgManagerAdmin } from '@/components/hr/org-manager-admin'
 import { 
   Brain, 
   Users, 
   BarChart3, 
   Settings,
   BookOpen,
-  Target
+  Target,
+  CheckCircle
 } from 'lucide-react'
 
 export default function StratumPage() {
@@ -20,6 +24,7 @@ export default function StratumPage() {
   const [activeTab, setActiveTab] = useState('assessment')
 
   const isAdmin = session?.user?.role === 'ADMIN'
+  const isPatient = session?.user?.role === 'PATIENT'
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-6xl">
@@ -64,7 +69,43 @@ export default function StratumPage() {
         </TabsList>
 
         <TabsContent value="assessment" className="mt-6">
-          <StratumAssessment />
+          <Tabs defaultValue="self">
+            <TabsList className={isPatient ? 'grid w-full grid-cols-1' : 'grid w-full grid-cols-3'}>
+              <TabsTrigger value="self" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">Pessoal</span>
+              </TabsTrigger>
+
+              {!isPatient && (
+                <>
+                  <TabsTrigger value="role" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span className="hidden sm:inline">Cargo (Gestor)</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="mor" className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">MoR</span>
+                  </TabsTrigger>
+                </>
+              )}
+            </TabsList>
+
+            <TabsContent value="self" className="mt-6">
+              <StratumAssessment mode="SELF" />
+            </TabsContent>
+
+            {!isPatient && (
+              <>
+                <TabsContent value="role" className="mt-6">
+                  <StratumAssessment mode="ROLE" />
+                </TabsContent>
+
+                <TabsContent value="mor" className="mt-6">
+                  <StratumMorInbox />
+                </TabsContent>
+              </>
+            )}
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="theory" className="mt-6">
@@ -159,12 +200,9 @@ export default function StratumPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-gray-500">
-                  <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Configurações em desenvolvimento</p>
-                  <p className="text-sm mt-2">
-                    Aqui você poderá adicionar questões, definir perfis de cargo e mapear CBO.
-                  </p>
+                <div className="space-y-6">
+                  <OrgManagerAdmin />
+                  <StratumQuestionsAdmin />
                 </div>
               </CardContent>
             </Card>

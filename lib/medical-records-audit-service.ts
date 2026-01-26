@@ -8,6 +8,9 @@
  * - Support for LGPD compliance queries
  */
 
+import { logger } from '@/lib/logger'
+import crypto from 'crypto'
+
 export type AuditAction = 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'LIST'
 
 export interface AuditLog {
@@ -16,6 +19,7 @@ export interface AuditLog {
   resourceType: 'MEDICAL_RECORD'
   resourceId: string
   userId: string
+  userEmail?: string
   userRole: string
   timestamp: Date
   ipAddress?: string
@@ -41,7 +45,7 @@ class MedicalRecordsAuditService {
   async logOperation(audit: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
     const auditEntry: AuditLog = {
       ...audit,
-      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `audit-${crypto.randomUUID()}`,
       timestamp: new Date()
     }
 
@@ -66,7 +70,7 @@ class MedicalRecordsAuditService {
           metadata: auditEntry.metadata ? JSON.stringify(auditEntry.metadata) : undefined,
           ipAddress: auditEntry.ipAddress,
           userAgent: auditEntry.userAgent,
-          userEmail: 'unknown@system.com', // Should be passed in if available
+          userEmail: auditEntry.userEmail || '',
         }
       });
     } catch (dbError) {
@@ -104,6 +108,7 @@ class MedicalRecordsAuditService {
     data: Record<string, unknown>,
     userId: string,
     userRole: string,
+    userEmail?: string,
     metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
@@ -111,6 +116,7 @@ class MedicalRecordsAuditService {
       resourceType: 'MEDICAL_RECORD',
       resourceId: recordId,
       userId,
+      userEmail,
       userRole,
       changes: Object.entries(data).map(([field, value]) => ({
         field,
@@ -129,6 +135,7 @@ class MedicalRecordsAuditService {
     recordId: string,
     userId: string,
     userRole: string,
+    userEmail?: string,
     metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
@@ -136,6 +143,7 @@ class MedicalRecordsAuditService {
       resourceType: 'MEDICAL_RECORD',
       resourceId: recordId,
       userId,
+      userEmail,
       userRole,
       metadata,
       success: true
@@ -151,6 +159,7 @@ class MedicalRecordsAuditService {
     after: Record<string, unknown>,
     userId: string,
     userRole: string,
+    userEmail?: string,
     metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     // Calculate changes
@@ -171,6 +180,7 @@ class MedicalRecordsAuditService {
       resourceType: 'MEDICAL_RECORD',
       resourceId: recordId,
       userId,
+      userEmail,
       userRole,
       changes,
       metadata,
@@ -186,6 +196,7 @@ class MedicalRecordsAuditService {
     data: Record<string, unknown>,
     userId: string,
     userRole: string,
+    userEmail?: string,
     metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.logOperation({
@@ -193,6 +204,7 @@ class MedicalRecordsAuditService {
       resourceType: 'MEDICAL_RECORD',
       resourceId: recordId,
       userId,
+      userEmail,
       userRole,
       changes: Object.entries(data).map(([field, value]) => ({
         field,
@@ -210,6 +222,7 @@ class MedicalRecordsAuditService {
   async logList(
     userId: string,
     userRole: string,
+    userEmail?: string,
     filters?: Record<string, unknown>,
     metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
@@ -218,6 +231,7 @@ class MedicalRecordsAuditService {
       resourceType: 'MEDICAL_RECORD',
       resourceId: 'multiple',
       userId,
+      userEmail,
       userRole,
       metadata: {
         filters,
@@ -235,6 +249,7 @@ class MedicalRecordsAuditService {
     resourceId: string,
     userId: string,
     userRole: string,
+    userEmail: string | undefined,
     error: string,
     metadata?: Record<string, unknown>
   ): Promise<AuditLog> {
@@ -243,6 +258,7 @@ class MedicalRecordsAuditService {
       resourceType: 'MEDICAL_RECORD',
       resourceId,
       userId,
+      userEmail,
       userRole,
       metadata,
       success: false,

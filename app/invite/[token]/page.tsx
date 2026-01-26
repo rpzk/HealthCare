@@ -64,7 +64,7 @@ interface InviteData {
   invitedBy: {
     name: string
     speciality: string | null
-  }
+  } | null
   biometricConsents: BiometricConsent[]
   terms: InviteTerm[]
 }
@@ -86,7 +86,8 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
   const [allergies, setAllergies] = useState('')
   const [gender, setGender] = useState('')
   const [emergencyContact, setEmergencyContact] = useState('')
-  const [bloodType, setBloodType] = useState('')
+  const BLOOD_TYPE_NONE = '__NONE__'
+  const [bloodType, setBloodType] = useState(BLOOD_TYPE_NONE)
   const [acceptedConsents, setAcceptedConsents] = useState<string[]>([])
   const [acceptedTermIds, setAcceptedTermIds] = useState<string[]>([])
   const [showAllConsents, setShowAllConsents] = useState(false)
@@ -116,7 +117,8 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
       setGender(json?.invite?.gender ? String(json.invite.gender) : '')
       setEmergencyContact(json?.invite?.emergencyContact ? String(json.invite.emergencyContact) : '')
       // Selecionar todos por padrão
-      setAcceptedConsents(json.biometricConsents.map((c: BiometricConsent) => c.dataType))
+      const consentList = Array.isArray(json?.biometricConsents) ? json.biometricConsents : []
+      setAcceptedConsents(consentList.map((c: BiometricConsent) => c.dataType))
       setAcceptedTermIds([])
     } catch (e) {
       setError('Erro ao carregar convite')
@@ -203,6 +205,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
           cpf,
           allergies,
           gender,
+          bloodType: bloodType === BLOOD_TYPE_NONE ? null : bloodType,
           emergencyContact
         })
       })
@@ -261,9 +264,12 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
 
   if (!data) return null
 
-  const displayedConsents = showAllConsents 
-    ? data.biometricConsents 
-    : data.biometricConsents.slice(0, 5)
+  const biometricConsents = Array.isArray(data.biometricConsents) ? data.biometricConsents : []
+  const terms = Array.isArray(data.terms) ? data.terms : []
+  const inviterName = data.invitedBy?.name || 'Profissional'
+  const inviterSpeciality = data.invitedBy?.speciality || null
+
+  const displayedConsents = showAllConsents ? biometricConsents : biometricConsents.slice(0, 5)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-8 px-4">
@@ -277,8 +283,8 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
             Bem-vindo(a), {data.invite.patientName}!
           </h1>
           <p className="text-gray-600 mt-2">
-            {data.invitedBy.name}
-            {data.invitedBy.speciality && ` (${data.invitedBy.speciality})`}
+            {inviterName}
+            {inviterSpeciality && ` (${inviterSpeciality})`}
             {' '}convidou você para se cadastrar no sistema de saúde.
           </p>
         </div>
@@ -350,7 +356,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
                     <SelectValue placeholder="Selecione seu tipo sanguíneo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Não informado</SelectItem>
+                    <SelectItem value={BLOOD_TYPE_NONE}>Não informado</SelectItem>
                     <SelectItem value="A+">A+</SelectItem>
                     <SelectItem value="A-">A-</SelectItem>
                     <SelectItem value="B+">B+</SelectItem>
@@ -478,7 +484,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
                   </div>
                 ))}
 
-                {data.biometricConsents.length > 5 && (
+                {biometricConsents.length > 5 && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -493,7 +499,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
                     ) : (
                       <>
                         <ChevronDown className="h-4 w-4 mr-2" />
-                        Mostrar mais ({data.biometricConsents.length - 5} tipos)
+                        Mostrar mais ({biometricConsents.length - 5} tipos)
                       </>
                     )}
                   </Button>
@@ -505,7 +511,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setAcceptedConsents(data.biometricConsents.map(c => c.dataType))}
+                  onClick={() => setAcceptedConsents(biometricConsents.map((c) => c.dataType))}
                 >
                   Selecionar Todos
                 </Button>
@@ -603,9 +609,9 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Array.isArray(data.terms) && data.terms.length > 0 ? (
+              {terms.length > 0 ? (
                 <div className="space-y-4">
-                  {data.terms.map((term) => (
+                  {terms.map((term) => (
                     <div key={term.id} className="border rounded-md p-4 space-y-3">
                       <div className="flex items-start gap-3">
                         <Checkbox
@@ -639,8 +645,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
               <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
                 <strong>🔒 Seus dados estão protegidos</strong>
                 <p className="mt-1">
-                  Seguimos a Lei Geral de Proteção de Dados (LGPD). Seus dados de saúde são 
-                  criptografados e nunca serão compartilhados com terceiros sem sua autorização.
+                  Aplicamos controles de acesso e recursos de privacidade para apoiar a LGPD. A criptografia de dados sensíveis depende da configuração do sistema.
                 </p>
               </div>
             </CardContent>
@@ -653,7 +658,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
               <div className="flex flex-wrap gap-2">
                 {acceptedConsents.length > 0 ? (
                   acceptedConsents.map(dt => {
-                    const consent = data.biometricConsents.find(c => c.dataType === dt)
+                    const consent = biometricConsents.find((c) => c.dataType === dt)
                     return (
                       <Badge key={dt} variant="secondary" className="bg-green-100 text-green-800">
                         {consent?.info.icon} {consent?.info.label}

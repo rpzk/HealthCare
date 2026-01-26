@@ -115,6 +115,9 @@ export function NotificationCenter() {
     switch (type) {
       case 'ai_analysis_complete':
         return <Brain className="h-4 w-4 text-blue-600" />
+      // Created by WaitingListService
+      case 'WAITING_LIST' as any:
+        return <Calendar className="h-4 w-4 text-green-600" />
       case 'critical_alert':
         return <AlertTriangle className="h-4 w-4 text-red-600" />
       case 'drug_interaction_warning':
@@ -157,7 +160,9 @@ export function NotificationCenter() {
   const getActionUrl = (notification: Notification): string | null => {
     const metadata = notification.metadata as unknown as Record<string, unknown> | null
     const actionUrl = metadata && typeof metadata.actionUrl === 'string' ? metadata.actionUrl : null
-    return actionUrl
+    if (actionUrl) return actionUrl
+    if (String(notification.type) === 'WAITING_LIST') return '/appointments/waiting-list'
+    return null
   }
 
   const handleNotificationClick = async (notification: Notification) => {

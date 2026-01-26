@@ -5,10 +5,62 @@ import { prisma } from '@/lib/prisma'
 import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
+import { SystemSettingsService } from '@/lib/system-settings-service'
+import { Role } from '@prisma/client'
+
+const DIRECT_BOOKING_KEY = 'PATIENT_DIRECT_BOOKING_ENABLED'
+const APPOINTMENT_TYPES_KEY = 'appointment_types'
+
+const parseBoolean = (value: string | undefined, defaultValue: boolean) => {
+  if (value == null) return defaultValue
+  const normalized = String(value).trim().toLowerCase()
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
+  return defaultValue
+}
+
+async function getAllowedProfessionalRoles(): Promise<string[]> {
+  const raw = await SystemSettingsService.get(APPOINTMENT_TYPES_KEY)
+  if (!raw) {
+    return [
+      'DOCTOR',
+      'NURSE',
+      'PHYSIOTHERAPIST',
+      'PSYCHOLOGIST',
+      'NUTRITIONIST',
+      'DENTIST',
+      'HEALTH_AGENT',
+      'TECHNICIAN',
+      'PHARMACIST',
+      'SOCIAL_WORKER',
+      'OTHER',
+    ]
+  }
+
+  try {
+    const services = JSON.parse(raw) as Array<{ roles?: unknown; isActive?: unknown }>
+    if (!Array.isArray(services)) return []
+
+    const roles = new Set<string>()
+    for (const svc of services) {
+      if (svc && svc.isActive === false) continue
+      if (!svc || !Array.isArray(svc.roles)) continue
+      for (const role of svc.roles) {
+        const r = String(role).trim()
+        if (r) roles.add(r)
+      }
+    }
+
+    const list = Array.from(roles)
+    return list.length > 0 ? list : []
+  } catch {
+    return []
+  }
+}
 
 const patientBookingSchema = z.object({
   doctorId: z.string().min(1, 'ID do profissional é obrigatório'),
-  date: z.string().datetime('Data inválida'),
+  date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/, 'Data inválida (YYYY-MM-DD)'),
   timeSlot: z.string().regex(/^\d{2}:\d{2}$/, 'Formato de horário inválido (HH:mm)'),
   reason: z.string().optional(),
   notes: z.string().optional(),
@@ -36,22 +88,43 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const directEnabledRaw = await SystemSettingsService.get(DIRECT_BOOKING_KEY, 'false')
+    const directBookingEnabled = parseBoolean(directEnabledRaw, false)
+    if (!directBookingEnabled) {
+      return NextResponse.json({
+        success: true,
+        directBookingEnabled: false,
+        professionals: [],
+        count: 0,
+      })
+    }
+
+    const allowedRoles = await getAllowedProfessionalRoles()
+    const rolesFilterRaw = allowedRoles.length > 0
+      ? allowedRoles
+      : [
+          'DOCTOR',
+          'NURSE',
+          'PHYSIOTHERAPIST',
+          'PSYCHOLOGIST',
+          'NUTRITIONIST',
+          'DENTIST',
+          'HEALTH_AGENT',
+          'TECHNICIAN',
+          'PHARMACIST',
+          'SOCIAL_WORKER',
+          'OTHER',
+        ]
+
+    const rolesFilter = rolesFilterRaw.filter((r): r is Role =>
+      (Object.values(Role) as string[]).includes(r)
+    )
+
     // Get doctors/professionals with patient booking enabled
     const professionals = await prisma.user.findMany({
       where: {
         role: {
-          in: [
-            'DOCTOR',
-            'NURSE',
-            'PHYSIOTHERAPIST',
-            'PSYCHOLOGIST',
-            'NUTRITIONIST',
-            'DENTIST',
-            'HEALTH_AGENT',
-            'TECHNICIAN',
-            'PHARMACIST',
-            'SOCIAL_WORKER'
-          ],
+          in: rolesFilter,
         },
       },
       select: {
@@ -59,6 +132,7 @@ export async function GET(request: NextRequest) {
         name: true,
         email: true,
         role: true,
+        speciality: true,
         doctorSchedules: {
           where: {
             allowPatientBooking: true,
@@ -67,6 +141,7 @@ export async function GET(request: NextRequest) {
             dayOfWeek: true,
             startTime: true,
             endTime: true,
+            slotDuration: true,
             maxBookingDaysAhead: true,
             minBookingHoursAhead: true,
             autoConfirmBooking: true,
@@ -83,6 +158,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      directBookingEnabled: true,
       professionals: availableProfessionals,
       count: availableProfessionals.length,
     })
@@ -111,6 +187,15 @@ export async function POST(request: NextRequest) {
     if (session.user.role !== 'PATIENT') {
       return NextResponse.json(
         { error: 'Apenas pacientes podem agendar consultas' },
+        { status: 403 }
+      )
+    }
+
+    const directEnabledRaw = await SystemSettingsService.get(DIRECT_BOOKING_KEY, 'false')
+    const directBookingEnabled = parseBoolean(directEnabledRaw, false)
+    if (!directBookingEnabled) {
+      return NextResponse.json(
+        { error: 'Auto-agendamento direto está desabilitado pela clínica. Envie uma solicitação de agendamento.' },
         { status: 403 }
       )
     }

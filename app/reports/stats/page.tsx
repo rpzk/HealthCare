@@ -1,158 +1,75 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { BarChart3, ArrowLeft, TrendingUp, Users, Calendar, Activity, Target } from 'lucide-react'
+import { BarChart3, ArrowLeft, Users, Stethoscope, TestTube, FileText, TrendingUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-interface AgeGroupDetailed { range: string; count: number; percentage: number }
-interface SpecialtyBreakdown { specialty: string; count: number; percentage: number }
-interface ExamTypeStat { type: string; count: number }
-interface TimeSeriesPoint { month: string; count: number }
 type StatsTimeRange = '7days' | '30days' | '90days' | '1year'
+
 interface StatsData {
-  patientStats: {
-    total: number
-    newThisPeriod: number
-    growthRate: number
-    averageAge: number
-    genderDistribution: { male: number; female: number; other: number }
-    topAgeGroups: AgeGroupDetailed[]
-  }
-  consultationStats: {
-    total: number
-    completed: number
-    cancelled: number
-    noShow: number
-    averagePerDay: number
-    completionRate: number
-    specialtyBreakdown: SpecialtyBreakdown[]
-  }
-  examStats: {
-    total: number
-    completed: number
-    pending: number
-    urgent: number
-    averageCompletionTime: number
-    topExamTypes: ExamTypeStat[]
-  }
-  performanceMetrics: {
-    patientSatisfaction: number
-    averageWaitTime: number
-    systemUptime: number
-    dataAccuracy: number
-    responseTime: number
-  }
-  trends: {
-    patientsOverTime: TimeSeriesPoint[]
-    consultationsOverTime: TimeSeriesPoint[]
-    examsOverTime: TimeSeriesPoint[]
-  }
+  totalPatients: number
+  patientsInPeriod: number
+  totalConsultations: number
+  consultationsInPeriod: number
+  totalExams: number
+  examsInPeriod: number
+  totalRecords: number
+  recordsInPeriod: number
+  periodStart: string | null
+  periodEnd: string | null
+}
+
+const emptyStats: StatsData = {
+  totalPatients: 0,
+  patientsInPeriod: 0,
+  totalConsultations: 0,
+  consultationsInPeriod: 0,
+  totalExams: 0,
+  examsInPeriod: 0,
+  totalRecords: 0,
+  recordsInPeriod: 0,
+  periodStart: null,
+  periodEnd: null,
 }
 
 export default function StatsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<StatsTimeRange>('30days')
-  const [statsData, setStatsData] = useState<StatsData>({
-    patientStats: {
-      total: 0,
-      newThisPeriod: 0,
-      growthRate: 0,
-      averageAge: 0,
-      genderDistribution: { male: 0, female: 0, other: 0 },
-      topAgeGroups: []
-    },
-    consultationStats: {
-      total: 0,
-      completed: 0,
-      cancelled: 0,
-      noShow: 0,
-      averagePerDay: 0,
-      completionRate: 0,
-      specialtyBreakdown: []
-    },
-    examStats: {
-      total: 0,
-      completed: 0,
-      pending: 0,
-      urgent: 0,
-      averageCompletionTime: 0,
-      topExamTypes: []
-    },
-    performanceMetrics: {
-      patientSatisfaction: 0,
-      averageWaitTime: 0,
-      systemUptime: 0,
-      dataAccuracy: 0,
-      responseTime: 0
-    },
-    trends: {
-      patientsOverTime: [],
-      consultationsOverTime: [],
-      examsOverTime: []
-    }
-  })
-
-  const fetchStatistics = useCallback(async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/reports/stats')
-      if (response.ok) {
-        const data = await response.json()
-        setStatsData({
-          patientStats: {
-            total: data.totalPatients || 0,
-            newThisPeriod: data.newPatientsThisMonth || 0,
-            growthRate: 0,
-            averageAge: 0,
-            genderDistribution: { male: 0, female: 0, other: 0 },
-            topAgeGroups: []
-          },
-          consultationStats: {
-            total: data.totalConsultations || 0,
-            completed: 0,
-            cancelled: 0,
-            noShow: 0,
-            averagePerDay: 0,
-            completionRate: 0,
-            specialtyBreakdown: []
-          },
-          examStats: {
-            total: data.totalExams || 0,
-            completed: 0,
-            pending: 0,
-            urgent: 0,
-            averageCompletionTime: 0,
-            topExamTypes: []
-          },
-          performanceMetrics: {
-            patientSatisfaction: 0,
-            averageWaitTime: 0,
-            systemUptime: 0,
-            dataAccuracy: 0,
-            responseTime: 0
-          },
-          trends: {
-            patientsOverTime: [],
-            consultationsOverTime: [],
-            examsOverTime: []
-          }
-        })
-      }
-    } catch (error) {
-      console.error('Failed to fetch statistics:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [statsData, setStatsData] = useState<StatsData>(emptyStats)
 
   useEffect(() => {
+    const fetchStatistics = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch(`/api/reports/stats?range=${timeRange}`)
+        if (!response.ok) return
+        const data = await response.json()
+
+        setStatsData({
+          totalPatients: data.totalPatients || 0,
+          patientsInPeriod: data.newPatientsInPeriod ?? data.newPatientsThisMonth ?? 0,
+          totalConsultations: data.totalConsultations || 0,
+          consultationsInPeriod: data.consultationsInPeriod ?? data.consultationsThisMonth ?? 0,
+          totalExams: data.totalExams || 0,
+          examsInPeriod: data.examsInPeriod ?? data.examsThisMonth ?? 0,
+          totalRecords: data.totalRecords || 0,
+          recordsInPeriod: data.recordsInPeriod ?? data.recordsThisMonth ?? 0,
+          periodStart: data.periodStart ?? null,
+          periodEnd: data.periodEnd ?? null,
+        })
+      } catch (error) {
+        console.error('Failed to fetch statistics:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchStatistics()
-  }, [fetchStatistics])
+  }, [timeRange])
 
   const timeRangeOptions: Array<{ value: StatsTimeRange; label: string }> = [
     { value: '7days', label: 'Últimos 7 dias' },
@@ -168,6 +85,10 @@ export default function StatsPage() {
       </div>
     )
   }
+
+  const periodLabel = statsData.periodStart && statsData.periodEnd
+    ? `${new Date(statsData.periodStart).toLocaleDateString('pt-BR')} – ${new Date(statsData.periodEnd).toLocaleDateString('pt-BR')}`
+    : null
 
   return (
     <div className="space-y-6">
@@ -186,8 +107,8 @@ export default function StatsPage() {
               <BarChart3 className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Estatísticas Avançadas</h1>
-              <p className="text-sm text-gray-500">Análise detalhada dos dados do sistema</p>
+              <h1 className="text-2xl font-bold text-gray-900">Estatísticas</h1>
+              <p className="text-sm text-gray-500">Dados do banco (sem placeholders)</p>
             </div>
           </div>
         </div>
@@ -205,244 +126,52 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Estatísticas de Pacientes */}
+      {periodLabel ? (
+        <div className="text-sm text-muted-foreground">
+          Período selecionado: <span className="font-medium text-foreground">{periodLabel}</span>
+        </div>
+      ) : null}
+
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            <span>Estatísticas de Pacientes</span>
-          </CardTitle>
+          <CardTitle>Resumo</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-blue-700">Total de Pacientes</p>
+                <p className="text-sm font-medium text-blue-700">Pacientes</p>
                 <Users className="h-4 w-4 text-blue-600" />
               </div>
-              <p className="text-2xl font-bold text-blue-900">{statsData.patientStats.total}</p>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-green-700">Novos Pacientes</p>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </div>
-              <p className="text-2xl font-bold text-green-900">{statsData.patientStats.newThisPeriod}</p>
-              <p className="text-xs text-green-600">+{statsData.patientStats.growthRate}% crescimento</p>
+              <p className="text-2xl font-bold text-blue-900">{statsData.totalPatients}</p>
+              <p className="text-xs text-blue-700">{statsData.patientsInPeriod} no período</p>
             </div>
 
             <div className="bg-purple-50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-purple-700">Idade Média</p>
-                <Calendar className="h-4 w-4 text-purple-600" />
+                <p className="text-sm font-medium text-purple-700">Consultas</p>
+                <Stethoscope className="h-4 w-4 text-purple-600" />
               </div>
-              <p className="text-2xl font-bold text-purple-900">{statsData.patientStats.averageAge} anos</p>
+              <p className="text-2xl font-bold text-purple-900">{statsData.totalConsultations}</p>
+              <p className="text-xs text-purple-700">{statsData.consultationsInPeriod} no período</p>
+            </div>
+
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-green-700">Exames</p>
+                <TestTube className="h-4 w-4 text-green-600" />
+              </div>
+              <p className="text-2xl font-bold text-green-900">{statsData.totalExams}</p>
+              <p className="text-xs text-green-700">{statsData.examsInPeriod} no período</p>
             </div>
 
             <div className="bg-orange-50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-orange-700">Distribuição</p>
-                <Activity className="h-4 w-4 text-orange-600" />
+                <p className="text-sm font-medium text-orange-700">Registros</p>
+                <FileText className="h-4 w-4 text-orange-600" />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-orange-800">♀ {statsData.patientStats.genderDistribution.female}</p>
-                <p className="text-sm text-orange-800">♂ {statsData.patientStats.genderDistribution.male}</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">Distribuição por Faixa Etária</h4>
-            <div className="space-y-2">
-              {statsData.patientStats.topAgeGroups.map((group, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium text-gray-700 w-16">{group.range}</span>
-                    <div className="w-48 h-2 bg-gray-200 rounded-full">
-                      <div 
-                        className="h-2 bg-blue-600 rounded-full"
-                        style={{ width: `${group.percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">{group.count} pacientes</span>
-                    <Badge variant="outline">{group.percentage}%</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Estatísticas de Consultas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="h-5 w-5 text-purple-600" />
-            <span>Estatísticas de Consultas</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div className="bg-purple-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-purple-700 mb-1">Total</p>
-              <p className="text-xl font-bold text-purple-900">{statsData.consultationStats.total}</p>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-green-700 mb-1">Concluídas</p>
-              <p className="text-xl font-bold text-green-900">{statsData.consultationStats.completed}</p>
-            </div>
-
-            <div className="bg-red-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-red-700 mb-1">Canceladas</p>
-              <p className="text-xl font-bold text-red-900">{statsData.consultationStats.cancelled}</p>
-            </div>
-
-            <div className="bg-orange-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-orange-700 mb-1">Faltas</p>
-              <p className="text-xl font-bold text-orange-900">{statsData.consultationStats.noShow}</p>
-            </div>
-
-            <div className="bg-indigo-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-indigo-700 mb-1">Taxa Sucesso</p>
-              <p className="text-xl font-bold text-indigo-900">{statsData.consultationStats.completionRate}%</p>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">Consultas por Especialidade</h4>
-            <div className="space-y-2">
-              {statsData.consultationStats.specialtyBreakdown.map((specialty, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium text-gray-700 w-32">{specialty.specialty}</span>
-                    <div className="w-40 h-2 bg-gray-200 rounded-full">
-                      <div 
-                        className="h-2 bg-purple-600 rounded-full"
-                        style={{ width: `${specialty.percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">{specialty.count}</span>
-                    <Badge variant="outline">{specialty.percentage}%</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Estatísticas de Exames */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Target className="h-5 w-5 text-green-600" />
-            <span>Estatísticas de Exames</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-green-700 mb-1">Total Solicitados</p>
-              <p className="text-xl font-bold text-green-900">{statsData.examStats.total}</p>
-            </div>
-
-            <div className="bg-blue-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-blue-700 mb-1">Concluídos</p>
-              <p className="text-xl font-bold text-blue-900">{statsData.examStats.completed}</p>
-            </div>
-
-            <div className="bg-yellow-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-yellow-700 mb-1">Pendentes</p>
-              <p className="text-xl font-bold text-yellow-900">{statsData.examStats.pending}</p>
-            </div>
-
-            <div className="bg-red-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-red-700 mb-1">Urgentes</p>
-              <p className="text-xl font-bold text-red-900">{statsData.examStats.urgent}</p>
-            </div>
-
-            <div className="bg-indigo-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-indigo-700 mb-1">Tempo Médio</p>
-              <p className="text-xl font-bold text-indigo-900">{statsData.examStats.averageCompletionTime} dias</p>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">Tipos de Exames Mais Solicitados</h4>
-            <div className="space-y-2">
-              {statsData.examStats.topExamTypes.map((exam, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-green-600">{index + 1}</span>
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">{exam.type}</span>
-                  </div>
-                  <Badge variant="outline">{exam.count} solicitações</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Métricas de Performance */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-emerald-600" />
-            <span>Métricas de Performance do Sistema</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="bg-emerald-50 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-emerald-900 mb-1">
-                {statsData.performanceMetrics.patientSatisfaction}/5
-              </div>
-              <p className="text-sm text-emerald-700">Satisfação do Paciente</p>
-              <div className="flex justify-center mt-2">
-                {[1,2,3,4,5].map(star => (
-                  <span key={star} className={`text-lg ${star <= Math.floor(statsData.performanceMetrics.patientSatisfaction) ? 'text-yellow-400' : 'text-gray-300'}`}>
-                    ★
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-blue-50 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-blue-900 mb-1">
-                {statsData.performanceMetrics.averageWaitTime}min
-              </div>
-              <p className="text-sm text-blue-700">Tempo Médio de Espera</p>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-green-900 mb-1">
-                {statsData.performanceMetrics.systemUptime}%
-              </div>
-              <p className="text-sm text-green-700">Uptime do Sistema</p>
-            </div>
-
-            <div className="bg-purple-50 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-purple-900 mb-1">
-                {statsData.performanceMetrics.dataAccuracy}%
-              </div>
-              <p className="text-sm text-purple-700">Precisão dos Dados</p>
-            </div>
-
-            <div className="bg-indigo-50 rounded-lg p-4 text-center">
-              <div className="text-3xl font-bold text-indigo-900 mb-1">
-                {statsData.performanceMetrics.responseTime}s
-              </div>
-              <p className="text-sm text-indigo-700">Tempo de Resposta</p>
+              <p className="text-2xl font-bold text-orange-900">{statsData.totalRecords}</p>
+              <p className="text-xs text-orange-700">{statsData.recordsInPeriod} no período</p>
             </div>
           </div>
         </CardContent>

@@ -38,7 +38,8 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     }
 
     // Generate shareable link
-    const shareToken = require('crypto').randomBytes(16).toString('hex')
+  const crypto = await import('crypto')
+  const shareToken = crypto.randomBytes(16).toString('hex')
     const prescriptionUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/prescriptions/${id}?share=${shareToken}`
 
     // TODO: Implement actual email sending

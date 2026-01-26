@@ -10,6 +10,22 @@ import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
+function isLocalhostUrl(url: string) {
+  return /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(url)
+}
+
+function resolveBaseUrl(request: NextRequest) {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+  if (envUrl && !isLocalhostUrl(envUrl)) return envUrl
+
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const host = forwardedHost || request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'http'
+  if (host) return `${proto}://${host}`
+
+  return envUrl || 'http://localhost:3000'
+}
+
 // GET - Listar convites enviados
 export async function GET(request: NextRequest) {
   try {
@@ -123,8 +139,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Gerar link de convite
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    // Gerar link de convite (prioriza URL pública do app em produção)
+    const baseUrl = resolveBaseUrl(request)
 
     if (existingInvite) {
       const existingInviteLink = `${baseUrl}/invite/${existingInvite.token}`
@@ -139,31 +155,45 @@ export async function POST(request: NextRequest) {
         if (emailEnabled) {
           const inviterName = existingInvite.invitedBy?.name || 'Profissional'
           const inviterSpeciality = existingInvite.invitedBy?.speciality
-          const subject = `Convite para cadastro no HealthCare`
+          const subject = `📩 Convite para cadastro no HealthCare`
           const safeMessage = existingInvite.customMessage ? String(existingInvite.customMessage).trim() : ''
 
           const result = await emailService.sendEmail({
             to: email,
             subject,
             html: `
-              <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.4;">
-                <h2 style="margin: 0 0 8px;">Você recebeu um convite</h2>
-                <p style="margin: 0 0 12px;">
-                  <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
-                  convidou você para se cadastrar no sistema HealthCare.
-                </p>
-                ${safeMessage ? `
-                  <div style="margin: 12px 0; padding: 12px; background: #f7f7f7; border-left: 4px solid #2563eb;">
-                    <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
-                    <div>${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+              <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 24px; border-radius: 10px 10px 0 0;">
+                  <h1 style="margin: 0; font-size: 22px;">
+                    <a href="${existingInviteLink}" style="color: #fff; text-decoration: none;">📩 Convite de Cadastro</a>
+                  </h1>
+                </div>
+
+                <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                  <p style="font-size: 16px; margin: 0 0 10px;">Olá!</p>
+                  <p style="font-size: 15px; color: #4b5563; margin: 0 0 14px;">
+                    <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
+                    convidou você para se cadastrar no sistema HealthCare.
+                  </p>
+
+                  ${safeMessage ? `
+                    <div style="margin: 12px 0; padding: 12px; background: #fff; border-left: 4px solid #2563eb;">
+                      <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
+                      <div style="font-size: 14px; color: #111;">${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                    </div>
+                  ` : ''}
+
+                  <div style="text-align: center; margin: 22px 0;">
+                    <a href="${existingInviteLink}" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                      Aceitar convite
+                    </a>
                   </div>
-                ` : ''}
-                <p style="margin: 16px 0;">
-                  <a href="${existingInviteLink}" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 6px;">Aceitar convite</a>
-                </p>
-                <p style="margin: 0; font-size: 12px; color: #666;">Se preferir, copie e cole este link no navegador:</p>
-                <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${existingInviteLink}</p>
-                <p style="margin: 16px 0 0; font-size: 12px; color: #666;">Este link expira em 7 dias.</p>
+
+                  <p style="margin: 0; font-size: 12px; color: #6b7280;">Se preferir, copie e cole este link no navegador:</p>
+                  <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${existingInviteLink}</p>
+                  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                  <p style="margin: 0; font-size: 12px; color: #9ca3af;">Este link expira em 7 dias.</p>
+                </div>
               </div>
             `,
             text: `Você recebeu um convite para se cadastrar no HealthCare. Acesse: ${existingInviteLink}`,
@@ -263,31 +293,46 @@ export async function POST(request: NextRequest) {
       if (emailEnabled) {
         const inviterName = invite.invitedBy?.name || 'Profissional'
         const inviterSpeciality = invite.invitedBy?.speciality
-        const subject = `Convite para cadastro no HealthCare`
+        const subject = `📩 Convite para cadastro no HealthCare`
         const safeMessage = resolvedMessage ? String(resolvedMessage).trim() : ''
 
         const result = await emailService.sendEmail({
           to: email,
           subject,
           html: `
-            <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.4;">
-              <h2 style="margin: 0 0 8px;">Você recebeu um convite</h2>
-              <p style="margin: 0 0 12px;">
-                <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
-                convidou você para se cadastrar no sistema HealthCare.
-              </p>
-              ${safeMessage ? `
-                <div style="margin: 12px 0; padding: 12px; background: #f7f7f7; border-left: 4px solid #2563eb;">
-                  <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
-                  <div>${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 24px; border-radius: 10px 10px 0 0;">
+                <h1 style="margin: 0; font-size: 22px;">
+                  <a href="${inviteLink}" style="color: #fff; text-decoration: none;">📩 Convite de Cadastro</a>
+                </h1>
+              </div>
+
+              <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <p style="font-size: 16px; margin: 0 0 10px;">Olá!</p>
+
+                <p style="font-size: 15px; color: #4b5563; margin: 0 0 14px;">
+                  <strong>${inviterName}</strong>${inviterSpeciality ? ` (${inviterSpeciality})` : ''}
+                  convidou você para se cadastrar no sistema HealthCare.
+                </p>
+
+                ${safeMessage ? `
+                  <div style="margin: 12px 0; padding: 12px; background: #fff; border-left: 4px solid #2563eb;">
+                    <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Mensagem:</div>
+                    <div style="font-size: 14px; color: #111;">${safeMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                  </div>
+                ` : ''}
+
+                <div style="text-align: center; margin: 22px 0;">
+                  <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                    Aceitar convite
+                  </a>
                 </div>
-              ` : ''}
-              <p style="margin: 16px 0;">
-                <a href="${inviteLink}" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 6px;">Aceitar convite</a>
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #666;">Se preferir, copie e cole este link no navegador:</p>
-              <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${inviteLink}</p>
-              <p style="margin: 16px 0 0; font-size: 12px; color: #666;">Este link expira em ${expiresInDays} dias.</p>
+
+                <p style="margin: 0; font-size: 12px; color: #6b7280;">Se preferir, copie e cole este link no navegador:</p>
+                <p style="margin: 6px 0 0; font-size: 12px; color: #2563eb; word-break: break-all;">${inviteLink}</p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                <p style="margin: 0; font-size: 12px; color: #9ca3af;">Este link expira em ${expiresInDays} dias.</p>
+              </div>
             </div>
           `,
           text: `Você recebeu um convite para se cadastrar no HealthCare. Acesse: ${inviteLink}`

@@ -1,8 +1,10 @@
 /**
- * Assinatura Digital com Certificado A1 ICP-Brasil
- * 
- * Usa certificado .pfx para assinar documentos médicos
- * Certificado: Valid ICP-Brasil A1
+ * Assinatura com Certificado A1 (.pfx)
+ *
+ * Observação: este módulo gera uma assinatura RSA/SHA-256 do conteúdo informado
+ * usando a chave privada contida no .pfx.
+ * Ele não produz um container padrão ICP-Brasil (ex.: CAdES/PAdES) nem, por si só,
+ * comprova validade jurídica/aderência regulatória.
  */
 
 import forge from 'node-forge'
@@ -218,7 +220,7 @@ export function getCertificateInfo(pfxPath: string, pfxPassword: string) {
   const extensions = certificate.extensions || []
   
   return {
-    name: cnAttr ? cnAttr.value : 'Desconhecido',
+    name: cnAttr?.value ?? null,
     cpf,
     validFrom: certificate.validity.notBefore,
     validTo: certificate.validity.notAfter,

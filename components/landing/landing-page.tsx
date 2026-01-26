@@ -107,11 +107,11 @@ export function LandingPage() {
               <div className="flex items-center space-x-8 pt-4">
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-gray-600">Gratuito para começar</span>
+                  <span className="text-sm text-gray-600">Cadastro rápido</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-gray-600">Seguro e confiável</span>
+                  <span className="text-sm text-gray-600">Foco em segurança</span>
                 </div>
               </div>
             </div>
@@ -122,23 +122,23 @@ export function LandingPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-blue-50 p-6 rounded-2xl">
                     <Activity className="h-8 w-8 text-blue-600 mb-2" />
-                    <div className="text-2xl font-bold text-gray-900">24/7</div>
-                    <div className="text-sm text-gray-600">Disponível</div>
+                    <div className="text-2xl font-bold text-gray-900">Online</div>
+                    <div className="text-sm text-gray-600">Acesso</div>
                   </div>
                   <div className="bg-green-50 p-6 rounded-2xl">
                     <Users className="h-8 w-8 text-green-600 mb-2" />
-                    <div className="text-2xl font-bold text-gray-900">100%</div>
-                    <div className="text-sm text-gray-600">Seguro</div>
+                    <div className="text-2xl font-bold text-gray-900">Acesso</div>
+                    <div className="text-sm text-gray-600">Controlado</div>
                   </div>
                   <div className="bg-purple-50 p-6 rounded-2xl">
                     <Heart className="h-8 w-8 text-purple-600 mb-2" />
-                    <div className="text-2xl font-bold text-gray-900">+50</div>
-                    <div className="text-sm text-gray-600">Recursos</div>
+                    <div className="text-2xl font-bold text-gray-900">Prático</div>
+                    <div className="text-sm text-gray-600">No dia a dia</div>
                   </div>
                   <div className="bg-orange-50 p-6 rounded-2xl">
                     <Shield className="h-8 w-8 text-orange-600 mb-2" />
                     <div className="text-2xl font-bold text-gray-900">LGPD</div>
-                    <div className="text-sm text-gray-600">Compliant</div>
+                    <div className="text-sm text-gray-600">Privacidade</div>
                   </div>
                 </div>
               </div>
@@ -189,7 +189,7 @@ export function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Prescrições Digitais</h3>
               <p className="text-gray-600">
-                Prescrições com assinatura digital, validação de medicamentos e integração com ANVISA.
+                Prescrições com registro no sistema, rastreabilidade e histórico para o paciente.
               </p>
             </div>
 
@@ -222,7 +222,7 @@ export function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Segurança Total</h3>
               <p className="text-gray-600">
-                Criptografia de ponta a ponta, conformidade com LGPD, auditoria completa e assinatura digital.
+                Controles de acesso, auditoria e recursos de privacidade para apoiar a conformidade com a LGPD.
               </p>
             </div>
 
@@ -233,7 +233,7 @@ export function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Exames e Laudos</h3>
               <p className="text-gray-600">
-                Solicitação de exames, upload de resultados, assinatura digital e histórico completo.
+                Solicitação de exames, upload de resultados e histórico completo.
               </p>
             </div>
 
@@ -270,7 +270,7 @@ export function LandingPage() {
               Por que escolher o HealthCare?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Benefícios comprovados que fazem a diferença no seu dia a dia
+              Benefícios que fazem a diferença no seu dia a dia
             </p>
           </div>
 
@@ -283,7 +283,7 @@ export function LandingPage() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">Economia de Tempo</h3>
                   <p className="text-gray-600">
-                    Reduza em até 70% o tempo gasto com tarefas administrativas. Foque no que realmente importa: o paciente.
+                    Reduza o tempo gasto com tarefas administrativas e foque no que realmente importa: o paciente.
                   </p>
                 </div>
               </div>
@@ -311,7 +311,7 @@ export function LandingPage() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">Segurança Garantida</h3>
                   <p className="text-gray-600">
-                    Conformidade total com LGPD. Seus dados e de seus pacientes 100% protegidos.
+                    Recursos de privacidade e segurança para apoiar a conformidade com a LGPD.
                   </p>
                 </div>
               </div>
@@ -387,7 +387,7 @@ export function LandingPage() {
             Pronto para transformar seu atendimento?
           </h2>
           <p className="text-xl text-blue-100 mb-10">
-            Junte-se a centenas de profissionais que já confiam no HealthCare
+            Junte-se a profissionais que confiam no HealthCare
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -410,7 +410,7 @@ export function LandingPage() {
           </div>
 
           <p className="text-blue-100 mt-8 text-sm">
-            Sem necessidade de cartão de crédito • Começar é gratuito • Suporte em português
+            Cadastro em minutos • Suporte em português
           </p>
         </div>
       </section>
@@ -469,7 +469,7 @@ export function LandingPage() {
             </p>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <Lock className="h-4 w-4" />
-              <span className="text-sm">Seguro e em conformidade com LGPD</span>
+              <span className="text-sm">Recursos de privacidade e segurança para apoiar a LGPD</span>
             </div>
           </div>
         </div>
