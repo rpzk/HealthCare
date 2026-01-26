@@ -59,15 +59,10 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Register service worker
+              // Disable custom service worker to avoid stale bundles in production
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-                    .then(function(reg) {
-                      try { console.info('[SW] registered:', reg.scope); } catch (e) { /* noop */ }
-                      try { reg.update(); } catch (e) { /* noop */ }
-                    })
-                    .catch(function(err) { try { console.warn('[SW] failed:', err); } catch (e) { /* noop */ } });
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  regs.forEach(function(reg) { reg.unregister().catch(function(){}); });
                 });
               }
             `
