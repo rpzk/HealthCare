@@ -892,6 +892,9 @@ interface Suggestions {
             
             {/* Ações */}
             <div className="flex items-center gap-1 flex-wrap">
+              <Badge variant="secondary" className="h-7 text-[10px] leading-none px-2">
+                UI Consulta v2 (modais)
+              </Badge>
               <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-xs" asChild>
                 <Link href={`/consultations/${consultationId}/tele`}>
                   <Video className="h-3 w-3 mr-1" /> Tele
