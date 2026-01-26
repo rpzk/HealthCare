@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Loader2 } from 'lucide-react'
+import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 
@@ -44,7 +45,6 @@ export function CIDAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<NodeJS.Timeout>()
 
   const fetchSuggestions = useCallback(async (query: string) => {
@@ -88,14 +88,9 @@ export function CIDAutocomplete({
   }, [value, fetchSuggestions])
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
+    if (!value || value.length < 2) {
+      setIsOpen(false)
     }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -132,72 +127,81 @@ export function CIDAutocomplete({
   }
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
-      <div className="relative">
-        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value)
-            setIsOpen(true)
-          }}
-          onFocus={() => {
-            if (value.length >= 2) setIsOpen(true)
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="pl-10"
-        />
-        {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-        )}
-      </div>
+    <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverPrimitive.Anchor asChild>
+        <div className={cn('relative', className)}>
+          <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={value}
+            onChange={(e) => {
+              const next = e.target.value
+              onChange(next)
+              if (next.length >= 2) setIsOpen(true)
+              else setIsOpen(false)
+            }}
+            onFocus={() => {
+              if (value.length >= 2) setIsOpen(true)
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled}
+            className="pl-10"
+          />
+          {isLoading && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
+      </PopoverPrimitive.Anchor>
 
-      {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-80 overflow-auto">
-          {suggestions.map((cid, index) => (
-            <div
-              key={cid.id}
-              className={cn(
-                'px-3 py-2 cursor-pointer border-b border-border last:border-0',
-                index === highlightIndex ? 'bg-accent' : 'hover:bg-muted/50'
-              )}
-              onClick={() => handleSelect(cid)}
-              onMouseEnter={() => setHighlightIndex(index)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-primary">
-                      {cid.code}
-                    </span>
-                    {cid.badges.map((badge, i) => (
-                      <Badge key={i} variant="outline" className="text-xs">
-                        {badge}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="text-sm text-foreground mt-1">
-                    {cid.display}
-                  </div>
-                  {cid.chapter && (
-                    <div className="text-xs text-muted-foreground">
-                      Cap. {cid.chapter}
-                    </div>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className={cn(
+            'z-50 w-[--radix-popover-trigger-width] rounded-md border bg-popover text-popover-foreground shadow-md outline-none',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
+            (suggestions.length > 0 ? 'p-0' : 'p-3')
+          )}
+        >
+          {suggestions.length > 0 ? (
+            <div className="max-h-80 overflow-auto">
+              {suggestions.map((cid, index) => (
+                <div
+                  key={cid.id}
+                  className={cn(
+                    'px-3 py-2 cursor-pointer border-b border-border last:border-0',
+                    index === highlightIndex ? 'bg-accent' : 'hover:bg-muted/50'
                   )}
+                  onClick={() => handleSelect(cid)}
+                  onMouseEnter={() => setHighlightIndex(index)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-primary">{cid.code}</span>
+                        {cid.badges.map((badge, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {badge}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="text-sm text-foreground mt-1">{cid.display}</div>
+                      {cid.chapter && (
+                        <div className="text-xs text-muted-foreground">Cap. {cid.chapter}</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {isOpen && value.length >= 2 && suggestions.length === 0 && !isLoading && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg p-3 text-center text-muted-foreground">
-          Nenhum código CID encontrado
-        </div>
-      )}
-    </div>
+          ) : value.length >= 2 && !isLoading ? (
+            <div className="text-center text-muted-foreground">Nenhum código CID encontrado</div>
+          ) : null}
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
   )
 }

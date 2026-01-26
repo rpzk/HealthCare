@@ -197,7 +197,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const chunksRef = useRef<Blob[]>([])
 
   // UI states
-  const [showHistory, setShowHistory] = useState(true)
+  const [showHistory, setShowHistory] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
 
   // Estados dos modais de edição
