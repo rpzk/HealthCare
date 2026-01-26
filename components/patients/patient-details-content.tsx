@@ -29,21 +29,33 @@ import { PatientCareTeam } from '@/components/patients/patient-care-team'
 
 interface Consultation {
   id: string
-  scheduledDate: Date
+  scheduledDate: string | Date
   assessment?: string | null
   notes?: string | null
 }
 
 interface Prescription {
   id: string
-  createdAt: Date
+  createdAt: string | Date
   status: string
 }
 
 interface ExamRequest {
   id: string
-  createdAt: Date
+  createdAt: string | Date
   status: string
+}
+
+interface Address {
+  id?: string
+  street: string
+  number: string
+  complement?: string | null
+  neighborhood?: string | null
+  city: string
+  state: string
+  zipCode?: string | null
+  isPrimary?: boolean
 }
 
 interface Patient {
@@ -52,19 +64,20 @@ interface Patient {
   cpf?: string | null
   email?: string | null
   phone?: string | null
-  birthDate?: Date | null
+  birthDate?: string | Date | null
   gender?: string | null
   address?: string | null
   city?: string | null
   state?: string | null
   zipCode?: string | null
   bloodType?: string | null
-  allergies?: string | null
+  allergies?: string | string[] | null
   observations?: string | null
   createdAt?: Date
   consultations?: Consultation[]
   prescriptions?: Prescription[]
   ExamRequest?: ExamRequest[]
+  addresses?: Address[]
 }
 
 interface PatientDetailsContentProps {
@@ -76,10 +89,29 @@ interface PatientDetailsContentProps {
 export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview' }: PatientDetailsContentProps) {
   const [activeTab, setActiveTab] = useState(defaultTab)
 
-  const calculateAge = (birthDate: Date | null | undefined) => {
+  const formatZipCodePtBR = (zip: string | null | undefined) => {
+    if (!zip) return ''
+    const digits = String(zip).replace(/\D/g, '')
+    if (digits.length === 8) return `${digits.slice(0, 5)}-${digits.slice(5)}`
+    return String(zip)
+  }
+
+  const toSafeBirthDate = (birthDate: string | Date | null | undefined): Date | null => {
     if (!birthDate) return null
+    const raw = typeof birthDate === 'string' ? birthDate : birthDate.toISOString()
+    const dateOnly = raw.slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      const parsed = new Date(raw)
+      return isNaN(parsed.getTime()) ? null : parsed
+    }
+    const safe = new Date(`${dateOnly}T12:00:00.000Z`)
+    return isNaN(safe.getTime()) ? null : safe
+  }
+
+  const calculateAge = (birthDate: string | Date | null | undefined) => {
+    const birth = toSafeBirthDate(birthDate)
+    if (!birth) return null
     const today = new Date()
-    const birth = new Date(birthDate)
     let age = today.getFullYear() - birth.getFullYear()
     const monthDiff = today.getMonth() - birth.getMonth()
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
@@ -89,6 +121,22 @@ export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview
   }
 
   const age = calculateAge(patient.birthDate)
+
+  const allergies = parseAllergies(patient.allergies)
+  const primaryAddress = patient.addresses?.find((a) => a.isPrimary) || patient.addresses?.[0]
+  const addressText = primaryAddress
+    ? [
+        primaryAddress.street,
+        primaryAddress.number,
+        primaryAddress.complement,
+        primaryAddress.neighborhood,
+        primaryAddress.city,
+        primaryAddress.state,
+        formatZipCodePtBR(primaryAddress.zipCode),
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : (patient.address || [patient.address, patient.city, patient.state, formatZipCodePtBR(patient.zipCode)].filter(Boolean).join(', ') || '')
 
   return (
     <div className="space-y-6">
@@ -144,10 +192,12 @@ export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview
                   <div>
                     <p className="text-sm text-gray-500">Data de Nascimento</p>
                     <p className="font-medium">
-                      {patient.birthDate 
-                        ? `${new Date(patient.birthDate).toLocaleDateString('pt-BR')} (${age} anos)`
-                        : 'Não informado'
-                      }
+                      {(() => {
+                        const birth = toSafeBirthDate(patient.birthDate)
+                        if (!birth) return 'Não informado'
+                        const ageText = typeof age === 'number' ? ` (${age} anos)` : ''
+                        return `${birth.toLocaleDateString('pt-BR')}${ageText}`
+                      })()}
                     </p>
                   </div>
                   <div>
@@ -169,13 +219,11 @@ export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview
                     <Mail className="h-4 w-4 text-gray-400" />
                     <p>{patient.email || 'Email não informado'}</p>
                   </div>
-                  {(patient.address || patient.city) && (
+                  {addressText && (
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-gray-400 mt-1" />
                       <p>
-                        {[patient.address, patient.city, patient.state, patient.zipCode]
-                          .filter(Boolean)
-                          .join(', ')}
+                        {addressText}
                       </p>
                     </div>
                   )}
@@ -192,13 +240,13 @@ export function PatientDetailsContent({ patient, onClose, defaultTab = 'overview
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {patient.allergies ? (
+                {allergies.length > 0 ? (
                   <div>
                     <p className="text-sm text-gray-500 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4 text-amber-500" />
                       Alergias
                     </p>
-                    <p className="font-medium text-red-600">{patient.allergies}</p>
+                    <p className="font-medium text-red-600">{allergies.join(', ')}</p>
                   </div>
                 ) : (
                   <div>

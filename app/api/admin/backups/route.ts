@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
 
     try {
       // Criar arquivo temporário com a credencial (evita truncamento de env var)
-      const fs = require('fs/promises')
-      const os = require('os')
+      const fs = await import('fs/promises')
+      const os = await import('os')
       const tempSAFile = path.join(os.tmpdir(), `gdrive-sa-${Date.now()}.json`)
       
       if (gdriveServiceAccountJson) {
@@ -154,11 +154,6 @@ export async function POST(request: NextRequest) {
           GDRIVE_SERVICE_ACCOUNT_FILE: gdriveServiceAccountJson ? tempSAFile : '',
           GDRIVE_FOLDER_ID: gdriveFolderId || '',
           APP_ROOT: process.cwd(),
-          // Ensure pg_dump can connect inside container
-          POSTGRES_HOST: 'postgres',
-          POSTGRES_USER: 'healthcare',
-          POSTGRES_DB: 'healthcare_db',
-          POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || '',
           GDRIVE_IMPERSONATE: gdriveImpersonate || '',
         },
       })

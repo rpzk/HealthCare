@@ -93,8 +93,8 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
       // 2. Prontuários de pacientes atribuídos
       const assignedPatients = await prisma.patientCareTeam.findMany({
         where: {
-          professionalId: user.id,
-          status: 'ACTIVE'
+          userId: user.id,
+          isActive: true
         },
         select: { patientId: true }
       })
@@ -177,7 +177,7 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
             select: { id: true, fileName: true, fileSize: true }
           },
           aiAnalysis: {
-            select: { id: true, findings: true }
+            select: { id: true, analysisType: true, confidence: true, createdAt: true }
           }
         }
       })
@@ -191,6 +191,7 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
       `query:${page}:${limit}`,
       user.id,
       user.role,
+      (user as any).email,
       { filters: validatedFilters }
     )
 
@@ -258,6 +259,7 @@ export const POST = withAuth(async (request: NextRequest, { user }) => {
         'new',
         user.id,
         user.role || 'UNKNOWN',
+        (user as any).email,
         `Validation error: ${errors}`
       )
 
@@ -286,19 +288,20 @@ export const POST = withAuth(async (request: NextRequest, { user }) => {
       record.id,
       record,
       user.id,
-      user.role || 'DOCTOR'
+      user.role || 'DOCTOR',
+      (user as any).email
     )
 
     // 🔔 Send notification to patient
     try {
-      const patient = await prisma.patient.findUnique({
-        where: { id: data.patientId },
-        select: { userId: true }
+      const patientUser = await prisma.user.findFirst({
+        where: { patientId: data.patientId },
+        select: { id: true },
       })
-      
-      if (patient?.userId) {
+
+      if (patientUser?.id) {
         await notificationService.createNotification({
-          userId: patient.userId,
+          userId: patientUser.id,
           type: 'MEDICAL_RECORD',
           title: 'Novo Prontuário Criado',
           message: `Um novo prontuário foi criado: ${data.title}`,
@@ -328,6 +331,7 @@ export const POST = withAuth(async (request: NextRequest, { user }) => {
       'new',
       user.id,
       user.role || 'UNKNOWN',
+      (user as any).email,
       error instanceof Error ? error.message : 'Unknown error'
     )
 

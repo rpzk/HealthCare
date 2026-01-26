@@ -2,6 +2,8 @@
  * Templates padrão para documentos
  */
 
+import { logger } from '@/lib/logger'
+
 export const DEFAULT_TEMPLATES = {
   prescription: {
     name: 'Prescrição Padrão',

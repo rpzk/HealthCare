@@ -18,11 +18,25 @@ function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= MIN_LEVEL
 }
 
+function print(prefix: string, args: unknown[]): void {
+  // Edge runtime supports console; keep it small.
+  // eslint-disable-next-line no-console
+  console.log(prefix, ...args)
+}
+
 export const logger = {
-  debug: (...args: unknown[]) => shouldLog('debug') && logger.info('[DEBUG]', ...args),
-  info: (...args: unknown[]) => shouldLog('info') && logger.info('[INFO]', ...args),
-  warn: (...args: unknown[]) => shouldLog('warn') && logger.warn('[WARN]', ...args),
-  error: (...args: unknown[]) => logger.error('[ERROR]', ...args), // Always log errors
+  debug: (...args: unknown[]): void => {
+    if (shouldLog('debug')) print('[DEBUG]', args)
+  },
+  info: (...args: unknown[]): void => {
+    if (shouldLog('info')) print('[INFO]', args)
+  },
+  warn: (...args: unknown[]): void => {
+    if (shouldLog('warn')) print('[WARN]', args)
+  },
+  error: (...args: unknown[]): void => {
+    print('[ERROR]', args)
+  },
 }
 
 export function createRequestId(): string {

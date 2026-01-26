@@ -223,6 +223,8 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
   const [isSigned, setIsSigned] = useState(false)
+  const [signatureValid, setSignatureValid] = useState(false)
+  const [signatureReason, setSignatureReason] = useState<string | null>(null)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
 
   const fetchPrescription = useCallback(async () => {
@@ -241,8 +243,35 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
         : null
 
       setData({ ...json, verificationUrl: fullUrl })
-      setIsSigned(!!json?.digitalSignature)
-      if (fullUrl) setVerificationUrl(fullUrl)
+
+      // Signature status should come from SignedDocument metadata (not only from a stored token)
+      const sigRes = await fetch(`/api/prescriptions/${id}/signature`)
+      if (sigRes.ok) {
+        const s = await sigRes.json()
+        if (s?.signed) {
+          setIsSigned(true)
+          setSignatureValid(!!s?.valid)
+          setSignatureReason(s?.reason ?? null)
+
+          const sigVerificationUrl = s?.verificationUrl
+            ? (s.verificationUrl.startsWith('http') ? s.verificationUrl : `${baseUrl}${s.verificationUrl}`)
+            : null
+          setVerificationUrl(sigVerificationUrl)
+        } else {
+          // Fallback: if legacy record has a signature token but no audit trail, don't claim validity.
+          const legacyHasSignature = !!json?.digitalSignature
+          setIsSigned(legacyHasSignature)
+          setSignatureValid(false)
+          setSignatureReason(legacyHasSignature ? 'SEM_TRILHA_DE_VALIDACAO' : null)
+          setVerificationUrl(fullUrl)
+        }
+      } else {
+        const legacyHasSignature = !!json?.digitalSignature
+        setIsSigned(legacyHasSignature)
+        setSignatureValid(false)
+        setSignatureReason(legacyHasSignature ? 'VALIDACAO_INDISPONIVEL' : null)
+        setVerificationUrl(fullUrl)
+      }
 
       // Load signature policy
       const policyRes = await fetch('/api/system/signature-policy')
@@ -307,11 +336,13 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       const result = await res.json()
       setData(prev => prev ? ({ ...prev, digitalSignature: result.signature }) : null)
       setIsSigned(true)
+      setSignatureValid(true)
+      setSignatureReason(null)
       if (result?.verificationUrl) setVerificationUrl(result.verificationUrl)
       setShowPasswordDialog(false)
       setPassword('')
       
-      success('Prescrição assinada!', 'A assinatura digital foi aplicada com sucesso')
+      success('Prescrição assinada!', 'A assinatura foi registrada no sistema')
     } catch (e) {
       showError('Erro ao assinar', (e as Error).message)
     } finally {
@@ -554,12 +585,23 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Assinatura Digital</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Assinatura</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Badge variant="outline" className={isSigned ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'}>
-                    {isSigned ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                    <span className="ml-1">{isSigned ? 'Assinada' : 'Não Assinada'}</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      signatureValid
+                        ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200'
+                        : isSigned
+                          ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200'
+                          : 'bg-gray-100 text-gray-800 border-gray-200'
+                    }
+                  >
+                    {signatureValid ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    <span className="ml-1">
+                      {signatureValid ? 'Validada' : isSigned ? 'Registrada' : 'Não Assinada'}
+                    </span>
                   </Badge>
                 </CardContent>
               </Card>
@@ -581,17 +623,17 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
             </div>
 
             {/* Alert Messages */}
-            {isSigned && (
+            {signatureValid && (
               <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10 screen-only">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-green-900 dark:text-green-300">
-                        Documento assinado digitalmente
+                        Assinatura registrada (certificado configurado)
                       </p>
                       <p className="text-xs text-green-700 dark:text-green-400 mt-1">
-                        Esta prescrição possui validade jurídica
+                        Use “Verificar” para checagem de metadados
                       </p>
                     </div>
                     {verificationUrl && (
@@ -610,13 +652,44 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
               </Card>
             )}
 
+            {isSigned && !signatureValid && (
+              <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10 screen-only">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-yellow-900 dark:text-yellow-300">
+                        Assinatura registrada (não validada)
+                      </p>
+                      {signatureReason && (
+                        <p className="text-xs text-yellow-800 dark:text-yellow-300 mt-1">
+                          Motivo: {signatureReason}
+                        </p>
+                      )}
+                    </div>
+                    {verificationUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(verificationUrl!, '_blank')}
+                        className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+                      >
+                        <LinkIcon className="h-4 w-4 mr-1" />
+                        Verificar
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {!isSigned && requireSignBeforePrint && (
               <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10 screen-only">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                     <p className="text-sm text-yellow-900 dark:text-yellow-300">
-                      Este documento deve ser assinado digitalmente antes de imprimir ou compartilhar
+                      Este documento requer assinatura registrada no sistema antes de imprimir ou compartilhar
                     </p>
                   </div>
                 </CardContent>
@@ -842,7 +915,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
                     <div>
                       <div className="border-2 border-green-600 p-4 rounded bg-green-50">
                         <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                        <p className="font-bold text-green-800 text-sm mb-2">DOCUMENTO ASSINADO DIGITALMENTE</p>
+                        <p className="font-bold text-green-800 text-sm mb-2">ASSINATURA REGISTRADA</p>
                         <p className="text-xs text-green-700">
                           Assinado em {format(new Date(data.digitalSignature.signedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
@@ -862,7 +935,7 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
                               {verificationUrl}
                             </p>
                             <p className="text-xs text-gray-600 mt-2 italic">
-                              Escaneie o QR Code ou acesse o link acima para verificar a autenticidade
+                              Escaneie o QR Code ou acesse o link acima para ver detalhes do registro e validade do certificado
                             </p>
                           </div>
                         )}
@@ -882,11 +955,11 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
                 {isSigned && (
                   <>
                     <p className="font-bold text-green-700 mt-1">
-                      ✓ Documento com validade jurídica - ICP-Brasil
+                      ✓ Documento com assinatura registrada
                     </p>
                     {verificationUrl && (
                       <p className="text-xs text-gray-600 mt-2">
-                        Para garantir a autenticidade deste documento, verifique a assinatura digital através do QR Code ou link acima
+                        Verifique o registro de assinatura através do QR Code ou link acima
                       </p>
                     )}
                   </>
@@ -901,9 +974,9 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assinar Prescrição Digitalmente</DialogTitle>
+            <DialogTitle>Assinar Prescrição</DialogTitle>
             <DialogDescription>
-              Digite a senha do seu certificado digital A1 para assinar esta prescrição
+              Digite a senha do seu certificado A1 para assinar esta prescrição
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">

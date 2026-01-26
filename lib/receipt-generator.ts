@@ -173,7 +173,7 @@ export class ReceiptGenerator {
     
     yPos += 6
     doc.text(
-      'Este documento possui validade jurídica conforme Lei 12.682/2012',
+      'Documento gerado eletronicamente. Consulte os registros do sistema para validação.',
       105,
       yPos,
       { align: 'center' }

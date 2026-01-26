@@ -96,7 +96,7 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     // Hash and validation with QR code
     doc.fontSize(10).text(`Hash: ${input.certificate.hash}`);
     if (input.certificate.signature) {
-      doc.fontSize(10).text(`Assinatura Digital: ${input.certificate.signature.substring(0, 32)}...`);
+      doc.fontSize(10).text(`Assinatura registrada: ${input.certificate.signature.substring(0, 32)}...`);
       if (input.certificate.signatureMethod) {
         doc.fontSize(9).fillColor('gray').text(`Método: ${input.certificate.signatureMethod}`);
         doc.fillColor('black');

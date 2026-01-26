@@ -43,7 +43,7 @@ export class WaitingListService {
           doctorId: data.doctorId,
           specialty: data.specialty,
           preferredDays: data.preferredDays || [],
-          preferredTimes: data.preferredTimes || ['MORNING', 'AFTERNOON'],
+          preferredTimes: data.preferredTimes || [],
           priority: data.priority || 5,
           urgencyReason: data.urgencyReason,
           notes: data.notes,
@@ -56,16 +56,30 @@ export class WaitingListService {
         }
       })
 
-      // Notificar recepção
-      await prisma.notification.create({
-        data: {
-          userId: data.doctorId || 'ADMIN', // Se não tem médico específico, notifica admin
-          title: '📋 Novo paciente na fila de espera',
-          message: `${waitingList.patient.name} entrou na fila${data.urgencyReason ? ` - ${data.urgencyReason}` : ''}`,
-          type: 'WAITING_LIST',
-          read: false,
-        }
-      })
+      // Notificar profissional responsável (ou um admin real, se não houver médico específico)
+      const fallbackAdmin = !data.doctorId
+        ? await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } })
+        : null
+
+      const notifyUserId = data.doctorId || fallbackAdmin?.id
+
+      if (notifyUserId) {
+        await prisma.notification.create({
+          data: {
+            userId: notifyUserId,
+            title: '📋 Novo paciente na fila de espera',
+            message: `${waitingList.patient.name} entrou na fila${data.urgencyReason ? ` - ${data.urgencyReason}` : ''}`,
+            type: 'WAITING_LIST',
+            read: false,
+            metadata: {
+              waitingListId: waitingList.id,
+              patientId: waitingList.patientId,
+              doctorId: waitingList.doctorId,
+              actionUrl: `/appointments/waiting-list/${waitingList.id}`,
+            },
+          },
+        })
+      }
 
       return waitingList
     } catch (error) {

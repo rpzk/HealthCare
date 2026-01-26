@@ -297,8 +297,8 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
   },
   {
     name: 'signature.digital',
-    description: 'Indicador de assinatura digital',
-    example: '✓ Assinado Digitalmente',
+    description: 'Indicador de assinatura registrada',
+    example: '✓ Assinatura registrada',
     type: 'html',
     category: 'signature',
   },

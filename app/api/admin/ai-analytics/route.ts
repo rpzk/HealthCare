@@ -86,9 +86,10 @@ async function getAIAnalyticsOverview() {
     },
     securityMetrics: {
       totalSecurityEvents: detectorStats.recentEventsCount,
-      criticalAlertsLast24h: Math.floor(Math.random() * 3), // Simulado
-      averageResponseTime: '12ms',
-      systemUptime: '99.9%'
+      // Sem dados simulados: se não houver fonte real, não reportar números fictícios.
+      criticalAlertsLast24h: null,
+      averageResponseTime: null,
+      systemUptime: null
     }
   }
 }
@@ -102,22 +103,22 @@ async function getAnomalyDetectionStats() {
   return {
     detectionEngine: {
       status: 'ACTIVE',
-      totalPatternsLearned: detectorStats.userProfilesCount * 5, // Aproximação
-      confidenceLevel: '94.2%',
-      falsePositiveRate: '2.1%'
+      totalPatternsLearned: detectorStats.userProfilesCount,
+      confidenceLevel: null,
+      falsePositiveRate: null
     },
     anomalyTypes: {
-      rateSpikeDetections: Math.floor(Math.random() * 15),
-      unusualHoursActivity: Math.floor(Math.random() * 8),
+      rateSpikeDetections: null,
+      unusualHoursActivity: null,
       suspiciousIPActivity: detectorStats.suspiciousIPsCount,
-      failedAuthBursts: Math.floor(Math.random() * 5),
-      endpointAbuse: Math.floor(Math.random() * 10)
+      failedAuthBursts: null,
+      endpointAbuse: null
     },
     mlMetrics: {
-      modelAccuracy: '96.8%',
-      learningRate: 'ADAPTIVE',
-      lastModelUpdate: Date.now() - (2 * 60 * 60 * 1000), // 2 horas atrás
-      nextModelUpdate: Date.now() + (6 * 60 * 60 * 1000)  // Em 6 horas
+      modelAccuracy: null,
+      learningRate: null,
+      lastModelUpdate: null,
+      nextModelUpdate: null
     }
   }
 }
@@ -129,9 +130,7 @@ async function getRealTimeThreats() {
   const redisStats = await createRedisRateLimiter().getStats()
   
   return {
-    activeThreats: [
-      // Ameaças reais detectadas pelo sistema de rate limiting
-    ],
+    activeThreats: [],
     threatSummary: {
       critical: 0,
       high: 0,
@@ -139,14 +138,7 @@ async function getRealTimeThreats() {
       low: 0,
       totalBlocked: redisStats.blockedUsers
     },
-    recentBlocks: [
-      {
-        userId: 'user-123',
-        reason: 'Rate limit exceeded',
-        timestamp: Date.now() - (10 * 60 * 1000),
-        duration: '300000ms'
-      }
-    ]
+    recentBlocks: []
   }
 }
 
@@ -159,29 +151,20 @@ async function getUserBehaviorAnalysis() {
   return {
     behaviorProfiles: {
       totalProfiles: detectorStats.userProfilesCount,
-      profilesUpdatedToday: Math.floor(detectorStats.userProfilesCount * 0.3),
-      averageAccuracyScore: '92.4%',
-      behaviorPatternsLearned: detectorStats.userProfilesCount * 8 // Aproximação
+      profilesUpdatedToday: null,
+      averageAccuracyScore: null,
+      behaviorPatternsLearned: null
     },
     userSegments: {
-      normalUsers: Math.floor(detectorStats.userProfilesCount * 0.85),
-      flaggedUsers: Math.floor(detectorStats.userProfilesCount * 0.10),
-      suspiciousUsers: Math.floor(detectorStats.userProfilesCount * 0.05)
+      normalUsers: null,
+      flaggedUsers: null,
+      suspiciousUsers: null
     },
     activityPatterns: {
-      peakHours: [9, 10, 11, 14, 15, 16],
-      averageSessionDuration: '24 minutes',
-      mostAccessedEndpoints: [
-        '/api/patients',
-        '/api/consultations', 
-        '/api/ai/analyze-symptoms',
-        '/api/dashboard'
-      ],
-      deviceTypes: {
-        desktop: '68%',
-        mobile: '25%',
-        tablet: '7%'
-      }
+      peakHours: null,
+      averageSessionDuration: null,
+      mostAccessedEndpoints: [],
+      deviceTypes: null
     }
   }
 }
@@ -194,31 +177,40 @@ async function getPerformanceMetrics() {
   
   return {
     systemPerformance: {
-      averageResponseTime: '12ms',
-      p95ResponseTime: '45ms',
-      p99ResponseTime: '120ms',
-      errorRate: '0.1%',
-      throughput: '1,250 req/min'
+      averageResponseTime: null,
+      p95ResponseTime: null,
+      p99ResponseTime: null,
+      errorRate: null,
+      throughput: null
     },
     redisPerformance: {
       connected: redisStats.redisConnected,
-      averageLatency: redisStats.redisConnected ? '2ms' : 'N/A',
-      hitRate: redisStats.redisConnected ? '96.8%' : 'N/A',
-      memoryUsage: redisStats.redisConnected ? '45MB' : 'N/A',
+      averageLatency: null,
+      hitRate: null,
+      memoryUsage: null,
       fallbackUsage: redisStats.memoryFallbackEntries
     },
     aiPerformance: {
-      averageAnalysisTime: '8ms',
-      anomaliesProcessed: '15,420',
-      modelPredictionAccuracy: '94.2%',
-      learningEfficiency: '98.7%'
+      averageAnalysisTime: null,
+      anomaliesProcessed: detectorStatsFromAnomalyDetectorSafe(),
+      modelPredictionAccuracy: null,
+      learningEfficiency: null
     },
     resourceUtilization: {
-      cpuUsage: '35%',
-      memoryUsage: '512MB',
-      diskUsage: '2.1GB',
-      networkThroughput: '150 Mbps'
+      cpuUsage: null,
+      memoryUsage: null,
+      diskUsage: null,
+      networkThroughput: null
     }
+  }
+}
+
+function detectorStatsFromAnomalyDetectorSafe(): number {
+  try {
+    const s = aiAnomalyDetector.getDetectorStats()
+    return s?.recentEventsCount || 0
+  } catch {
+    return 0
   }
 }
 

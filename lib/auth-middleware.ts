@@ -23,9 +23,12 @@ export async function authMiddleware(
   request: NextRequest,
   options: { requireRole?: string[] } = {}
 ): Promise<{ success: boolean; user?: AuthUser; error?: string; response?: NextResponse }> {
+  const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.env.BUILD_TIME === '1'
+  const isProduction = process.env.NODE_ENV === 'production'
+
   try {
-    // DEV/TEST bypass: allow injecting a fake user via header when enabled explicitly
-    if (process.env.ALLOW_TEST_BYPASS === 'true') {
+    // DEV/TEST bypass (never in production): allow injecting a user via headers when enabled explicitly
+    if (!isProduction && process.env.ALLOW_TEST_BYPASS === 'true') {
       const testUser = request.headers.get('x-test-user')
       if (testUser) {
         const role = request.headers.get('x-test-role') || 'ADMIN'
@@ -111,7 +114,19 @@ export async function authMiddleware(
     }
 
   } catch (error) {
-    logger.error('Erro no middleware de autenticação:', error)
+    // During build/SSG there may be no valid request context; avoid noisy logs.
+    if (isBuild) {
+      return {
+        success: false,
+        error: 'Token de autenticação não encontrado',
+        response: NextResponse.json(
+          { error: 'Não autorizado - Token não encontrado' },
+          { status: 401 }
+        )
+      }
+    }
+
+    logger.error({ error }, 'Erro no middleware de autenticação')
     return {
       success: false,
       error: 'Erro interno de autenticação',

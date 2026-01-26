@@ -4,6 +4,8 @@
 // - patient_full_export_total{format="json|zip"}
 // - patient_full_export_duration_ms (histogram)
 
+import { logger } from '@/lib/logger'
+
 type CounterKey = string
 type HistogramKey = string
 

@@ -71,6 +71,8 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
   const [resultText, setResultText] = useState('')
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
   const [isSigned, setIsSigned] = useState(false)
+  const [signatureValid, setSignatureValid] = useState(false)
+  const [signatureReason, setSignatureReason] = useState<string | null>(null)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
 
   const fetchExamRequest = useCallback(async () => {
@@ -88,7 +90,13 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
         const s = await sigRes.json()
         if (s?.signed) {
           setIsSigned(true)
+          setSignatureValid(!!s?.valid)
+          setSignatureReason(s?.reason ?? null)
           if (s?.verificationUrl) setVerificationUrl(s.verificationUrl)
+        } else {
+          setIsSigned(false)
+          setSignatureValid(false)
+          setSignatureReason(null)
         }
       }
 
@@ -133,12 +141,14 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
       const result = await res.json()
       if (result?.verificationUrl) setVerificationUrl(result.verificationUrl)
       setIsSigned(true)
+      setSignatureValid(true)
+      setSignatureReason(null)
       setShowPasswordDialog(false)
       setPassword('')
       
       toast({ 
         title: 'Solicitação assinada!', 
-        description: 'A assinatura digital foi aplicada com sucesso' 
+        description: 'Registro de assinatura criado. Use “Verificar” para checar janela/estado do certificado.' 
       })
     } catch (e) {
       toast({ 
@@ -442,12 +452,23 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Assinatura Digital</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Assinatura</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Badge variant="outline" className={isSigned ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'}>
-                    {isSigned ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                    <span className="ml-1">{isSigned ? 'Assinada' : 'Não Assinada'}</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      signatureValid
+                        ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200'
+                        : isSigned
+                          ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200'
+                          : 'bg-gray-100 text-gray-800 border-gray-200'
+                    }
+                  >
+                    {signatureValid ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    <span className="ml-1">
+                      {signatureValid ? 'Validada' : isSigned ? 'Registrada' : 'Não Assinada'}
+                    </span>
                   </Badge>
                 </CardContent>
               </Card>
@@ -466,17 +487,17 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
             </div>
 
             {/* Alert Messages */}
-            {isSigned && (
+            {signatureValid && (
               <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-green-900 dark:text-green-300">
-                        Documento assinado digitalmente
+                        Assinatura registrada (certificado configurado)
                       </p>
                       <p className="text-xs text-green-700 dark:text-green-400 mt-1">
-                        Esta solicitação possui validade jurídica
+                        Use “Verificar” para checagem de metadados
                       </p>
                     </div>
                     {verificationUrl && (
@@ -495,13 +516,44 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
               </Card>
             )}
 
+            {isSigned && !signatureValid && (
+              <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-yellow-900 dark:text-yellow-300">
+                        Assinatura registrada (não validada)
+                      </p>
+                      {signatureReason && (
+                        <p className="text-xs text-yellow-800 dark:text-yellow-300 mt-1">
+                          Motivo: {signatureReason}
+                        </p>
+                      )}
+                    </div>
+                    {verificationUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(verificationUrl!, '_blank')}
+                        className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+                      >
+                        <LinkIcon className="h-4 w-4 mr-1" />
+                        Verificar
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {!isSigned && requireSignBeforePrint && (
               <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                     <p className="text-sm text-yellow-900 dark:text-yellow-300">
-                      Este documento deve ser assinado digitalmente antes de imprimir ou compartilhar
+                      Este documento requer assinatura registrada no sistema antes de imprimir ou compartilhar
                     </p>
                   </div>
                 </CardContent>

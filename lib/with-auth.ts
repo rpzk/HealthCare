@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authMiddleware } from './auth-middleware'
+import { logger } from '@/lib/logger'
 
 export interface AuthenticatedUser {
   id: string
@@ -79,7 +80,6 @@ export function withAuth(
  * Evita replicar listas de roles em cada rota e centraliza política.
  */
 import { isAllowed } from './rbac'
-import { logger } from '@/lib/logger'
 export function withRbac(
   action: string,
   handler: AuthenticatedApiHandler

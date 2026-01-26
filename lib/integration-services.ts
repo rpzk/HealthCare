@@ -29,6 +29,15 @@ export const CartorioService = {
     timestamp: Date
   }> {
     try {
+      // Integração real depende de configuração externa. Não gerar identificadores fictícios.
+      if (!process.env.CARTORIO_API_URL) {
+        return {
+          success: false,
+          error: 'Integração com Cartório não configurada (CARTORIO_API_URL ausente)',
+          timestamp: new Date(),
+        }
+      }
+
       const certificate = await prisma.medicalCertificate.findUnique({
         where: { id: certificateId },
         include: {
@@ -71,7 +80,7 @@ export const CartorioService = {
         // Parties involved
         patient: {
           name: certificate.patient.name,
-          cpf: certificate.patient.cpf || 'N/A',
+          cpf: certificate.patient.cpf ?? null,
           email: certificate.patient.email
         },
         doctor: {
@@ -95,38 +104,21 @@ export const CartorioService = {
         data: {
           integrationName: 'CARTORIO',
           certificateId,
-          status: 'SUBMITTED',
+          status: 'ERROR',
           requestPayload: JSON.stringify(payload),
           responseData: JSON.stringify({
-            message: 'Cartório submission prepared for external API',
+            message: 'Cartório submission payload prepared, but external API call is not implemented',
             cartorioId,
             registrationType
           })
         }
       })
 
-      // Generate mock protocol number (in production, this would come from Cartório API response)
-      const protocolNumber = `CART-${certificateId.slice(0, 8).toUpperCase()}-${Date.now()}`
-
-      // TODO: Integrate with actual Cartório API
-      // Steps:
-      // 1. Connect to Cartório SOAP/REST endpoint
-      // 2. Send payload with signed certificate
-      // 3. Receive protocol number and timestamp
-      // 4. Store protocol in database
-      // 5. Handle Cartório-specific error responses
-
-      logger.info('[Cartório Integration] Submission prepared:', {
-        cartorioId,
-        certificateId,
-        protocolNumber,
-        registrationType
-      })
-
+      // TODO: Integrate with actual Cartório API using CARTORIO_API_URL.
       return {
-        success: true,
-        protocolNumber,
-        timestamp: new Date()
+        success: false,
+        error: 'Integração com Cartório ainda não implementada (API externa não chamada)',
+        timestamp: new Date(),
       }
     } catch (error) {
       logger.error('[Cartório Error]', error)
@@ -145,26 +137,26 @@ export const CartorioService = {
     protocolNumber: string,
     cartorioId: string
   ): Promise<{
-    status: 'SUBMITTED' | 'PROCESSING' | 'APPROVED' | 'REJECTED'
+    status: 'SUBMITTED' | 'PROCESSING' | 'APPROVED' | 'REJECTED' | 'ERROR'
     details?: string
     error?: string
   }> {
     try {
-      // TODO: Query Cartório API for protocol status
-      // This would typically involve:
-      // 1. Send SOAP/REST request with protocolNumber
-      // 2. Parse Cartório response
-      // 3. Map status codes to our enum
-      // 4. Return with any details/messages
+      if (!process.env.CARTORIO_API_URL) {
+        return {
+          status: 'ERROR',
+          error: 'Integração com Cartório não configurada (CARTORIO_API_URL ausente)',
+        }
+      }
 
-      logger.info('[Cartório] Checking status:', protocolNumber)
+      logger.info('[Cartório] Checking status (not implemented):', protocolNumber)
       return {
-        status: 'PROCESSING',
-        details: 'Consulta em progresso no cartório'
+        status: 'ERROR',
+        error: 'Integração com Cartório ainda não implementada (API externa não chamada)',
       }
     } catch (error) {
       return {
-        status: 'SUBMITTED',
+        status: 'ERROR',
         error: error instanceof Error ? error.message : 'Erro ao verificar status'
       }
     }
@@ -190,6 +182,15 @@ export const SUSService = {
     timestamp: Date
   }> {
     try {
+      // Integração real depende de configuração externa. Não gerar identificadores fictícios.
+      if (!process.env.SUS_API_URL) {
+        return {
+          success: false,
+          error: 'Integração com SUS não configurada (SUS_API_URL ausente)',
+          timestamp: new Date(),
+        }
+      }
+
       const certificate = await prisma.medicalCertificate.findUnique({
         where: { id: certificateId },
         include: {
@@ -210,7 +211,7 @@ export const SUSService = {
       const payload = {
         // SUS identifiers
         susNumber: susRegistration,
-        cpf: certificate.patient.cpf || 'N/A',
+        cpf: certificate.patient.cpf ?? null,
 
         // Certificate details
         certificateType: certificate.type,
@@ -246,36 +247,25 @@ export const SUSService = {
         data: {
           integrationName: 'SUS',
           certificateId,
-          status: 'SUBMITTED',
+          status: 'ERROR',
           requestPayload: JSON.stringify(payload),
           responseData: JSON.stringify({
-            message: 'SUS registration prepared for external API',
+            message: 'SUS registration payload prepared, but external API call is not implemented',
             susNumber: susRegistration
           })
         }
       })
 
-      // Generate mock SUS record ID
-      const susRecordId = `SUS-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-
-      // TODO: Integrate with actual SUS API
-      // Steps:
-      // 1. Connect to SUS DATASUS endpoint
-      // 2. Authenticate with clinic credentials
-      // 3. Send certificate data in SUS format (HL7 or similar)
-      // 4. Receive SUS record ID
-      // 5. Handle SUS-specific error responses (invalid CPF, SUS number, etc.)
-
-      logger.info('[SUS Integration] Medical record registration prepared:', {
+      // TODO: Integrate with actual SUS API using SUS_API_URL.
+      logger.info('[SUS Integration] Registration queued (not implemented):', {
         susRegistration,
         certificateId,
-        susRecordId
       })
 
       return {
-        success: true,
-        susRecordId,
-        timestamp: new Date()
+        success: false,
+        error: 'Integração com SUS ainda não implementada (API externa não chamada)',
+        timestamp: new Date(),
       }
     } catch (error) {
       logger.error('[SUS Error]', error)
@@ -347,6 +337,15 @@ export const GovernmentProtocolService = {
     timestamp: Date
   }> {
     try {
+      // Integração real depende de configuração externa. Não gerar identificadores fictícios.
+      if (!process.env.GOVERNMENT_PROTOCOL_API_URL) {
+        return {
+          success: false,
+          error: 'Integração com Protocolo do Governo não configurada (GOVERNMENT_PROTOCOL_API_URL ausente)',
+          timestamp: new Date(),
+        }
+      }
+
       const certificate = await prisma.medicalCertificate.findUnique({
         where: { id: certificateId },
         include: {
@@ -391,7 +390,7 @@ export const GovernmentProtocolService = {
         // Subject
         subject: {
           name: certificate.patient.name,
-          cpf: certificate.patient.cpf || 'N/A'
+          cpf: certificate.patient.cpf ?? null
         },
 
         // Responsible professional
@@ -422,36 +421,19 @@ export const GovernmentProtocolService = {
         data: {
           integrationName: 'GOVERNMENT_PROTOCOL',
           certificateId,
-          status: 'SUBMITTED',
+          status: 'ERROR',
           requestPayload: JSON.stringify(payload),
           responseData: JSON.stringify({
-            message: 'Government protocol submission prepared',
+            message: 'Government protocol payload prepared, but external API call is not implemented',
             protocolType
           })
         }
       })
 
-      // Generate government protocol ID
-      const governmentProtocolId = `GOV-${Date.now()}-${protocolType.slice(0, 3)}`
-
-      // TODO: Integrate with actual government protocol system
-      // Steps:
-      // 1. Connect to government portal/API
-      // 2. Authenticate with certificate's digital signature
-      // 3. Send complete payload with digital proof
-      // 4. Receive official protocol ID and timestamp
-      // 5. Handle government-specific error responses
-
-      logger.info('[Government Protocol] Submission prepared:', {
-        protocolType,
-        certificateId,
-        governmentProtocolId
-      })
-
       return {
-        success: true,
-        governmentProtocolId,
-        timestamp: new Date()
+        success: false,
+        error: 'Integração com Protocolo do Governo ainda não implementada (API externa não chamada)',
+        timestamp: new Date(),
       }
     } catch (error) {
       logger.error('[Government Protocol Error]', error)
@@ -475,11 +457,18 @@ export const GovernmentProtocolService = {
     error?: string
   }> {
     try {
+      if (!process.env.GOVERNMENT_PROTOCOL_API_URL) {
+        return {
+          verified: false,
+          error: 'Integração com Protocolo do Governo não configurada (GOVERNMENT_PROTOCOL_API_URL ausente)'
+        }
+      }
+
       // TODO: Query government system for protocol verification
-      logger.info('[Government] Verifying protocol:', governmentProtocolId)
+      logger.info('[Government] Verifying protocol (not implemented):', governmentProtocolId)
       return {
         verified: false,
-        error: 'Government API integration not yet configured'
+        error: 'Integração com Protocolo do Governo ainda não implementada (API externa não chamada)'
       }
     } catch (error) {
       return {
@@ -545,7 +534,7 @@ function extractMedications(content: string): string[] {
   return medications
 }
 
-async function extractDoctorCPF(certificateId: string): Promise<string> {
+async function extractDoctorCPF(certificateId: string): Promise<string | null> {
   try {
     const certificate = await prisma.medicalCertificate.findUnique({
       where: { id: certificateId },
@@ -560,14 +549,14 @@ async function extractDoctorCPF(certificateId: string): Promise<string> {
       }
     })
     
-    return certificate?.doctor?.person?.cpf || 'XXX.XXX.XXX-XX'
+    return certificate?.doctor?.person?.cpf || null
   } catch (error) {
     logger.error('[Integration] Error fetching doctor CPF:', error)
-    return 'XXX.XXX.XXX-XX'
+    return null
   }
 }
 
-async function extractCNES(certificateId: string): Promise<string> {
+async function extractCNES(certificateId: string): Promise<string | null> {
   try {
     const certificate = await prisma.medicalCertificate.findUnique({
       where: { id: certificateId },
@@ -584,11 +573,10 @@ async function extractCNES(certificateId: string): Promise<string> {
     
     // CNES = Cadastro Nacional de Estabelecimentos de Saúde
     // TODO: Adicionar campo 'cnes' na tabela Clinic quando disponível
-    // Por enquanto, retorna placeholder
-    return 'XXXXXX'
+    return null
   } catch (error) {
     logger.error('[Integration] Error fetching CNES:', error)
-    return 'XXXXXX'
+    return null
   }
 }
 

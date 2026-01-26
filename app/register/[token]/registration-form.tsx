@@ -347,7 +347,7 @@ export function RegistrationForm({ invite, terms, isPatient }: RegistrationFormP
             
             <p className="text-sm text-gray-600">
               Para melhorar sua experiência e segurança, você pode autorizar o uso de dados biométricos. 
-              Todos os dados são criptografados e protegidos conforme a LGPD.
+              Aplicamos controles de acesso e recursos de privacidade. A criptografia de dados sensíveis depende da configuração do sistema.
             </p>
 
             <div className="space-y-4">

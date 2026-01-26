@@ -18,9 +18,18 @@ const toastContext = React.createContext<{
 } | undefined>(undefined)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const showToast = (type: ToastType, title: string, description?: string) => {
+  const lastToastAtRef = React.useRef<Map<string, number>>(new Map())
+
+  const showToast = React.useCallback((type: ToastType, title: string, description?: string) => {
     const message = title || description || ''
     const desc = title && description ? description : undefined
+
+    // De-dupe identical toasts that happen in rapid succession (e.g. accidental effect loops)
+    const key = `${type}:${message}:${desc || ''}`
+    const now = Date.now()
+    const last = lastToastAtRef.current.get(key)
+    if (last && now - last < 1500) return
+    lastToastAtRef.current.set(key, now)
 
     switch (type) {
       case 'success':
@@ -36,20 +45,43 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         sonnerToast.info(message, { description: desc })
         break
     }
-  }
+  }, [])
 
-  const toast = (props: ToastProps) => {
-    const type = props.variant === 'destructive' ? 'error' : 'success'
-    showToast(type, props.title, props.description)
-  }
+  const toast = React.useCallback(
+    (props: ToastProps) => {
+      const type = props.variant === 'destructive' ? 'error' : 'success'
+      showToast(type, props.title, props.description)
+    },
+    [showToast]
+  )
 
-  const value = {
-    toast,
-    success: (title: string, description?: string) => showToast('success', title, description),
-    error: (title: string, description?: string) => showToast('error', title, description),
-    info: (title: string, description?: string) => showToast('info', title, description),
-    warning: (title: string, description?: string) => showToast('warning', title, description),
-  }
+  const success = React.useCallback(
+    (title: string, description?: string) => showToast('success', title, description),
+    [showToast]
+  )
+  const error = React.useCallback(
+    (title: string, description?: string) => showToast('error', title, description),
+    [showToast]
+  )
+  const info = React.useCallback(
+    (title: string, description?: string) => showToast('info', title, description),
+    [showToast]
+  )
+  const warning = React.useCallback(
+    (title: string, description?: string) => showToast('warning', title, description),
+    [showToast]
+  )
+
+  const value = React.useMemo(
+    () => ({
+      toast,
+      success,
+      error,
+      info,
+      warning,
+    }),
+    [toast, success, error, info, warning]
+  )
 
   return React.createElement(toastContext.Provider, { value }, children)
 }

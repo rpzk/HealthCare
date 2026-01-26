@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
 
 // GET /api/prescriptions/[id]/signature
 export const GET = withAuth(async (_req, { params, user }) => {
@@ -39,15 +38,30 @@ export const GET = withAuth(async (_req, { params, user }) => {
 
     if (!signed) return NextResponse.json({ signed: false })
 
+    const now = new Date()
+    const cert = signed.certificate
+    const withinValidity = !!cert?.isActive && new Date(cert.notBefore) <= now && new Date(cert.notAfter) >= now
+    const valid = withinValidity && !!signed.isValid
+    const reason = !withinValidity
+      ? 'CERTIFICADO_FORA_DA_JANELA_DE_VALIDADE_OU_INATIVO'
+      : signed.isValid
+        ? null
+        : 'ASSINATURA_NAO_VERIFICADA_CRIPTOGRAFICAMENTE'
+
     return NextResponse.json({
       signed: true,
+      valid,
+      reason,
       signatureHash: signed.signatureHash,
       verificationUrl: `/api/digital-signatures/validate/${signed.signatureHash}`,
       signedAt: signed.signedAt,
+      signatureAlgorithm: signed.signatureAlgorithm,
+      isValid: signed.isValid,
+      validationResult: signed.validationResult,
       certificate: signed.certificate,
     })
   } catch (error) {
-    logger.error('Erro ao obter assinatura da prescrição:', error)
+    logger.error({ err: error }, 'Erro ao obter assinatura da prescrição')
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 })

@@ -33,12 +33,19 @@ async function checkRecordAccess(record: any, user: any): Promise<boolean> {
   if (user.role === 'ADMIN') return true
 
   if (user.role === 'PATIENT') {
-    // Paciente só vê seus próprios prontuários
-    const patient = await prisma.patient.findFirst({
-      where: { userId: user.id },
-      select: { id: true }
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { patientId: true, email: true },
     })
-    return patient?.id === record.patientId
+
+    const patientIdFromUser = dbUser?.patientId ?? null
+    if (patientIdFromUser) return patientIdFromUser === record.patientId
+
+    const patientByEmail = await prisma.patient.findFirst({
+      where: { email: dbUser?.email ?? user.email },
+      select: { id: true },
+    })
+    return patientByEmail?.id === record.patientId
   }
 
   if (user.role === 'DOCTOR') {
@@ -49,8 +56,8 @@ async function checkRecordAccess(record: any, user: any): Promise<boolean> {
     const hasLink = await prisma.patientCareTeam.findFirst({
       where: {
         patientId: record.patientId,
-        professionalId: user.id,
-        status: 'ACTIVE'
+        userId: user.id,
+        isActive: true
       }
     })
     return !!hasLink
@@ -91,11 +98,12 @@ export const GET = withAuth(async (request: NextRequest, { user: _user, params }
     const canAccess = await checkRecordAccess(record, user)
     if (!canAccess) {
       await medicalRecordsAuditService.logError(
-        'READ_DENIED',
-        id,
-        user.id,
-        user.role,
-        'Acesso negado pelo RBAC'
+          'READ',
+          id,
+          user.id,
+          user.role,
+          user.email,
+          'Acesso negado pelo RBAC'
       )
       return NextResponse.json(
         { error: 'Acesso negado: sem permissão para visualizar este prontuário' },
@@ -104,7 +112,7 @@ export const GET = withAuth(async (request: NextRequest, { user: _user, params }
     }
 
     // Log read operation
-    await medicalRecordsAuditService.logRead(id, user.id, user.role, {
+    await medicalRecordsAuditService.logRead(id, user.id, user.role, user.email, {
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown'
     })
@@ -114,7 +122,7 @@ export const GET = withAuth(async (request: NextRequest, { user: _user, params }
 
     return NextResponse.json(maskedRecord)
   } catch (error) {
-    console.error('Erro ao buscar prontuário:', error)
+    logger.error({ err: error }, 'Erro ao buscar prontuário')
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -161,6 +169,7 @@ export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
         id,
         user.id,
         user.role,
+        user.email,
         `Validation error: ${errors}`
       )
       
@@ -187,6 +196,7 @@ export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
         id,
         user.id,
         user.role,
+        user.email,
         'Permission denied: user is not the creator or admin'
       )
       return NextResponse.json(
@@ -208,21 +218,21 @@ export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
     })
 
     // Log update operation with before/after snapshots
-    await medicalRecordsAuditService.logUpdate(id, existingRecord, updatedRecord, user.id, user.role, {
+    await medicalRecordsAuditService.logUpdate(id, existingRecord, updatedRecord, user.id, user.role, user.email, {
       changes: Object.keys(data).filter(key => data[key as keyof typeof data] !== undefined)
     })
 
     // 🔔 Send notification to patient about update
     try {
-      const patient = await prisma.patient.findUnique({
-        where: { id: updatedRecord.patientId },
-        select: { userId: true }
+      const patientUser = await prisma.user.findFirst({
+        where: { patientId: updatedRecord.patientId },
+        select: { id: true },
       })
-      
-      if (patient?.userId) {
+
+      if (patientUser?.id) {
         const changesList = Object.keys(data).filter(key => data[key as keyof typeof data] !== undefined).join(', ')
         await notificationService.createNotification({
-          userId: patient.userId,
+          userId: patientUser.id,
           type: 'MEDICAL_RECORD',
           title: 'Prontuário Atualizado',
           message: `Seu prontuário "${updatedRecord.title}" foi atualizado. Campos alterados: ${changesList}`,
@@ -293,6 +303,7 @@ export const DELETE = withAuth(async (request: NextRequest, { user, params }) =>
         id,
         user.id,
         user.role,
+        user.email,
         'Permission denied: only administrators can delete records'
       )
       return NextResponse.json(
@@ -304,21 +315,21 @@ export const DELETE = withAuth(async (request: NextRequest, { user, params }) =>
     await MedicalRecordsService.deleteMedicalRecord(id)
 
     // Log delete operation with full record snapshot
-    await medicalRecordsAuditService.logDelete(id, existingRecord, user.id, user.role, {
+    await medicalRecordsAuditService.logDelete(id, existingRecord, user.id, user.role, user.email, {
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       reason: 'Admin deletion'
     })
 
     // 🔔 Send notification to patient about deletion
     try {
-      const patient = await prisma.patient.findUnique({
-        where: { id: existingRecord.patientId },
-        select: { userId: true }
+      const patientUser = await prisma.user.findFirst({
+        where: { patientId: existingRecord.patientId },
+        select: { id: true },
       })
-      
-      if (patient?.userId) {
+
+      if (patientUser?.id) {
         await notificationService.createNotification({
-          userId: patient.userId,
+          userId: patientUser.id,
           type: 'SYSTEM',
           title: 'Prontuário Removido',
           message: `O prontuário "${existingRecord.title}" foi removido por um administrador.`,

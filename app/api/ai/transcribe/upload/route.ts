@@ -67,11 +67,11 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
 
   // If this operation is tied to a patient, enforce patient AI consent too.
   if (patientId) {
-    const patient = await prisma.patient.findUnique({
-      where: { id: patientId },
-      select: { userId: true },
+    const patientUser = await prisma.user.findFirst({
+      where: { patientId },
+      select: { id: true },
     })
-    if (!patient?.userId) {
+    if (!patientUser?.id) {
       return NextResponse.json(
         { error: 'Paciente sem conta vinculada para consentimento de IA', code: 'PATIENT_NO_USER' },
         { status: 403 }
@@ -80,7 +80,7 @@ export const POST = withDoctorAuth(async (req: NextRequest, { user }) => {
     try {
       await assertUserAcceptedTerms({
         prisma,
-        userId: patient.userId,
+        userId: patientUser.id,
         audience: TermAudience.PATIENT,
         gates: ['AI'],
       })

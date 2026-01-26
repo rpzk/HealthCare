@@ -3,7 +3,66 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { handleApiError, ApiError } from '@/lib/api-error-handler'
+import { handleApiError } from '@/lib/api-error-handler'
+import { Prisma, TherapeuticSystem, IntakeQuestionType } from '@prisma/client'
+
+function isTherapeuticSystem(value: string): value is TherapeuticSystem {
+  return (Object.values(TherapeuticSystem) as string[]).includes(value)
+}
+
+function isIntakeQuestionType(value: string): value is IntakeQuestionType {
+  return (Object.values(IntakeQuestionType) as string[]).includes(value)
+}
+
+type QuestionnaireOptionInput = {
+  text: string
+  description?: string
+  imageUrl?: string
+  emoji?: string
+  order?: number
+  scoreValue?: number
+}
+
+type QuestionnaireQuestionInput = {
+  text: string
+  helpText?: string
+  imageUrl?: string
+  type?: string
+  isRequired?: boolean
+  order?: number
+  scaleMin?: number
+  scaleMax?: number
+  scaleMinLabel?: string
+  scaleMaxLabel?: string
+  analysisMapping?: unknown
+  conditionalLogic?: unknown
+  options?: QuestionnaireOptionInput[]
+}
+
+type QuestionnaireCategoryInput = {
+  name: string
+  description?: string
+  order?: number
+  iconEmoji?: string
+  questions?: QuestionnaireQuestionInput[]
+}
+
+type QuestionnaireTemplateInput = {
+  name?: string
+  description?: string
+  patientIntro?: string
+  therapeuticSystem?: string
+  estimatedMinutes?: number
+  allowPause?: boolean
+  showProgress?: boolean
+  randomizeQuestions?: boolean
+  themeColor?: string
+  iconEmoji?: string
+  isPublic?: boolean
+  aiAnalysisPrompt?: string
+  scoringLogic?: unknown
+  categories?: QuestionnaireCategoryInput[]
+}
 
 export const runtime = 'nodejs'
 
@@ -16,7 +75,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const therapeuticSystem = searchParams.get('system')
+    const therapeuticSystemRaw = searchParams.get('system')
+    const therapeuticSystem =
+      therapeuticSystemRaw && isTherapeuticSystem(therapeuticSystemRaw)
+        ? therapeuticSystemRaw
+        : null
     const includeBuiltIn = searchParams.get('builtIn') !== 'false'
 
     const templates = await prisma.questionnaireTemplate.findMany({
@@ -26,7 +89,7 @@ export async function GET(req: NextRequest) {
           { isPublic: true },
           ...(includeBuiltIn ? [{ isBuiltIn: true }] : [])
         ],
-        ...(therapeuticSystem ? { therapeuticSystem: therapeuticSystem as any } : {})
+        ...(therapeuticSystem ? { therapeuticSystem } : {})
       },
       include: {
         categories: {
@@ -51,14 +114,14 @@ export async function GET(req: NextRequest) {
     // Add question count to each template
     const templatesWithCount = templates.map(t => ({
       ...t,
-      questionCount: t.categories.reduce((acc, cat) => acc + cat.questions.length, 0)
+      questionCount: t.categories.reduce((acc: number, cat) => acc + cat.questions.length, 0)
     }))
 
     return NextResponse.json(templatesWithCount)
 
   } catch (error) {
-    logger.error('Error fetching questionnaire templates', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error({ err: error }, 'Error fetching questionnaire templates')
+    return handleApiError(error)
   }
 }
 
@@ -70,7 +133,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const body = await req.json()
+    const body = (await req.json()) as QuestionnaireTemplateInput
     const {
       name,
       description,
@@ -97,7 +160,9 @@ export async function POST(req: NextRequest) {
         name,
         description,
         patientIntro,
-        therapeuticSystem: therapeuticSystem || 'GENERAL',
+        therapeuticSystem: (therapeuticSystem && isTherapeuticSystem(therapeuticSystem))
+          ? therapeuticSystem
+          : TherapeuticSystem.GENERAL,
         estimatedMinutes: estimatedMinutes || 15,
         allowPause: allowPause ?? true,
         showProgress: showProgress ?? true,
@@ -108,29 +173,31 @@ export async function POST(req: NextRequest) {
         isBuiltIn: false,
         createdById: session.user.id,
         aiAnalysisPrompt,
-        scoringLogic,
+        scoringLogic: (scoringLogic as Prisma.InputJsonValue | undefined),
         categories: categories ? {
-          create: categories.map((cat: any, catIndex: number) => ({
+          create: categories.map((cat, catIndex) => ({
             name: cat.name,
             description: cat.description,
             order: cat.order ?? catIndex,
             iconEmoji: cat.iconEmoji,
             questions: cat.questions ? {
-              create: cat.questions.map((q: any, qIndex: number) => ({
+              create: cat.questions.map((q, qIndex) => ({
                 text: q.text,
                 helpText: q.helpText,
                 imageUrl: q.imageUrl,
-                type: q.type || 'SINGLE_CHOICE',
+                type: (q.type && isIntakeQuestionType(q.type))
+                  ? q.type
+                  : IntakeQuestionType.SINGLE_CHOICE,
                 isRequired: q.isRequired ?? true,
                 order: q.order ?? qIndex,
                 scaleMin: q.scaleMin,
                 scaleMax: q.scaleMax,
                 scaleMinLabel: q.scaleMinLabel,
                 scaleMaxLabel: q.scaleMaxLabel,
-                analysisMapping: q.analysisMapping,
-                conditionalLogic: q.conditionalLogic,
+                analysisMapping: (q.analysisMapping as Prisma.InputJsonValue | undefined),
+                conditionalLogic: (q.conditionalLogic as Prisma.InputJsonValue | undefined),
                 options: q.options ? {
-                  create: q.options.map((opt: any, optIndex: number) => ({
+                  create: q.options.map((opt, optIndex) => ({
                     text: opt.text,
                     description: opt.description,
                     imageUrl: opt.imageUrl,
@@ -160,7 +227,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(template, { status: 201 })
 
   } catch (error) {
-    console.error('Error creating questionnaire template:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error({ err: error }, 'Error creating questionnaire template')
+    return handleApiError(error)
   }
 }

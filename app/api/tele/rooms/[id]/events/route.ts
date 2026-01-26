@@ -17,7 +17,7 @@ function getRedisConnection() {
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const rl = rateLimiters.consultations(req)
+  const rl = rateLimiters.dashboard(req)
   if (rl instanceof NextResponse) return rl
   const roomId = params?.id as string
   if (!roomId) return NextResponse.json({ error: 'roomId ausente' }, { status: 400 })
@@ -53,6 +53,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       sub.subscribe(channel).then(() => {
         // send hello
         send('ready', { ok: true })
+        // Notify other peers that this client joined.
+        // This helps trigger WebRTC negotiation even when one side joins later.
+        const kind = hasSession ? 'staff' : 'patient'
+        const role = (session as any)?.user?.role
+        const pub = new Redis(getRedisConnection())
+        pub.publish(channel, JSON.stringify({ type: 'peer_joined', from: clientId, kind, role, at: Date.now() }))
+          .catch((err: unknown) => {
+            logger.warn('Failed to publish peer_joined', err)
+          })
+          .finally(() => {
+            try { pub.quit() } catch {}
+          })
       }).catch((err: unknown) => {
         if (err instanceof Error) send('error', { error: err.message })
         else send('error', { error: String(err) || 'subscribe failed' })

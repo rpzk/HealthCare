@@ -1,10 +1,13 @@
 "use client"
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { logger } from '@/lib/logger'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SignatureButton } from '@/components/tele/digital-signature-pad'
 import { 
   Video, VideoOff, Mic, MicOff, PhoneOff, 
   Loader2, Maximize2, Minimize2, Wifi, Move,
-  ScreenShare, ScreenShareOff, Volume2, VolumeX, Users, X
+  ScreenShare, ScreenShareOff, Volume2, VolumeX, Users, X, PenTool
 } from 'lucide-react'
 
 type Props = {
@@ -23,6 +26,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
   const localRef = useRef<HTMLVideoElement | null>(null)
   const remoteRef = useRef<HTMLVideoElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
   
   const [status, setStatus] = useState<ConnectionStatus>('idle')
   const [joined, setJoined] = useState(false)
@@ -41,10 +45,55 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
 
+  // Assinaturas (desenho)
+  type TeleSignature = {
+    id: string
+    signerRole: string
+    createdAt: string
+    sha256?: string | null
+  }
+  const [showSignatures, setShowSignatures] = useState(false)
+  const [signaturesLoading, setSignaturesLoading] = useState(false)
+  const [signaturesError, setSignaturesError] = useState<string | null>(null)
+  const [signatures, setSignatures] = useState<TeleSignature[]>([])
+
   const [iceServers, setIceServers] = useState<RTCIceServer[]>([
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' }
   ])
+
+  const offerInFlightRef = useRef(false)
+
+  const sendSignal = useCallback(async (payload: any) => {
+    await fetch(`/api/tele/rooms/${roomId}/signal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  }, [roomId])
+
+  const maybeSendOffer = useCallback(async () => {
+    const pc = pcRef.current
+    if (!pc) return
+    if (offerInFlightRef.current) return
+    if (pc.signalingState !== 'stable') return
+
+    offerInFlightRef.current = true
+    try {
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+      await pc.setLocalDescription(offer)
+      await sendSignal({ type: 'offer', sdp: offer.sdp, from: clientId })
+      setStatus('connecting')
+    } catch (e: unknown) {
+      logger.warn('Failed to create/send offer (compact)', e)
+      setError('Erro ao iniciar chamada')
+      setStatus('failed')
+      setRemoteConnected(false)
+      setConnectionQuality(null)
+    } finally {
+      offerInFlightRef.current = false
+    }
+  }, [clientId, sendSignal])
 
   // Load ICE config
   useEffect(() => {
@@ -58,6 +107,32 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
       }
     })()
   }, [])
+
+  const loadSignatures = useCallback(async () => {
+    try {
+      setSignaturesLoading(true)
+      setSignaturesError(null)
+
+      const res = await fetch(`/api/tele/signature?consultationId=${encodeURIComponent(roomId)}`)
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || 'Falha ao carregar assinaturas')
+      }
+
+      const items = Array.isArray(data?.data) ? data.data : []
+      setSignatures(items)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      setSignaturesError(message)
+    } finally {
+      setSignaturesLoading(false)
+    }
+  }, [roomId])
+
+  useEffect(() => {
+    if (!showSignatures) return
+    void loadSignatures()
+  }, [showSignatures, loadSignatures])
 
   // Call duration timer
   useEffect(() => {
@@ -87,16 +162,33 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
 
   const cleanup = useCallback(() => {
     try {
-      if (localRef.current?.srcObject) {
-        const stream = localRef.current.srcObject as MediaStream
-        stream.getTracks().forEach(t => t.stop())
-      }
+      const stream = localStreamRef.current ?? (localRef.current?.srcObject as MediaStream | null)
+      stream?.getTracks().forEach(t => t.stop())
+      localStreamRef.current = null
+      if (localRef.current) localRef.current.srcObject = null
       pcRef.current?.close()
       esRef.current?.close()
     } catch (e) {
       logger.warn('Cleanup error', e)
     }
   }, [])
+
+  const attachLocalPreview = useCallback(async () => {
+    const stream = localStreamRef.current
+    const el = localRef.current
+    if (!stream || !el) return
+    if (el.srcObject !== stream) el.srcObject = stream
+    try {
+      await el.play()
+    } catch {
+      // ignore autoplay/play errors; user gesture already happened on join
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!joined) return
+    void attachLocalPreview()
+  }, [joined, attachLocalPreview])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -123,7 +215,10 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
       })
       
       ms.getTracks().forEach(t => pc.addTrack(t, ms))
-      if (localRef.current) localRef.current.srcObject = ms
+      localStreamRef.current = ms
+      // PIP video mounts only after `joined` becomes true.
+      // Keep a ref to the stream and attach it once the element exists.
+      void attachLocalPreview()
       
       pc.ontrack = (ev) => {
         if (remoteRef.current && ev.streams[0]) {
@@ -154,16 +249,35 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
       es.addEventListener('signal', async (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data)
+          if (data.type === 'peer_joined') {
+            if (data.kind === 'patient') {
+              await maybeSendOffer()
+            }
+            return
+          }
+          if (data.type === 'ready') {
+            await maybeSendOffer()
+            return
+          }
           if (data.type === 'offer') {
-            await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp })
-            const answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            await fetch(`/api/tele/rooms/${roomId}/signal`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: 'answer', sdp: answer.sdp, from: clientId })
-            })
+            try {
+              await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp })
+              const answer = await pc.createAnswer()
+              await pc.setLocalDescription(answer)
+              await sendSignal({ type: 'answer', sdp: answer.sdp, from: clientId })
+            } catch (e: unknown) {
+              logger.warn('Failed handling remote offer (compact)', e)
+              setError('Erro ao negociar chamada')
+              setStatus('failed')
+            }
           } else if (data.type === 'answer' && !pc.currentRemoteDescription) {
-            await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
+            try {
+              await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
+            } catch (e: unknown) {
+              logger.warn('Failed handling remote answer (compact)', e)
+              setError('Erro ao negociar chamada')
+              setStatus('failed')
+            }
           } else if (data.type === 'candidate' && data.candidate) {
             try {
               await pc.addIceCandidate(data.candidate)
@@ -178,19 +292,9 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
 
       pc.onicecandidate = (ev) => {
         if (ev.candidate) {
-          fetch(`/api/tele/rooms/${roomId}/signal`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'candidate', candidate: ev.candidate, from: clientId })
-          })
+          void sendSignal({ type: 'candidate', candidate: ev.candidate, from: clientId })
         }
       }
-
-      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-      await pc.setLocalDescription(offer)
-      await fetch(`/api/tele/rooms/${roomId}/signal`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'offer', sdp: offer.sdp, from: clientId })
-      })
 
       setJoined(true)
       setStatus('connecting')
@@ -205,13 +309,13 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
   }
 
   function toggleMute() {
-    const stream = localRef.current?.srcObject as MediaStream | null
+    const stream = localStreamRef.current ?? (localRef.current?.srcObject as MediaStream | null)
     stream?.getAudioTracks().forEach(t => t.enabled = muted)
     setMuted(!muted)
   }
 
   function toggleVideo() {
-    const stream = localRef.current?.srcObject as MediaStream | null
+    const stream = localStreamRef.current ?? (localRef.current?.srcObject as MediaStream | null)
     stream?.getVideoTracks().forEach(t => t.enabled = videoOff)
     setVideoOff(!videoOff)
   }
@@ -242,7 +346,7 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
           await sender.replaceTrack(track)
           setIsScreenSharing(true)
           track.onended = () => {
-            const stream = localRef.current?.srcObject as MediaStream | null
+            const stream = localStreamRef.current ?? (localRef.current?.srcObject as MediaStream | null)
             const camTrack = stream?.getVideoTracks()[0]
             if (sender && camTrack) sender.replaceTrack(camTrack)
             setIsScreenSharing(false)
@@ -395,6 +499,13 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
           )}
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowSignatures(true) }}
+            className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+            title="Assinaturas (desenho)"
+          >
+            <PenTool className="w-4 h-4" />
+          </button>
           <button onClick={() => setIsExpanded(!isExpanded)} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white">
             {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -520,6 +631,84 @@ export default function TeleRoomCompact({ roomId, userId, patientName, consultat
           </button>
         </div>
       )}
+
+      <Dialog open={showSignatures} onOpenChange={setShowSignatures}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Assinaturas (desenho)</DialogTitle>
+            <DialogDescription>
+              Registros de assinatura anexados à teleconsulta.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between gap-2">
+            <SignatureButton
+              consultationId={roomId}
+              onSignatureSaved={() => {
+                void loadSignatures()
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => void loadSignatures()}
+              disabled={signaturesLoading}
+              className="h-9 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+            >
+              {signaturesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Atualizar'}
+            </button>
+          </div>
+
+          {signaturesError ? (
+            <div className="text-sm text-destructive">{signaturesError}</div>
+          ) : null}
+
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Registros</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {signaturesLoading ? (
+                <div className="text-sm text-muted-foreground">Carregando...</div>
+              ) : signatures.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Nenhuma assinatura registrada.</div>
+              ) : (
+                signatures.map((sig) => {
+                  const downloadUrl = `/api/tele/signature?consultationId=${encodeURIComponent(roomId)}&id=${encodeURIComponent(sig.id)}&download=1`
+                  return (
+                    <div key={sig.id} className="flex items-center justify-between gap-2 border rounded p-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {sig.signerRole === 'PATIENT' ? 'Paciente' : sig.signerRole === 'DOCTOR' ? 'Médico(a)' : sig.signerRole}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {new Date(sig.createdAt).toLocaleString('pt-BR')}
+                          {sig.sha256 ? ` • sha256: ${sig.sha256}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
+                          className="h-9 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground"
+                        >
+                          Abrir
+                        </button>
+                        <a
+                          className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground"
+                          href={downloadUrl}
+                          download
+                        >
+                          Baixar
+                        </a>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

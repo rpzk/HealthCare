@@ -92,7 +92,7 @@ export default function ReportsPage() {
       icon: TrendingUp,
       type: 'Excel',
       color: 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300',
-      data: 'R$ 45.230'
+      data: 'Não disponível'
     },
     {
       id: 'performance-metrics',
@@ -101,7 +101,7 @@ export default function ReportsPage() {
       icon: BarChart3,
       type: 'PDF',
       color: 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300',
-      data: '98.5%'
+      data: 'Não disponível'
     }
   ]
 

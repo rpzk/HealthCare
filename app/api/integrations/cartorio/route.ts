@@ -44,7 +44,19 @@ export async function POST(req: NextRequest) {
       registrationType
     )
 
-    return NextResponse.json(result)
+    if (result.success) {
+      return NextResponse.json(result)
+    }
+
+    const errorMessage = result.error || 'Erro na integração com Cartório'
+    const status =
+      errorMessage.includes('não configurada') ? 503 :
+      errorMessage.includes('não implementada') ? 501 :
+      errorMessage.includes('não encontrado') ? 404 :
+      errorMessage.includes('revogado') ? 409 :
+      500
+
+    return NextResponse.json(result, { status })
   } catch (error) {
     logger.error('[Cartório API Error]', error)
     return NextResponse.json(
@@ -86,7 +98,17 @@ export async function GET(
       cartorioId
     )
 
-    return NextResponse.json(result)
+    const errorMessage = result.error
+    if (!errorMessage) {
+      return NextResponse.json(result)
+    }
+
+    const status =
+      errorMessage.includes('não configurada') ? 503 :
+      errorMessage.includes('não implementada') ? 501 :
+      500
+
+    return NextResponse.json(result, { status })
   } catch (error) {
     logger.error('[Cartório Status API Error]', error)
     return NextResponse.json(

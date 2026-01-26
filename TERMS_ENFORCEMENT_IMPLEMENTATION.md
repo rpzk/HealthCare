@@ -281,7 +281,6 @@ npm run dev
 
 ## 🎉 Conclusão
 
-O sistema está **100% funcional** e pronto para uso em produção. Todos os usuários que fizerem login serão obrigados a aceitar os termos de consentimento antes de acessar qualquer funcionalidade do sistema.
+O enforcement de termos está implementado no código e, quando habilitado nas rotas/layouts onde o `TermsGuard` é aplicado, usuários logados são direcionados para aceitar termos pendentes antes de continuar.
 
-**Data de Implementação**: 16 de janeiro de 2026
-**Desenvolvido por**: GitHub Copilot
+Valide no seu ambiente (configuração de auth, rotas protegidas e seeds/migrações de termos) antes de considerar “pronto para produção”.

@@ -43,7 +43,18 @@ export async function POST(req: NextRequest) {
       susRegistration
     )
 
-    return NextResponse.json(result)
+    if (result.success) {
+      return NextResponse.json(result)
+    }
+
+    const errorMessage = result.error || 'Erro na integração com SUS'
+    const status =
+      errorMessage.includes('não configurada') ? 503 :
+      errorMessage.includes('não implementada') ? 501 :
+      errorMessage.includes('não encontrado') ? 404 :
+      500
+
+    return NextResponse.json(result, { status })
   } catch (error) {
     logger.error('[SUS API Error]', error)
     return NextResponse.json(
@@ -81,7 +92,18 @@ export async function GET(req: NextRequest) {
 
     const result = await SUSService.getPatientHistory(cpf, susNumber)
 
-    return NextResponse.json(result)
+    const errorMessage = result.error
+    if (!errorMessage) {
+      return NextResponse.json(result)
+    }
+
+    const status =
+      errorMessage.includes('não configurada') ? 503 :
+      errorMessage.includes('not yet configured') ? 503 :
+      errorMessage.includes('não implementada') ? 501 :
+      500
+
+    return NextResponse.json(result, { status })
   } catch (error) {
     logger.error('[SUS History API Error]', error)
     return NextResponse.json(

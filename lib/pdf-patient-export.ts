@@ -337,7 +337,7 @@ export async function generatePatientPdfHtml(options: PatientPdfExportOptions): 
 export async function generatePatientPdfFromHtml(html: string): Promise<Buffer> {
   // Dynamic import of puppeteer for server-side rendering
   // Note: Puppeteer needs to be installed and Chrome/Chromium must be available
-  const puppeteer = require('puppeteer')
+  const puppeteer = await import('puppeteer')
 
   try {
     const browser = await puppeteer.launch({
@@ -354,7 +354,7 @@ export async function generatePatientPdfFromHtml(html: string): Promise<Buffer> 
     })
 
     await browser.close()
-    return pdf
+    return Buffer.from(pdf)
   } catch (e) {
     logger.error('[PDF Generation] Puppeteer error:', e)
     throw new Error('Erro ao gerar PDF. Certifique-se de que Puppeteer e Chromium estão instalados.')

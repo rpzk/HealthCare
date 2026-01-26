@@ -5,6 +5,8 @@ import { updateAppointmentSchema } from '@/lib/validation-schemas-api'
 import { sendAppointmentReassignedEmail, sendAppointmentRescheduledEmail } from '@/lib/email-service'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
+import { formatCPF } from '@/lib/patient-schemas'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,7 +39,17 @@ export const GET = withAuth(async (req: NextRequest, { params, user }) => {
     return NextResponse.json({ error: 'Sem permissão para ver este agendamento' }, { status: 403 })
   }
 
-  return NextResponse.json({ success: true, consultation })
+  const safeConsultation = {
+    ...consultation,
+    patient: consultation.patient
+      ? {
+          ...consultation.patient,
+          cpf: formatCPF(decrypt(consultation.patient.cpf)),
+        }
+      : consultation.patient,
+  }
+
+  return NextResponse.json({ success: true, consultation: safeConsultation })
 })
 
 export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
@@ -191,6 +203,16 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
     },
   })
 
+  const safeUpdated = {
+    ...updated,
+    patient: updated.patient
+      ? {
+          ...updated.patient,
+          cpf: formatCPF(decrypt(updated.patient.cpf)),
+        }
+      : updated.patient,
+  }
+
   // Notify patient if rescheduled; never fail the update if email fails.
   if (didChangeScheduledDate && updated.patient?.email) {
     try {
@@ -242,5 +264,5 @@ export const PATCH = withAuth(async (req: NextRequest, { params, user }) => {
     }
   }
 
-  return NextResponse.json({ success: true, consultation: updated })
+  return NextResponse.json({ success: true, consultation: safeUpdated })
 })

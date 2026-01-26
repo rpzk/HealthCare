@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { 
   Search, Plus, Phone, Mail, Edit, UserX, Users, 
   AlertCircle, Loader2, ChevronLeft, ChevronRight,
@@ -64,6 +65,7 @@ const getInitials = (name?: string | null): string => {
 
 export function PatientsList() {
   const router = useRouter()
+  const { data: session } = useSession()
 
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,10 +77,13 @@ export function PatientsList() {
   const [showForm, setShowForm] = useState(false)
   const [editingPatient, setEditingPatient] = useState<Partial<PatientFormData> & { userAccount?: { id?: string; role?: string } } | null>(null)
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [selectedPatientLoading, setSelectedPatientLoading] = useState(false)
   const [patientToDeactivate, setPatientToDeactivate] = useState<Patient | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const [defaultTab, setDefaultTab] = useState('overview')
   const [showNewPatientDialog, setShowNewPatientDialog] = useState(false)
+
+  const selectedPatientIdRef = useRef<string | null>(null)
 
   const currentPageRef = useRef(currentPage)
   const searchTermRef = useRef(searchTerm)
@@ -143,7 +148,13 @@ export function PatientsList() {
   const handleEditPatient = async (patient: Patient) => {
     try {
       setFormLoading(true)
-      const response = await fetch(`/api/patients/${patient.id}?edit=true`)
+      const params = new URLSearchParams({ edit: 'true', _t: Date.now().toString() })
+      const response = await fetch(`/api/patients/${patient.id}?${params}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       if (!response.ok) throw new Error('Erro ao carregar dados')
       const fullData = await response.json()
       setEditingPatient(fullData)
@@ -213,7 +224,41 @@ export function PatientsList() {
 
   const openPatientDetails = (patient: Patient, tab = 'overview') => {
     setDefaultTab(tab)
-    setSelectedPatient(patient)
+    setSelectedPatient(patient) // abre rápido com o resumo
+
+    // Em seguida, buscar registro completo (evita inconsistência entre telas/roles)
+    selectedPatientIdRef.current = patient.id
+    setSelectedPatientLoading(true)
+
+    const controller = new AbortController()
+    const params = new URLSearchParams({ _t: Date.now().toString() })
+    if (session?.user?.role === 'ADMIN') {
+      params.set('edit', 'true')
+    }
+    void fetch(`/api/patients/${patient.id}?${params}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      },
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Erro ao carregar detalhes do paciente')
+        const data = await res.json()
+
+        // Evitar setState se o usuário já fechou/trocou de paciente
+        if (selectedPatientIdRef.current !== patient.id) return
+        setSelectedPatient(data)
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        // mantém o resumo na tela, mas para o spinner
+      })
+      .finally(() => {
+        if (selectedPatientIdRef.current === patient.id) {
+          setSelectedPatientLoading(false)
+        }
+      })
   }
 
   if (loading && patients.length === 0) {
@@ -352,11 +397,26 @@ export function PatientsList() {
         />
       )}
 
-      <Dialog open={!!selectedPatient} onOpenChange={(open) => !open && setSelectedPatient(null)}>
+      <Dialog
+        open={!!selectedPatient}
+        onOpenChange={(open) => {
+          if (!open) {
+            selectedPatientIdRef.current = null
+            setSelectedPatientLoading(false)
+            setSelectedPatient(null)
+          }
+        }}
+      >
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedPatient?.name}</DialogTitle>
           </DialogHeader>
+          {selectedPatientLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Carregando detalhes…
+            </div>
+          )}
           {selectedPatient && (
             <PatientDetailsContent patient={selectedPatient} onClose={() => setSelectedPatient(null)} defaultTab={defaultTab} />
           )}

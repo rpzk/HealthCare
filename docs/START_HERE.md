@@ -1,143 +1,27 @@
-# 🎯 DECISÃO IMEDIATA - O Que Fazer Agora?
+# Start here
 
-**Gerado:** 19/01/2026 14:50 UTC  
-**Tempo para ler:** 3 minutos  
-**Ação:** Escolher caminho e começar
+Este arquivo serve como ponto de entrada **factual** para navegar o repositório.
 
----
+Observação importante: documentos antigos podem conter percentuais, prazos, “status 100%” e outras afirmações que **não são medidos automaticamente** pelo sistema. Quando houver dúvida, a fonte de verdade deve ser o código e o banco.
 
-## ✅ FATO: Seu código está 85-90% pronto
+## Rodar localmente
 
-```
-Medical Records:     ████████████████████ 100% pronto
-Notificações:        ████████████████░░░░ 95% pronto (falta integrar)
-IA:                  ████████████████░░░░ 90% pronto (falta UI)
-Dashboards:          ████░░░░░░░░░░░░░░░░ 20% pronto
-```
+- Guia rápido: [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
+- Testes e smoke tests: [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)
+- Scripts úteis (backup, deploy, manutenção): [scripts/README.md](scripts/README.md)
 
-**Conclusão:** Não há redundância. Tudo é reutilizável.
+## Ver o que falta / limitações
 
----
+- Lista de recursos incompletos: [docs/INCOMPLETE_FEATURES.md](docs/INCOMPLETE_FEATURES.md)
 
-## 🚀 SUA OPÇÃO A: Começar Hoje (Recomendado)
+## Segurança e termos
 
-### Timeline: 2-3 Semanas de Trabalho
+- Termos e enforcement: veja `lib/terms-enforcement` e páginas relacionadas em `app/`.
 
-**Week 1 (6-8 horas):**
-1. Integrar Notificações (1-2h) ← COMECE AQUI
-2. Criar AI Insights Panel (1-1.5h)
-3. Criar Medical Records Dashboard (2h)
-4. Testes (1-2h)
+## Backups
 
-**Week 2 (6-8 horas):**
-1. Auto-análise com BullMQ (1h)
-2. Filtros avançados (1.5h)
-3. Timeline de versões (1.5h)
-4. Melhorias Form (1.5h)
-5. Testes (1-2h)
-
-**Result:** MVP 100% funcional
-
-### Por onde começar HOJE?
-
-**Arquivo:** [docs/DETAILED_IMPLEMENTATION_SPECS.md](docs/DETAILED_IMPLEMENTATION_SPECS.md)
-**Seção:** 1️⃣ NOTIFICAÇÕES EM MEDICAL RECORDS
-**Tempo:** 30-60 minutos
-
-**3 passos:**
-1. Copiar bloco "NOVO BLOCO - Notificar sobre criação"
-2. Colar em [app/api/medical-records/route.ts](app/api/medical-records/route.ts)
-3. Testar com POST
-
----
-
-## 📋 SUA OPÇÃO B: Planejar Primeiro (Prudente)
-
-### Timeline: 1 dia de planejamento + 2-3 semanas de trabalho
-
-**Hoje (1-2 horas):**
-1. Ler [docs/EXECUTIVE_SUMMARY.md](docs/EXECUTIVE_SUMMARY.md) (5 min)
-2. Ler [docs/GAPS_AND_PRIORITIES.md](docs/GAPS_AND_PRIORITIES.md) (15 min)
-3. Reunião com team para decidir:
-   - Ordem de features?
-   - Timeline?
-   - Alocação de devs?
-4. Criar sprint/tickets
-
-**Depois:** Começar com confiança
-
-### Documentos Essenciais
-
-```
-5 min  → EXECUTIVE_SUMMARY.md
-15 min → IMPLEMENTATION_AUDIT.md
-15 min → GAPS_AND_PRIORITIES.md
-──────
-35 min total = Decisão pronta
-```
-
----
-
-## ❌ SUA OPÇÃO C: Não Fazer Nada (Não Recomendado)
-
-### Timeline: 3-4 semanas com ineficiência
-
-**Risco:**
-- ❌ Explorar código por 2-3 horas
-- ❌ Criar redundâncias
-- ❌ Sem priorização clara
-- ❌ Sem documentação
-- ❌ Retrabalho
-
-**Não recomendado.**
-
----
-
-## 🎓 MINHA RECOMENDAÇÃO PESSOAL
-
-### Se você for o desenvolvedor:
-**→ Opção A: Começar hoje**
-
-Por quê?
-- Código está 100% pronto para copiar
-- Documentação remove toda incerteza
-- Primeiro feature em 1-2 horas
-- Validação de sucesso imediata
-
-### Se você for o PM/Gerente:
-**→ Opção B: Planejar primeiro**
-
-Por quê?
-- Visibilidade clara dos gaps
-- Timeline precisa (2-3 semanas)
-- ROI documentado (7x)
-- Pode priorizar com confiança
-
-### Se você for o Arquiteto:
-**→ Opção A: Começar hoje**
-
-Por quê?
-- Padrões já validados
-- Integração confirma arquitetura
-- Documentação não precisará de mudanças
-- Fast feedback loop
-
----
-
-## ⏰ ESTIMATIVA FINAL
-
-| Métrica | Estimativa |
-|---------|-----------|
-| Ler documentação | 60-90 min |
-| Implementar Feature #1 | 1-2h |
-| Implementar Feature #2 | 1-1.5h |
-| Implementar Feature #3 | 2h |
-| Testes e validação | 1-2h |
-| **TOTAL até MVP** | **6-8 horas** |
-| **TOTAL até Production-ready** | **12-16 horas** |
-| **Timeline realista** | **2-3 weeks** |
-
----
+- Admin backups (UI/APIs) ficam em `app/api/admin/backups/*`.
+- Visão geral factual de cobertura: [BACKUP_GUARANTEE_ALL_DOCUMENTS.md](../BACKUP_GUARANTEE_ALL_DOCUMENTS.md)
 
 ## 🔥 QUICK DECISION MATRIX
 

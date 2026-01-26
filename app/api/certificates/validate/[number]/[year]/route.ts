@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
 import { logger } from '@/lib/logger'
 
+export const runtime = 'nodejs'
+
 /**
  * GET /api/certificates/validate/[number]/[year]
  * Valida autenticidade de atestado via QR Code
@@ -12,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { searchParams } = new URL(request.url)
-    const hash = searchParams.get('h')
+    const hash = searchParams.get('h') ?? searchParams.get('hash')
 
     if (!hash) {
       return NextResponse.json(
@@ -37,7 +39,30 @@ export async function GET(
       hash
     )
 
-    return NextResponse.json(result)
+    if (!result?.certificate) {
+      return NextResponse.json(result)
+    }
+
+    const certificate = result.certificate
+
+    // Public response: never expose CPF.
+    const publicCertificate = {
+      ...certificate,
+      patient: {
+        name: certificate.patient?.name,
+        email: certificate.patient?.email,
+      },
+      doctor: {
+        name: certificate.doctor?.name,
+        specialty: certificate.doctor?.speciality,
+        crmNumber: certificate.doctor?.crmNumber,
+      },
+    }
+
+    return NextResponse.json({
+      ...result,
+      certificate: publicCertificate,
+    })
 
   } catch (error: unknown) {
     logger.error('[Certificates] Erro ao validar atestado:', error)

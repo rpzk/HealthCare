@@ -62,6 +62,12 @@ import { AISuggestions } from './ai-suggestions'
 import { defaultBIData } from './consultation-bi-checkboxes'
 import { PatientHistoryPanel } from './patient-history-panel'
 
+// Modais de edição
+import { PrescriptionEditorDialog } from './prescription-editor-dialog'
+import { ExamEditorDialog } from './exam-editor-dialog'
+import { ReferralEditorDialog } from './referral-editor-dialog'
+import { CertificateEditorDialog } from './certificate-editor-dialog'
+
 // ============ TIPOS ============
 interface Patient {
   id: string
@@ -89,6 +95,9 @@ interface Prescription {
   duration: string
   instructions: string
   controlled?: boolean
+  form?: string
+  route?: string
+  quantity?: string
 }
 
 interface ExamRequest {
@@ -97,6 +106,9 @@ interface ExamRequest {
   examType: string
   description: string
   priority: 'NORMAL' | 'HIGH'
+  indication?: string
+  notes?: string
+  category?: string
 }
 
 interface Referral {
@@ -187,6 +199,16 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   // UI states
   const [showHistory, setShowHistory] = useState(true)
   const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Estados dos modais de edição
+  const [prescriptionDialogOpen, setPrescriptionDialogOpen] = useState(false)
+  const [editingPrescription, setEditingPrescription] = useState<Prescription | undefined>()
+  const [examDialogOpen, setExamDialogOpen] = useState(false)
+  const [editingExam, setEditingExam] = useState<ExamRequest | undefined>()
+  const [referralDialogOpen, setReferralDialogOpen] = useState(false)
+  const [editingReferral, setEditingReferral] = useState<Referral | undefined>()
+  const [certificateDialogOpen, setCertificateDialogOpen] = useState(false)
+  const [editingCertificate, setEditingCertificate] = useState<Certificate | undefined>()
 
   // Refs para focus
   const medInputRef = useRef<HTMLInputElement>(null)
@@ -399,7 +421,8 @@ interface Medication {
 
   // ============ HANDLERS DE SELEÇÃO ============
   const handleMedicationSelect = (med: Medication) => {
-    const rx: Prescription = {
+    // Abrir modal para edição completa
+    setEditingPrescription({
       id: Date.now().toString(),
       medicationId: med.id,
       medication: med.name || med.displayName,
@@ -407,11 +430,86 @@ interface Medication {
       frequency: med.defaultFrequency || '',
       duration: '',
       instructions: '',
-      controlled: med.prescriptionType === 'CONTROLLED'
-    }
-    setPrescriptions([...prescriptions, rx])
+      controlled: med.prescriptionType === 'CONTROLLED',
+      form: '',
+      route: 'ORAL',
+      quantity: ''
+    })
+    setPrescriptionDialogOpen(true)
     setMedSearch('')
-    toast({ title: 'Medicamento adicionado', description: med.name || med.displayName })
+  }
+
+  // ============ HANDLERS DOS MODAIS ============
+  const handleSavePrescription = (prescription: Prescription) => {
+    if (prescription.id && prescriptions.find(p => p.id === prescription.id)) {
+      // Editar existente
+      setPrescriptions(prev => prev.map(p => p.id === prescription.id ? prescription : p))
+      toast({ title: 'Prescrição atualizada', description: prescription.medication })
+    } else {
+      // Adicionar nova
+      setPrescriptions([...prescriptions, { ...prescription, id: prescription.id || Date.now().toString() }])
+      toast({ title: 'Prescrição adicionada', description: prescription.medication })
+    }
+    setEditingPrescription(undefined)
+  }
+
+  const handleEditPrescription = (prescription: Prescription) => {
+    setEditingPrescription(prescription)
+    setPrescriptionDialogOpen(true)
+  }
+
+  const handleSaveExam = (exam: ExamRequest) => {
+    if (exam.id && exams.find(e => e.id === exam.id)) {
+      // Editar existente
+      setExams(prev => prev.map(e => e.id === exam.id ? exam : e))
+      toast({ title: 'Exame atualizado', description: exam.description })
+    } else {
+      // Adicionar novo
+      setExams([...exams, { ...exam, id: exam.id || Date.now().toString() }])
+      toast({ title: 'Exame solicitado', description: exam.description })
+    }
+    setEditingExam(undefined)
+  }
+
+  const handleEditExam = (exam: ExamRequest) => {
+    setEditingExam(exam)
+    setExamDialogOpen(true)
+  }
+
+  const handleSaveReferral = (referral: Referral) => {
+    if (referral.id && referrals.find(r => r.id === referral.id)) {
+      // Editar existente
+      setReferrals(prev => prev.map(r => r.id === referral.id ? referral : r))
+      toast({ title: 'Encaminhamento atualizado', description: referral.specialty })
+    } else {
+      // Adicionar novo
+      setReferrals([...referrals, { ...referral, id: referral.id || Date.now().toString() }])
+      toast({ title: 'Encaminhamento adicionado', description: referral.specialty })
+    }
+    setEditingReferral(undefined)
+  }
+
+  const handleEditReferral = (referral: Referral) => {
+    setEditingReferral(referral)
+    setReferralDialogOpen(true)
+  }
+
+  const handleSaveCertificate = (certificate: Certificate) => {
+    if (certificate.id && certificates.find(c => c.id === certificate.id)) {
+      // Editar existente
+      setCertificates(prev => prev.map(c => c.id === certificate.id ? certificate : c))
+      toast({ title: 'Atestado atualizado' })
+    } else {
+      // Adicionar novo
+      setCertificates([...certificates, { ...certificate, id: certificate.id || Date.now().toString() }])
+      toast({ title: 'Atestado adicionado' })
+    }
+    setEditingCertificate(undefined)
+  }
+
+  const handleEditCertificate = (certificate: Certificate) => {
+    setEditingCertificate(certificate)
+    setCertificateDialogOpen(true)
   }
 
 interface Exam {
@@ -421,16 +519,17 @@ interface Exam {
 }
 
   const handleExamSelect = (exam: Exam) => {
-    const ex: ExamRequest = {
+    // Abrir modal para edição completa
+    setEditingExam({
       id: Date.now().toString(),
       examCatalogId: exam.id,
       examType: exam.category || 'LABORATORY',
       description: exam.name,
-      priority: 'NORMAL'
-    }
-    setExams([...exams, ex])
+      priority: 'NORMAL',
+      category: exam.category || 'LABORATORY'
+    })
+    setExamDialogOpen(true)
     setExamSearch('')
-    toast({ title: 'Exame solicitado', description: exam.name })
   }
 
 interface CID {
@@ -552,24 +651,6 @@ interface Suggestions {
       })) as unknown as Referral[]
       setReferrals(prev => [...prev, ...normalizedRefs])
     }
-  }
-
-  // ============ ADICIONAR ENCAMINHAMENTO MANUAL ============
-  const [newReferral, setNewReferral] = useState({ specialty: '', description: '', priority: 'NORMAL' as const })
-  
-  const addReferral = () => {
-    if (!newReferral.specialty || !newReferral.description) return
-    setReferrals([...referrals, { ...newReferral, id: Date.now().toString() }])
-    setNewReferral({ specialty: '', description: '', priority: 'NORMAL' })
-  }
-
-  // ============ ADICIONAR ATESTADO ============
-  const [newCertificate, setNewCertificate] = useState({ type: 'COMPARECIMENTO', description: '', days: 1 })
-  
-  const addCertificate = () => {
-    if (!newCertificate.description) return
-    setCertificates([...certificates, { ...newCertificate, id: Date.now().toString() }])
-    setNewCertificate({ type: 'COMPARECIMENTO', description: '', days: 1 })
   }
 
   // ============ REPETIR PRESCRIÇÃO DO HISTÓRICO ============
@@ -982,20 +1063,30 @@ interface Suggestions {
           
           {/* Prescrições */}
           <Card>
-            <CardHeader className="py-1.5 px-3">
+            <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <FileText className="h-3 w-3" /> Prescrições ({prescriptions.length})
               </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                onClick={() => { setEditingPrescription(undefined); setPrescriptionDialogOpen(true) }}
+                title="Nova prescrição"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
             </CardHeader>
             <CardContent className="py-2 px-3">
-              <div className="max-h-[100px] overflow-auto space-y-1 mb-2">
+              <div className="max-h-[120px] overflow-auto space-y-1 mb-2">
                 {prescriptions.map((rx) => (
-                  <div key={rx.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start">
+                  <div key={rx.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditPrescription(rx)}>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{rx.medication}</p>
                       <p className="text-muted-foreground truncate">{rx.dosage} • {rx.frequency}</p>
+                      {rx.duration && <p className="text-muted-foreground truncate text-[10px]">{rx.duration}</p>}
                     </div>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={() => setPrescriptions(prescriptions.filter(p => p.id !== rx.id))}>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setPrescriptions(prescriptions.filter(p => p.id !== rx.id)) }}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -1013,17 +1104,29 @@ interface Suggestions {
 
           {/* Exames */}
           <Card>
-            <CardHeader className="py-1.5 px-3">
+            <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <FlaskConical className="h-3 w-3" /> Exames ({exams.length})
               </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
+                title="Novo exame"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
             </CardHeader>
             <CardContent className="py-2 px-3">
-              <div className="max-h-[80px] overflow-auto space-y-1 mb-2">
+              <div className="max-h-[100px] overflow-auto space-y-1 mb-2">
                 {exams.map((ex) => (
-                  <div key={ex.id} className="p-1.5 bg-muted rounded text-xs flex justify-between">
-                    <span className="truncate flex-1">{ex.description}</span>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={() => setExams(exams.filter(e => e.id !== ex.id))}>
+                  <div key={ex.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditExam(ex)}>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{ex.description}</p>
+                      {ex.priority === 'HIGH' && <Badge variant="destructive" className="text-[10px] h-4 mt-0.5">Urgente</Badge>}
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setExams(exams.filter(e => e.id !== ex.id)) }}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -1041,59 +1144,68 @@ interface Suggestions {
 
           {/* Encaminhamentos */}
           <Card>
-            <CardHeader className="py-1.5 px-3">
+            <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <Send className="h-3 w-3" /> Encaminhamentos ({referrals.length})
               </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2 px-3 space-y-1">
-              {referrals.map((ref) => (
-                <div key={ref.id} className="p-1.5 bg-muted rounded text-xs flex justify-between">
-                  <span className="truncate flex-1">{ref.specialty}</span>
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={() => setReferrals(referrals.filter(r => r.id !== ref.id))}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-              <Input placeholder="Especialidade" value={newReferral.specialty} onChange={(e) => setNewReferral({ ...newReferral, specialty: e.target.value })} className="h-6 text-xs" />
-              <Input placeholder="Motivo" value={newReferral.description} onChange={(e) => setNewReferral({ ...newReferral, description: e.target.value })} className="h-6 text-xs" />
-              <Button onClick={addReferral} size="sm" className="w-full h-6 text-xs">
-                <Plus className="h-3 w-3 mr-1" /> Encaminhar
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                onClick={() => { setEditingReferral(undefined); setReferralDialogOpen(true) }}
+                title="Novo encaminhamento"
+              >
+                <Plus className="h-3 w-3" />
               </Button>
+            </CardHeader>
+            <CardContent className="py-2 px-3">
+              <div className="max-h-[100px] overflow-auto space-y-1">
+                {referrals.map((ref) => (
+                  <div key={ref.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditReferral(ref)}>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{ref.specialty}</p>
+                      <p className="text-muted-foreground truncate text-[10px]">{ref.description}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setReferrals(referrals.filter(r => r.id !== ref.id)) }}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
           {/* Atestados */}
           <Card>
-            <CardHeader className="py-1.5 px-3">
+            <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <FileText className="h-3 w-3" /> Atestados ({certificates.length})
               </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2 px-3 space-y-1">
-              {certificates.map((cert) => (
-                <div key={cert.id} className="p-1.5 bg-muted rounded text-xs flex justify-between">
-                  <Badge variant="outline" className="text-xs h-5">{cert.type}</Badge>
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setCertificates(certificates.filter(c => c.id !== cert.id))}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-              <Select value={newCertificate.type} onValueChange={(v) => setNewCertificate({ ...newCertificate, type: v })}>
-                <SelectTrigger className="h-6 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="COMPARECIMENTO">Comparecimento</SelectItem>
-                  <SelectItem value="AFASTAMENTO">Afastamento</SelectItem>
-                  <SelectItem value="ACOMPANHANTE">Acompanhante</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input placeholder="Descrição" value={newCertificate.description} onChange={(e) => setNewCertificate({ ...newCertificate, description: e.target.value })} className="h-6 text-xs" />
-              {newCertificate.type === 'AFASTAMENTO' && (
-                <Input type="number" placeholder="Dias" value={newCertificate.days} onChange={(e) => setNewCertificate({ ...newCertificate, days: parseInt(e.target.value) || 1 })} className="h-6 text-xs" />
-              )}
-              <Button onClick={addCertificate} size="sm" className="w-full h-6 text-xs">
-                <Plus className="h-3 w-3 mr-1" /> Atestado
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                onClick={() => { setEditingCertificate(undefined); setCertificateDialogOpen(true) }}
+                title="Novo atestado"
+              >
+                <Plus className="h-3 w-3" />
               </Button>
+            </CardHeader>
+            <CardContent className="py-2 px-3">
+              <div className="max-h-[100px] overflow-auto space-y-1">
+                {certificates.map((cert) => (
+                  <div key={cert.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditCertificate(cert)}>
+                    <div className="min-w-0 flex-1">
+                      <Badge variant="outline" className="text-[10px] h-4 mb-1">{cert.type}</Badge>
+                      <p className="text-muted-foreground truncate text-[10px]">{cert.description}</p>
+                      {cert.days && <p className="text-muted-foreground text-[10px]">{cert.days} dias</p>}
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setCertificates(certificates.filter(c => c.id !== cert.id)) }}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -1207,6 +1319,47 @@ interface Suggestions {
         )}
       </div>
       
+      {/* Modais de Edição */}
+      <PrescriptionEditorDialog
+        open={prescriptionDialogOpen}
+        onOpenChange={(open) => {
+          setPrescriptionDialogOpen(open)
+          if (!open) setEditingPrescription(undefined)
+        }}
+        prescription={editingPrescription}
+        onSave={handleSavePrescription}
+      />
+
+      <ExamEditorDialog
+        open={examDialogOpen}
+        onOpenChange={(open) => {
+          setExamDialogOpen(open)
+          if (!open) setEditingExam(undefined)
+        }}
+        exam={editingExam}
+        onSave={handleSaveExam}
+      />
+
+      <ReferralEditorDialog
+        open={referralDialogOpen}
+        onOpenChange={(open) => {
+          setReferralDialogOpen(open)
+          if (!open) setEditingReferral(undefined)
+        }}
+        referral={editingReferral}
+        onSave={handleSaveReferral}
+      />
+
+      <CertificateEditorDialog
+        open={certificateDialogOpen}
+        onOpenChange={(open) => {
+          setCertificateDialogOpen(open)
+          if (!open) setEditingCertificate(undefined)
+        }}
+        certificate={editingCertificate}
+        onSave={handleSaveCertificate}
+      />
+
       {/* Diálogo de confirmação de cancelamento */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>

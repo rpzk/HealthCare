@@ -1,4 +1,6 @@
-# ✅ Implementation Checklist - Medical Certificate System
+# Implementation Checklist - Medical Certificate System
+
+Este documento é um checklist de desenvolvimento e pode conter itens marcados como concluídos com base em intenção/histórico de implementação. Ele **não é uma garantia operacional** (produção, compliance, integrações externas, rotinas automáticas) e pode ficar desatualizado.
 
 ## Core Features
 
@@ -27,7 +29,7 @@
 - [x] Signature storage in database (`signature`, `signatureMethod`)
 - [x] Signature generation on certificate issuance
 - [x] Signature verification endpoint
-- [x] ICP-Brasil hooks prepared (for future)
+- [ ] ICP-Brasil integration (não implementado; apenas caminho futuro)
 - [x] Certificate validity (10-year self-signed)
 - [x] Audit logging of all signature operations
 
@@ -90,7 +92,7 @@
 ## Backup System
 
 ### Daily Backup
-- [x] Automatic scheduling (2 AM server time)
+- [ ] Automatic scheduling (depende de systemd/cron; não é garantido pelo código)
 - [x] TAR.GZ compression
 - [x] Metadata preservation
 - [x] Certificate data extraction
@@ -99,7 +101,7 @@
 - [x] Audit logging of backup creation
 
 ### Retention Policy
-- [x] 365-day retention default
+- [ ] Retention default (depende de configuração/script; validar no ambiente)
 - [x] Automatic cleanup of old backups
 - [x] Audit logging of deletions
 - [x] Environment variable configuration

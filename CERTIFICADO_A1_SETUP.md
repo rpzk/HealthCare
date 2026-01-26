@@ -1,139 +1,46 @@
-# 🔐 Certificado Digital A1 - Por Usuário
+# 🔐 Certificado digital A1 (.pfx/.p12) — upload e uso (estado atual)
 
-## ✅ Sistema Multiusuário
+Este documento descreve **o que está implementado no código** hoje, sem prometer validade jurídica, conformidade regulatória ou formatos padronizados (PAdES/CAdES).
 
-Agora cada médico pode ter seu **próprio certificado A1**:
-- Upload via interface web
-- Armazenado de forma segura no servidor
-- Senha solicitada a cada assinatura (não armazenada)
-- Múltiplos médicos, múltiplos certificados
+## ✅ Upload do certificado (implementado)
 
----
+- Endpoint: `POST /api/certificates/upload-a1` (multipart/form-data)
+  - Campos: `file` (arquivo `.pfx`/`.p12`) e `password` (senha do certificado)
+  - O endpoint valida se o certificado está dentro da janela de validade (`notBefore`/`notAfter`).
+- Armazenamento:
+  - O arquivo é salvo em `uploads/certificates/` (volume persistente no deploy Docker).
+  - O caminho é gravado no banco em `DigitalCertificate.pfxFilePath`.
+- Metadados gravados no banco:
+  - `subject`, `issuer`, `serialNumber`, `notBefore`, `notAfter`, `certificatePem`, `publicKeyPem`.
+- Senha:
+  - A senha **não é armazenada em texto**.
+  - O sistema atualmente grava um **hash SHA-256** da senha em `DigitalCertificate.pfxPasswordHash`.
 
-## 📋 Como Usar
+## 🧭 Onde fica na interface
 
-### Passo 1: Fazer Upload do Certificado
+Na UI, o gerenciamento de certificados aparece na tela de configurações em `/settings` (seção de certificados digitais).
 
-1. **Acesse suas configurações:**
-   - `/profile` ou `/settings`
-   - Seção "Certificado Digital"
+## ✍️ Assinatura de documentos (implementado)
 
-2. **Faça upload:**
-   - Selecione arquivo `.pfx` (do seu computador Windows)
-   - Digite a senha do certificado
-   - Clique em "Carregar Certificado"
+Existe assinatura baseada em RSA/SHA-256 usando a chave privada do `.pfx`.
 
-3. **Pronto!**
-   - Certificado validado e armazenado
-   - Agora você pode assinar documentos
+Rotas de assinatura existentes no código:
+- `POST /api/prescriptions/[id]/sign`
+- `POST /api/referrals/[id]/sign`
+- `POST /api/exam-requests/[id]/sign`
+- `POST /api/exam-results/[id]/sign`
+- `POST /api/medical-certificates/[id]/sign`
 
----
+Observação: essas rotas pedem a senha no request e usam `signWithA1Certificate` para assinar um conteúdo canônico.
 
-### Passo 2: Assinar Documentos
+## 🔎 Validação (implementado com limitações)
 
-1. **Emita um atestado médico**
+Há um endpoint de validação por hash: `GET /api/digital-signatures/validate/[hash]`.
 
-2. **Clique em "Assinar com Certificado A1"**
+Ele valida **metadados** e a janela de validade do certificado (ativo e dentro do período), mas **não faz verificação criptográfica completa do conteúdo original**.
 
-3. **Digite a senha do seu certificado**
-   - Por segurança, senha é solicitada a cada assinatura
-   - Não armazenamos sua senha
+## ⚠️ Limitações / não implementado
 
-4. **Documento assinado!**
-   - Assinatura digital ICP-Brasil
-   - Validade legal total
-
----
-
-## ✨ Como Funciona
-
-```
-1. Médico emite atestado
-   ↓
-2. Clica "Assinar com Certificado A1"
-   ↓
-3. Sistema lê seu certificado .pfx
-   ↓
-4. Cria hash SHA-256 do documento
-   ↓
-5. Assina com sua chave privada
-   ↓
-6. Armazena assinatura no banco
-   ↓
-7. Documento agora é IMUTÁVEL
-```
-
----
-
-## 🔍 Validação
-
-Qualquer pessoa pode validar a assinatura:
-
-```bash
-# Endpoint de validação (criar depois se necessário)
-GET /api/certificates/validate/{numero}/{ano}
-
-# Retorna:
-{
-  "valid": true,
-  "signed": true,
-  "signatureMethod": "ICP_BRASIL",
-  "certificateInfo": {
-    "subject": "CN=RAFAEL PIAZENSKI",
-    "issuer": "CN=Valid",
-    "validFrom": "2024-01-01",
-    "validTo": "2025-12-31"
-  }
-}
-```
-
----
-
-## 🔒 Segurança
-
-✅ **O que foi implementado:**
-- Assinatura SHA-256 + RSA
-- Certificado ICP-Brasil válido
-- Chave privada protegida por senha
-- Arquivo .pfx em diretório seguro
-- Verificação de permissões
-
-⚠️ **Boas práticas:**
-- Nunca compartilhe o arquivo .pfx
-- Nunca compartilhe a senha
-- Faça backup do certificado
-- Renove antes do vencimento
-- Use HTTPS em produção
-
----
-
-## 📊 Próximos Passos (Opcional)
-
-1. **Adicionar carimbo de tempo (TSA)**
-   - Prova data/hora exata da assinatura
-   - Mais segurança jurídica
-
-2. **QR Code para validação**
-   - Escaneia e valida na hora
-   - Página pública de verificação
-
-3. **Múltiplas assinaturas**
-   - Médico + paciente
-   - Co-assinatura de documentos
-
----
-
-## ❓ Problemas Comuns
-
-### "Certificado não configurado"
-→ Verifique se `.env` está correto e restart o app
-
-### "Senha incorreta"
-→ Confirme a senha do certificado .pfx
-
-### "Certificado expirado"
-→ Verifique validade com: `openssl pkcs12 -info -in arquivo.pfx`
-
----
-
-**Pronto!** Seu app agora tem assinatura digital com **validade legal total**! 🎉
+- Não gera um container padrão ICP-Brasil (ex.: PAdES/CAdES).
+- Não implementa TSA (carimbo de tempo) ou validação completa de cadeia/AC.
+- A validação completa depende de ter o conteúdo original assinado e de um processo de verificação dedicado.

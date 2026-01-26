@@ -3,6 +3,8 @@
  * Sistema self-hosted sem dependências externas pagas
  */
 
+import { logger } from '@/lib/logger'
+
 export interface MediaQualityPreset {
   name: string
   video: MediaTrackConstraints

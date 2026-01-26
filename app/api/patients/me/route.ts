@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
+import { formatCPF, parseAllergies, serializeBirthDateToIsoNoonUtc } from '@/lib/patient-schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,28 +20,52 @@ export async function GET() {
       )
     }
 
-    // Buscar paciente vinculado ao usuário logado
-    const patient = await prisma.patient.findFirst({
-      where: {
-        userId: session.user.id
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        birthDate: true,
-        cpf: true,
-        address: true,
-        allergies: true,
-        emergencyContact: true,
-        createdAt: true,
-        gender: true,
-        riskLevel: true,
-        medicalHistory: true,
-        currentMedications: true,
-      }
+    const lookup = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { patientId: true, email: true },
     })
+
+    const patient = lookup?.patientId
+      ? await prisma.patient.findUnique({
+          where: { id: lookup.patientId },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            birthDate: true,
+            cpf: true,
+            address: true,
+            allergies: true,
+            emergencyContact: true,
+            createdAt: true,
+            gender: true,
+            riskLevel: true,
+            medicalHistory: true,
+            currentMedications: true,
+          },
+        })
+      : lookup?.email
+        ? await prisma.patient.findFirst({
+            where: { email: { equals: lookup.email, mode: 'insensitive' } },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              birthDate: true,
+              cpf: true,
+              address: true,
+              allergies: true,
+              emergencyContact: true,
+              createdAt: true,
+              gender: true,
+              riskLevel: true,
+              medicalHistory: true,
+              currentMedications: true,
+            },
+          })
+        : null
 
     if (!patient) {
       return NextResponse.json(
@@ -48,7 +74,14 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json(patient)
+    return NextResponse.json({
+      ...patient,
+      cpf: formatCPF(decrypt(patient.cpf as string | null)),
+      birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate),
+      allergies: parseAllergies(decrypt(patient.allergies as string | null)),
+      medicalHistory: decrypt(patient.medicalHistory as string | null),
+      currentMedications: decrypt(patient.currentMedications as string | null),
+    })
   } catch (error) {
     logger.error('Erro ao buscar dados do paciente:', error)
     return NextResponse.json(

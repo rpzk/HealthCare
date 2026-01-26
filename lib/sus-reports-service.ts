@@ -3,8 +3,6 @@
  * Gera relatórios SIAB (Produção Diária, Mensal, Estratificada, etc)
  */
 
-import type { Consultation, Patient } from '@prisma/client'
-import { startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
@@ -209,14 +207,24 @@ export class SUSReportsService {
         ).length
       }
 
-      // Buscar unidade de saúde
-      const healthUnit = await prisma.healthUnit.findUnique({
-        where: { id: healthUnitId }
-      })
+      // Contagens reais derivadas do BD (sem estimativas)
+      const uniquePatientIds = new Set(consultations.map(c => c.patientId))
+      const uniquePatients = uniquePatientIds.size
 
-      // Contar pacientes únicos e famílias (simulado)
-      const uniquePatients = new Set(consultations.map(c => c.patientId)).size
-      const familiesEstimate = Math.ceil(uniquePatients / 3.5) // Média de pessoas por família
+      const newPatientIds = new Set(
+        consultations
+          .filter(c => c.patient?.createdAt && c.patient.createdAt >= monthStart && c.patient.createdAt <= monthEnd)
+          .map(c => c.patientId)
+      )
+
+      const uniqueHouseholdIds = new Set(
+        consultations
+          .map(c => c.patient?.householdId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      )
+
+      const totalFamilies = uniqueHouseholdIds.size
+      const populationCovered = uniquePatients
 
       // Criar/atualizar relatório mensal
       const report = await prisma.monthlyProductionReport.upsert({
@@ -230,12 +238,9 @@ export class SUSReportsService {
         update: {
           totalConsultations: consultations.length,
           totalPatients: uniquePatients,
-          newPatients: consultations.filter(c => {
-            // Considerar novo se primeira consulta neste mês
-            return c.createdAt >= monthStart
-          }).length,
-          totalFamilies: familiesEstimate,
-          populationCovered: healthUnit?.staffCount ? uniquePatients * 3 : uniquePatients,
+          newPatients: newPatientIds.size,
+          totalFamilies,
+          populationCovered,
           ...typeCounts,
           consultationsUnder1: ageGroupCounts.under1,
           consultations1to4: ageGroupCounts['1to4'],
@@ -253,11 +258,9 @@ export class SUSReportsService {
           year,
           totalConsultations: consultations.length,
           totalPatients: uniquePatients,
-          newPatients: consultations.filter(c => {
-            return c.createdAt >= monthStart
-          }).length,
-          totalFamilies: familiesEstimate,
-          populationCovered: healthUnit?.staffCount ? uniquePatients * 3 : uniquePatients,
+          newPatients: newPatientIds.size,
+          totalFamilies,
+          populationCovered,
           ...typeCounts,
           consultationsUnder1: ageGroupCounts.under1,
           consultations1to4: ageGroupCounts['1to4'],
@@ -267,7 +270,7 @@ export class SUSReportsService {
           consultations20to49: ageGroupCounts['20to49'],
           consultations50to59: ageGroupCounts['50to59'],
           consultations60plus: ageGroupCounts['60plus'],
-          coveragePercentage: (uniquePatients / (healthUnit?.staffCount || 100)) * 100,
+          coveragePercentage: 0,
           createdBy: 'SYSTEM'
         }
       })

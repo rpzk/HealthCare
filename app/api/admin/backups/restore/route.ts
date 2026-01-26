@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import path from 'path'
 import { prisma } from '@/lib/prisma'
 import {
   assertUserAcceptedTerms,
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
 
     try {
       // Executar script de restauração
-      const restoreScript = `bash /home/umbrel/HealthCare/scripts/restore-database.sh "${filename}"`
+      const restoreScriptPath = path.join(process.cwd(), 'scripts', 'restore-database.sh')
+      const restoreScript = `bash "${restoreScriptPath}" "${filename}"`
 
       logger.info('[Restore] Iniciando restauração:', filename)
 

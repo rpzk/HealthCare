@@ -26,44 +26,55 @@ export async function middleware(request: NextRequest) {
       pathname.endsWith('.svg')) {
     return NextResponse.next()
   }
-  
-  // Apply rate limiting using RateLimiterFactory
-  // Auto-selects Redis (production) or in-memory (development)
-  const clientKey = getClientKey(request)
-  const rateLimitResult = await checkRateLimit(clientKey, {
-    ...RateLimitPresets.standard,
-    keyPrefix: 'middleware'
-  })
-  
-  const { allowed, remaining } = rateLimitResult
-  
-  if (!allowed) {
-    return new NextResponse(
-      JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-      { 
-        status: 429, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Retry-After': '60',
-          'X-RateLimit-Remaining': '0'
-        } 
-      }
-    )
-  }
+
+  // IMPORTANT: do not rate-limit page navigations (e.g. /auth/signin)
+  // because a 429 JSON response will break rendering and can lock users out.
+  // Apply rate limiting only to API routes, excluding NextAuth and health.
+  const isApiRoute = pathname.startsWith('/api/')
+  const isAuthApiRoute = pathname.startsWith('/api/auth/')
+  const isHealthRoute = pathname === '/api/health'
+  const isTeleApiRoute = pathname.startsWith('/api/tele/')
   
   const res = NextResponse.next()
-  
-  // Rate limit headers
-  res.headers.set('X-RateLimit-Remaining', remaining.toString())
+
+  // Apply rate limiting using RateLimiterFactory only for API routes
+  // (excluding /api/auth/* and /api/health).
+  if (isApiRoute && !isAuthApiRoute && !isHealthRoute && !isTeleApiRoute) {
+    // Auto-selects Redis (production) or in-memory (development)
+    const clientKey = getClientKey(request)
+    const rateLimitResult = await checkRateLimit(clientKey, {
+      ...RateLimitPresets.standard,
+      keyPrefix: 'middleware'
+    })
+
+    const { allowed, remaining } = rateLimitResult
+
+    if (!allowed) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { 
+          status: 429, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': '60',
+            'X-RateLimit-Remaining': '0'
+          } 
+        }
+      )
+    }
+
+    // Rate limit headers (API only)
+    res.headers.set('X-RateLimit-Remaining', remaining.toString())
+  }
   
   // Security headers
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('X-XSS-Protection', '0') // Disabled as per modern recommendations
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  // Permissions-Policy: Allow camera and microphone for teleconsulta; disable Topics API
-  // Replace deprecated 'interest-cohort' with 'browsing-topics' to avoid warnings
-  res.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), browsing-topics=()')
+  // Permissions-Policy: Allow camera and microphone for teleconsulta
+  // Note: Some browsers may warn on unrecognized directives, so keep it minimal.
+  res.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
   
   // HSTS - enable in production
   if (process.env.NODE_ENV === 'production') {

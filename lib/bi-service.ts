@@ -191,7 +191,7 @@ export class BIService {
   }
 
   /**
-   * Receita por método de pagamento (placeholder - modelo não existe)
+    * Receita por método de pagamento
    */
   static async getRevenueByPaymentMethod(startDate: Date, endDate: Date) {
     const transactions = await prisma.financialTransaction.findMany({

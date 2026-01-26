@@ -61,7 +61,7 @@ docker compose -f docker-compose.prod.yml build app --build-arg DATABASE_URL="po
 ## 📝 Estado Atual
 
 ### ✅ Implementado e Pronto
-- Sistema de termos de consentimento **100% funcional**
+- Sistema de termos de consentimento implementado (validar fluxo no seu ambiente)
 - Todos os arquivos criados e modificados
 - Documentação completa
 - Scripts de teste funcionando

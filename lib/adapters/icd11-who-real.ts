@@ -111,9 +111,9 @@ export const icd11WhoRealAdapter: ExternalFetchAdapter<Icd11NormalizedItem> = {
     return new Date().toISOString().slice(0, 10)
   },
   async fetchList() {
-    // If client is not configured, return sample to avoid breaking dev flows
+    // If client is not configured, return empty to avoid introducing fake data.
     if (!ICD11_CLIENT_ID || !ICD11_CLIENT_SECRET) {
-      return [{ code: '1A00', title: 'Cholera', parent: undefined, description: 'Sample ICD11 (no credentials)' }]
+      return []
     }
 
     const token = await requestToken()

@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'
 import { appointmentQuerySchema, createAppointmentSchema, safeParseQueryParams } from '@/lib/validation-schemas-api'
-import { z } from 'zod'
 import { sendAppointmentConfirmationEmail } from '@/lib/email-service'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { handleApiError, ApiError } from '@/lib/api-error-handler'
+import { Prisma } from '@prisma/client'
+import { decrypt } from '@/lib/crypto'
+import { formatCPF } from '@/lib/patient-schemas'
 
 export const runtime = 'nodejs'
 
@@ -29,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     
     const { date, doctorId, patientId, status, page, limit } = queryResult.data
 
-    const where: any = {}
+    const where: Prisma.ConsultationWhereInput = {}
 
     if (date) {
       const startDate = new Date(date)
@@ -90,8 +91,18 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       prisma.consultation.count({ where })
     ])
 
+    const safeConsultations = consultations.map((c) => ({
+      ...c,
+      patient: c.patient
+        ? {
+            ...c.patient,
+            cpf: formatCPF(decrypt(c.patient.cpf)),
+          }
+        : c.patient,
+    }))
+
     return NextResponse.json({
-      data: consultations,
+      data: safeConsultations,
       pagination: {
         page,
         limit,
@@ -100,9 +111,9 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
       }
     })
   } catch (error) {
-    logger.error('Error fetching appointments:', error)
+    logger.error({ err: error }, 'Error fetching appointments')
     return NextResponse.json(
-      { error: 'Erro ao buscar agendamentos', details: error.message },
+      { error: 'Erro ao buscar agendamentos' },
       { status: 500 }
     )
   }
@@ -190,6 +201,16 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       }
     })
 
+    const safeConsultation = {
+      ...consultation,
+      patient: consultation.patient
+        ? {
+            ...consultation.patient,
+            cpf: formatCPF(decrypt(consultation.patient.cpf)),
+          }
+        : consultation.patient,
+    }
+
     // Notify patient (email) if available; never fail the appointment if email fails.
     if (patient.email) {
       try {
@@ -209,15 +230,15 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
           status: 'SCHEDULED',
         })
       } catch (emailError) {
-        logger.error('Error sending appointment confirmation email:', emailError)
+        logger.error({ err: emailError }, 'Error sending appointment confirmation email')
       }
     }
 
-    return NextResponse.json(consultation, { status: 201 })
+    return NextResponse.json(safeConsultation, { status: 201 })
   } catch (error) {
-    logger.error('Error creating appointment:', error)
+    logger.error({ err: error }, 'Error creating appointment')
     return NextResponse.json(
-      { error: 'Erro ao criar agendamento', details: error.message },
+      { error: 'Erro ao criar agendamento' },
       { status: 500 }
     )
   }

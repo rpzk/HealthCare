@@ -38,21 +38,16 @@ interface AIAnalytics {
   }
   dailyUsage: Array<{ date: string; analyses: number }>
   responseTime: {
-    average: number
-    fastest: number
-    slowest: number
+    average: number | null
+    fastest: number | null
+    slowest: number | null
   }
 }
 
 interface PerformanceMetrics {
   aiServiceStatus: string
-  averageResponseTime: number
-  successRate: number
-  queueSize: number
-  activeAnalyses: number
   todayUsage: number
-  peakUsageToday: string
-  systemLoad: string
+  dbQueryMs?: number
 }
 
 interface Recommendation {
@@ -86,9 +81,9 @@ export function AIAnalyticsDashboard() {
         recommendationsRes.json()
       ])
 
-      setAnalytics(analyticsData)
-      setPerformance(performanceData)
-      setRecommendations(recommendationsData)
+      setAnalytics(analyticsData?.data ?? null)
+      setPerformance(performanceData?.data ?? null)
+      setRecommendations(recommendationsData?.data ?? [])
     } catch (error) {
       logger.error('Erro ao buscar dados do dashboard:', error)
     } finally {
@@ -129,6 +124,11 @@ export function AIAnalyticsDashboard() {
     }
   }
 
+  const hasAnalyticsData = !!analytics && (analytics.totalAnalyses > 0)
+  const accuracyLabel = hasAnalyticsData && analytics ? `${analytics.accuracyRate}%` : 'N/A'
+  const avgResponseMs = analytics?.responseTime?.average
+  const responseLabel = typeof avgResponseMs === 'number' ? `${Math.round(avgResponseMs)}ms` : 'N/A'
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -161,22 +161,22 @@ export function AIAnalyticsDashboard() {
               <StatusIndicator
                 status={performance.aiServiceStatus === 'error' ? 'warning' : (performance.aiServiceStatus as 'online' | 'offline' | 'warning' | 'maintenance')}
                 label="Serviço de IA"
-                description={`${performance.activeAnalyses} análises ativas`}
+                description={typeof performance.dbQueryMs === 'number' ? `DB: ${performance.dbQueryMs}ms` : 'Métricas mínimas (real)'}
               />
               <StatusIndicator
-                status={performance.systemLoad === 'low' ? 'online' : 'warning'}
-                label="Carga do Sistema"
-                description={`Load: ${performance.systemLoad}`}
+                status='online'
+                label="Uso Hoje"
+                description={`${performance.todayUsage} eventos`}
               />
               <StatusIndicator
-                status={performance.successRate > 95 ? 'online' : 'warning'}
-                label="Taxa de Sucesso"
-                description={`${performance.successRate}%`}
+                status='maintenance'
+                label="Qualidade"
+                description="Sem dados simulados"
               />
               <StatusIndicator
-                status={performance.queueSize === 0 ? 'online' : 'warning'}
-                label="Fila de Processamento"
-                description={`${performance.queueSize} na fila`}
+                status='maintenance'
+                label="Fila"
+                description="Não monitorada aqui"
               />
             </div>
           </CardContent>
@@ -195,11 +195,11 @@ export function AIAnalyticsDashboard() {
           />
           <MetricCard
             title="Precisão da IA"
-            value={`${analytics?.accuracyRate || 0}%`}
+            value={accuracyLabel}
             description="Taxa de acurácia"
             trend="+2.3%"
             icon={<Brain className="h-4 w-4" />}
-            variant={(analytics?.accuracyRate || 0) > 90 ? 'success' : 'warning'}
+            variant={hasAnalyticsData && (analytics?.accuracyRate || 0) > 90 ? 'success' : 'warning'}
           />
           <MetricCard
             title="Alertas Críticos"
@@ -210,7 +210,7 @@ export function AIAnalyticsDashboard() {
           />
           <MetricCard
             title="Tempo Médio"
-            value={`${analytics?.responseTime?.average || 0}s`}
+            value={responseLabel}
             description="Resposta da IA"
             trend="-0.5s"
             icon={<Clock className="h-4 w-4" />}

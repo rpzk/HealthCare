@@ -27,14 +27,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    // Buscar o sistema CID-10 (pode estar como CID-10 ou ICD-10)
+    // Buscar o sistema CID-10.
+    // Observação: o nome pode variar (ex: "CID10", "CID-10 Brasil"), então priorizamos o kind.
     const cidSystem = await prisma.codeSystem.findFirst({
-      where: { 
+      where: {
+        active: true,
         OR: [
+          { kind: 'CID10' as any },
           { name: 'CID-10' },
-          { name: 'ICD-10' }
-        ]
-      }
+          { name: 'ICD-10' },
+        ],
+      },
+      orderBy: [{ updatedAt: 'desc' }],
     })
 
     if (!cidSystem) {
@@ -42,31 +46,37 @@ export async function GET(request: NextRequest) {
     }
 
     const isCodeSearch = /^[A-Z]\d/i.test(query)
-    
+
     const where: any = {
       systemId: cidSystem.id,
-      active: true
+      active: true,
+      AND: [] as any[],
     }
 
     // Aplicar filtro de sexo se fornecido
     if (patientSex) {
-      where.OR = [
-        { sexRestriction: null },
-        { sexRestriction: patientSex }
-      ]
+      where.AND.push({
+        OR: [{ sexRestriction: null }, { sexRestriction: patientSex }],
+      })
     }
 
     if (isCodeSearch) {
-      // Busca por código - prioriza match exato
+      // Busca por código - prioriza match por prefixo
       where.code = { startsWith: query.toUpperCase(), mode: 'insensitive' }
     } else {
       // Busca por texto na descrição
-      where.OR = [
-        { display: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { synonyms: { contains: query, mode: 'insensitive' } },
-        { shortDescription: { contains: query, mode: 'insensitive' } }
-      ]
+      where.AND.push({
+        OR: [
+          { display: { contains: query, mode: 'insensitive' } },
+          { description: { contains: query, mode: 'insensitive' } },
+          { synonyms: { contains: query, mode: 'insensitive' } },
+          { shortDescription: { contains: query, mode: 'insensitive' } },
+        ],
+      })
+    }
+
+    if (where.AND.length === 0) {
+      delete where.AND
     }
 
     const codes = await prisma.medicalCode.findMany({

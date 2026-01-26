@@ -92,7 +92,7 @@ export class MedicalCertificateService {
     // Buscar dados do paciente e médico
     const patient = await prisma.patient.findUnique({
       where: { id: data.patientId },
-      select: { id: true, name: true, cpf: true }
+      select: { id: true, name: true, cpf: true, email: true }
     })
 
     const doctor = await prisma.user.findUnique({
@@ -201,12 +201,13 @@ export class MedicalCertificateService {
       }
     })
 
-    // Send email notification to patient
-    if (patient && patient.cpf) {
+    // Send email notification to patient (non-blocking)
+    const patientEmail = patient?.email
+    if (patientEmail) {
       const validationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/certificates/validate/${sequenceNumber}/${year}`
-      
+
       await sendCertificateIssuedNotification(
-        patient.cpf, // Using CPF as placeholder for email - should use patient.email when available
+        patientEmail,
         patient.name,
         doctor.name,
         String(sequenceNumber),
@@ -215,9 +216,14 @@ export class MedicalCertificateService {
         format(data.startDate, 'dd/MM/yyyy', { locale: ptBR }),
         endDate ? format(endDate, 'dd/MM/yyyy', { locale: ptBR }) : undefined,
         validationUrl
-      ).catch(err => {
+      ).catch((err) => {
         logger.warn('Failed to send certificate issued email:', err)
         // Non-blocking: continue even if email fails
+      })
+    } else {
+      logger.info('Skipping certificate issued email: patient has no email', {
+        patientId: data.patientId,
+        certificateId: certificate.id
       })
     }
 
@@ -307,7 +313,7 @@ export class MedicalCertificateService {
     })
 
     // Envia notificação de revogação (não-bloqueante)
-    const patientEmail = certificate.patient.email || certificate.patient.cpf
+    const patientEmail = certificate.patient.email
     if (patientEmail) {
       const certificateNumber = `${String(certificate.sequenceNumber).padStart(3, '0')}/${certificate.year}`
       sendCertificateRevokedNotification(
@@ -320,6 +326,11 @@ export class MedicalCertificateService {
           `[Email Error] Falha ao enviar notificação de revogação para ${certificateId}:`,
           error.message
         )
+      })
+    } else {
+      logger.info('Skipping certificate revoked email: patient has no email', {
+        certificateId,
+        patientId: certificate.patientId
       })
     }
   }
@@ -341,6 +352,7 @@ export class MedicalCertificateService {
         patient: {
           select: {
             name: true,
+            email: true,
             cpf: true
           }
         },
@@ -359,9 +371,10 @@ export class MedicalCertificateService {
     }
 
     // Verificar hash
+    const hashCpfOrPatientId = certificate.patient.cpf || certificate.patientId
     const expectedHash = crypto
       .createHash('sha256')
-      .update(`${sequenceNumber}-${year}-${certificate.patient.cpf}-${certificate.doctor.crmNumber}`)
+      .update(`${sequenceNumber}-${year}-${hashCpfOrPatientId}-${certificate.doctor.crmNumber}`)
       .digest('hex')
       .substring(0, 16)
 

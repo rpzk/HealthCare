@@ -47,7 +47,7 @@ staticPageGenerationTimeout: 0,
 ## 📊 Status
 
 ### ✅ Implementado e Resolvido
-1. Sistema de termos de consentimento **100% funcional**
+1. Sistema de termos de consentimento implementado (validar fluxo no seu ambiente)
 2. Corrigido schema Prisma
 3. Refatorado endpoint de database-reset
 4. Protegidas páginas de autenticação

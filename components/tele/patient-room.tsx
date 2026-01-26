@@ -21,7 +21,9 @@ type ConnectionStatus = 'idle' | 'checking' | 'requesting' | 'connecting' | 'con
 export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, patientName, doctorName }: Props) {
   const clientId = useMemo(() => `patient-${Math.random().toString(36).slice(2, 9)}`, [])
   const pcRef = useRef<RTCPeerConnection | null>(null)
-  const localRef = useRef<HTMLVideoElement | null>(null)
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null)
+  const localPipRef = useRef<HTMLVideoElement | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
   const remoteRef = useRef<HTMLVideoElement | null>(null)
   const esRef = useRef<EventSource | null>(null)
   
@@ -57,6 +59,14 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       }
     })()
   }, [])
+
+  const sendSignal = useCallback(async (payload: any) => {
+    await fetch(`/api/tele/rooms/${roomId}/signal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, token: joinToken }),
+    })
+  }, [roomId, joinToken])
 
   // Check permissions on mount
   useEffect(() => {
@@ -94,16 +104,34 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       if (previewStream) {
         previewStream.getTracks().forEach(t => t.stop())
       }
-      if (localRef.current?.srcObject) {
-        const stream = localRef.current.srcObject as MediaStream
-        stream.getTracks().forEach(t => t.stop())
-      }
+      const localStream = localStreamRef.current ?? (localPipRef.current?.srcObject as MediaStream | null)
+      localStream?.getTracks().forEach(t => t.stop())
+      localStreamRef.current = null
+      if (previewVideoRef.current) previewVideoRef.current.srcObject = null
+      if (localPipRef.current) localPipRef.current.srcObject = null
       pcRef.current?.close()
       esRef.current?.close()
     } catch (e) {
       logger.warn('Cleanup error', e)
     }
   }, [previewStream])
+
+  const attachLocalPip = useCallback(async () => {
+    const stream = localStreamRef.current
+    const el = localPipRef.current
+    if (!stream || !el) return
+    if (el.srcObject !== stream) el.srcObject = stream
+    try {
+      await el.play()
+    } catch {
+      // ignore autoplay/play errors
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!joined) return
+    void attachLocalPip()
+  }, [joined, attachLocalPip])
 
   // Cleanup on unmount — include cleanup dependency (stable via useCallback)
   useEffect(() => cleanup, [cleanup])
@@ -166,8 +194,9 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       setHasPermissions(true)
       
       // Show preview in local video
-      if (localRef.current) {
-        localRef.current.srcObject = stream
+      if (previewVideoRef.current) {
+        previewVideoRef.current.srcObject = stream
+        try { await previewVideoRef.current.play() } catch {}
       }
     } catch (err: unknown) {
       logger.error('Erro ao testar dispositivos:', err)
@@ -200,9 +229,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       setPreviewStream(null)
     }
     setShowPreview(false)
-    if (localRef.current) {
-      localRef.current.srcObject = null
-    }
+    if (previewVideoRef.current) previewVideoRef.current.srcObject = null
   }
 
   async function join() {
@@ -239,7 +266,8 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       })
       
       ms.getTracks().forEach(t => pc.addTrack(t, ms))
-      if (localRef.current) localRef.current.srcObject = ms
+      localStreamRef.current = ms
+      void attachLocalPip()
       
       setStatus('connecting')
       
@@ -287,18 +315,37 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       es.addEventListener('signal', async (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data)
+
+          if (data.type === 'peer_joined') {
+            // If staff joined after us, announce readiness again.
+            if (data.kind === 'staff') {
+              await sendSignal({ type: 'ready', from: clientId })
+            }
+            return
+          }
+
           if (data.type === 'offer') {
-            await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp })
-            const answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            await fetch(`/api/tele/rooms/${roomId}/signal`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: 'answer', sdp: answer.sdp, from: clientId, token: joinToken })
-            })
+            try {
+              await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp })
+              const answer = await pc.createAnswer()
+              await pc.setLocalDescription(answer)
+              await sendSignal({ type: 'answer', sdp: answer.sdp, from: clientId })
+            } catch (e: unknown) {
+              logger.warn('Failed to handle offer (patient)', e)
+              setStatus('error')
+              setError('Erro ao negociar chamada')
+              setErrorDetails(e instanceof Error ? e.message : String(e))
+            }
           } else if (data.type === 'answer') {
             if (!pc.currentRemoteDescription) {
-              await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
+              try {
+                await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp })
+              } catch (e: unknown) {
+                logger.warn('Failed to handle answer (patient)', e)
+                setStatus('error')
+                setError('Erro ao negociar chamada')
+                setErrorDetails(e instanceof Error ? e.message : String(e))
+              }
             }
           } else if (data.type === 'candidate' && data.candidate) {
             try {
@@ -318,22 +365,12 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
 
       pc.onicecandidate = (ev) => {
         if (ev.candidate) {
-          fetch(`/api/tele/rooms/${roomId}/signal`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'candidate', candidate: ev.candidate, from: clientId, token: joinToken })
-          })
+          void sendSignal({ type: 'candidate', candidate: ev.candidate, from: clientId })
         }
       }
 
-      // Create offer
-      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-      await pc.setLocalDescription(offer)
-      await fetch(`/api/tele/rooms/${roomId}/signal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'offer', sdp: offer.sdp, from: clientId, token: joinToken })
-      })
+      // Announce readiness so the doctor side can trigger the offer.
+      await sendSignal({ type: 'ready', from: clientId })
 
       setJoined(true)
       setStatus('waiting')
@@ -360,13 +397,13 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
   }
 
   function toggleMute() {
-    const stream = localRef.current?.srcObject as MediaStream | null
+    const stream = localStreamRef.current ?? (localPipRef.current?.srcObject as MediaStream | null)
     stream?.getAudioTracks().forEach(t => t.enabled = muted)
     setMuted(!muted)
   }
 
   function toggleVideo() {
-    const stream = localRef.current?.srcObject as MediaStream | null
+    const stream = localStreamRef.current ?? (localPipRef.current?.srcObject as MediaStream | null)
     stream?.getVideoTracks().forEach(t => t.enabled = videoOff)
     setVideoOff(!videoOff)
   }
@@ -480,6 +517,12 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
               <p className="font-medium text-red-800 mb-3">
                 {error || 'Permissão bloqueada'}
               </p>
+
+              {errorDetails && (
+                <p className="text-sm text-red-700 mb-3">
+                  Detalhes: {errorDetails}
+                </p>
+              )}
               
               <div className="space-y-3 text-sm text-red-700">
                 <p className="font-medium">📱 No celular (Chrome/Samsung Internet):</p>
@@ -585,7 +628,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
       <div className="space-y-4">
         <div className="relative aspect-video bg-gray-900 rounded-2xl overflow-hidden">
           <video
-            ref={localRef}
+            ref={previewVideoRef}
             className="w-full h-full object-cover"
             autoPlay
             muted
@@ -732,7 +775,7 @@ export function TelePatientRoom({ roomId, joinToken, consultationStartedAt, pati
         {/* Local Video (Patient) - PIP */}
         <div className="absolute bottom-4 right-4 w-32 sm:w-40 md:w-48 aspect-video bg-gray-800 rounded-xl overflow-hidden shadow-lg border-2 border-white/20">
           <video
-            ref={localRef}
+            ref={localPipRef}
             className={`w-full h-full object-cover ${videoOff ? 'hidden' : ''}`}
             autoPlay
             muted

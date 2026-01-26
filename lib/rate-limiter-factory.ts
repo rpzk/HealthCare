@@ -44,25 +44,49 @@ class RedisRateLimiter implements RateLimiterImplementation {
 
     try {
       const Redis = (await import('ioredis')).default
-      this.redis = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        password: process.env.REDIS_PASSWORD,
+      const host = (process.env.REDIS_HOST ?? '').trim() || 'localhost'
+      const portRaw = (process.env.REDIS_PORT ?? '').trim()
+      const port = Number.isFinite(Number.parseInt(portRaw, 10))
+        ? Number.parseInt(portRaw, 10)
+        : 6379
+
+      const redisOptions: Record<string, unknown> = {
+        host,
+        port,
         retryStrategy: (times: number) => {
           if (times > 3) return null // Stop retrying after 3 attempts
           return Math.min(times * 100, 1000)
-        }
-      })
+        },
+      }
+
+      const password = (process.env.REDIS_PASSWORD ?? '').trim()
+      if (password) {
+        redisOptions.password = password
+      }
+
+      this.redis = new Redis(redisOptions)
 
       this.redis.on('error', (err: Error) => {
-        logger.error({ error: err }, 'Redis rate limiter error')
+        logger.error({ err }, 'Redis rate limiter error')
       })
 
       await this.redis.ping()
       this.isInitialized = true
       logger.info('Redis rate limiter initialized')
     } catch (error) {
-      logger.error({ error }, 'Failed to initialize Redis rate limiter')
+      logger.error(
+        {
+          err: error as Error,
+          redis: {
+            host: (process.env.REDIS_HOST ?? '').trim() || 'localhost',
+            port: Number.isFinite(Number.parseInt((process.env.REDIS_PORT ?? '').trim(), 10))
+              ? Number.parseInt((process.env.REDIS_PORT ?? '').trim(), 10)
+              : 6379,
+            hasPassword: !!(process.env.REDIS_PASSWORD ?? '').trim(),
+          },
+        },
+        'Failed to initialize Redis rate limiter'
+      )
       throw error
     }
   }
@@ -250,6 +274,10 @@ export class RateLimiterFactory {
   }
 
   private static async initializeRateLimiter(): Promise<RateLimiterImplementation> {
+    const isEdgeRuntime =
+      process.env.NEXT_RUNTIME === 'edge' ||
+      typeof (globalThis as unknown as { EdgeRuntime?: unknown }).EdgeRuntime !== 'undefined'
+
     const env = process.env.NODE_ENV || 'development'
     const redisHost = process.env.REDIS_HOST
     const forceInMemory = process.env.RATE_LIMITER_FORCE_MEMORY === 'true'
@@ -259,6 +287,13 @@ export class RateLimiterFactory {
       redisHost: redisHost || 'not configured',
       forceInMemory 
     }, 'Initializing rate limiter')
+
+    // Middleware runs on the Edge runtime; ioredis depends on Node.js TCP sockets.
+    // In that context, always use the in-memory limiter to avoid runtime failures.
+    if (isEdgeRuntime) {
+      logger.info('Using in-memory rate limiter (edge runtime)')
+      return new InMemoryRateLimiter()
+    }
 
     if (forceInMemory) {
       logger.info('Using in-memory rate limiter (forced by environment)')
@@ -278,7 +313,7 @@ export class RateLimiterFactory {
           logger.warn('Redis rate limiter unhealthy, falling back to in-memory')
         }
       } catch (error) {
-        logger.error({ error }, 'Redis rate limiter initialization failed, falling back to in-memory')
+        logger.error({ err: error as Error }, 'Redis rate limiter initialization failed, falling back to in-memory')
       }
     }
 

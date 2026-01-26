@@ -113,10 +113,33 @@ export const OccupationCapabilityService = {
     // ranking por proximidade de estrato + ocupação se existir potencial
     const ord = roles.map((r:any)=>{
       const min = r.requiredMinStratum as string
-      const max = r.requiredMaxStratum as string | null
+      const max = (r.requiredMaxStratum as string | null) || min
       const score = this._fitScore(userStratum, min, max, lastEval.potentialStratum)
-      return { role: r, score }
-    }).sort((a: { role:any; score:number }, b: { role:any; score:number })=> b.score - a.score).slice(0, limit).map((x: { role:any; score:number })=> ({ ...x.role, _fitScore: x.score }))
+
+      const order = ['S1','S2','S3','S4','S5','S6','S7','S8']
+      const idx = (s:string)=> order.indexOf(s)
+      const u = idx(userStratum)
+      const mn = idx(min)
+      const mx = idx(max)
+
+      // RO/SST fit state: compare capacity (user) vs role complexity (required strata)
+      // - OVERLOAD: user below minimum
+      // - BOREDOM: user above maximum (subutilization)
+      // - FLOW: within range
+      let fitState: 'FLOW' | 'BOREDOM' | 'OVERLOAD' = 'FLOW'
+      let stratumGap = 0
+      if (u < mn) { fitState = 'OVERLOAD'; stratumGap = mn - u }
+      else if (u > mx) { fitState = 'BOREDOM'; stratumGap = u - mx }
+
+      return { role: r, score, fitState, stratumGap, requiredMinStratum: min, requiredMaxStratum: max }
+    }).sort((a: { role:any; score:number }, b: { role:any; score:number })=> b.score - a.score).slice(0, limit).map((x: { role:any; score:number; fitState: string; stratumGap: number; requiredMinStratum: string; requiredMaxStratum: string })=> ({
+      ...x.role,
+      _fitScore: x.score,
+      _fitState: x.fitState,
+      _stratumGap: x.stratumGap,
+      _requiredMinStratum: x.requiredMinStratum,
+      _requiredMaxStratum: x.requiredMaxStratum
+    }))
     return ord
   }
   ,async batchImport(payload: { groups?: UpsertCBOGroupInput[]; occupations?: UpsertOccupationInput[]; roles?: CreateJobRoleInput[] }, actor?: { id:string; email?:string; role?:string }) {

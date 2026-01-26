@@ -8,6 +8,8 @@ interface Match {
   requiredMinStratum: string;
   requiredMaxStratum?: string;
   _fitScore?: number;
+  _fitState?: 'FLOW' | 'BOREDOM' | 'OVERLOAD';
+  _stratumGap?: number;
 }
 
 async function fetchEvaluations(id:string){ const r = await fetch(`/api/capability/user/${id}/evaluations`); return (await r.json()).evaluations as Evaluation[] }
@@ -46,6 +48,11 @@ export default function UserCapabilityPage({ params }: { params: { id: string } 
             <div>
               <div className="font-medium text-sm">{m.title}</div>
               <div className="text-xs text-neutral-500">Req: {m.requiredMinStratum}{m.requiredMaxStratum?`-${m.requiredMaxStratum}`:''}</div>
+              {m._fitState && (
+                <div className="text-xs text-neutral-500">
+                  Fit: {m._fitState}{typeof m._stratumGap === 'number' && m._stratumGap > 0 ? ` (Δ ${m._stratumGap})` : ''}
+                </div>
+              )}
             </div>
             <span className="font-mono text-xs bg-blue-600 text-white px-1 rounded">{(m._fitScore||0).toFixed(2)}</span>
           </div>)}

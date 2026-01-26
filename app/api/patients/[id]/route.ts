@@ -8,6 +8,7 @@ import { startSpan } from '@/lib/tracing'
 import { requirePatientAccess } from '@/lib/patient-access'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { cpfSchema, parseBirthDateYYYYMMDDToNoonUtc } from '@/lib/patient-schemas'
 
 interface RouteParams {
   params: {
@@ -26,11 +27,17 @@ const updatePatientSchema = z.object({
   phone: z.string().nullable().optional(),
   birthDate: z.string().transform((val) => {
     if (!val) return undefined
-    const date = new Date(val)
-    if (isNaN(date.getTime())) throw new Error("Data de nascimento inválida")
-    return date
+    const dateOnly = val.trim().slice(0, 10)
+    // Aceita ISO completo, mas normaliza para YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      return parseBirthDateYYYYMMDDToNoonUtc(dateOnly)
+    }
+    const parsed = new Date(val)
+    if (isNaN(parsed.getTime())) throw new Error('Data de nascimento inválida')
+    const iso = parsed.toISOString().slice(0, 10)
+    return parseBirthDateYYYYMMDDToNoonUtc(iso)
   }).optional(),
-  cpf: z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "CPF deve estar no formato XXX.XXX.XXX-XX").optional(),
+  cpf: cpfSchema.optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   address: z.string().nullable().optional(), // Endereço completo (texto único)
   emergencyContact: z.string().nullable().optional(),
@@ -93,7 +100,8 @@ export const GET = withRbac('patient.read', async (req, { params, user }) => {
     // Modo de edição também retorna tudo
     // Caso contrário, aplicar mascaramento LGPD
     const isAdmin = user.role === 'ADMIN'
-    const isSelf = patient.userId === user.id
+    // O usuário do paciente é `userAccount` (relacionado via `User.patientId`).
+    const isSelf = (patient as any)?.userAccount?.id === user.id
     
     if (isEditMode || isAdmin || isSelf) {
       return NextResponse.json(patient)

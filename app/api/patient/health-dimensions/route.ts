@@ -13,13 +13,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const userId = session.user.id
-    const userEmail = session.user.email
+    const lookup = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { patientId: true, email: true },
+    })
 
-    const whereClause: any = { OR: [{ userId }] }
-    if (userEmail) whereClause.OR.push({ email: userEmail })
-
-    const patient = await prisma.patient.findFirst({ where: whereClause, select: { id: true } })
+    const patient = lookup?.patientId
+      ? await prisma.patient.findUnique({ where: { id: lookup.patientId }, select: { id: true } })
+      : lookup?.email
+        ? await prisma.patient.findFirst({
+            where: { email: { equals: lookup.email, mode: 'insensitive' } },
+            select: { id: true },
+          })
+        : null
 
     if (!patient) return NextResponse.json({ dimensions: [] })
 

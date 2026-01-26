@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle2, XCircle, Download, Share2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import QRCode from 'qrcode'
 
 interface ValidatedCertificate {
   id: string
@@ -19,7 +20,7 @@ interface ValidatedCertificate {
   content: string
   patient: {
     name: string
-    email: string
+    email?: string
   }
   doctor: {
     name: string
@@ -43,20 +44,24 @@ export default function ValidateCertificatePage() {
   const searchParams = useSearchParams()
   const number = params?.number as string
   const year = params?.year as string
-  const hash = searchParams?.get('hash')
+  const validationCode = searchParams?.get('h') ?? searchParams?.get('hash')
 
   const [certificate, setCertificate] = useState<ValidatedCertificate | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isValid, setIsValid] = useState(false)
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
 
   useEffect(() => {
     const validateCertificate = async () => {
       setLoading(true)
       try {
-        const res = await fetch(
-          `/api/certificates/validate/${number}/${year}?hash=${hash}`
-        )
+        if (!validationCode) {
+          setError('Link de validação incompleto (código ausente).')
+          return
+        }
+
+        const res = await fetch(`/api/certificates/validate/${number}/${year}?h=${encodeURIComponent(validationCode)}`)
 
         if (res.ok) {
           const data = await res.json()
@@ -77,7 +82,27 @@ export default function ValidateCertificatePage() {
     if (number && year) {
       validateCertificate()
     }
-  }, [number, year, hash])
+  }, [number, year, validationCode])
+
+  useEffect(() => {
+    const generateQr = async () => {
+      try {
+        if (typeof window === 'undefined') return
+        const url = window.location.href
+        const dataUrl = await QRCode.toDataURL(url, {
+          errorCorrectionLevel: 'M',
+          margin: 1,
+          width: 220,
+        })
+        setQrCodeDataUrl(dataUrl)
+      } catch (err) {
+        console.error('Erro ao gerar QR Code', err)
+        setQrCodeDataUrl(null)
+      }
+    }
+
+    generateQr()
+  }, [number, year, validationCode])
 
   const getCertificateTypeLabel = (type: string) => {
     const types: Record<string, string> = {
@@ -132,7 +157,7 @@ export default function ValidateCertificatePage() {
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
               <AlertDescription className="text-green-700 font-medium">
-                ✓ Atestado válido e autêntico
+                ✓ Atestado válido para este código de validação
               </AlertDescription>
             </Alert>
           ) : certificate?.revokedAt ? (
@@ -146,7 +171,7 @@ export default function ValidateCertificatePage() {
             <Alert variant="destructive">
               <XCircle className="h-5 w-5" />
               <AlertDescription>
-                Atestado não validado. Pode ter sido alterado.
+                Atestado não validado para este código.
               </AlertDescription>
             </Alert>
           )}
@@ -193,9 +218,9 @@ export default function ValidateCertificatePage() {
                 <p className="text-lg font-medium mt-2">
                   {certificate?.patient.name}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {certificate?.patient.email}
-                </p>
+                {certificate?.patient.email ? (
+                  <p className="text-sm text-muted-foreground">{certificate.patient.email}</p>
+                ) : null}
               </div>
 
               <div>
@@ -303,15 +328,21 @@ export default function ValidateCertificatePage() {
 
             {/* Hash e Autenticidade */}
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <label className="text-sm font-semibold text-blue-900">
-                HASH DE AUTENTICAÇÃO (SHA-256)
-              </label>
-              <p className="text-xs font-mono mt-2 break-all text-blue-800">
-                {certificate?.pdfHash}
-              </p>
+              <label className="text-sm font-semibold text-blue-900">CÓDIGO DE VALIDAÇÃO</label>
+              <p className="text-xs font-mono mt-2 break-all text-blue-800">{validationCode || '—'}</p>
               <p className="text-xs text-blue-700 mt-2">
-                Este hash garante a integridade e autenticidade do documento.
+                Este código valida que o link corresponde a este atestado. Ele não comprova, por si só, a integridade do arquivo PDF.
               </p>
+
+              {certificate?.pdfHash ? (
+                <div className="mt-4">
+                  <label className="text-sm font-semibold text-blue-900">HASH DO PDF (SHA-256)</label>
+                  <p className="text-xs font-mono mt-2 break-all text-blue-800">{certificate.pdfHash}</p>
+                  <p className="text-xs text-blue-700 mt-2">
+                    Para checar a integridade do arquivo, compare o SHA-256 do PDF baixado com este valor.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             {/* Ações */}
@@ -368,7 +399,7 @@ export default function ValidateCertificatePage() {
               <div>
                 <p className="font-medium">Cadeia de Confiança</p>
                 <p className="text-muted-foreground">
-                  Emitido pelo sistema autorizado de atestados
+                  Emitido por este sistema; utilize o status acima para validar
                 </p>
               </div>
             </div>
@@ -376,7 +407,7 @@ export default function ValidateCertificatePage() {
             <div className="flex gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
               <div>
-                <p className="font-medium">LGPD Compliant</p>
+                <p className="font-medium">Privacidade (LGPD)</p>
                 <p className="text-muted-foreground">
                   Dados do paciente inclusos apenas com consentimento
                 </p>
@@ -386,18 +417,26 @@ export default function ValidateCertificatePage() {
         </Card>
 
         {/* QR Code */}
-        {certificate?.pdfPath && (
+        {(certificate?.pdfPath || qrCodeDataUrl) && (
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="text-base">QR Code de Validação</CardTitle>
               <CardDescription>
-                Escaneie para validar este atestado (será implementado com assinatura digital)
+                Escaneie para abrir esta página de validação.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center p-6 bg-white rounded-lg">
-              <div className="text-center text-muted-foreground">
-                QR Code será gerado após implementação de assinatura digital
-              </div>
+              {qrCodeDataUrl ? (
+                <img
+                  src={qrCodeDataUrl}
+                  alt="QR Code de validação"
+                  className="h-[220px] w-[220px]"
+                />
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  Não foi possível gerar o QR Code neste dispositivo.
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

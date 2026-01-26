@@ -9,43 +9,55 @@ export interface SignatureResult {
 
 export class DigitalSignatureService {
   /**
-   * Simulates signing a document (prescription)
-   * In a real implementation, this would use a certificate (ICP-Brasil)
+   * Creates an integrity token for a document.
+   *
+   * Important: this is NOT an ICP-Brasil digital signature.
+   * If you need legal signing, use the A1 certificate signer flow.
    */
   static async signDocument(
     content: string,
     signerId: string
   ): Promise<SignatureResult> {
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Create a hash of the content + signer + timestamp
     const timestamp = new Date()
-    const dataToSign = `${content}|${signerId}|${timestamp.toISOString()}`
-    
-    // Generate a SHA-256 hash to represent the signature token
-    const hash = crypto.createHash('sha256').update(dataToSign).digest('hex')
 
-    // Format as a "token" that looks like a digital signature
-    const signature = `ICP-BR:${hash.substring(0, 64).toUpperCase()}`
+    const secret = process.env.DOCUMENT_INTEGRITY_SECRET
+    if (!secret) {
+      throw new Error(
+        'DOCUMENT_INTEGRITY_SECRET não configurado. Assinatura/tokens de integridade estão desabilitados.'
+      )
+    }
+
+    const payload = `${content}|${signerId}`
+    const signature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex')
 
     return {
       signature,
       timestamp,
       signerId,
-      algorithm: 'SHA-256-SIMULATED'
+      algorithm: 'HMAC-SHA256'
     }
   }
 
   /**
-   * Verify a signature (Mock)
+   * Verify an integrity token (HMAC)
    */
   static async verifySignature(
     content: string,
     signature: string,
     signerId: string
   ): Promise<boolean> {
-    // In a real scenario, we would verify the public key
-    return signature.startsWith('ICP-BR:')
+    const secret = process.env.DOCUMENT_INTEGRITY_SECRET
+    if (!secret) return false
+
+    const payload = `${content}|${signerId}`
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex')
+    if (signature.length !== expected.length) return false
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
   }
 }

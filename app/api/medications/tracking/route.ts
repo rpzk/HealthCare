@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit
 
     // Construir filtros
-    const where: Prisma.MedicationTrackingWhereInput = {}
+    const where: Prisma.MedicationTakingWhereInput = {}
 
     if (prescriptionId) {
       // Validar acesso à prescrição

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { 
   Plus, 
   Trash2, 
@@ -31,10 +32,17 @@ interface ServiceType {
 }
 
 const AVAILABLE_ROLES = [
-  { id: 'DOCTOR', label: 'Médico' },
+  { id: 'DOCTOR', label: 'Médico(a)' },
   { id: 'NURSE', label: 'Enfermeiro(a)' },
+  { id: 'PHYSIOTHERAPIST', label: 'Fisioterapeuta' },
+  { id: 'PSYCHOLOGIST', label: 'Psicólogo(a)' },
+  { id: 'NUTRITIONIST', label: 'Nutricionista' },
+  { id: 'DENTIST', label: 'Dentista' },
+  { id: 'PHARMACIST', label: 'Farmacêutico(a)' },
+  { id: 'SOCIAL_WORKER', label: 'Assistente social' },
+  { id: 'HEALTH_AGENT', label: 'Agente de saúde' },
   { id: 'TECHNICIAN', label: 'Técnico(a)' },
-  { id: 'RECEPTIONIST', label: 'Recepcionista' },
+  { id: 'OTHER', label: 'Outro profissional' },
 ]
 
 const SUGGESTED_ICONS = ['👨‍⚕️', '👩‍⚕️', '🏥', '💉', '🩺', '💊', '🩹', '🧪', '❤️', '🦷', '👁️', '🧠']
@@ -48,6 +56,7 @@ export default function AppointmentTypesPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [services, setServices] = useState<ServiceType[]>([])
+  const [directBookingEnabled, setDirectBookingEnabled] = useState(false)
 
   useEffect(() => {
     if (session?.user?.role !== 'ADMIN') {
@@ -60,9 +69,16 @@ export default function AppointmentTypesPage() {
   const loadServices = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/settings/appointment-types')
-      const data = await response.json()
-      setServices(data.services || [])
+      const [typesRes, policyRes] = await Promise.all([
+        fetch('/api/settings/appointment-types'),
+        fetch('/api/settings/patient-booking'),
+      ])
+
+      const typesData = await typesRes.json()
+      setServices(typesData.services || [])
+
+      const policyData = await policyRes.json().catch(() => null)
+      setDirectBookingEnabled(Boolean(policyData?.directBookingEnabled))
     } catch (err) {
       setError('Erro ao carregar configurações')
     } finally {
@@ -88,15 +104,27 @@ export default function AppointmentTypesPage() {
         }
       }
 
-      const response = await fetch('/api/settings/appointment-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ services })
-      })
+      const [typesRes, policyRes] = await Promise.all([
+        fetch('/api/settings/appointment-types', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ services })
+        }),
+        fetch('/api/settings/patient-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ directBookingEnabled })
+        }),
+      ])
 
-      if (!response.ok) {
-        const data = await response.json()
+      if (!typesRes.ok) {
+        const data = await typesRes.json()
         throw new Error(data.error || 'Erro ao salvar')
+      }
+
+      if (!policyRes.ok) {
+        const data = await policyRes.json()
+        throw new Error(data.error || 'Erro ao salvar política de agendamento')
       }
 
       setSuccess('Configurações salvas com sucesso!')
@@ -201,6 +229,20 @@ export default function AppointmentTypesPage() {
         )}
 
         {/* Lista de Serviços */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Agendamento direto</h2>
+                <p className="text-sm text-muted-foreground">
+                  Quando ativado, o paciente poderá escolher data/horário e enviar auto-agendamento. Caso contrário, o fluxo deve ser apenas solicitação/triagem.
+                </p>
+              </div>
+              <Switch checked={directBookingEnabled} onCheckedChange={setDirectBookingEnabled} />
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="space-y-4 mb-6">
           {services.map((service) => (
             <Card key={service.id} className="relative">

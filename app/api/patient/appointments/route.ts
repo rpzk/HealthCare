@@ -6,10 +6,15 @@ import { logger } from '@/lib/logger'
 // GET patient's own appointments
 export const GET = withAuth(async (req: NextRequest, { user }) => {
   try {
-    // Get patient record for this user
-    const patient = await prisma.patient.findFirst({
-      where: { userId: user.id }
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { patientId: true, email: true },
     })
+
+    const patientIdFromUser = dbUser?.patientId ?? null
+    const patient = patientIdFromUser
+      ? await prisma.patient.findUnique({ where: { id: patientIdFromUser }, select: { id: true, name: true } })
+      : await prisma.patient.findFirst({ where: { email: dbUser?.email ?? user.email }, select: { id: true, name: true } })
 
     if (!patient) {
       return NextResponse.json({ error: 'Registro de paciente não encontrado' }, { status: 404 })
@@ -46,10 +51,15 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 // POST - Patient books their own appointment
 export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
-    // Get patient record
-    const patient = await prisma.patient.findFirst({
-      where: { userId: user.id }
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { patientId: true, email: true },
     })
+
+    const patientIdFromUser = dbUser?.patientId ?? null
+    const patient = patientIdFromUser
+      ? await prisma.patient.findUnique({ where: { id: patientIdFromUser }, select: { id: true, name: true } })
+      : await prisma.patient.findFirst({ where: { email: dbUser?.email ?? user.email }, select: { id: true, name: true } })
 
     if (!patient) {
       return NextResponse.json({ error: 'Registro de paciente não encontrado' }, { status: 404 })

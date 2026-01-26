@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { TermAudience } from '@prisma/client'
 import { logger } from '@/lib/logger'
+import { encrypt, hashCPF } from '@/lib/crypto'
+import { normalizeCPF, parseBirthDateYYYYMMDDToNoonUtc } from '@/lib/patient-schemas'
 
 export async function POST(req: Request) {
   try {
@@ -71,6 +73,9 @@ export async function POST(req: Request) {
 
     // Transaction to create User, Person, TermAcceptances and update Invite
     await prisma.$transaction(async (tx) => {
+      const cpfDigits = normalizeCPF(String(cpf))
+      const birth = birthDate ? parseBirthDateYYYYMMDDToNoonUtc(String(birthDate)) : undefined
+
       // Required active terms for this audience
       const requiredTerms = await tx.term.findMany({
         where: {
@@ -107,10 +112,10 @@ export async function POST(req: Request) {
       const person = await tx.person.create({
         data: {
           name,
-          cpf,
+          cpf: cpfDigits,
           email: invite.email,
           phone,
-          birthDate: birthDate ? new Date(birthDate) : undefined,
+          birthDate: birth,
           gender: gender as any,
           // Create User linked to Person
           user: {
@@ -138,13 +143,19 @@ export async function POST(req: Request) {
           data: {
             name,
             email: invite.email,
-            cpf,
+            cpf: encrypt(cpfDigits),
+            cpfHash: hashCPF(cpfDigits),
             phone,
-            birthDate: new Date(birthDate),
+            birthDate: parseBirthDateYYYYMMDDToNoonUtc(String(birthDate)),
             gender: gender as any,
-            userId: person.user.id,
             personId: person.id
           }
+        })
+
+        // Link login account to the patient record (canonical)
+        await tx.user.update({
+          where: { id: person.user.id },
+          data: { patientId: patient.id },
         })
 
         // Create biometric consents if provided

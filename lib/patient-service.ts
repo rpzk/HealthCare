@@ -2,7 +2,13 @@ import { Gender, RiskLevel, Prisma } from '@prisma/client'
 import { getPatientAccessFilter } from '@/lib/patient-access'
 import { prisma } from '@/lib/prisma'
 import { encrypt, decrypt, hashCPF } from '@/lib/crypto'
-import { normalizeBloodType, parseAllergies, serializeAllergies } from '@/lib/patient-schemas'
+import {
+  normalizeBloodType,
+  parseAllergies,
+  serializeAllergies,
+  serializeBirthDateToIsoNoonUtc,
+  toNoonUtc,
+} from '@/lib/patient-schemas'
 import { logger } from '@/lib/logger'
 
 async function getPrisma() {
@@ -159,6 +165,7 @@ export class PatientService {
           riskLevel: patient.riskLevel,
           emergencyContact: patient.emergencyContact,
           address: patient.address,
+          birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate),
           medicalHistory: decrypt(patient.medicalHistory as string | null),
           allergies: parseAllergies(decrypt(patient.allergies as string | null)),
           currentMedications: decrypt(patient.currentMedications as string | null),
@@ -216,6 +223,7 @@ export class PatientService {
               isActive: true
             }
           },
+          addresses: true,
           consultations: {
             include: {
               doctor: {
@@ -267,6 +275,8 @@ export class PatientService {
         throw new Error('Paciente não encontrado')
       }
 
+      const age = this.calculateAge(patient.birthDate)
+
       // Descriptografar campos sensíveis
       return {
         ...patient,
@@ -275,7 +285,8 @@ export class PatientService {
         medicalHistory: decrypt(patient.medicalHistory as string | null),
         allergies: parseAllergies(decrypt(patient.allergies as string | null)),
         currentMedications: decrypt(patient.currentMedications as string | null),
-        age: this.calculateAge(patient.birthDate),
+        age,
+        birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate),
         doctor: patient.User ? {
           id: patient.User.id,
           name: patient.User.name,
@@ -295,12 +306,14 @@ export class PatientService {
       const prisma = await getPrisma()
       // logger.info('[patient-service] createPatient called')
 
+      const cpfDigits = data.cpf ? data.cpf.replace(/\D/g, '') : undefined
+
       // 1. Verificar se já existe uma Pessoa com este CPF
       let personId: string | undefined
 
-      if (data.cpf) {
+      if (cpfDigits) {
         const existingPerson = await prisma.person.findUnique({
-          where: { cpf: data.cpf }
+          where: { cpf: cpfDigits }
         })
         if (existingPerson) {
           personId = existingPerson.id
@@ -312,8 +325,8 @@ export class PatientService {
         const newPerson = await prisma.person.create({
           data: {
             name: data.name,
-            cpf: data.cpf,
-            birthDate: data.birthDate,
+            cpf: cpfDigits,
+            birthDate: toNoonUtc(data.birthDate),
             gender: data.gender,
             email: data.email,
             phone: data.phone,
@@ -338,9 +351,9 @@ export class PatientService {
           name: data.name,
           email: data.email,
           phone: data.phone,
-          cpf: data.cpf ? encrypt(data.cpf) : undefined,
-          cpfHash: data.cpf ? hashCPF(data.cpf) : undefined,
-          birthDate: data.birthDate,
+          cpf: cpfDigits ? encrypt(cpfDigits) : undefined,
+          cpfHash: cpfDigits ? hashCPF(cpfDigits) : undefined,
+          birthDate: toNoonUtc(data.birthDate),
           gender: data.gender,
           bloodType: bloodTypeNormalized,
           emergencyContact: data.emergencyContact,
@@ -372,7 +385,8 @@ export class PatientService {
         bloodType: normalizeBloodType(patient.bloodType),
         medicalHistory: decrypt(patient.medicalHistory as string | null),
         allergies: parseAllergies(decrypt(patient.allergies as string | null)),
-        currentMedications: decrypt(patient.currentMedications as string | null)
+        currentMedications: decrypt(patient.currentMedications as string | null),
+        birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate)
       }
     } catch (error) {
       logger.error('Erro ao criar paciente:', error)
@@ -388,8 +402,12 @@ export class PatientService {
       // Preparar campos criptografados
       const updateData: Record<string, unknown> = { ...data }
       if (data.cpf) {
-        updateData.cpf = encrypt(data.cpf)
-        updateData.cpfHash = hashCPF(data.cpf)
+        const cpfDigits = data.cpf.replace(/\D/g, '')
+        updateData.cpf = encrypt(cpfDigits)
+        updateData.cpfHash = hashCPF(cpfDigits)
+      }
+      if (data.birthDate instanceof Date) {
+        updateData.birthDate = toNoonUtc(data.birthDate)
       }
       if (data.medicalHistory) updateData.medicalHistory = encrypt(data.medicalHistory)
       if (data.allergies) {
@@ -422,7 +440,8 @@ export class PatientService {
         bloodType: normalizeBloodType(patient.bloodType),
         medicalHistory: decrypt(patient.medicalHistory as string | null),
         allergies: parseAllergies(decrypt(patient.allergies as string | null)),
-        currentMedications: decrypt(patient.currentMedications as string | null)
+        currentMedications: decrypt(patient.currentMedications as string | null),
+        birthDate: serializeBirthDateToIsoNoonUtc(patient.birthDate)
       }
     } catch (error) {
       logger.error('Erro ao atualizar paciente:', error)
