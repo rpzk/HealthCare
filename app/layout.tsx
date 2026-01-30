@@ -12,6 +12,11 @@ import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Force dynamic rendering to avoid build-time data fetching against the database
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: 'Sistema de Prontuário Eletrônico',
   description: 'Sistema moderno de prontuário eletrônico com IA embarcada',

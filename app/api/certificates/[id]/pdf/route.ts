@@ -4,6 +4,7 @@ import { generateCertificatePdf } from '@/lib/pdf-generator';
 import { getBranding } from '@/lib/branding-service';
 import { getCurrentUser } from '@/lib/with-auth';
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export async function GET(
 ) {
   try {
     const user = await getCurrentUser(req)
+    const shouldStamp = req.nextUrl.searchParams.get('stamp') === '1'
     
     const id = params.id;
     const cert = await prisma.medicalCertificate.findUnique({
@@ -27,12 +29,55 @@ export async function GET(
       return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
     }
 
+
+  // Garante que qrCodeData está preenchido e consistente
+  let qrCodeData = cert.qrCodeData;
   const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_BASE_URL || '';
-  const validationUrl = cert.qrCodeData
-    ? `${baseUrl}/certificates/validate/${cert.sequenceNumber}/${cert.year}`
-    : undefined;
+  // Usa hash do PDF se disponível, senão fallback para número/ano
+  let validationUrl = undefined;
+  if (cert.pdfHash) {
+    validationUrl = `${baseUrl}/certificates/validate/${cert.pdfHash}`;
+    if (!qrCodeData || qrCodeData !== validationUrl) {
+      // Atualiza no banco se necessário
+      await prisma.medicalCertificate.update({
+        where: { id },
+        data: { qrCodeData: validationUrl },
+      });
+      qrCodeData = validationUrl;
+    }
+  } else {
+    // fallback legacy
+    validationUrl = `${baseUrl}/certificates/validate/${cert.sequenceNumber}/${cert.year}`;
+    if (!qrCodeData || qrCodeData !== validationUrl) {
+      await prisma.medicalCertificate.update({
+        where: { id },
+        data: { qrCodeData: validationUrl },
+      });
+      qrCodeData = validationUrl;
+    }
+  }
+
+  // Só passa validationUrl se assinado
+  const isSigned = !!cert.signature || !!cert.digitalSignature;
+  const pdfValidationUrl = isSigned ? qrCodeData : undefined;
 
   const branding = await getBranding();
+
+  const formatCpf = (cpf?: string | null) => {
+    if (!cpf) return undefined
+    const digits = cpf.replace(/\D/g, '')
+    if (digits.length !== 11) return cpf
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  }
+
+  const rawCpf = cert.patient?.cpf ? decrypt(cert.patient.cpf) : null
+  const cpfFormatted = formatCpf(rawCpf || cert.patient?.cpf || null)
+
+  const doctorRegistration = cert.doctor?.crmNumber
+    ? `CRM: ${cert.doctor.crmNumber}`
+    : cert.doctor?.licenseNumber
+      ? `${cert.doctor.licenseType || 'Registro'}: ${cert.doctor.licenseNumber}${cert.doctor.licenseState ? `-${cert.doctor.licenseState}` : ''}`
+      : undefined
 
   const buffer = await generateCertificatePdf({
     clinic: {
@@ -55,9 +100,10 @@ export async function GET(
       signatureMethod: cert.signatureMethod || undefined,
       revoked: !!cert.revokedAt,
     },
-    patient: { name: cert.patient?.name || 'Paciente' },
-    doctor: { name: cert.doctor?.name || 'Médico', crm: cert.doctor?.crmNumber || undefined },
-    validationUrl,
+    patient: { name: cert.patient?.name || 'Paciente', identifier: cpfFormatted },
+    doctor: { name: cert.doctor?.name || 'Médico', crm: doctorRegistration },
+    validationUrl: pdfValidationUrl,
+    stamp: shouldStamp,
   });
 
   // Audit log for PDF generation

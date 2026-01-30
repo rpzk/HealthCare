@@ -383,6 +383,11 @@ export const RateLimitPresets = {
     windowMs: 60 * 1000,
     maxRequests: 1000
   },
+  // 3000 requests per minute for authenticated read-heavy UI flows
+  ultraRelaxed: {
+    windowMs: 60 * 1000,
+    maxRequests: 3000
+  },
   // 10 requests per hour (for sensitive operations)
   sensitive: {
     windowMs: 60 * 60 * 1000,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -227,10 +227,28 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
   const [signatureReason, setSignatureReason] = useState<string | null>(null)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
 
+  const rateLimitUntilRef = useRef<number>(0)
+
   const fetchPrescription = useCallback(async () => {
     try {
+      const now = Date.now()
+      if (rateLimitUntilRef.current && now < rateLimitUntilRef.current) {
+        return
+      }
+
       setLoading(true)
       const res = await fetch(`/api/prescriptions/${id}`)
+      if (res.status === 429) {
+        const retryAfter = Number(res.headers.get('retry-after') || '60')
+        rateLimitUntilRef.current = Date.now() + Math.max(5, retryAfter) * 1000
+        toast({
+          title: 'Muitas requisições',
+          description: 'Aguarde alguns segundos e tente novamente.',
+          variant: 'destructive',
+        })
+        setLoading(false)
+        return
+      }
       if (!res.ok) throw new Error('Falha ao carregar prescrição')
       const json = await res.json() as PrescriptionDetail
 
@@ -245,9 +263,8 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
       setData({ ...json, verificationUrl: fullUrl })
 
       // Signature status should come from SignedDocument metadata (not only from a stored token)
-      const sigRes = await fetch(`/api/prescriptions/${id}/signature`)
-      if (sigRes.ok) {
-        const s = await sigRes.json()
+      try {
+        const s = await import('@/lib/client/signature-client').then(m => m.getSignatureInfo('PRESCRIPTION', id))
         if (s?.signed) {
           setIsSigned(true)
           setSignatureValid(!!s?.valid)
@@ -258,14 +275,14 @@ export default function PrescriptionDetailPage({ params }: { params: { id: strin
             : null
           setVerificationUrl(sigVerificationUrl)
         } else {
-          // Fallback: if legacy record has a signature token but no audit trail, don't claim validity.
           const legacyHasSignature = !!json?.digitalSignature
           setIsSigned(legacyHasSignature)
           setSignatureValid(false)
           setSignatureReason(legacyHasSignature ? 'SEM_TRILHA_DE_VALIDACAO' : null)
           setVerificationUrl(fullUrl)
         }
-      } else {
+      } catch (err) {
+        // treat as degraded - keep legacy info
         const legacyHasSignature = !!json?.digitalSignature
         setIsSigned(legacyHasSignature)
         setSignatureValid(false)

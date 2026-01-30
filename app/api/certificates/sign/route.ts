@@ -8,166 +8,131 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
+import { signPdfWithGotenberg } from '@/lib/pdf-signing-service'
 import crypto from 'crypto'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
+
 interface SignCertificateRequest {
-  certificateId: string
+  certificateId?: string
+  html?: string
+  pdfBuffer?: string // base64
+  css?: string
+  filename?: string
   password?: string
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticação
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id
     const userRole = session?.user?.role as string | undefined
-
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Não autenticado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-
     const body = (await request.json()) as SignCertificateRequest
-    const { certificateId, password } = body
-
-    if (!certificateId) {
-      return NextResponse.json(
-        { error: 'certificateId é obrigatório' },
-        { status: 400 }
-      )
-    }
-
-    // Buscar certificado
-    const certificate = await prisma.medicalCertificate.findUnique({
-      where: { id: certificateId },
-      include: { patient: true, doctor: true }
-    })
-
-    if (!certificate) {
-      return NextResponse.json(
-        { error: 'Atestado não encontrado' },
-        { status: 404 }
-      )
-    }
-
-    // Verificar permissão (médico que criou ou admin)
-    if (certificate.doctorId !== userId && userRole !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Não tem permissão para assinar este atestado' },
-        { status: 403 }
-      )
-    }
-
-    // Buscar certificado digital A1 ativo do médico
-    const userCertificate = await prisma.digitalCertificate.findFirst({
-      where: { userId, isActive: true, notAfter: { gte: new Date() } },
-      orderBy: { createdAt: 'desc' },
-    })
-
-    if (!userCertificate || !userCertificate.pfxFilePath) {
-      return NextResponse.json(
-        {
-          error: 'Você não possui certificado A1 configurado',
-          details: 'Faça upload do seu certificado A1 nas configurações',
+    // Se vier HTML ou PDF direto
+    if (body.html || body.pdfBuffer) {
+      let pdf: Buffer
+      if (body.html) {
+        pdf = await signPdfWithGotenberg({ html: body.html, customCss: body.css, filename: body.filename })
+      } else if (body.pdfBuffer) {
+        pdf = await signPdfWithGotenberg({ pdfBuffer: Buffer.from(body.pdfBuffer, 'base64'), filename: body.filename })
+      } else {
+        return NextResponse.json({ error: 'Requisição inválida' }, { status: 400 })
+      }
+      return new NextResponse(new Uint8Array(pdf), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${body.filename || 'certificado-assinado.pdf'}"`,
         },
-        { status: 400 }
-      )
+      })
     }
-
-    if (!password) {
-      return NextResponse.json(
-        { error: 'Senha do certificado é obrigatória' },
-        { status: 400 }
-      )
+    // Se vier certificateId, busca dados e gera HTML, exige senha e valida certificado digital do médico
+    if (body.certificateId) {
+      const { password } = body
+      if (!password) {
+        return NextResponse.json({ error: 'Senha do certificado obrigatória' }, { status: 400 })
+      }
+      const certificate = await prisma.medicalCertificate.findUnique({
+        where: { id: body.certificateId },
+        include: { patient: true, doctor: true }
+      })
+      if (!certificate) {
+        return NextResponse.json({ error: 'Atestado não encontrado' }, { status: 404 })
+      }
+      if (certificate.doctorId !== userId && userRole !== 'ADMIN') {
+        return NextResponse.json({ error: 'Não tem permissão para assinar este atestado' }, { status: 403 })
+      }
+      // Busca certificado digital A1 do médico
+      const cert = await prisma.digitalCertificate.findFirst({
+        where: { userId: certificate.doctorId, isActive: true, certificateType: 'A1', revokedAt: null },
+        orderBy: { createdAt: 'desc' },
+      })
+      if (!cert || !cert.pfxFilePath) {
+        return NextResponse.json({ error: 'Certificado digital A1 não encontrado para este usuário' }, { status: 404 })
+      }
+      // Valida senha (hash)
+      const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
+      if (cert.pfxPasswordHash !== passwordHash) {
+        return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
+      }
+      // Gera HTML real do atestado
+      const html = `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Atestado</title></head><body><h1>ATESTADO MÉDICO</h1><p><b>Paciente:</b> ${certificate.patient.name}</p><p><b>Médico:</b> ${certificate.doctor.name}</p><p><b>Conteúdo:</b> ${certificate.content}</p><p><b>Data:</b> ${certificate.createdAt.toLocaleDateString('pt-BR')}</p></body></html>`
+      const pdf = await signPdfWithGotenberg({
+        html,
+        filename: `atestado-${certificate.id}.pdf`,
+        certPath: cert.pfxFilePath,
+        certPassword: password,
+      })
+      // Calcula hash do conteúdo assinado
+      const contentToSign = JSON.stringify({
+        id: certificate.id,
+        patientId: certificate.patientId,
+        doctorId: certificate.doctorId,
+        type: certificate.type,
+        days: certificate.days,
+        startDate: certificate.startDate,
+        endDate: certificate.endDate,
+        content: certificate.content,
+        createdAt: certificate.createdAt,
+      })
+      const signatureHash = crypto.createHash('sha256').update(contentToSign).digest('hex')
+      // Registra trilha de auditoria
+      await prisma.signedDocument.create({
+        data: {
+          documentType: 'MEDICAL_CERTIFICATE',
+          documentId: certificate.id,
+          certificateId: cert.id,
+          signerId: userId,
+          signatureAlgorithm: 'PAdES',
+          signatureValue: '', // Pode ser preenchido com valor real se disponível
+          signatureHash,
+          isValid: true,
+          validatedAt: new Date(),
+        },
+      })
+      // Gera verificationUrl
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_BASE_URL || ''
+      const verificationUrl = `${baseUrl}/api/certificates/verify/${certificate.id}/${certificate.createdAt.getFullYear()}`
+      return new NextResponse(new Uint8Array(pdf), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="atestado-${certificate.id}.pdf"`,
+          'X-Verification-Url': verificationUrl,
+        },
+      })
     }
-
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
-    if (userCertificate.pfxPasswordHash && passwordHash !== userCertificate.pfxPasswordHash) {
-      return NextResponse.json(
-        { error: 'Senha do certificado incorreta' },
-        { status: 401 }
-      )
-    }
-
-    // Preparar dados do documento
-    const documentData = JSON.stringify({
-      id: certificate.id,
-      sequenceNumber: certificate.sequenceNumber,
-      year: certificate.year,
-      type: certificate.type,
-      patientId: certificate.patientId,
-      doctorId: certificate.doctorId,
-      startDate: certificate.startDate.toISOString(),
-      endDate: certificate.endDate?.toISOString(),
-      days: certificate.days,
-      content: certificate.content,
-      createdAt: certificate.createdAt.toISOString(),
-    })
-
-    // Assinar com A1
-    const signatureResult = await signWithA1Certificate(
-      documentData,
-      userCertificate.pfxFilePath,
-      password
-    )
-
-    // Atualizar uso do certificado
-    await prisma.digitalCertificate.update({
-      where: { id: userCertificate.id },
-      data: { lastUsedAt: new Date(), usageCount: { increment: 1 } },
-    })
-
-    // Atualizar atestado
-    await prisma.medicalCertificate.update({
-      where: { id: certificateId },
-      data: {
-        signature: signatureResult.signature,
-        digitalSignature: signatureResult.signature,
-        signatureMethod: 'ICP_BRASIL',
-        timestamp: signatureResult.signedAt,
-        certificateChain: null,
-      },
-    })
-
-    // Registrar em SignedDocument
-    const signatureHash = crypto.createHash('sha256').update(documentData).digest('hex')
-    await prisma.signedDocument.create({
-      data: {
-        documentType: 'MEDICAL_CERTIFICATE',
-        documentId: certificateId,
-        certificateId: userCertificate.id,
-        signerId: userId,
-        signatureAlgorithm: 'SHA256withRSA',
-        signatureValue: signatureResult.signature,
-        signatureHash,
-        isValid: true,
-        validatedAt: new Date(),
-      },
-    })
-
-    return NextResponse.json({
-      success: true,
-      certificateId,
-      signature: signatureResult.signature,
-      timestamp: signatureResult.signedAt,
-      method: 'ICP-Brasil A1',
-      certificateInfo: signatureResult.certificateInfo,
-      message: 'Atestado assinado com sucesso',
-    })
+    return NextResponse.json({ error: 'Requisição inválida' }, { status: 400 })
   } catch (error) {
     logger.error('[ICP-Brasil] Erro ao assinar:', error)
-    return NextResponse.json(
-      {
-        error: 'Falha ao assinar certificado',
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: 'Falha ao assinar certificado',
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
+    }, { status: 500 })
   }
 }

@@ -32,32 +32,28 @@ export function IcpBrasilSignButton({
     try {
       setIsLoading(true)
       setError(null)
-
       logger.info('[ICP-Brasil] Iniciando assinatura para certificado:', certificateId)
-
       const response = await fetch('/api/certificates/sign', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ certificateId })
       })
-
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Falha ao assinar certificado')
       }
-
-      const data = await response.json()
-
-      logger.info('[ICP-Brasil] Assinatura concluída:', {
-        certificateId: data.certificateId,
-        method: data.method,
-        timestamp: data.timestamp
-      })
-
+      // Baixa o PDF assinado
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `certificado-assinado-${certificateId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
       setSuccess(true)
-      onSuccess?.(data)
+      onSuccess?.({ certificateId })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       logger.error('[ICP-Brasil] Erro:', errorMessage)
@@ -84,10 +80,10 @@ export function IcpBrasilSignButton({
         ) : success ? (
           <>
             <CheckCircle className="w-4 h-4 mr-2" />
-            Assinatura registrada (A1)
+            PDF assinado disponível
           </>
         ) : (
-          '🔐 Assinar com Certificado A1'
+          '🔐 Assinar e Baixar PDF'
         )}
       </Button>
 

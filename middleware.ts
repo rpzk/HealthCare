@@ -1,11 +1,84 @@
+// ...existing code...
 import { NextResponse, NextRequest } from 'next/server'
 import { checkRateLimit, RateLimitPresets } from './lib/rate-limiter-factory'
+import { logger } from './lib/logger'
+
+function normalizeIp(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  // Strip port if present (e.g., "1.2.3.4:1234")
+  const withoutPort = trimmed.replace(/:(\d+)$/, '')
+  return withoutPort || null
+}
+
+function parseForwardedForHeader(value: string | null): string | null {
+  if (!value) return null
+  const first = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)[0]
+  return normalizeIp(first)
+}
+
+function parseForwardedHeader(value: string | null): string | null {
+  // Example: Forwarded: for=203.0.113.43;proto=https;by=203.0.113.44
+  if (!value) return null
+  const forMatch = value.match(/for=(?:\"?)([^;\",\s]+)(?:\"?)/i)
+  if (!forMatch) return null
+  const raw = forMatch[1]
+    .replace(/^\[/, '')
+    .replace(/\]$/, '')
+  return normalizeIp(raw)
+}
+
+function hashString(input: string): string {
+  // Small stable hash to reduce key collisions when IP is missing/same behind proxy.
+  // Not cryptographic; just for bucketing.
+  let hash = 0
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash).toString(36)
+}
+
+function isAuthenticatedRequest(request: NextRequest): boolean {
+  const tokenCookieNames = [
+    '__Secure-next-auth.session-token',
+    'next-auth.session-token',
+    '__Secure-authjs.session-token',
+    'authjs.session-token',
+  ]
+  for (const name of tokenCookieNames) {
+    const v = request.cookies.get(name)?.value
+    if (v && v.trim()) return true
+  }
+
+  const authHeader = request.headers.get('authorization')
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) return true
+
+  return false
+}
 
 function getClientKey(request: NextRequest): string {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
-             request.headers.get('x-real-ip') || 
-             'unknown'
-  return `ip:${ip}`
+  const headers = request.headers
+
+  // Prefer explicit proxy headers, then platform-provided request.ip when available.
+  const ip =
+    parseForwardedForHeader(headers.get('x-forwarded-for')) ||
+    normalizeIp(headers.get('x-real-ip')) ||
+    normalizeIp(headers.get('cf-connecting-ip')) ||
+    parseForwardedHeader(headers.get('forwarded')) ||
+    normalizeIp((request as any).ip) ||
+    null
+
+  const ua = (headers.get('user-agent') || '').trim()
+  const uaKey = ua ? `ua:${hashString(ua)}` : 'ua:unknown'
+
+  // Always include UA hash to avoid collisions behind shared proxies.
+  if (ip) return `ip:${ip}|${uaKey}`
+  return uaKey
 }
 
 // Generate nonce for CSP
@@ -16,8 +89,47 @@ function generateNonce(): string {
 }
 
 export async function middleware(request: NextRequest) {
+  // Logging global de todas as requisições API
+  try {
+    // Log básico de método, URL e headers
+    logger.info('[API REQUEST]', {
+      method: request.method,
+      url: request.url,
+      headers: Object.fromEntries(request.headers.entries()),
+    })
+  } catch (e) {
+    // Ignora erro de log para não quebrar o middleware
+  }
+
   // Skip rate limiting for static assets
   const pathname = request.nextUrl.pathname
+
+  // Temporary hard block for signature-policy to contain client-side flood for specific clientKeys
+  if (pathname === '/api/system/signature-policy') {
+    // Read blocked client keys from env var BLOCKED_CLIENT_KEYS (comma-separated)
+    const clientKey = (() => {
+      try { return getClientKey(request) } catch (e) { return 'unknown' }
+    })()
+
+    const blockedEnv = process.env.BLOCKED_CLIENT_KEYS || ''
+    const blocked = blockedEnv.split(',').map(s => s.trim()).filter(Boolean)
+    const isBlocked = blocked.some(b => clientKey === b || clientKey.startsWith(b))
+
+    if (isBlocked) {
+      logger.warn('[RateLimitHardBlock] blocking signature-policy due to flood', { clientKey })
+      return new NextResponse(JSON.stringify({ error: 'Too many requests - temporarily limited' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '300'
+        }
+      })
+    }
+
+    // Otherwise allow the request to proceed (normal rate limiting applies below)
+    logger.info('[SignaturePolicy] allowed', { clientKey })
+  }
+
   if (pathname.startsWith('/_next/') || 
       pathname.startsWith('/favicon') ||
       pathname.endsWith('.ico') ||
@@ -34,16 +146,35 @@ export async function middleware(request: NextRequest) {
   const isAuthApiRoute = pathname.startsWith('/api/auth/')
   const isHealthRoute = pathname === '/api/health'
   const isTeleApiRoute = pathname.startsWith('/api/tele/')
+  const isSignaturePolicyRoute = pathname === '/api/system/signature-policy'
+  const isSignatureValidationRoute = pathname.startsWith('/api/digital-signatures/validate')
   
   const res = NextResponse.next()
 
   // Apply rate limiting using RateLimiterFactory only for API routes
   // (excluding /api/auth/* and /api/health).
-  if (isApiRoute && !isAuthApiRoute && !isHealthRoute && !isTeleApiRoute) {
+  // NOTE: do NOT exclude signature policy from rate limiting — when many clients poll it can saturate browsers
+  const skipRateLimit = isAuthApiRoute || isHealthRoute || isTeleApiRoute || isSignatureValidationRoute
+
+  if (isApiRoute && !skipRateLimit) {
+    // Authenticated read-only API calls from the UI should never be rate limited
+    const authed = isAuthenticatedRequest(request)
+    const method = request.method?.toUpperCase() || 'GET'
+    const isReadMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS'
+
+    if (authed && isReadMethod) {
+      return res
+    }
+
     // Auto-selects Redis (production) or in-memory (development)
     const clientKey = getClientKey(request)
+
+    const preset = authed && isReadMethod
+      ? RateLimitPresets.ultraRelaxed
+      : RateLimitPresets.standard
+
     const rateLimitResult = await checkRateLimit(clientKey, {
-      ...RateLimitPresets.standard,
+      ...preset,
       keyPrefix: 'middleware'
     })
 

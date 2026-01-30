@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,9 +34,21 @@ export function NotificationCenter() {
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
 
+  const rateLimitUntilRef = useRef<number>(0)
+
   const fetchNotifications = async () => {
     try {
+      const now = Date.now()
+      if (rateLimitUntilRef.current && now < rateLimitUntilRef.current) {
+        return
+      }
+
       const response = await fetch('/api/notifications?limit=10')
+      if (response.status === 429) {
+        // Back off for 60s to avoid request storms
+        rateLimitUntilRef.current = Date.now() + 60_000
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setNotifications(data)

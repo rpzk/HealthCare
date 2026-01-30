@@ -20,6 +20,7 @@ export type CertificatePdfInput = {
   patient: { name: string; identifier?: string };
   doctor: { name: string; crm?: string };
   validationUrl?: string;
+  stamp?: boolean;
 };
 
 export async function generateCertificatePdf(input: CertificatePdfInput): Promise<Buffer> {
@@ -78,7 +79,7 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     if (input.patient.identifier) doc.fontSize(10).text(`ID: ${input.patient.identifier}`);
     doc.moveDown(0.5);
     doc.fontSize(12).text(`Médico: ${input.doctor.name}`);
-    if (input.doctor.crm) doc.fontSize(10).text(`CRM: ${input.doctor.crm}`);
+    if (input.doctor.crm) doc.fontSize(10).text(`${input.doctor.crm}`);
     doc.moveDown(1);
 
     // Dates and type
@@ -133,10 +134,19 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
       doc.fillColor('black')
     }
 
-    // Signature area
+    // Signature or stamp area
     doc.moveDown(2);
     doc.text('______________________________', { align: 'center' });
-    doc.text(`Assinatura do Médico`, { align: 'center' });
+    if (input.stamp) {
+      doc.fontSize(10).text('Carimbo do Médico', { align: 'center' });
+      const doctorLine = [input.doctor.name || '—', input.doctor.crm ? `CRM: ${input.doctor.crm}` : undefined]
+        .filter(Boolean)
+        .join(' • ')
+      doc.fontSize(9).text(doctorLine, { align: 'center' });
+      doc.fontSize(9).text(`Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, { align: 'center' });
+    } else {
+      doc.text(`Assinatura do Médico`, { align: 'center' });
+    }
 
     doc.end();
   });

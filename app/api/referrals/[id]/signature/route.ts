@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 export const GET = withAuth(async (_req, { params, user }) => {
   try {
     const { id } = params
+    // DEBUG LOG: record incoming signature check requests
+    logger.warn('[SignatureCheck] referrals GET', { id, ip: String(_req.headers.get('x-forwarded-for') || _req.headers.get('x-real-ip') || _req.headers.get('x-cluster-client-ip') || 'unknown'), user: user?.id })
     if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
 
     // Ensure referral exists and belongs to the requesting doctor (or admin)

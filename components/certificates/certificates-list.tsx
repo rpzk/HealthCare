@@ -204,19 +204,29 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
                   >
                     Baixar PDF
                   </button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (cert.qrCodeData) {
+                {cert.qrCodeData && (cert.signature || cert.digitalSignature) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
                       window.open(cert.qrCodeData, '_blank')
-                    }
-                  }}
-                >
-                  <QrCode className="w-4 h-4 mr-1" />
-                  QR Code
-                </Button>
+                    }}
+                  >
+                    <QrCode className="w-4 h-4 mr-1" />
+                    QR Code
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    title="QR Code disponível apenas após assinatura digital"
+                  >
+                    <QrCode className="w-4 h-4 mr-1" />
+                    QR Code
+                  </Button>
+                )}
                 {/* Assinatura ICP-Brasil A1 se ainda não assinado */}
                 {(!cert.signature || cert.signatureMethod !== 'ICP_BRASIL') && (
                   <A1SignButton
