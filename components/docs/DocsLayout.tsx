@@ -1,3 +1,4 @@
+"use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
@@ -29,6 +30,12 @@ export function DocsLayout({ children }: { children: ReactNode }) {
                 </Link>
               </li>
             ))}
+            {/* Link para docs privados, visível apenas se autenticado (placeholder, lógica real pode ser adicionada depois) */}
+            <li>
+              <Link href="/docs/private" className="block px-3 py-2 rounded transition-all duration-150 font-medium hover:bg-accent hover:text-primary text-orange-700">
+                Documentação Privada
+              </Link>
+            </li>
           </ul>
         </nav>
       </aside>
