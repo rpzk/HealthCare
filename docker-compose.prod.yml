@@ -29,6 +29,22 @@ services:
       timeout: 3s
       retries: 10
 
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: healthcare-gotenberg
+    restart: unless-stopped
+    ports:
+      - "3001:3000" # Expose Gotenberg's API on host port 3001
+    environment:
+      DISABLE_GOOGLE_CHROME: 1 # Only needed if you don't want HTML to PDF
+    networks:
+      - healthcare-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   stt:
     image: onerahmet/openai-whisper-asr-webservice:latest
     container_name: healthcare-stt
@@ -81,6 +97,8 @@ services:
       STT_PROVIDER: ${STT_PROVIDER:-faster-whisper}
       STT_LANGUAGE: ${STT_LANGUAGE:-pt}
       BACKUPS_DIR: /app/backups
+      # Temporary debug bypass to simulate authenticated requests from test clients
+      ALLOW_TEST_BYPASS: '${ALLOW_TEST_BYPASS:-false}'
       # ICE servers for WebRTC (format: url,username,credential;url2,username2,credential2)
       NEXT_PUBLIC_ICE: ${NEXT_PUBLIC_ICE:-turn:turn:3478,teleuser,telepass;stun:stun.l.google.com:19302,,}
       NODE_ENV: production
@@ -93,6 +111,8 @@ services:
         condition: service_started
       stt:
         condition: service_started
+      gotenberg:
+        condition: service_healthy
     networks:
       - healthcare-network
     ports:

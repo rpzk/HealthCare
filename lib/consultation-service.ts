@@ -180,7 +180,14 @@ export class ConsultationService {
           orderBy: {
             createdAt: 'desc'
           },
-          take: 10
+          take: 50,
+          include: {
+            items: {
+              include: {
+                medication: { select: { id: true, name: true, description: true } },
+              },
+            },
+          },
         },
         vitalSigns: {
           orderBy: {
@@ -197,6 +204,12 @@ export class ConsultationService {
           orderBy: {
             createdAt: 'desc'
           }
+        },
+        originReferrals: {
+          orderBy: { createdAt: 'desc' }
+        },
+        medicalCertificates: {
+          orderBy: { createdAt: 'desc' }
         }
       }
     })

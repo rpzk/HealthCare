@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -102,12 +102,22 @@ export default function AIAnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rateLimitUntilRef = useRef<number>(0);
 
   const fetchAIAnalytics = async () => {
     try {
+      const now = Date.now();
+      if (rateLimitUntilRef.current && now < rateLimitUntilRef.current) {
+        return;
+      }
+
       setRefreshing(true);
       const response = await fetch('/api/admin/ai-analytics');
       if (!response.ok) {
+        if (response.status === 429) {
+          rateLimitUntilRef.current = Date.now() + 60_000;
+          throw new Error('Muitas requisições. Aguarde 60s e tente novamente.');
+        }
         throw new Error('Falha ao carregar AI Analytics');
       }
       const analyticsData = await response.json();

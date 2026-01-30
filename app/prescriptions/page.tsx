@@ -48,8 +48,9 @@ interface Prescription {
   }
 }
 
+
 export default function PrescriptionsPage() {
-  const { data: _session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +58,9 @@ export default function PrescriptionsPage() {
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+
+  // Só busca prescrições se sessão estiver carregada e autenticada
+  const isReady = status === 'authenticated'
 
   const fetchPrescriptions = useCallback(async () => {
     try {
@@ -87,8 +91,10 @@ export default function PrescriptionsPage() {
   }, [currentPage, filterStatus, searchTerm])
   
   useEffect(() => {
-    fetchPrescriptions()
-  }, [fetchPrescriptions])
+    if (isReady) {
+      fetchPrescriptions()
+    }
+  }, [fetchPrescriptions, isReady])
   const getStatusColor = (status: string) => {
     const colors = {
       'ACTIVE': 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
@@ -117,6 +123,26 @@ export default function PrescriptionsPage() {
       'EXPIRED': 'Expirada'
     }
     return labels[status as keyof typeof labels] || status
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="text-muted-foreground">Carregando sessão...</span>
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated' || !session) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <h2 className="text-xl font-semibold">Sessão expirada ou não autenticado</h2>
+          <p className="text-muted-foreground">Faça login para acessar as prescrições médicas.</p>
+          <Button onClick={() => router.push('/login')}>Ir para Login</Button>
+        </div>
+      </div>
+    )
   }
 
   return (

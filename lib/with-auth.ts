@@ -62,7 +62,7 @@ export function withAuth(
       })
 
     } catch (error) {
-      logger.error('Erro no wrapper withAuth:', error)
+      logger.error({ error }, 'Erro no wrapper withAuth')
       return NextResponse.json(
         { 
           error: 'Erro interno do servidor',

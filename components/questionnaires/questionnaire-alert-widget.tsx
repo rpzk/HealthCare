@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { logger } from '@/lib/logger'
 
@@ -24,6 +24,7 @@ interface QuestionnaireAlert {
 export function QuestionnaireAlertWidget() {
   const [alerts, setAlerts] = useState<QuestionnaireAlert[]>([])
   const [loading, setLoading] = useState(true)
+  const rateLimitUntilRef = useRef<number>(0)
 
   useEffect(() => {
     fetchAlerts()
@@ -33,7 +34,16 @@ export function QuestionnaireAlertWidget() {
 
   async function fetchAlerts() {
     try {
+      const now = Date.now()
+      if (rateLimitUntilRef.current && now < rateLimitUntilRef.current) {
+        return
+      }
+
       const res = await fetch('/api/questionnaires/alerts/summary')
+      if (res.status === 429) {
+        rateLimitUntilRef.current = Date.now() + 60_000
+        return
+      }
       if (res.ok) {
         const data = await res.json()
         setAlerts(data)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -64,16 +64,31 @@ export function AIAnalyticsDashboard() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const rateLimitUntilRef = useRef<number>(0)
 
   const fetchData = async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true)
     
     try {
+      const now = Date.now()
+      if (rateLimitUntilRef.current && now < rateLimitUntilRef.current) {
+        return
+      }
+
       const [analyticsRes, performanceRes, recommendationsRes] = await Promise.all([
         fetch('/api/ai/analytics'),
         fetch('/api/ai/performance'),
         fetch('/api/ai/recommendations')
       ])
+
+      if (
+        analyticsRes.status === 429 ||
+        performanceRes.status === 429 ||
+        recommendationsRes.status === 429
+      ) {
+        rateLimitUntilRef.current = Date.now() + 60_000
+        return
+      }
 
       const [analyticsData, performanceData, recommendationsData] = await Promise.all([
         analyticsRes.json(),

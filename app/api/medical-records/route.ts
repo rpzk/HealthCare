@@ -26,7 +26,7 @@ const medicalRecordSchema = z.object({
 
 const filterSchema = z.object({
   search: z.string().optional(),
-  type: z.enum(['CONSULTATION', 'EXAM', 'PROCEDURE', 'PRESCRIPTION', 'OTHER']).optional(),
+  type: z.enum(['ALL', 'CONSULTATION', 'EXAM', 'PROCEDURE', 'PRESCRIPTION', 'OTHER']).optional(),
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']).optional(),
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
   dateFrom: z.string().datetime().optional(),
@@ -122,7 +122,7 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
       ]
     }
 
-    if (validatedFilters.type) {
+    if (validatedFilters.type && validatedFilters.type !== 'ALL') {
       where.recordType = validatedFilters.type
     }
 
@@ -206,7 +206,7 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
       filters: {
         applied: validatedFilters,
         available: {
-          types: ['CONSULTATION', 'EXAM', 'PROCEDURE', 'PRESCRIPTION', 'OTHER'],
+          types: ['ALL', 'CONSULTATION', 'EXAM', 'PROCEDURE', 'PRESCRIPTION', 'OTHER'],
           priorities: ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'],
           severities: ['LOW', 'MEDIUM', 'HIGH']
         }

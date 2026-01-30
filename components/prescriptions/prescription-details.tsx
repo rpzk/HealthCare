@@ -82,7 +82,8 @@ export default function PrescriptionDetails({ id }: { id: string }) {
       const res = await fetch(`/api/prescriptions/${id}/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password }),
+        credentials: 'include', // Garante envio do cookie de sessão/JWT
       })
       
       if (!res.ok) {

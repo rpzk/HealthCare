@@ -1,18 +1,17 @@
 /**
  * Assinatura com Certificado A1 (.pfx)
  *
- * Observação: este módulo gera uma assinatura RSA/SHA-256 do conteúdo informado
- * usando a chave privada contida no .pfx.
- * Ele não produz um container padrão ICP-Brasil (ex.: CAdES/PAdES) nem, por si só,
- * comprova validade jurídica/aderência regulatória.
+ * Assina conteúdo textual usando o certificado A1 do usuário
+ * e retorna a assinatura base64 + metadados do certificado.
+ * Não faz PAdES, validação de cadeia ou TSA; para PAdES use um serviço ou
+ * biblioteca dedicada e valide end-to-end antes de produção.
  */
 
 import forge from 'node-forge'
 import fs from 'fs'
-import crypto from 'crypto'
 import { logger } from '@/lib/logger'
 
-interface SignatureResult {
+export interface SignatureResult {
   signature: string
   certificateInfo: {
     subject: string
@@ -22,10 +21,11 @@ interface SignatureResult {
     serialNumber: string
   }
   signedAt: Date
+  certificatePem?: string
 }
 
 /**
- * Assina documento com certificado A1
+ * Assina documento com certificado A1 (sem TSA, sem validação de cadeia)
  */
 export async function signWithA1Certificate(
   documentData: string,
@@ -120,6 +120,8 @@ export async function signWithA1Certificate(
     .map((attr: any) => `${attr.shortName}=${attr.value}`)
     .join(', ')
   
+  const certificatePem = forge.pki.certificateToPem(certificate)
+  
   return {
     signature: signatureBase64,
     certificateInfo: {
@@ -130,6 +132,7 @@ export async function signWithA1Certificate(
       serialNumber: certificate.serialNumber,
     },
     signedAt: new Date(),
+    certificatePem,
   }
   } catch (error) {
     logger.error('Erro em signWithA1Certificate:', error)

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from 'react'
-import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,14 +23,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger as _DialogTrigger } from '@/components/ui/dialog'
+
 import { 
   FileText, 
   FlaskConical, 
@@ -48,10 +43,61 @@ import {
   History,
   Video,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Printer,
+  PenLine
 } from 'lucide-react'
+
 import { toast } from '@/hooks/use-toast'
 import { useKeyboardShortcuts, CONSULTATION_SHORTCUTS } from '@/hooks/use-keyboard-shortcuts'
+import TeleRoomCompact from '@/components/tele/room-compact'
+import { TeleInviteButton } from '@/components/tele/invite-button'
+import { logger } from '@/lib/logger'
+import { getSignatureInfo as __getSignatureInfo, getSignaturePolicyCached as __getSignaturePolicyCached } from '@/lib/client/signature-client'
+
+// ====== INTERFACES DEVEM FICAR FORA DO COMPONENTE PRINCIPAL ======
+interface Exam {
+  id: string;
+  name: string;
+  category: string;
+}
+
+interface CID {
+  code: string;
+  description: string;
+  shortDescription: string;
+}
+
+interface Protocol {
+  prescriptions: Prescription[];
+  exams: ExamRequest[];
+  referrals: Referral[];
+}
+
+interface Suggestions {
+  prescriptions: Array<{
+    medication: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions: string
+    reasoning?: string
+  }>
+  exams: Array<{
+    examType: string
+    description: string
+    priority: string
+    reasoning?: string
+  }>
+  referrals: Array<{
+    specialty: string
+    description: string
+    priority: string
+    reasoning?: string
+  }>
+}
+
+
 
 // Componentes de autocomplete e IA
 import { MedicationAutocomplete } from './medication-autocomplete'
@@ -74,13 +120,13 @@ interface Patient {
   name: string
   age?: number
   sex?: 'M' | 'F'
-  phone?: string
-  cpf?: string
+	phone?: string
+	cpf?: string
 }
-
 interface Consultation {
   id: string
   scheduledDate?: string
+  actualDate?: string
   status?: string
   patient?: Patient
   doctor?: { id: string; name: string }
@@ -98,6 +144,7 @@ interface Prescription {
   form?: string
   route?: string
   quantity?: string
+  digitalSignature?: string | null
 }
 
 interface ExamRequest {
@@ -130,10 +177,26 @@ interface Certificate {
   type: string
   description: string
   days?: number
+  signature?: string | null
+}
+
+type A1Status = {
+  hasActiveCertificate: boolean
+}
+
+type SignatureInfo = {
+  signed: boolean
+  valid?: boolean
+  verificationUrl?: string
+  signatureHash?: string
 }
 
 // ============ COMPONENTE PRINCIPAL ============
 export function ConsultationWorkspace({ consultationId }: { consultationId: string }) {
+  const searchParams = useSearchParams()
+  const { data: session } = useSession()
+  const userId = session?.user?.id as string | undefined
+
   // Estado principal
   const [consultation, setConsultation] = useState<Consultation | null>(null)
   const [loading, setLoading] = useState(true)
@@ -199,6 +262,267 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   // UI states
   const [showHistory, setShowHistory] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [teleOpen, setTeleOpen] = useState(false)
+  const teleBlocked = consultation?.status === 'COMPLETED' || consultation?.status === 'CANCELLED'
+
+  useEffect(() => {
+    if (searchParams?.get('tele') === '1' && !teleBlocked) {
+      setTeleOpen(true)
+    }
+  }, [searchParams, teleBlocked])
+
+  const [a1Status, setA1Status] = useState<A1Status>({ hasActiveCertificate: false })
+
+  const [signatureMap, setSignatureMap] = useState<Record<string, SignatureInfo>>({})
+
+  const [signDialogOpen, setSignDialogOpen] = useState(false)
+  const [signTarget, setSignTarget] = useState<'PRESCRIPTIONS' | 'EXAMS' | 'REFERRALS' | 'CERTIFICATES' | null>(null)
+  const [a1Password, setA1Password] = useState('')
+  const [signingDocs, setSigningDocs] = useState(false)
+  const [pendingPdfUrl, setPendingPdfUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Indicador simples para dar feedback se o A1 está ativo (para assinatura digital)
+    fetch('/api/digital-signatures/certificates?active=true&limit=1')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Erro ao verificar certificado'))))
+      .then((data) => {
+        const hasActive = Array.isArray(data?.certificates) && data.certificates.length > 0
+        setA1Status({ hasActiveCertificate: hasActive })
+      })
+      .catch(() => setA1Status({ hasActiveCertificate: false }))
+  }, [])
+
+  const isLikelyLocalId = (id?: string) => {
+    if (!id) return true
+    return /^[0-9]+(\.[0-9]+)?$/.test(String(id))
+  }
+
+  const openPdf = (url: string) => {
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      toast({ title: 'Erro ao abrir PDF', description: String(err), variant: 'destructive' })
+    }
+  }
+
+  // Abre PDF via POST (fetch blob) para endpoints que não aceitam GET
+  const openPdfPost = async (url: string) => {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) {
+        toast({ title: 'Erro ao gerar PDF', description: `Falha ao gerar PDF (${res.status})`, variant: 'destructive' })
+        return
+      }
+      const blob = await res.blob()
+      const pdfUrl = window.URL.createObjectURL(blob)
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+      // Opcional: liberar o objeto depois de um tempo
+      setTimeout(() => window.URL.revokeObjectURL(pdfUrl), 60_000)
+    } catch (err) {
+      toast({ title: 'Erro ao gerar PDF', description: String(err), variant: 'destructive' })
+    }
+  }
+
+  const withStampParam = (url: string) => `${url}${url.includes('?') ? '&' : '?'}stamp=1`
+
+  const requestPdf = (
+    target: 'PRESCRIPTIONS' | 'EXAMS' | 'REFERRALS',
+    url: string,
+    total: number,
+    signed: number
+  ) => {
+    if (total === 0) {
+      toast({ title: 'Nada para imprimir', description: 'Salve a consulta para gerar os documentos.' })
+      return
+    }
+
+    if (a1Status.hasActiveCertificate) {
+      if (signed < total) {
+        setPendingPdfUrl(url)
+        setSignTarget(target)
+        setA1Password('')
+        setSignDialogOpen(true)
+        return
+      }
+      // PDF assinado: usar POST
+      openPdfPost(url)
+      return
+    }
+
+    // PDF sem assinatura: GET (com stamp)
+    openPdf(withStampParam(url))
+  }
+
+  // Use centralized client to avoid flooding the server with parallel signature checks
+  // Import synchronously (client-only safe module) so helper is available immediately
+  const getSigClient = __getSignatureInfo
+  const getSigPolicy = __getSignaturePolicyCached
+
+  const fetchSignatureInfo = async (
+    kind: 'PRESCRIPTION' | 'EXAM_REQUEST' | 'REFERRAL' | 'MEDICAL_CERTIFICATE',
+    id: string
+  ) => {
+    const key = `${kind}:${id}`
+    try {
+      const getSig = (window as any).__getSig as ((t: string, i: string) => Promise<any>) | undefined
+      if (!getSig) {
+        // Fallback to older behaviour when client helper not yet loaded
+        const url =
+          kind === 'PRESCRIPTION'
+            ? `/api/prescriptions/${id}/signature`
+            : kind === 'EXAM_REQUEST'
+              ? `/api/exam-requests/${id}/signature`
+              : kind === 'REFERRAL'
+                ? `/api/referrals/${id}/signature`
+                : `/api/medical-certificates/${id}/signature`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('Erro ao obter assinatura')
+        const data = await res.json()
+        const info: SignatureInfo = {
+          signed: !!data?.signed,
+          valid: typeof data?.valid === 'boolean' ? data.valid : undefined,
+          verificationUrl: data?.verificationUrl,
+          signatureHash: data?.signatureHash,
+        }
+        setSignatureMap((prev) => ({ ...prev, [key]: info }))
+        return info
+      }
+
+      const info = await getSig(kind === 'MEDICAL_CERTIFICATE' ? 'MEDICAL_CERTIFICATE' : kind, id)
+      setSignatureMap((prev) => ({ ...prev, [key]: info }))
+      return info
+    } catch (err: any) {
+      // don't spam logs excessively for transient errors
+      logger.warn('[SignatureCheck] fetch failed', { kind, id, err: err?.message || String(err) })
+      throw err
+    }
+  }
+
+  const refreshSignaturesForCurrentDocs = async () => {
+    const examIds = Array.from(new Set(exams.map((e) => String(e.id)).filter((id) => id && !isLikelyLocalId(id))))
+    const referralIds = Array.from(
+      new Set(referrals.map((r) => String(r.id)).filter((id) => id && !isLikelyLocalId(id)))
+    )
+
+    for (const id of examIds) {
+      try {
+        await fetchSignatureInfo('EXAM_REQUEST', id)
+      } catch {
+        // ignore
+      }
+    }
+    for (const id of referralIds) {
+      try {
+        await fetchSignatureInfo('REFERRAL', id)
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  const signDocuments = async () => {
+    if (!signTarget) return
+    if (!a1Password) {
+      toast({ title: 'Senha obrigatória', description: 'Informe a senha do certificado A1.', variant: 'destructive' })
+      return
+    }
+
+    const prescriptionIds = Array.from(
+      new Set(prescriptions.map((p) => String(p.id)).filter((id) => id && !isLikelyLocalId(id)))
+    )
+    const examIds = Array.from(new Set(exams.map((e) => String(e.id)).filter((id) => id && !isLikelyLocalId(id))))
+    const referralIds = Array.from(
+      new Set(referrals.map((r) => String(r.id)).filter((id) => id && !isLikelyLocalId(id)))
+    )
+    const certificateIds = Array.from(
+      new Set(certificates.map((c) => String(c.id)).filter((id) => id && !isLikelyLocalId(id)))
+    )
+
+    const ids =
+      signTarget === 'PRESCRIPTIONS'
+        ? prescriptionIds
+        : signTarget === 'EXAMS'
+          ? examIds
+          : signTarget === 'REFERRALS'
+            ? referralIds
+            : certificateIds
+
+    if (ids.length === 0) {
+      toast({
+        title: 'Nada para assinar',
+        description: 'Salve a consulta para gerar os documentos e tentar novamente.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setSigningDocs(true)
+    try {
+      for (const id of ids) {
+
+        const url =
+          signTarget === 'PRESCRIPTIONS'
+            ? `/api/prescriptions/${id}/sign`
+            : signTarget === 'EXAMS'
+              ? `/api/exam-requests/${id}/sign`
+              : signTarget === 'REFERRALS'
+                ? `/api/referrals/${id}/sign`
+                : `/api/medical-certificates/${id}/sign`
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: a1Password }),
+        })
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          let msg = data?.error || 'Falha ao assinar documento'
+          // Mensagens específicas para erros comuns de certificado
+          if (msg.match(/expirad[oa]/i)) {
+            msg = 'Certificado expirado ou ainda não válido. Faça upload de um certificado válido.'
+          } else if (msg.match(/formato|inv[aá]lido|pfx|p12/i)) {
+            msg = 'Arquivo de certificado inválido ou formato não suportado (.pfx/.p12 obrigatório).'
+          } else if (msg.match(/senha/i)) {
+            msg = 'Senha do certificado incorreta. Tente novamente.'
+          }
+          toast({ title: 'Assinatura falhou', description: msg, variant: 'destructive' })
+          continue
+        }
+
+        const data = await res.json().catch(() => ({}))
+        const verificationUrl: string | undefined = data?.verificationUrl
+        toast({
+          title: 'Documento assinado',
+          description: verificationUrl ? `Verificação: ${verificationUrl}` : 'Assinatura registrada com sucesso.',
+        })
+
+        try {
+          if (signTarget === 'EXAMS') await fetchSignatureInfo('EXAM_REQUEST', id)
+          if (signTarget === 'REFERRALS') await fetchSignatureInfo('REFERRAL', id)
+          if (signTarget === 'CERTIFICATES') await fetchSignatureInfo('MEDICAL_CERTIFICATE', id)
+          if (signTarget === 'PRESCRIPTIONS') await fetchSignatureInfo('PRESCRIPTION', id)
+        } catch {
+          // ignore
+        }
+      }
+
+      await loadConsultation()
+      setSignDialogOpen(false)
+
+      if (pendingPdfUrl) {
+        const url = pendingPdfUrl
+        setPendingPdfUrl(null)
+        // Após assinatura, baixar PDF via POST
+        await openPdfPost(url)
+      }
+    } finally {
+      setSigningDocs(false)
+    }
+  }
 
   // Estados dos modais de edição
   const [prescriptionDialogOpen, setPrescriptionDialogOpen] = useState(false)
@@ -306,28 +630,35 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       // Carregar prescrições existentes
       if (consultationData.prescriptions && consultationData.prescriptions.length > 0) {
         const loadedPrescriptions: Prescription[] = []
-        for (const p of consultationData.prescriptions) {
-          try {
-            const meds = JSON.parse(p.medications)
-            if (Array.isArray(meds)) {
-              for (const med of meds) {
-                loadedPrescriptions.push({
-                  id: p.id + '-' + med.name,
-                  medication: med.name,
-                  dosage: med.dosage || '',
-                  frequency: med.frequency || '',
-                  duration: med.duration || '',
-                  instructions: med.instructions || ''
-                })
-              }
+        for (const p of consultationData.prescriptions as any[]) {
+          if (Array.isArray(p.items) && p.items.length > 0) {
+            for (const item of p.items) {
+              loadedPrescriptions.push({
+                id: String(p.id),
+                medicationId: item?.medication?.id || item?.medicationId || undefined,
+                medication: item?.medication?.name || item?.customName || p.medication || 'Sem nome',
+                dosage: item?.dosage || p.dosage || '',
+                frequency: item?.frequency || p.frequency || '',
+                duration: item?.duration || p.duration || '',
+                instructions: item?.instructions || p.instructions || '',
+                digitalSignature: p.digitalSignature ?? null,
+              })
             }
-          } catch {
-            // Se não for JSON, ignorar
+          } else {
+            loadedPrescriptions.push({
+              id: String(p.id),
+              medication: p.medication || 'Sem nome',
+              dosage: p.dosage || '',
+              frequency: p.frequency || '',
+              duration: p.duration || '',
+              instructions: p.instructions || '',
+              digitalSignature: p.digitalSignature ?? null,
+            })
           }
         }
-        if (loadedPrescriptions.length > 0) {
-          setPrescriptions(loadedPrescriptions)
-        }
+        setPrescriptions(loadedPrescriptions)
+      } else {
+        setPrescriptions([])
       }
       
       // Carregar exames existentes
@@ -338,17 +669,50 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
           description: e.description,
           priority: e.priority
         })))
+      } else {
+        setExams([])
       }
       
       // Carregar encaminhamentos existentes
-      if (consultationData.referrals && consultationData.referrals.length > 0) {
-        setReferrals(consultationData.referrals.map((r: Referral) => ({
+      const originRefs = (consultationData.originReferrals || consultationData.referrals || []) as any[]
+      if (originRefs.length > 0) {
+        setReferrals(originRefs.map((r) => ({
           id: r.id,
           specialty: r.specialty,
           description: r.description,
-          priority: r.priority
+          priority: (r.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'NORMAL' | 'HIGH'
         })))
+      } else {
+        setReferrals([])
       }
+
+      // Carregar atestados emitidos nesta consulta
+      const certs = (consultationData.medicalCertificates || []) as any[]
+      if (certs.length > 0) {
+        setCertificates(certs.map((c) => ({
+          id: c.id,
+          type: c.type,
+          description: c.content || c.title || '',
+          days: c.days || undefined,
+          signature: c.signature ?? c.digitalSignature ?? null,
+        })))
+      } else {
+        setCertificates([])
+      }
+
+      // Atualiza status de assinatura para itens que não têm campo de assinatura no modelo (ex.: exames/encaminhamentos)
+      // Use cached policy to prevent repeated /api/system/signature-policy calls
+      setTimeout(async () => {
+        try {
+          const getPol = (window as any).__getSigPolicy as (() => Promise<any>) | undefined
+          if (!getPol) {
+            await import('@/lib/client/signature-client').then(m => (window as any).__getSigPolicy = m.getSignaturePolicyCached)
+          }
+          refreshSignaturesForCurrentDocs().catch(() => {})
+        } catch (e) {
+          // ignore
+        }
+      }, 0)
       
     } catch (e) {
       const err = e as Error
@@ -512,11 +876,7 @@ interface Medication {
     setCertificateDialogOpen(true)
   }
 
-interface Exam {
-  id: string;
-  name: string;
-  category: string;
-}
+
 
   const handleExamSelect = (exam: Exam) => {
     // Abrir modal para edição completa
@@ -532,11 +892,7 @@ interface Exam {
     setExamSearch('')
   }
 
-interface CID {
-  code: string;
-  description: string;
-  shortDescription: string;
-}
+
 
   const handleCIDSelect = (cid: CID) => {
     if (diagnoses.some(d => d.code === cid.code)) return
@@ -552,11 +908,7 @@ interface CID {
     toast({ title: 'Diagnóstico adicionado', description: `${cid.code} - ${diag.description}` })
   }
 
-interface Protocol {
-  prescriptions: Prescription[];
-  exams: ExamRequest[];
-  referrals: Referral[];
-}
+
 
   // ============ PROTOCOLO E IA ============
   const handleProtocolApply = (protocol: {
@@ -597,28 +949,7 @@ interface Protocol {
     }
   }
 
-interface Suggestions {
-  prescriptions: Array<{
-    medication: string
-    dosage: string
-    frequency: string
-    duration: string
-    instructions: string
-    reasoning?: string
-  }>
-  exams: Array<{
-    examType: string
-    description: string
-    priority: string
-    reasoning?: string
-  }>
-  referrals: Array<{
-    specialty: string
-    description: string
-    priority: string
-    reasoning?: string
-  }>
-}
+
 
   const handleAISuggestions = (suggestions: Suggestions) => {
     if (suggestions.prescriptions) {
@@ -713,6 +1044,7 @@ interface Suggestions {
       })
       if (!res.ok) throw new Error('Erro ao salvar')
       toast({ title: 'Consulta salva', description: 'Dados salvos com sucesso' })
+      await loadConsultation()
     } catch (e) {
       const err = e as Error
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
@@ -847,6 +1179,31 @@ interface Suggestions {
   }
 
   // ============ RENDER ============
+  const prescriptionDocIds = Array.from(
+    new Set(prescriptions.map((p) => String(p.id)).filter((id) => id && !isLikelyLocalId(id)))
+  )
+  const prescriptionSignedDocIds = Array.from(
+    new Set(
+      prescriptions
+        .filter((p) => !!p.digitalSignature)
+        .map((p) => String(p.id))
+        .filter((id) => id && !isLikelyLocalId(id))
+    )
+  )
+
+  const examDocIds = Array.from(new Set(exams.map((e) => String(e.id)).filter((id) => id && !isLikelyLocalId(id))))
+  const examSignedCount = examDocIds.filter((id) => signatureMap[`EXAM_REQUEST:${id}`]?.signed).length
+
+  const referralDocIds = Array.from(
+    new Set(referrals.map((r) => String(r.id)).filter((id) => id && !isLikelyLocalId(id)))
+  )
+  const referralSignedCount = referralDocIds.filter((id) => signatureMap[`REFERRAL:${id}`]?.signed).length
+
+  const certificateDocIds = Array.from(
+    new Set(certificates.map((c) => String(c.id)).filter((id) => id && !isLikelyLocalId(id)))
+  )
+  const certificateSignedCount = certificates.filter((c) => !!c.signature && c.id && !isLikelyLocalId(String(c.id))).length
+
   return (
     <div className="p-4 space-y-4 max-w-[1800px] mx-auto">
       {/* Modal de Atalhos */}
@@ -895,10 +1252,24 @@ interface Suggestions {
               <Badge variant="secondary" className="h-7 text-[10px] leading-none px-2">
                 UI Consulta v2 (modais)
               </Badge>
-              <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-xs" asChild>
-                <Link href={`/consultations/${consultationId}/tele`}>
-                  <Video className="h-3 w-3 mr-1" /> Tele
-                </Link>
+              <Button
+                type="button"
+                variant={teleOpen ? "outline" : "default"}
+                size="sm"
+                className={teleOpen ? "h-7 text-xs" : "bg-green-600 hover:bg-green-700 h-7 text-xs"}
+                onClick={() => {
+                  if (!userId) {
+                    toast({ title: 'Sessão inválida', description: 'Faça login novamente para iniciar teleconsulta.', variant: 'destructive' })
+                    return
+                  }
+                  if (teleBlocked) {
+                    toast({ title: 'Consulta encerrada', description: 'Teleconsulta não pode ser aberta após o encerramento.', variant: 'destructive' })
+                    return
+                  }
+                  setTeleOpen((prev) => !prev)
+                }}
+              >
+                <Video className="h-3 w-3 mr-1" /> {teleOpen ? 'Fechar Tele' : 'Tele'}
               </Button>
               <Button variant={showHistory ? "default" : "outline"} size="sm" className="h-7" onClick={() => setShowHistory(prev => !prev)}>
                 <History className="h-3 w-3" />
@@ -1063,22 +1434,45 @@ interface Suggestions {
 
         {/* LATERAL DIREITA - Prescrições, Exames, Encaminhamentos, Atestados */}
         <div className="w-72 flex-shrink-0 space-y-2 overflow-auto">
-          
+
           {/* Prescrições */}
           <Card>
             <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <FileText className="h-3 w-3" /> Prescrições ({prescriptions.length})
+                {prescriptionDocIds.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] h-4 ml-1">
+                    {prescriptionSignedDocIds.length}/{prescriptionDocIds.length} assin.
+                  </Badge>
+                )}
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0" 
-                onClick={() => { setEditingPrescription(undefined); setPrescriptionDialogOpen(true) }}
-                title="Nova prescrição"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() =>
+                    requestPdf(
+                      'PRESCRIPTIONS',
+                      `/api/consultations/${consultationId}/documents/prescriptions/pdf`,
+                      prescriptionDocIds.length,
+                      prescriptionSignedDocIds.length
+                    )
+                  }
+                >
+                  <Printer className="h-3 w-3 mr-1" /> PDF
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0" 
+                  onClick={() => { setEditingPrescription(undefined); setPrescriptionDialogOpen(true) }}
+                  title="Nova prescrição"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[120px] overflow-auto space-y-1 mb-2">
@@ -1110,16 +1504,39 @@ interface Suggestions {
             <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <FlaskConical className="h-3 w-3" /> Exames ({exams.length})
+                {examDocIds.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] h-4 ml-1">
+                    {examSignedCount}/{examDocIds.length} assin.
+                  </Badge>
+                )}
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0" 
-                onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
-                title="Novo exame"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() =>
+                    requestPdf(
+                      'EXAMS',
+                      `/api/consultations/${consultationId}/documents/exams/pdf`,
+                      examDocIds.length,
+                      examSignedCount
+                    )
+                  }
+                >
+                  <Printer className="h-3 w-3 mr-1" /> PDF
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0" 
+                  onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
+                  title="Novo exame"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[100px] overflow-auto space-y-1 mb-2">
@@ -1150,16 +1567,39 @@ interface Suggestions {
             <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <Send className="h-3 w-3" /> Encaminhamentos ({referrals.length})
+                {referralDocIds.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] h-4 ml-1">
+                    {referralSignedCount}/{referralDocIds.length} assin.
+                  </Badge>
+                )}
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0" 
-                onClick={() => { setEditingReferral(undefined); setReferralDialogOpen(true) }}
-                title="Novo encaminhamento"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() =>
+                    requestPdf(
+                      'REFERRALS',
+                      `/api/consultations/${consultationId}/documents/referrals/pdf`,
+                      referralDocIds.length,
+                      referralSignedCount
+                    )
+                  }
+                >
+                  <Printer className="h-3 w-3 mr-1" /> PDF
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0" 
+                  onClick={() => { setEditingReferral(undefined); setReferralDialogOpen(true) }}
+                  title="Novo encaminhamento"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[100px] overflow-auto space-y-1">
@@ -1183,6 +1623,11 @@ interface Suggestions {
             <CardHeader className="py-1.5 px-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs flex items-center gap-1">
                 <FileText className="h-3 w-3" /> Atestados ({certificates.length})
+                {certificateDocIds.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] h-4 ml-1">
+                    {certificateSignedCount}/{certificateDocIds.length} assin.
+                  </Badge>
+                )}
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -1202,6 +1647,62 @@ interface Suggestions {
                       <Badge variant="outline" className="text-[10px] h-4 mb-1">{cert.type}</Badge>
                       <p className="text-muted-foreground truncate text-[10px]">{cert.description}</p>
                       {cert.days && <p className="text-muted-foreground text-[10px]">{cert.days} dias</p>}
+
+                      {!!cert.signature ? (
+                        <Badge variant="secondary" className="text-[10px] h-4 mt-1 inline-flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Assinado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] h-4 mt-1 inline-flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> Pendente
+                        </Badge>
+                      )}
+
+                      <div className="flex gap-1 mt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!cert.id || isLikelyLocalId(String(cert.id))) {
+                              toast({ title: 'Salve o atestado antes', description: 'O PDF precisa do ID do documento.' })
+                              return
+                            }
+                            const url = `/api/certificates/${cert.id}/pdf`
+                            if (a1Status.hasActiveCertificate) {
+                              await openPdfPost(url)
+                            } else {
+                              openPdf(withStampParam(url))
+                            }
+                          }}
+                        >
+                          PDF
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!cert.id || isLikelyLocalId(String(cert.id))) {
+                              toast({ title: 'Salve o atestado antes', description: 'A verificação precisa do ID do documento.' })
+                              return
+                            }
+                            try {
+                              const info = await fetchSignatureInfo('MEDICAL_CERTIFICATE', String(cert.id))
+                              if (info?.verificationUrl) openPdf(info.verificationUrl)
+                              else toast({ title: 'Sem verificação', description: 'Atestado ainda não foi assinado.' })
+                            } catch {
+                              toast({ title: 'Erro', description: 'Falha ao consultar assinatura.', variant: 'destructive' })
+                            }
+                          }}
+                        >
+                          Verificar
+                        </Button>
+                      </div>
                     </div>
                     <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setCertificates(certificates.filter(c => c.id !== cert.id)) }}>
                       <Trash2 className="h-3 w-3" />
@@ -1213,6 +1714,59 @@ interface Suggestions {
           </Card>
         </div>
       </div>
+
+      {/* DIALOG - ASSINAR COM A1 */}
+      <Dialog
+        open={signDialogOpen}
+        onOpenChange={(open) => {
+          setSignDialogOpen(open)
+          if (!open) {
+            setPendingPdfUrl(null)
+            setSignTarget(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assinar com certificado A1</DialogTitle>
+            <DialogDescription>
+              Informe a senha do seu certificado A1 para assinar os documentos desta consulta.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label>Senha do certificado</Label>
+            <Input
+              type="password"
+              value={a1Password}
+              onChange={(e) => setA1Password(e.target.value)}
+              placeholder="Senha do A1"
+            />
+            <p className="text-xs text-muted-foreground">
+              Alvo:{' '}
+              {signTarget === 'PRESCRIPTIONS'
+                ? 'Prescrições'
+                : signTarget === 'EXAMS'
+                  ? 'Exames'
+                  : signTarget === 'REFERRALS'
+                    ? 'Encaminhamentos'
+                    : signTarget === 'CERTIFICATES'
+                      ? 'Atestados'
+                      : '—'}
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSignDialogOpen(false)} disabled={signingDocs}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={signDocuments} disabled={signingDocs}>
+              {signingDocs ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PenLine className="h-4 w-4 mr-2" />}
+              Assinar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* FOOTER - SALVAR E FINALIZAR */}
       <div className="sticky bottom-2 pt-2 space-y-2">
@@ -1321,6 +1875,18 @@ interface Suggestions {
           </div>
         )}
       </div>
+
+      {teleOpen && userId && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+          <TeleInviteButton consultationId={consultationId} />
+          <TeleRoomCompact
+            roomId={consultationId}
+            userId={userId}
+            patientName={consultation?.patient?.name}
+            consultationStartedAt={consultation?.actualDate}
+          />
+        </div>
+      )}
       
       {/* Modais de Edição */}
       <PrescriptionEditorDialog
@@ -1416,7 +1982,10 @@ interface Suggestions {
             </Button>
           </DialogFooter>
         </DialogContent>
+
       </Dialog>
+
+
     </div>
-  )
+  );
 }

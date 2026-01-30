@@ -69,6 +69,10 @@ export default function SystemMonitorPage() {
     try {
       const response = await fetch('/api/system')
       if (!response.ok) {
+        if (response.status === 429) {
+          setAutoRefresh(false)
+          throw new Error('Muitas requisições. Auto-atualização pausada por 60s.')
+        }
         if (response.status === 403) {
           throw new Error('Acesso restrito a administradores')
         }
@@ -86,6 +90,13 @@ export default function SystemMonitorPage() {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (!autoRefresh) {
+      const t = setTimeout(() => setAutoRefresh(true), 60_000)
+      return () => clearTimeout(t)
+    }
+  }, [autoRefresh])
 
   useEffect(() => {
     fetchData()

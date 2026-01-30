@@ -102,9 +102,8 @@ export default function ReferralDetailPage() {
         setReferral(data.referral || data)
 
         // Fetch signature metadata (do not assume legal validity)
-        const sigRes = await fetch(`/api/referrals/${id}/signature`)
-        if (sigRes.ok) {
-          const s = await sigRes.json()
+        try {
+          const s = await import('@/lib/client/signature-client').then(m => m.getSignatureInfo('REFERRAL', id))
           if (s?.signed) {
             setIsSigned(true)
             setSignatureValid(!!s?.valid)
@@ -116,6 +115,11 @@ export default function ReferralDetailPage() {
             setSignatureReason(null)
             setVerificationUrl(null)
           }
+        } catch (err) {
+          setIsSigned(false)
+          setSignatureValid(false)
+          setSignatureReason(null)
+          setVerificationUrl(null)
         }
 
         // Load signature policy

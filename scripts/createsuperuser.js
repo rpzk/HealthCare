@@ -17,7 +17,10 @@ const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
 const readline = require('readline')
 
-const prisma = new PrismaClient()
+// Prisma 7+: inicialização explícita da URL do banco
+const datasourceUrl = process.env.DATABASE_URL ||
+  'postgresql://healthcare:umbrel_secure_pass@localhost:5432/healthcare_db'
+const prisma = new PrismaClient({ datasourceUrl })
 
 function createInterface() {
   return readline.createInterface({

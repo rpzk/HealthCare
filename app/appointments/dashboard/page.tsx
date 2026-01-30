@@ -191,6 +191,18 @@ export default function AppointmentsDashboard() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null)
   const [allConsultations, setAllConsultations] = useState<Consultation[]>([])
 
+  const openConsultationWorkspace = useCallback(
+    (consultationId: string, type?: string, opts?: { preferTele?: boolean }) => {
+      const preferTele = opts?.preferTele ?? false
+      if (preferTele && type === 'TELEMEDICINE') {
+        router.push(`/consultations/${consultationId}`)
+        return
+      }
+      router.push(`/consultations/${consultationId}`)
+    },
+    [router]
+  )
+
   // Verificação melhorada de profissional de saúde
   const isProfessional = React.useMemo(() => {
     if (!session?.user?.role) {
@@ -558,8 +570,7 @@ export default function AppointmentsDashboard() {
       await loadConsultations()
       if (calendarRange) await loadCalendarEvents(calendarRange)
 
-      const isTele = type === 'TELEMEDICINE'
-      router.push(isTele ? `/consultations/${consultationId}/tele` : `/consultations/${consultationId}`)
+      router.push(`/consultations/${consultationId}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao iniciar consulta')
     } finally {
@@ -761,10 +772,15 @@ export default function AppointmentsDashboard() {
                 const found = calendarEvents.find((e) => e.id === event.id)
                 if (!found) return
 
-                // If the consultation is already in progress, jump straight into it instead of editing the slot.
+                // Para consultas em andamento, abra direto o workspace (tele quando aplicável).
                 if (found.status === 'IN_PROGRESS') {
-                  const isTele = found.type === 'TELEMEDICINE'
-                  router.push(isTele ? `/consultations/${found.id}/tele` : `/consultations/${found.id}`)
+                  openConsultationWorkspace(found.id, found.type, { preferTele: true })
+                  return
+                }
+
+                // Para consultas concluídas/canceladas, faz sentido visualizar a consulta (não editar agendamento).
+                if (found.status === 'COMPLETED' || found.status === 'CANCELLED') {
+                  openConsultationWorkspace(found.id, found.type, { preferTele: false })
                   return
                 }
 
@@ -1142,14 +1158,45 @@ export default function AppointmentsDashboard() {
                                       <div className="flex flex-col gap-2 ml-4">
                                         <Button
                                           size="sm"
-                                          onClick={() => router.push(
-                                            consultation.type === 'TELEMEDICINE'
-                                              ? `/consultations/${consultation.id}/tele`
-                                              : `/consultations/${consultation.id}`
-                                          )}
+                                          onClick={() => openConsultationWorkspace(consultation.id, consultation.type, { preferTele: true })}
                                           disabled={processing === consultation.id}
                                         >
                                           {consultation.type === 'TELEMEDICINE' ? 'Abrir teleconsulta' : 'Abrir consulta'}
+                                        </Button>
+
+                                        {consultation.patientId && (
+                                          <Button asChild size="sm" variant="outline">
+                                            <Link href={`/patients/${consultation.patientId}`}>Abrir prontuário</Link>
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {status === 'COMPLETED' && (
+                                      <div className="flex flex-col gap-2 ml-4">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => openConsultationWorkspace(consultation.id, consultation.type, { preferTele: false })}
+                                        >
+                                          Abrir consulta
+                                        </Button>
+
+                                        {consultation.patientId && (
+                                          <Button asChild size="sm" variant="outline">
+                                            <Link href={`/patients/${consultation.patientId}`}>Abrir prontuário</Link>
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {status === 'CANCELLED' && (
+                                      <div className="flex flex-col gap-2 ml-4">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => openConsultationWorkspace(consultation.id, consultation.type, { preferTele: false })}
+                                        >
+                                          Ver detalhes
                                         </Button>
 
                                         {consultation.patientId && (
@@ -1200,17 +1247,17 @@ export default function AppointmentsDashboard() {
                           const isInProgressDrawer = selectedStatusFilter === 'IN_PROGRESS'
                           const isInProgressItem = consultation.status === 'IN_PROGRESS'
                           const isCancelledItem = consultation.status === 'CANCELLED'
+                          const isCompletedItem = consultation.status === 'COMPLETED'
 
                           if (isInProgressDrawer || isInProgressItem) {
-                            const isTele = consultation.type === 'TELEMEDICINE'
-                            router.push(isTele ? `/consultations/${consultation.id}/tele` : `/consultations/${consultation.id}`)
+                            openConsultationWorkspace(consultation.id, consultation.type, { preferTele: true })
                             setStatusDrawerOpen(false)
                             return
                           }
 
-                          // Cancelled items should open the consultation detail (read-only) instead of the edit modal.
-                          if (isCancelledItem) {
-                            router.push(`/consultations/${consultation.id}`)
+                          // Itens cancelados/concluídos devem abrir a consulta (read-only) ao invés do modal de edição.
+                          if (isCancelledItem || isCompletedItem) {
+                            openConsultationWorkspace(consultation.id, consultation.type, { preferTele: false })
                             setStatusDrawerOpen(false)
                             return
                           }

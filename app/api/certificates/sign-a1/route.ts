@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       createdAt: certificate.createdAt.toISOString(),
     })
 
-    // Assinar com certificado A1 do usuário
+    // Assinar com certificado A1 do usuário (sem TSA/validação de cadeia)
     const signatureResult = await signWithA1Certificate(
       documentData,
       userCertificate.pfxFilePath,
@@ -175,6 +175,10 @@ export async function POST(request: NextRequest) {
         signatureHash,
         isValid: true,
         validatedAt: new Date(),
+        // TSA info removida (não disponível)
+        timestampAuthority: null,
+        timestampToken: null,
+        timestampedAt: null,
       },
     })
 

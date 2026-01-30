@@ -56,8 +56,25 @@ services:
       - postgres
       - redis
       - ollama
+      - gotenberg
     networks:
       - healthcare-network
+  # Gotenberg PDF Signing Service
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: healthcare-gotenberg
+    restart: unless-stopped
+    ports:
+      - "3001:3000" # Expose Gotenberg's API on host port 3001
+    environment:
+      DISABLE_GOOGLE_CHROME: 1 # Only needed if you don't want HTML to PDF
+    networks:
+      - healthcare-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - ./uploads:/app/uploads
       - ./backups:/app/backups
