@@ -35,6 +35,7 @@ export function LandingPage() {
               <span className="text-2xl font-bold text-gray-900">HealthCare</span>
             </div>
             
+
             <nav className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-700 hover:text-blue-600 transition">
                 Funcionalidades
@@ -45,6 +46,9 @@ export function LandingPage() {
               <a href="#for-who" className="text-gray-700 hover:text-blue-600 transition">
                 Para Quem
               </a>
+              <Link href="/docs" className="text-gray-700 hover:text-blue-600 transition font-medium">
+                Documentação
+              </Link>
             </nav>
 
             <div className="flex items-center space-x-4">
