@@ -33,6 +33,29 @@ coverage
 uploads/*
 !uploads/.gitkeep
 
+# Sensitive certificates and keys
+*.pfx
+*.pem
+*.key
+*.crt
+
+# Sensitive data files
+*.csv
+*.xlsx
+*.xls
+*.pdf
+*.doc
+*.docx
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+
+# Private and public cert folders
+private/
+public/certs/
+
 # Vercel / deploy
 .vercel
 
