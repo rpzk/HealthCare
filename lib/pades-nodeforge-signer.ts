@@ -10,6 +10,7 @@
 import fs from 'fs'
 import { createHash } from 'crypto'
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const forge = require('node-forge')
 
 export interface PAdESSignResult {

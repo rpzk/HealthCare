@@ -3,11 +3,17 @@ import { request } from '@playwright/test';
 export async function getSessionCookie(email: string, password: string) {
   // Faz login via API NextAuth e retorna o cookie de sessão
   const context = await request.newContext();
+
+  // 1. Obter CSRF Token real
+  const csrfRes = await context.get('http://localhost:3000/api/auth/csrf');
+  const csrfData = await csrfRes.json();
+  const csrfToken = csrfData.csrfToken;
+
   const res = await context.post('http://localhost:3000/api/auth/callback/credentials', {
     form: {
       email,
       password,
-      csrfToken: 'test', // NextAuth ignora CSRF em dev/test
+      csrfToken,
     },
     maxRedirects: 0,
     failOnStatusCode: false,

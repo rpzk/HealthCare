@@ -1,0 +1,103 @@
+{
+  "name": "Minha Saúde - Portal do Paciente",
+  "short_name": "Minha Saúde",
+  "description": "Acesse seu histórico de saúde, consultas, exames e medicamentos de qualquer lugar",
+  "start_url": "/minha-saude",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "scope": "/minha-saude",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["medical", "health", "lifestyle"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/patient-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/patient-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/patient-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/patient-home.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tela inicial do portal do paciente"
+    },
+    {
+      "src": "/screenshots/patient-appointments.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Minhas consultas"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Minhas Consultas",
+      "short_name": "Consultas",
+      "description": "Ver próximas consultas agendadas",
+      "url": "/minha-saude/appointments",
+      "icons": [{ "src": "/icons/calendar.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Meus Medicamentos",
+      "short_name": "Remédios",
+      "description": "Ver medicamentos e lembretes",
+      "url": "/minha-saude/medications",
+      "icons": [{ "src": "/icons/pill.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Exames",
+      "short_name": "Exames",
+      "description": "Ver resultados de exames",
+      "url": "/minha-saude/exams",
+      "icons": [{ "src": "/icons/lab.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Telemedicina",
+      "short_name": "Tele",
+      "description": "Iniciar consulta por vídeo",
+      "url": "/tele",
+      "icons": [{ "src": "/icons/video.svg", "sizes": "96x96" }]
+    }
+  ],
+  "share_target": {
+    "action": "/minha-saude/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ]
+    }
+  },
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
+}

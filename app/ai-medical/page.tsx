@@ -184,11 +184,11 @@ export default function AImedicalPage() {
           {activeTab === 'integrative' && (
             <div className="text-center py-12">
               <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Módulo Integrativo</h2>
+              <h2 className="text-2xl font-bold mb-2">Módulo de Medicina Integrativa & Suporte Holístico</h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Este módulo conecta conhecimentos ancestrais (Astrologia, MTC) com a prática clínica moderna.
+                Este módulo avançado integra práticas de saúde holística (MTC, Homeopatia) com a medicina convencional, apoiado por inteligência artificial para uma visão 360° do paciente.
                 <br/><br/>
-                <em>Funcionalidade em desenvolvimento: Portando código do sistema legado.</em>
+                <strong>Acesso Antecipado:</strong> Em fase de homologação clínica. Disponível em breve para usuários Beta.
               </p>
             </div>
           )}

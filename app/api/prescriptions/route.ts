@@ -5,6 +5,14 @@ import type { MedicationItem } from '@/lib/prescriptions-service'
 import { validatePrescription } from '@/lib/validation-schemas'
 import { logger } from '@/lib/logger'
 
+/**
+ * @deprecated Este endpoint está em processo de migração.
+ * Use /api/documents para criar novos documentos com assinatura digital
+ * conforme CFM 2.299/2021.
+ * 
+ * Este endpoint será mantido para compatibilidade com prescrições existentes.
+ */
+
 // GET - Buscar prescrições médicas
 export const GET = withAuth(async (request, { user: _user }) => {
   try {

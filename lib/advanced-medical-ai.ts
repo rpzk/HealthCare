@@ -133,8 +133,8 @@ export class AdvancedMedicalAI {
 
   // Análise avançada de sintomas com IA
   async analyzeSymptoms(request: SymptomAnalysisRequest & { userId?: string }): Promise<DiagnosisResult> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-      throw new Error('Serviço de IA não configurado')
+    if (!process.env.GOOGLE_AI_API_KEY && !process.env.OLLAMA_URL) {
+      throw new Error('Serviço de IA não configurado. Defina GOOGLE_AI_API_KEY ou OLLAMA_URL.')
     }
     if (request.userId) await checkAndConsumeAIQuota(request.userId, 'symptom_analysis')
     // Anonimização básica: não enviar identificadores diretos
@@ -206,8 +206,8 @@ Responda em formato JSON estruturado:
 
   // Verificação de interações medicamentosas
   async checkDrugInteractions(medications: string[], userId?: string): Promise<DrugInteractionCheck> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-      throw new Error('Serviço de IA não configurado')
+    if (!process.env.GOOGLE_AI_API_KEY && !process.env.OLLAMA_URL) {
+      throw new Error('Serviço de IA não configurado. Defina GOOGLE_AI_API_KEY ou OLLAMA_URL.')
     }
     if (userId) await checkAndConsumeAIQuota(userId, 'drug_interaction')
     const meds = medications.slice(0, 50)
@@ -266,8 +266,8 @@ Responda em formato JSON:
 
   // Geração de resumo médico inteligente
   async generateMedicalSummary(patientData: PatientDataForAI, userId?: string): Promise<MedicalSummary> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-      throw new Error('Serviço de IA não configurado')
+    if (!process.env.GOOGLE_AI_API_KEY && !process.env.OLLAMA_URL) {
+      throw new Error('Serviço de IA não configurado. Defina GOOGLE_AI_API_KEY ou OLLAMA_URL.')
     }
     if (userId) await checkAndConsumeAIQuota(userId, 'medical_summary')
     const redacted: PatientDataForAI = { ...patientData }
@@ -323,8 +323,8 @@ Responda em formato JSON:
 
   // Análise de sinais vitais com IA
   async analyzeVitalSigns(vitalSigns: VitalSignsForAI, patientAge: number, userId?: string): Promise<VitalSignsAnalysisResult> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-      throw new Error('Serviço de IA não configurado')
+    if (!process.env.GOOGLE_AI_API_KEY && !process.env.OLLAMA_URL) {
+      throw new Error('Serviço de IA não configurado. Defina GOOGLE_AI_API_KEY ou OLLAMA_URL.')
     }
     if (userId) await checkAndConsumeAIQuota(userId, 'vital_signs')
     const prompt = `
@@ -370,8 +370,8 @@ Responda em formato JSON estruturado com sua análise.
 
   // Sugestão de plano de tratamento
   async suggestTreatmentPlan(diagnosis: string, patientData: PatientDataForAI, userId?: string): Promise<TreatmentPlanResult> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-      throw new Error('Serviço de IA não configurado')
+    if (!process.env.GOOGLE_AI_API_KEY && !process.env.OLLAMA_URL) {
+      throw new Error('Serviço de IA não configurado. Defina GOOGLE_AI_API_KEY ou OLLAMA_URL.')
     }
     if (userId) await checkAndConsumeAIQuota(userId, 'treatment_plan')
     const redacted: PatientDataForAI = { ...patientData }

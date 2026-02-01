@@ -319,6 +319,46 @@ export default function PrescriptionsPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </Button>
+                          {/* Ações rápidas: Imprimir, Compartilhar, Assinar */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              window.open(`/prescriptions/${prescription.id}?print=1`, '_blank')
+                            }}
+                          >
+                            Imprimir
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const shareUrl = `${window.location.origin}/prescriptions/${prescription.id}`
+                              if ((navigator as any)?.share) {
+                                (navigator as any).share({ title: 'Prescrição', url: shareUrl }).catch(() => {})
+                              } else {
+                                try { navigator.clipboard.writeText(shareUrl) } catch {}
+                                alert('Link copiado para a área de transferência')
+                              }
+                            }}
+                          >
+                            Compartilhar
+                          </Button>
+                          {/* Exibe botão Assinar apenas se não estiver assinada (mock: prescription.digitalSignature) */}
+                          {!(prescription as any).digitalSignature && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                window.location.href = `/prescriptions/${prescription.id}?assinar=1`
+                              }}
+                            >
+                              Assinar
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>

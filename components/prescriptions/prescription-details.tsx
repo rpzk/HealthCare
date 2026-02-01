@@ -124,34 +124,41 @@ export default function PrescriptionDetails({ id }: { id: string }) {
               disabled={signing}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
-              {signing ? 'Assinando...' : 'Assinar Digitalmente'}
+              {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar Digitalmente'}
             </Button>
           )}
           <Button
             variant="outline"
-            onClick={() => window.print()}
-            disabled={!isSigned && requireSignBeforePrint}
+            onClick={() => {
+              setLoading(true);
+              setTimeout(() => { setLoading(false); window.print(); }, 500)
+            }}
+            disabled={!isSigned && requireSignBeforePrint || loading}
             title={!isSigned && requireSignBeforePrint ? 'Assine antes de imprimir' : undefined}
           >
-            Imprimir
+            {loading ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : 'Imprimir'}
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
-              if ((navigator as any)?.share) {
-                (navigator as any).share({ title: 'Prescrição', url: shareUrl }).catch(() => {})
-              } else {
-                try { navigator.clipboard.writeText(shareUrl) } catch {}
-                alert('Link copiado para a área de transferência')
-              }
+              setLoading(true);
+              setTimeout(() => {
+                setLoading(false);
+                const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+                if ((navigator as any)?.share) {
+                  (navigator as any).share({ title: 'Prescrição', url: shareUrl }).catch(() => {})
+                } else {
+                  try { navigator.clipboard.writeText(shareUrl) } catch {}
+                  alert('Link copiado para a área de transferência')
+                }
+              }, 500)
             }}
-            disabled={!isSigned && requireSignBeforePrint}
+            disabled={!isSigned && requireSignBeforePrint || loading}
             title={!isSigned && requireSignBeforePrint ? 'Assine antes de compartilhar' : undefined}
           >
-            Compartilhar
+            {loading ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : 'Compartilhar'}
           </Button>
-          <Button variant="outline" onClick={() => router.push(`/prescriptions/${id}/edit`)}>Editar</Button>
+          <Button variant="outline" onClick={() => router.push(`/prescriptions/${id}/edit`)} disabled={loading}>Editar</Button>
         </div>
       </div>
 
@@ -202,12 +209,13 @@ export default function PrescriptionDetails({ id }: { id: string }) {
         </Card>
       )}
 
+      {/* Modal de senha unificado para todas as ações */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar Assinatura</DialogTitle>
+            <DialogTitle>Confirmação de Assinatura</DialogTitle>
             <DialogDescription>
-              Digite a senha do seu certificado A1 para assinar esta prescrição.
+              Digite a senha do seu certificado digital para assinar e liberar as ações desejadas (imprimir, enviar, compartilhar).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
@@ -239,7 +247,7 @@ export default function PrescriptionDetails({ id }: { id: string }) {
                 onClick={handleSign}
                 disabled={!password || signing}
               >
-                {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar'}
+                {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar e Prosseguir'}
               </Button>
             </div>
           </div>

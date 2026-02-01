@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -52,6 +54,10 @@ type MedicationItem = {
 export default function NewPrescriptionForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [certPassword, setCertPassword] = useState('')
+  const [pendingPrescriptionId, setPendingPrescriptionId] = useState<string | null>(null)
+  const [signing, setSigning] = useState(false)
   const [patientId, setPatientId] = useState('')
   const [patientSearchText, setPatientSearchText] = useState('')
   const [notes, setNotes] = useState('')
@@ -146,6 +152,35 @@ export default function NewPrescriptionForm() {
   }
 
   // Submete o formulário
+  // Checa se usuário tem certificado digital ativo
+  const checkUserCertificate = async () => {
+    const res = await fetch('/api/user/certificate')
+    if (!res.ok) return false
+    const json = await res.json()
+    return !!json?.hasCertificate
+  }
+
+  const signPrescription = async (prescriptionId: string, password: string) => {
+    setSigning(true)
+    try {
+      const res = await fetch(`/api/prescriptions/${prescriptionId}/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Falha ao assinar prescrição')
+      setShowPasswordDialog(false)
+      setCertPassword('')
+      setPendingPrescriptionId(null)
+      router.push('/prescriptions')
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setSigning(false)
+    }
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -173,7 +208,15 @@ export default function NewPrescriptionForm() {
         })
       })
       if (!res.ok) throw new Error('Falha ao criar prescrição')
-      router.push('/prescriptions')
+      const created = await res.json()
+      // Checa se usuário tem certificado digital
+      const hasCert = await checkUserCertificate()
+      if (hasCert && created?.id) {
+        setPendingPrescriptionId(created.id)
+        setShowPasswordDialog(true)
+      } else {
+        router.push('/prescriptions')
+      }
     } catch (e) {
       alert((e as Error).message)
     } finally {
@@ -194,6 +237,7 @@ export default function NewPrescriptionForm() {
   }
 
   return (
+    <>
     <form onSubmit={submit} className="space-y-6">
       {/* Dados do Paciente */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -374,5 +418,25 @@ export default function NewPrescriptionForm() {
         </Button>
       </div>
     </form>
+    {/* Modal de senha para assinatura automática */}
+    <Dialog open={showPasswordDialog} onOpenChange={v => { if (!v) setShowPasswordDialog(false) }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assinar Prescrição</DialogTitle>
+          <DialogDescription>Digite a senha do seu certificado digital para assinar a prescrição automaticamente.</DialogDescription>
+        </DialogHeader>
+        <Input
+          type="password"
+          placeholder="Senha do certificado"
+          value={certPassword}
+          onChange={e => setCertPassword(e.target.value)}
+          disabled={signing}
+        />
+        <Button onClick={() => pendingPrescriptionId && signPrescription(pendingPrescriptionId, certPassword)} disabled={signing || !certPassword}>
+          {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar e Finalizar'}
+        </Button>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

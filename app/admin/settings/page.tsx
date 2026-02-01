@@ -1,176 +1,162 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Loader2, Settings, Building2, CreditCard, Mail, MessageSquare, 
+  HardDrive, Video, ChevronRight, CheckCircle2, XCircle, Lock } from 'lucide-react'
 import { toast } from 'sonner'
-import { toastApiError } from '@/lib/toast-api-error'
-import { Loader2, Save, Eye, EyeOff } from 'lucide-react'
 
-interface Setting {
-  key: string
-  value: string
-  description?: string
+interface ConfigStatus {
   category: string
-  isPublic: boolean
-  encrypted: boolean
+  configured: number
+  total: number
+  isComplete: boolean
 }
 
-const CATEGORIES = {
-  STORAGE: 'Armazenamento',
-  REDIS: 'Redis / Cache',
-  WHATSAPP: 'WhatsApp',
-  EMAIL: 'E-mail',
-  WEBRTC: 'WebRTC / Vídeo',
-  GENERAL: 'Geral',
-}
+const CONFIG_SECTIONS = [
+  {
+    id: 'clinic',
+    title: 'Dados da Clínica',
+    description: 'Nome, CNPJ, endereço e informações de contato',
+    href: '/admin/settings/clinic',
+    icon: Building2,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50 dark:bg-blue-950',
+    priority: 1,
+  },
+  {
+    id: 'payments',
+    title: 'Pagamentos',
+    description: 'PIX, cartões, criptomoedas e gateways',
+    href: '/admin/settings/payments',
+    icon: CreditCard,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50 dark:bg-green-950',
+    priority: 2,
+  },
+  {
+    id: 'email',
+    title: 'E-mail',
+    description: 'SMTP para envio de confirmações e lembretes',
+    href: '/admin/settings/email',
+    icon: Mail,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50 dark:bg-orange-950',
+    priority: 3,
+  },
+  {
+    id: 'whatsapp',
+    title: 'WhatsApp',
+    description: 'Integração para notificações e confirmações',
+    href: '/admin/settings/whatsapp',
+    icon: MessageSquare,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+    priority: 4,
+  },
+  {
+    id: 'storage',
+    title: 'Armazenamento',
+    description: 'Local, S3 ou MinIO para arquivos e gravações',
+    href: '/admin/settings/storage',
+    icon: HardDrive,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 dark:bg-purple-950',
+    priority: 5,
+  },
+  {
+    id: 'telemedicine',
+    title: 'Telemedicina',
+    description: 'WebRTC, TURN server e configurações de vídeo',
+    href: '/admin/settings/telemedicine',
+    icon: Video,
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-50 dark:bg-pink-950',
+    priority: 6,
+  },
+]
 
-export default function SystemSettingsPage() {
-  const [settings, setSettings] = useState<Setting[]>([])
+export default function SettingsHubPage() {
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState('STORAGE')
-  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
+  const [statusMap, setStatusMap] = useState<Record<string, ConfigStatus>>({})
 
   useEffect(() => {
-    loadSettings()
+    loadConfigStatus()
   }, [])
 
-  const loadSettings = async () => {
+  const loadConfigStatus = async () => {
     try {
       setLoading(true)
+      
+      // Carregar todas as configurações para verificar status
       const res = await fetch('/api/system/settings')
       const data = await res.json()
-
+      
       if (data.success) {
-        setSettings(data.settings)
-      } else {
-        toastApiError(data, 'Erro ao carregar configurações')
+        // Calcular status por categoria
+        const categoryMap: Record<string, string[]> = {
+          clinic: ['CLINIC_NAME', 'CLINIC_CNPJ', 'CLINIC_ADDRESS', 'CLINIC_PHONE'],
+          payments: ['PAYMENT_PIX_ENABLED', 'PAYMENT_PIX_KEY', 'PAYMENT_REDOTPAY_ENABLED'],
+          email: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'],
+          whatsapp: ['WHATSAPP_API_URL', 'WHATSAPP_API_KEY', 'WHATSAPP_INSTANCE_ID'],
+          storage: ['STORAGE_TYPE', 'LOCAL_STORAGE_PATH'],
+          telemedicine: ['WEBRTC_STUN_SERVER', 'WEBRTC_TURN_SERVER'],
+        }
+        
+        const status: Record<string, ConfigStatus> = {}
+        
+        for (const [category, requiredKeys] of Object.entries(categoryMap)) {
+          const configured = requiredKeys.filter(key => 
+            data.settings.some((s: any) => s.key === key && s.value && s.value.trim() !== '')
+          ).length
+          
+          status[category] = {
+            category,
+            configured,
+            total: requiredKeys.length,
+            isComplete: configured >= Math.ceil(requiredKeys.length * 0.5), // 50% = básico OK
+          }
+        }
+        
+        setStatusMap(status)
       }
     } catch (error) {
-      toast.error('Erro ao carregar configurações')
-      console.error(error)
+      console.error('Erro ao carregar status:', error)
+      toast.error('Erro ao verificar status das configurações')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSave = async (key: string, value: string, encrypted: boolean) => {
-    try {
-      setSaving(true)
-
-      const res = await fetch('/api/system/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key,
-          value,
-          encrypted,
-          category: activeTab,
-        }),
-      })
-
-      const data = await res.json()
-
-      if (data.success) {
-        toast.success('Configuração salva com sucesso')
-        await loadSettings()
-      } else {
-        toastApiError(data, 'Erro ao salvar')
-      }
-    } catch (error) {
-      toast.error('Erro ao salvar configuração')
-      console.error(error)
-    } finally {
-      setSaving(false)
+  const getStatusBadge = (sectionId: string) => {
+    const status = statusMap[sectionId]
+    if (!status) return null
+    
+    if (status.isComplete) {
+      return (
+        <Badge variant="default" className="bg-green-600">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Configurado
+        </Badge>
+      )
     }
-  }
-
-  const handleBulkSave = async () => {
-    try {
-      setSaving(true)
-
-      const settingsToSave = settings.map((s) => ({
-        key: s.key,
-        value: s.value,
-        encrypted: s.encrypted,
-        category: s.category,
-      }))
-
-      const res = await fetch('/api/system/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: settingsToSave }),
-      })
-
-      const data = await res.json()
-
-      if (data.success) {
-        toast.success(data.message || 'Configurações salvas')
-        await loadSettings()
-      } else {
-        toastApiError(data, 'Erro ao salvar')
-      }
-    } catch (error) {
-      toast.error('Erro ao salvar configurações')
-      console.error(error)
-    } finally {
-      setSaving(false)
+    
+    if (status.configured > 0) {
+      return (
+        <Badge variant="secondary">
+          {status.configured}/{status.total}
+        </Badge>
+      )
     }
-  }
-
-  const updateSetting = (key: string, value: string) => {
-    setSettings((prev) =>
-      prev.map((s) => (s.key === key ? { ...s, value } : s))
-    )
-  }
-
-  const toggleShowSecret = (key: string) => {
-    setShowSecrets((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  const getSettingsByCategory = (category: string) => {
-    return settings.filter((s) => s.category === category)
-  }
-
-  const renderSettingInput = (setting: Setting) => {
-    const isSecret = setting.encrypted || setting.key.includes('KEY') || setting.key.includes('SECRET') || setting.key.includes('PASSWORD')
-    const show = showSecrets[setting.key]
-
+    
     return (
-      <div key={setting.key} className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor={setting.key} className="flex items-center gap-2">
-            {setting.key}
-            {setting.encrypted && <Badge variant="secondary">Criptografado</Badge>}
-          </Label>
-          {isSecret && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleShowSecret(setting.key)}
-            >
-              {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-          )}
-        </div>
-        <Input
-          id={setting.key}
-          type={isSecret && !show ? 'password' : 'text'}
-          value={setting.value}
-          onChange={(e) => updateSetting(setting.key, e.target.value)}
-          placeholder={`Digite ${setting.key}`}
-        />
-        {setting.description && (
-          <p className="text-sm text-muted-foreground">{setting.description}</p>
-        )}
-      </div>
+      <Badge variant="outline" className="text-muted-foreground">
+        <XCircle className="h-3 w-3 mr-1" />
+        Pendente
+      </Badge>
     )
   }
 
@@ -182,107 +168,91 @@ export default function SystemSettingsPage() {
     )
   }
 
+  // Calcular progresso geral
+  const totalConfigured = Object.values(statusMap).filter(s => s.isComplete).length
+  const totalSections = CONFIG_SECTIONS.length
+  const progressPercent = Math.round((totalConfigured / totalSections) * 100)
+
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Configurações do Sistema</h1>
-          <p className="text-muted-foreground">
-            Gerencie as configurações centralizadas do sistema
-          </p>
-        </div>
-        <Button onClick={handleBulkSave} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Tudo
-            </>
-          )}
-        </Button>
+    <div className="container mx-auto py-8 space-y-6 max-w-5xl">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          <Settings className="h-8 w-8" />
+          Configurações
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Configure sua clínica de forma simples e organizada
+        </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
-          {Object.entries(CATEGORIES).map(([key, label]) => (
-            <TabsTrigger key={key} value={key}>
-              {label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* Progresso Geral */}
+      {progressPercent < 100 && (
+        <Alert>
+          <Settings className="h-4 w-4" />
+          <AlertTitle>Configuração em andamento</AlertTitle>
+          <AlertDescription>
+            <div className="mt-2">
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span>{totalConfigured} de {totalSections} seções configuradas</span>
+                <span>{progressPercent}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {Object.keys(CATEGORIES).map((category) => (
-          <TabsContent key={category} value={category} className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>{CATEGORIES[category as keyof typeof CATEGORIES]}</CardTitle>
-                <CardDescription>
-                  Configure as opções de {CATEGORIES[category as keyof typeof CATEGORIES].toLowerCase()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {getSettingsByCategory(category).length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhuma configuração encontrada nesta categoria.
-                    <br />
-                    <Button
-                      variant="link"
-                      onClick={() => {
-                        // Aqui você pode adicionar lógica para criar novas configurações
-                        toast.info('Use a API para criar novas configurações')
-                      }}
-                    >
-                      Criar nova configuração
-                    </Button>
+      {/* Cards de Configuração */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {CONFIG_SECTIONS.map((section) => (
+          <Link key={section.id} href={section.href}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className={`p-2 rounded-lg ${section.bgColor}`}>
+                    <section.icon className={`h-5 w-5 ${section.color}`} />
                   </div>
-                ) : (
-                  getSettingsByCategory(category).map(renderSettingInput)
-                )}
-              </CardContent>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(section.id)}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </div>
+                <CardTitle className="mt-3">{section.title}</CardTitle>
+                <CardDescription>{section.description}</CardDescription>
+              </CardHeader>
             </Card>
-
-            {/* Configurações predefinidas para facilitar */}
-            {category === 'STORAGE' && getSettingsByCategory(category).length === 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configuração Rápida - Storage Local</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button
-                    onClick={() => {
-                      handleSave('STORAGE_TYPE', 'local', false)
-                      handleSave('LOCAL_STORAGE_PATH', './uploads/recordings', false)
-                    }}
-                  >
-                    Configurar Storage Local
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+          </Link>
         ))}
-      </Tabs>
+      </div>
 
-      <Card>
+      {/* Aviso sobre .env */}
+      <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
         <CardHeader>
-          <CardTitle>⚠️ Atenção - Secrets Críticos</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+            <Lock className="h-5 w-5" />
+            Configurações de Segurança
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            As seguintes configurações <strong>não podem</strong> ser gerenciadas via interface
-            por questões de segurança e devem permanecer no arquivo <code>.env</code>:
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Algumas configurações críticas de segurança só podem ser alteradas no servidor 
+            pelo administrador técnico. São elas:
           </p>
-          <ul className="list-disc list-inside mt-2 text-sm space-y-1">
-            <li><code>ENCRYPTION_KEY</code> - Chave mestra de criptografia</li>
-            <li><code>NEXTAUTH_SECRET</code> - Secret de autenticação</li>
-            <li><code>DATABASE_URL</code> - URL do banco de dados</li>
-            <li><code>RECORDING_ENCRYPTION_KEY</code> - Chave para gravações</li>
-            <li><code>CRON_SECRET</code> - Secret para jobs cron</li>
+          <ul className="list-disc list-inside mt-2 text-sm text-amber-700 dark:text-amber-300 space-y-1">
+            <li>Credenciais do banco de dados</li>
+            <li>Chaves de criptografia</li>
+            <li>Secrets de autenticação</li>
+            <li>Tokens de API de gateways (Mercado Pago, Stripe)</li>
           </ul>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
+            Se precisar alterar essas configurações, entre em contato com o suporte técnico.
+          </p>
         </CardContent>
       </Card>
     </div>

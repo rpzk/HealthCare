@@ -1,20 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   Calendar,
   Plane,
-  Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
   Plus,
   Search,
-  Filter,
   Loader2,
   Users
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -42,12 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
@@ -56,107 +48,173 @@ import { ptBR } from 'date-fns/locale'
 
 interface LeaveRequest {
   id: string
-  staffId: string
-  staffName: string
-  role: string
-  type: 'vacation' | 'sick' | 'personal' | 'maternity' | 'other'
+  userId: string
+  user: {
+    id: string
+    name: string
+    email: string
+    role: string
+    speciality?: string
+  }
+  type: 'VACATION' | 'SICK' | 'PERSONAL' | 'MATERNITY' | 'PATERNITY' | 'BEREAVEMENT' | 'OTHER'
   startDate: string
   endDate: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
   reason?: string
   createdAt: string
+  approver?: {
+    id: string
+    name: string
+  }
 }
 
-const LEAVE_TYPES = {
-  vacation: { label: 'Férias', color: 'bg-blue-100 text-blue-800' },
-  sick: { label: 'Licença Médica', color: 'bg-red-100 text-red-800' },
-  personal: { label: 'Pessoal', color: 'bg-purple-100 text-purple-800' },
-  maternity: { label: 'Maternidade/Paternidade', color: 'bg-pink-100 text-pink-800' },
-  other: { label: 'Outro', color: 'bg-gray-100 text-gray-800' },
+const LEAVE_TYPES: Record<string, { label: string; color: string }> = {
+  VACATION: { label: 'Férias', color: 'bg-blue-100 text-blue-800' },
+  SICK: { label: 'Licença Médica', color: 'bg-red-100 text-red-800' },
+  PERSONAL: { label: 'Pessoal', color: 'bg-purple-100 text-purple-800' },
+  MATERNITY: { label: 'Maternidade', color: 'bg-pink-100 text-pink-800' },
+  PATERNITY: { label: 'Paternidade', color: 'bg-pink-100 text-pink-800' },
+  BEREAVEMENT: { label: 'Luto', color: 'bg-gray-100 text-gray-800' },
+  OTHER: { label: 'Outro', color: 'bg-gray-100 text-gray-800' },
 }
 
-const STATUS_CONFIG = {
-  pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
-  approved: { label: 'Aprovado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  rejected: { label: 'Rejeitado', color: 'bg-red-100 text-red-800', icon: XCircle },
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof AlertCircle }> = {
+  PENDING: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
+  APPROVED: { label: 'Aprovado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  REJECTED: { label: 'Rejeitado', color: 'bg-red-100 text-red-800', icon: XCircle },
+  CANCELLED: { label: 'Cancelado', color: 'bg-gray-100 text-gray-800', icon: XCircle },
 }
 
 export default function HRLeavePage() {
-  const [requests, setRequests] = useState<LeaveRequest[]>([
-    {
-      id: '1',
-      staffId: '1',
-      staffName: 'Dr. João Santos',
-      role: 'Médico',
-      type: 'vacation',
-      startDate: '2025-01-15',
-      endDate: '2025-01-30',
-      status: 'pending',
-      reason: 'Férias anuais',
-      createdAt: '2024-12-01'
-    },
-    {
-      id: '2',
-      staffId: '2',
-      staffName: 'Enf. Maria Silva',
-      role: 'Enfermeira',
-      type: 'sick',
-      startDate: '2024-12-10',
-      endDate: '2024-12-12',
-      status: 'approved',
-      reason: 'Atestado médico',
-      createdAt: '2024-12-09'
-    },
-    {
-      id: '3',
-      staffId: '3',
-      staffName: 'Dra. Ana Costa',
-      role: 'Médica',
-      type: 'personal',
-      startDate: '2024-12-20',
-      endDate: '2024-12-20',
-      status: 'approved',
-      reason: 'Compromisso pessoal',
-      createdAt: '2024-12-05'
-    }
-  ])
-
+  const [requests, setRequests] = useState<LeaveRequest[]>([])
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  
+  // Form state
+  const [newRequest, setNewRequest] = useState({
+    type: 'VACATION',
+    startDate: '',
+    endDate: '',
+    reason: ''
+  })
 
-  const handleApprove = (id: string) => {
-    setRequests(prev => prev.map(r => 
-      r.id === id ? { ...r, status: 'approved' as const } : r
-    ))
-    toast({ title: 'Solicitação aprovada' })
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      params.set('limit', '100')
+      
+      const res = await fetch(`/api/hr/leave-requests?${params}`)
+      if (!res.ok) throw new Error('Erro ao carregar solicitações')
+      
+      const json = await res.json()
+      setRequests(json.data || [])
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível carregar as solicitações', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [statusFilter])
+
+  useEffect(() => {
+    fetchRequests()
+  }, [fetchRequests])
+
+  const handleApprove = async (id: string) => {
+    try {
+      const res = await fetch(`/api/hr/leave-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'APPROVED' })
+      })
+      if (!res.ok) throw new Error('Erro ao aprovar')
+      toast({ title: 'Solicitação aprovada' })
+      fetchRequests()
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível aprovar a solicitação', variant: 'destructive' })
+    }
   }
 
-  const handleReject = (id: string) => {
-    setRequests(prev => prev.map(r => 
-      r.id === id ? { ...r, status: 'rejected' as const } : r
-    ))
-    toast({ title: 'Solicitação rejeitada' })
+  const handleReject = async (id: string) => {
+    try {
+      const res = await fetch(`/api/hr/leave-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'REJECTED' })
+      })
+      if (!res.ok) throw new Error('Erro ao rejeitar')
+      toast({ title: 'Solicitação rejeitada' })
+      fetchRequests()
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível rejeitar a solicitação', variant: 'destructive' })
+    }
+  }
+
+  const handleSubmitRequest = async () => {
+    if (!newRequest.startDate || !newRequest.endDate) {
+      toast({ title: 'Erro', description: 'Preencha as datas', variant: 'destructive' })
+      return
+    }
+    
+    try {
+      setSubmitting(true)
+      const res = await fetch('/api/hr/leave-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: newRequest.type,
+          startDate: newRequest.startDate,
+          endDate: newRequest.endDate,
+          reason: newRequest.reason || undefined
+        })
+      })
+      
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Erro ao criar solicitação')
+      }
+      
+      toast({ title: 'Solicitação registrada com sucesso' })
+      setDialogOpen(false)
+      setNewRequest({ type: 'VACATION', startDate: '', endDate: '', reason: '' })
+      fetchRequests()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      toast({ title: 'Erro', description: message, variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const filteredRequests = requests.filter(r => {
-    const matchesSearch = r.staffName.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter
+    const matchesSearch = r.user.name.toLowerCase().includes(search.toLowerCase())
     const matchesType = typeFilter === 'all' || r.type === typeFilter
-    return matchesSearch && matchesStatus && matchesType
+    return matchesSearch && matchesType
   })
 
   const stats = {
-    pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
+    pending: requests.filter(r => r.status === 'PENDING').length,
+    approved: requests.filter(r => r.status === 'APPROVED').length,
     totalDays: requests
-      .filter(r => r.status === 'approved')
+      .filter(r => r.status === 'APPROVED')
       .reduce((acc, r) => acc + differenceInDays(new Date(r.endDate), new Date(r.startDate)) + 1, 0)
   }
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   return (
@@ -296,23 +354,25 @@ export default function HRLeavePage() {
               <TableBody>
                 {filteredRequests.map((request) => {
                   const days = differenceInDays(new Date(request.endDate), new Date(request.startDate)) + 1
-                  const StatusIcon = STATUS_CONFIG[request.status].icon
+                  const StatusIcon = STATUS_CONFIG[request.status]?.icon || AlertCircle
+                  const statusConfig = STATUS_CONFIG[request.status] || STATUS_CONFIG.PENDING
+                  const typeConfig = LEAVE_TYPES[request.type] || LEAVE_TYPES.OTHER
                   return (
                     <TableRow key={request.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            <AvatarFallback>{getInitials(request.staffName)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(request.user.name)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{request.staffName}</p>
-                            <p className="text-sm text-muted-foreground">{request.role}</p>
+                            <p className="font-medium">{request.user.name}</p>
+                            <p className="text-sm text-muted-foreground">{request.user.role}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={LEAVE_TYPES[request.type].color}>
-                          {LEAVE_TYPES[request.type].label}
+                        <Badge className={typeConfig.color}>
+                          {typeConfig.label}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -327,13 +387,13 @@ export default function HRLeavePage() {
                         <Badge variant="outline">{days} {days === 1 ? 'dia' : 'dias'}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={STATUS_CONFIG[request.status].color}>
+                        <Badge className={statusConfig.color}>
                           <StatusIcon className="h-3 w-3 mr-1" />
-                          {STATUS_CONFIG[request.status].label}
+                          {statusConfig.label}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {request.status === 'pending' && (
+                        {request.status === 'PENDING' && (
                           <div className="flex justify-end gap-2">
                             <Button 
                               size="sm" 
@@ -377,7 +437,10 @@ export default function HRLeavePage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Select defaultValue="vacation">
+              <Select 
+                value={newRequest.type} 
+                onValueChange={(v) => setNewRequest(prev => ({ ...prev, type: v }))}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -391,26 +454,36 @@ export default function HRLeavePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data Início</Label>
-                <Input type="date" />
+                <Input 
+                  type="date" 
+                  value={newRequest.startDate}
+                  onChange={(e) => setNewRequest(prev => ({ ...prev, startDate: e.target.value }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Data Fim</Label>
-                <Input type="date" />
+                <Input 
+                  type="date" 
+                  value={newRequest.endDate}
+                  onChange={(e) => setNewRequest(prev => ({ ...prev, endDate: e.target.value }))}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Motivo</Label>
-              <Textarea placeholder="Descreva o motivo da solicitação..." />
+              <Textarea 
+                placeholder="Descreva o motivo da solicitação..." 
+                value={newRequest.reason}
+                onChange={(e) => setNewRequest(prev => ({ ...prev, reason: e.target.value }))}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
               Cancelar
             </Button>
-            <Button onClick={() => {
-              toast({ title: 'Solicitação registrada' })
-              setDialogOpen(false)
-            }}>
+            <Button onClick={handleSubmitRequest} disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Registrar
             </Button>
           </DialogFooter>

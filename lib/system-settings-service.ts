@@ -49,6 +49,8 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
  */
 export enum SettingCategory {
   GENERAL = 'GENERAL',
+  CLINIC = 'CLINIC',
+  PAYMENTS = 'PAYMENTS',
   EMAIL = 'EMAIL',
   STORAGE = 'STORAGE',
   WHATSAPP = 'WHATSAPP',

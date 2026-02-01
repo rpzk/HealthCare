@@ -58,6 +58,8 @@ export const createAppointmentSchema = z.object({
   duration: z.number().int().min(5).max(480).default(30),
   notes: z.string().max(2000).optional(),
   description: z.string().max(2000).optional(),
+  // Recursos opcionais (sala, equipamentos)
+  resourceIds: z.array(z.string()).optional(),
 })
 
 export const updateAppointmentSchema = createAppointmentSchema.partial().extend({
