@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { useAutoPrint } from '@/hooks/use-auto-print'
 import { 
   TestTube, 
   User, 
@@ -74,6 +75,13 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
   const [signatureValid, setSignatureValid] = useState(false)
   const [signatureReason, setSignatureReason] = useState<string | null>(null)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
+
+  // Auto-print when ?print=1 is in URL
+  const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
+  useAutoPrint({
+    isReady: !loading && !!data,
+    canPrint: canPrintNow
+  })
 
   const fetchExamRequest = useCallback(async () => {
     try {

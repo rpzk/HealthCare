@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Loader2, Link as LinkIcon, Printer, FileText } from 'lucide-react'
+import { useAutoPrint } from '@/hooks/use-auto-print'
 
 interface Medication {
   name: string
@@ -42,6 +43,13 @@ export default function PrescriptionDetails({ id }: { id: string }) {
   const [isSigned, setIsSigned] = useState(false)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
   const [clinicInfo, setClinicInfo] = useState<{ name?: string; address?: string; phone?: string }>({})
+
+  // Auto-print when ?print=1 is in URL
+  const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
+  useAutoPrint({
+    isReady: !loading && !!data,
+    canPrint: canPrintNow
+  })
 
   useEffect(() => {
     const load = async () => {
