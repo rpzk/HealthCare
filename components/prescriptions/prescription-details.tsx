@@ -43,6 +43,17 @@ export default function PrescriptionDetails({ id }: { id: string }) {
   const [isSigned, setIsSigned] = useState(false)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
   const [clinicInfo, setClinicInfo] = useState<{ name?: string; address?: string; phone?: string }>({})
+  const [signatureData, setSignatureData] = useState<{
+    signedAt?: string
+    signatureHash?: string
+    certificate?: {
+      subject?: string
+      issuer?: string
+      serialNumber?: string
+      notBefore?: string
+      notAfter?: string
+    }
+  } | null>(null)
 
   // Auto-print when ?print=1 is in URL
   const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
@@ -66,6 +77,11 @@ export default function PrescriptionDetails({ id }: { id: string }) {
           if (s?.signed) {
             setIsSigned(true)
             if (s?.verificationUrl) setVerificationUrl(s.verificationUrl)
+            setSignatureData({
+              signedAt: s.signedAt,
+              signatureHash: s.signatureHash,
+              certificate: s.certificate
+            })
           }
         }
 
@@ -119,6 +135,16 @@ export default function PrescriptionDetails({ id }: { id: string }) {
       setData(prev => prev ? ({ ...prev, digitalSignature: result.signature }) : null)
       setIsSigned(true)
       if (result?.verificationUrl) setVerificationUrl(result.verificationUrl)
+      // Reload signature data
+      const sigRes = await fetch(`/api/prescriptions/${id}/signature`)
+      if (sigRes.ok) {
+        const s = await sigRes.json()
+        setSignatureData({
+          signedAt: s.signedAt,
+          signatureHash: s.signatureHash,
+          certificate: s.certificate
+        })
+      }
       setShowPasswordDialog(false)
       setPassword('')
       alert('Prescrição assinada com sucesso!')
@@ -137,78 +163,129 @@ export default function PrescriptionDetails({ id }: { id: string }) {
     window.print()
   }
 
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
+  const formatDateTime = (date: string | Date) => {
+    return new Date(date).toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit', 
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
+
+  // Generate full verification URL
+  const fullVerificationUrl = typeof window !== 'undefined' && verificationUrl 
+    ? `${window.location.origin}${verificationUrl}` 
+    : ''
 
   return (
     <>
       {/* Print-only version - hidden on screen */}
       <div ref={printRef} className="print-area hidden print:block">
-        <div className="max-w-[700px] mx-auto">
-          {/* Header */}
-          <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
-            <h1 className="text-2xl font-bold">{clinicInfo.name || 'Clínica Médica'}</h1>
-            {clinicInfo.address && <p className="text-sm mt-1">{clinicInfo.address}</p>}
-            {clinicInfo.phone && <p className="text-sm">Tel: {clinicInfo.phone}</p>}
+        <div className="max-w-[700px] mx-auto p-4" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+          {/* Header with doctor info */}
+          <div className="text-center border-b-2 border-gray-800 pb-3 mb-4">
+            <h1 className="text-xl font-bold">{data.doctor.name}</h1>
+            {data.doctor.crmNumber && <p className="text-sm">CRM: {data.doctor.crmNumber}</p>}
+            {data.doctor.speciality && <p className="text-sm">{data.doctor.speciality}</p>}
+            <p className="text-xs text-gray-600 mt-1">{clinicInfo.name || 'Clínica Médica'}</p>
+            {clinicInfo.address && <p className="text-xs text-gray-600">{clinicInfo.address}</p>}
           </div>
 
-          {/* Title */}
-          <h2 className="text-xl font-bold text-center mb-6">RECEITUÁRIO MÉDICO</h2>
-
           {/* Patient Info */}
-          <div className="mb-6">
-            <p><strong>Paciente:</strong> {data.patient.name}</p>
-            <p><strong>Data:</strong> {formatDate(data.createdAt)}</p>
+          <div className="mb-4 p-2 bg-gray-50 border rounded">
+            <p className="text-sm"><strong>Nome:</strong> {data.patient.name}</p>
+            {data.patient.cpf && <p className="text-sm"><strong>CPF:</strong> {data.patient.cpf}</p>}
           </div>
 
           {/* Medications */}
-          <div className="mb-8">
-            <h3 className="font-bold mb-3 border-b pb-1">Medicamentos Prescritos</h3>
-            <ol className="list-decimal pl-6 space-y-3">
-              {data.medications.map((m, i) => (
-                <li key={i} className="pb-2">
-                  <p className="font-semibold">{m.name}</p>
-                  <p className="text-sm">Dosagem: {m.dosage}</p>
-                  <p className="text-sm">Posologia: {m.frequency}</p>
-                  <p className="text-sm">Duração: {m.duration}</p>
-                  {m.instructions && <p className="text-sm italic mt-1">Obs: {m.instructions}</p>}
-                </li>
-              ))}
-            </ol>
+          <div className="mb-6">
+            {data.medications.map((m, i) => (
+              <div key={i} className="mb-4 pb-2 border-b border-gray-200">
+                <p className="font-bold text-sm">{m.name}</p>
+                <p className="text-xs">- {m.dosage}</p>
+                <p className="text-xs">{m.frequency}</p>
+                <p className="text-xs">Duração: {m.duration}</p>
+                {m.instructions && <p className="text-xs italic mt-1">{m.instructions}</p>}
+              </div>
+            ))}
           </div>
 
           {/* Notes */}
           {data.notes && (
-            <div className="mb-8 p-3 bg-gray-50 border rounded">
-              <h3 className="font-bold mb-2">Observações Gerais</h3>
+            <div className="mb-4 p-2 bg-gray-50 border rounded text-sm">
               <p>{data.notes}</p>
             </div>
           )}
 
-          {/* Signature */}
-          <div className="mt-12 pt-8">
-            <div className="w-64 mx-auto text-center">
-              <div className="border-t border-gray-800 pt-2">
-                <p className="font-semibold">{data.doctor.name}</p>
-                {data.doctor.crmNumber && <p className="text-sm">CRM: {data.doctor.crmNumber}</p>}
-                {data.doctor.speciality && <p className="text-sm">{data.doctor.speciality}</p>}
+          {/* Date and signature section */}
+          <div className="mt-6 pt-4 border-t-2 border-gray-800">
+            <div className="flex justify-between items-start">
+              {/* Left: Date and signature info */}
+              <div className="flex-1">
+                <p className="text-sm mb-4">
+                  <strong>Data e hora:</strong> {formatDateTime(signatureData?.signedAt || data.createdAt)}
+                </p>
+                
+                {/* Signature line */}
+                <div className="mt-6">
+                  <div className="w-56 border-t border-gray-800 pt-1">
+                    <p className="font-semibold text-sm">{data.doctor.name}</p>
+                    {data.doctor.crmNumber && <p className="text-xs">CRM {data.doctor.crmNumber}</p>}
+                  </div>
+                </div>
+
+                {/* Digital signature info */}
+                {isSigned && (
+                  <div className="mt-4 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                    <p className="font-bold text-green-800">✓ Documento Assinado Digitalmente</p>
+                    <p className="text-green-700 mt-1">
+                      Assinado por: {signatureData?.certificate?.subject || data.doctor.name}
+                    </p>
+                    {signatureData?.signedAt && (
+                      <p className="text-green-700">
+                        Em: {formatDateTime(signatureData.signedAt)}
+                      </p>
+                    )}
+                    {signatureData?.certificate?.issuer && (
+                      <p className="text-green-700 text-[10px] mt-1">
+                        Emissor: {signatureData.certificate.issuer}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Right: QR Code for verification */}
+              {isSigned && fullVerificationUrl && (
+                <div className="ml-4 text-center">
+                  <div className="border-2 border-gray-800 p-1 inline-block bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(fullVerificationUrl)}`}
+                      alt="QR Code para verificação"
+                      width={100}
+                      height={100}
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                  <p className="text-[9px] mt-1 text-gray-600 max-w-[110px]">
+                    Escaneie para validar a assinatura
+                  </p>
+                </div>
+              )}
             </div>
-            {isSigned && (
-              <p className="text-center text-xs mt-4 text-green-700">
-                ✓ Documento assinado digitalmente
-              </p>
-            )}
           </div>
 
-          {/* Footer */}
-          <div className="mt-8 pt-4 border-t text-xs text-gray-500 text-center">
-            <p>Documento gerado em {formatDate(new Date())} | ID: {data.id.slice(0, 12)}</p>
+          {/* Footer with validation info */}
+          <div className="mt-4 pt-2 border-t text-[9px] text-gray-500">
+            <p className="text-center">
+              Para validar este documento, acesse: {fullVerificationUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/api/digital-signatures/validate`}
+            </p>
+            <p className="text-center mt-1">
+              ID do documento: {data.id}
+              {signatureData?.signatureHash && ` | Hash: ${signatureData.signatureHash.slice(0, 16)}...`}
+            </p>
           </div>
         </div>
       </div>
