@@ -151,35 +151,83 @@
 
 /* Print-friendly styles for clinical documents */
 @media print {
-  /* Hide navigation and chrome */
-  header, nav, aside, .sidebar-content .fixed, .no-print {
-    display: none !important;
+  /* Hide everything by default except print content */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Show only the printable area */
+  .print-area, .print-area * {
+    visibility: visible !important;
+  }
+  
+  .print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    padding: 0.5in !important;
   }
 
-  /* Keep main content visible; just reset the sidebar offset */
-  .ml-64 {
+  /* Hide navigation and chrome */
+  header, nav, aside, .sidebar, .fixed, .no-print, button, 
+  [data-sidebar], [role="navigation"], .dialog-overlay {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset main content positioning */
+  .ml-64, .ml-16, main {
     margin-left: 0 !important;
+    padding: 0.5in !important;
+    width: 100% !important;
   }
 
   body {
     background: #ffffff !important;
     color: #000000 !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
   }
 
   /* Use full width for main content */
   main {
     margin: 0 !important;
-    padding: 0.5in 0.75in !important;
     width: 100% !important;
   }
 
+  /* Card styles for print */
+  .card, [class*="Card"] {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    background: white !important;
+    margin-bottom: 1rem !important;
+  }
+
   /* Improve readability */
-  h1, h2, h3, h4 { color: #000 !important; }
-  a { color: #000 !important; text-decoration: none !important; }
+  h1, h2, h3, h4 { 
+    color: #000 !important; 
+    margin-top: 1rem !important;
+  }
+  
+  a { 
+    color: #000 !important; 
+    text-decoration: none !important; 
+  }
+  
+  p, li, span {
+    color: #333 !important;
+  }
 
   /* Avoid page breaks inside key sections */
-  .card, .section, .document-block {
+  .card, .section, .document-block, ul, table {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+  
+  /* Page setup */
+  @page {
+    margin: 0.75in;
+    size: A4;
   }
 }
