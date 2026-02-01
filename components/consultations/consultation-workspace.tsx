@@ -264,6 +264,9 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [teleOpen, setTeleOpen] = useState(false)
   const teleBlocked = consultation?.status === 'COMPLETED' || consultation?.status === 'CANCELLED'
+  
+  // Consulta finalizada = bloqueia edição de documentos
+  const isFinalized = consultation?.status === 'COMPLETED' || consultation?.status === 'CANCELLED'
 
   useEffect(() => {
     if (searchParams?.get('tele') === '1' && !teleBlocked) {
@@ -1463,39 +1466,45 @@ interface Medication {
                 >
                   <Printer className="h-3 w-3 mr-1" /> PDF
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0" 
-                  onClick={() => { setEditingPrescription(undefined); setPrescriptionDialogOpen(true) }}
-                  title="Nova prescrição"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
+                {!isFinalized && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0" 
+                    onClick={() => { setEditingPrescription(undefined); setPrescriptionDialogOpen(true) }}
+                    title="Nova prescrição"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[120px] overflow-auto space-y-1 mb-2">
                 {prescriptions.map((rx) => (
-                  <div key={rx.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditPrescription(rx)}>
+                  <div key={rx.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => !isFinalized && handleEditPrescription(rx)}>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{rx.medication}</p>
                       <p className="text-muted-foreground truncate">{rx.dosage} • {rx.frequency}</p>
                       {rx.duration && <p className="text-muted-foreground truncate text-[10px]">{rx.duration}</p>}
                     </div>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setPrescriptions(prescriptions.filter(p => p.id !== rx.id)) }}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {!isFinalized && (
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setPrescriptions(prescriptions.filter(p => p.id !== rx.id)) }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
-              <MedicationAutocomplete 
-                value={medSearch}
-                onChange={setMedSearch}
-                onSelect={handleMedicationSelect}
-                patientAge={consultation?.patient?.age}
-                patientSex={consultation?.patient?.sex}
-              />
+              {!isFinalized && (
+                <MedicationAutocomplete 
+                  value={medSearch}
+                  onChange={setMedSearch}
+                  onSelect={handleMedicationSelect}
+                  patientAge={consultation?.patient?.age}
+                  patientSex={consultation?.patient?.sex}
+                />
+              )}
             </CardContent>
           </Card>
 
@@ -1527,38 +1536,44 @@ interface Medication {
                 >
                   <Printer className="h-3 w-3 mr-1" /> PDF
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0" 
-                  onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
-                  title="Novo exame"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
+                {!isFinalized && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0" 
+                    onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
+                    title="Novo exame"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[100px] overflow-auto space-y-1 mb-2">
                 {exams.map((ex) => (
-                  <div key={ex.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditExam(ex)}>
+                  <div key={ex.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => !isFinalized && handleEditExam(ex)}>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{ex.description}</p>
                       {ex.priority === 'HIGH' && <Badge variant="destructive" className="text-[10px] h-4 mt-0.5">Urgente</Badge>}
                     </div>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setExams(exams.filter(e => e.id !== ex.id)) }}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {!isFinalized && (
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setExams(exams.filter(e => e.id !== ex.id)) }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
-              <ExamAutocomplete 
-                value={examSearch}
-                onChange={setExamSearch}
-                onSelect={handleExamSelect}
-                patientAge={consultation?.patient?.age}
-                patientSex={consultation?.patient?.sex}
-              />
+              {!isFinalized && (
+                <ExamAutocomplete 
+                  value={examSearch}
+                  onChange={setExamSearch}
+                  onSelect={handleExamSelect}
+                  patientAge={consultation?.patient?.age}
+                  patientSex={consultation?.patient?.sex}
+                />
+              )}
             </CardContent>
           </Card>
 
@@ -1590,28 +1605,32 @@ interface Medication {
                 >
                   <Printer className="h-3 w-3 mr-1" /> PDF
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0" 
-                  onClick={() => { setEditingReferral(undefined); setReferralDialogOpen(true) }}
-                  title="Novo encaminhamento"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
+                {!isFinalized && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0" 
+                    onClick={() => { setEditingReferral(undefined); setReferralDialogOpen(true) }}
+                    title="Novo encaminhamento"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[100px] overflow-auto space-y-1">
                 {referrals.map((ref) => (
-                  <div key={ref.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditReferral(ref)}>
+                  <div key={ref.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => !isFinalized && handleEditReferral(ref)}>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{ref.specialty}</p>
                       <p className="text-muted-foreground truncate text-[10px]">{ref.description}</p>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setReferrals(referrals.filter(r => r.id !== ref.id)) }}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {!isFinalized && (
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setReferrals(referrals.filter(r => r.id !== ref.id)) }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1629,20 +1648,22 @@ interface Medication {
                   </Badge>
                 )}
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0" 
-                onClick={() => { setEditingCertificate(undefined); setCertificateDialogOpen(true) }}
-                title="Novo atestado"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
+              {!isFinalized && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0" 
+                  onClick={() => { setEditingCertificate(undefined); setCertificateDialogOpen(true) }}
+                  title="Novo atestado"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="py-2 px-3">
               <div className="max-h-[100px] overflow-auto space-y-1">
                 {certificates.map((cert) => (
-                  <div key={cert.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => handleEditCertificate(cert)}>
+                  <div key={cert.id} className="p-1.5 bg-muted rounded text-xs flex justify-between items-start gap-1 cursor-pointer hover:bg-muted/80" onClick={() => !isFinalized && handleEditCertificate(cert)}>
                     <div className="min-w-0 flex-1">
                       <Badge variant="outline" className="text-[10px] h-4 mb-1">{cert.type}</Badge>
                       <p className="text-muted-foreground truncate text-[10px]">{cert.description}</p>
@@ -1704,9 +1725,11 @@ interface Medication {
                         </Button>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setCertificates(certificates.filter(c => c.id !== cert.id)) }}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {!isFinalized && (
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setCertificates(certificates.filter(c => c.id !== cert.id)) }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
