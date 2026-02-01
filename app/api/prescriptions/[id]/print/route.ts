@@ -18,7 +18,8 @@ export async function GET(
         },
         doctor: {
           select: { id: true, name: true, speciality: true, crmNumber: true }
-        }
+        },
+        items: true
       }
     })
 
@@ -58,13 +59,49 @@ export async function GET(
       }
     } catch {}
 
-    const medications = prescription.medications as Array<{
+    // Parse medications - handle different formats
+    let medications: Array<{
       name: string
       dosage: string
       frequency: string
       duration: string
       instructions?: string
-    }>
+    }> = []
+
+    // Check if prescription has items (PrescriptionItem[])
+    if (prescription.items && prescription.items.length > 0) {
+      medications = prescription.items.map((item: { medication?: string; name?: string; dosage?: string; frequency?: string; duration?: string; instructions?: string }) => ({
+        name: item.medication || item.name || '',
+        dosage: item.dosage || '',
+        frequency: item.frequency || '',
+        duration: item.duration || '',
+        instructions: item.instructions || undefined
+      }))
+    } 
+    // Check if prescription.medications is set (JSON field)
+    else if ((prescription as any).medications) {
+      const meds = (prescription as any).medications
+      if (Array.isArray(meds)) {
+        medications = meds
+      } else if (typeof meds === 'object') {
+        medications = [meds]
+      }
+    }
+    // Fallback to single medication fields on prescription itself
+    else if (prescription.medication) {
+      medications = [{
+        name: prescription.medication,
+        dosage: prescription.dosage || '',
+        frequency: prescription.frequency || '',
+        duration: prescription.duration || '',
+        instructions: prescription.instructions || undefined
+      }]
+    }
+
+    // If no medications found, show message instead of error
+    if (medications.length === 0) {
+      medications = [{ name: 'Nenhum medicamento registrado', dosage: '', frequency: '', duration: '' }]
+    }
 
     const formatDateTime = (date: Date) => {
       return date.toLocaleString('pt-BR', {
