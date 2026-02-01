@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Loader2, FileText as FileIcon, Link as LinkIcon } from 'lucide-react'
+import { useAutoPrint } from '@/hooks/use-auto-print'
 
 interface ExamResultDetail {
   id: string
@@ -31,6 +32,13 @@ export default function ExamResultDetails({ id }: { id: string }) {
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
+
+  // Auto-print when ?print=1 is in URL
+  const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
+  useAutoPrint({
+    isReady: !loading && !!data,
+    canPrint: canPrintNow
+  })
 
   useEffect(() => {
     const load = async () => {

@@ -22,6 +22,7 @@ import {
   XCircle,
   ChevronRight,
   Loader2,
+  Printer,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -279,17 +280,29 @@ export default function ReferralsPage() {
                           </div>
                         </div>
 
-                        {/* Right: Action Button */}
-                        <div className="flex items-center gap-2">
+                        {/* Right: Action Buttons */}
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="sm"
+                            title="Visualizar"
                             onClick={(e) => {
                               e.stopPropagation()
                               router.push(`/referrals/${referral.id}`)
                             }}
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Imprimir"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`/referrals/${referral.id}?print=1`, '_blank')
+                            }}
+                          >
+                            <Printer className="h-4 w-4" />
                           </Button>
                           <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>

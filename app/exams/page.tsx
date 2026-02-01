@@ -24,7 +24,8 @@ import {
   Eye,
   Edit,
   Download,
-  MoreVertical
+  MoreVertical,
+  Printer
 } from 'lucide-react'
 
 interface ExamRequest {
@@ -291,6 +292,7 @@ export default function ExamsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  title="Visualizar"
                                   className="text-muted-foreground hover:text-primary"
                                   onClick={() => router.push(`/exams/requests/${exam.id}`)}
                                 >
@@ -298,7 +300,17 @@ export default function ExamsPage() {
                                 </Button>
                                 <Button 
                                   variant="ghost" 
-                                  size="sm" 
+                                  size="sm"
+                                  title="Imprimir"
+                                  className="text-muted-foreground hover:text-primary"
+                                  onClick={() => window.open(`/exams/requests/${exam.id}?print=1`, '_blank')}
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  title="Editar" 
                                   className="text-muted-foreground hover:text-primary"
                                   onClick={() => router.push(`/exams/requests/${exam.id}/edit`)}
                                 >
