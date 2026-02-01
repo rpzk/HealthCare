@@ -273,7 +273,7 @@ export async function PATCH(request: NextRequest) {
         try {
           const parsed = JSON.parse(existingProfile.complexityFactors)
           if (parsed && typeof parsed === 'object') {
-            ;(parsed as any).lastTsdValidation = {
+            (parsed as any).lastTsdValidation = {
               assessmentId,
               validatedAt: validatedAt.toISOString(),
               validatedByUserId: session.user.id,

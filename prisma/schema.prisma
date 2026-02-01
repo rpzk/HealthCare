@@ -740,6 +740,9 @@ model Consultation {
   originReferrals Referral[] @relation("OriginReferral")
   // ============================================
 
+  // Recursos reservados para esta consulta (sala, equipamentos)
+  resourceBookings ResourceBooking[]
+
   @@map("consultations")
 }
 
@@ -1799,6 +1802,31 @@ model Notification {
   @@map("notifications")
 }
 
+// Notificações Enviadas por Canais (Email, WhatsApp, SMS, Push)
+model SentNotification {
+  id              String    @id @default(cuid())
+  type            String    // appointment_confirmation, appointment_reminder, etc.
+  channel         String    // email, whatsapp, push, sms
+  recipientId     String    // userId ou patientId
+  recipientType   String    // USER ou PATIENT
+  recipientName   String
+  recipientContact String?  // email ou telefone usado
+  status          String    @default("PENDING") // PENDING, SENT, DELIVERED, FAILED, READ
+  templateData    Json?     // Dados usados no template
+  error           String?   // Mensagem de erro se falhou
+  messageId       String?   // ID da mensagem no provedor (WhatsApp, email)
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([recipientId, type])
+  @@index([channel, status])
+  @@index([sentAt])
+  @@map("sent_notifications")
+}
+
 model CIAP2 {
   code        String  @id
   description String
@@ -2417,6 +2445,113 @@ model InventoryMovement {
   createdAt DateTime @default(now())
 
   @@map("inventory_movements")
+}
+
+// =====================================================
+// RECURSOS FÍSICOS (Salas, Equipamentos)
+// =====================================================
+
+enum ResourceType {
+  ROOM
+  EQUIPMENT
+}
+
+enum ResourceStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  INACTIVE
+}
+
+model Resource {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  type        ResourceType
+  category    String // consultorio, triagem, procedimento, diagnostico, etc.
+  location    String? // Onde está localizado
+  status      ResourceStatus @default(AVAILABLE)
+  
+  // Para salas
+  capacity    Int? // Capacidade de pessoas
+  floor       String? // Andar
+  
+  // Para equipamentos
+  model       String? // Modelo do equipamento
+  serialNumber String? // Número de série
+  manufacturer String? // Fabricante
+  purchaseDate DateTime? // Data de compra
+  warrantyExpiry DateTime? // Validade da garantia
+  lastMaintenanceDate DateTime? // Última manutenção
+  nextMaintenanceDate DateTime? // Próxima manutenção prevista
+
+  // Configurações
+  isBookable  Boolean @default(true) // Pode ser reservado
+  bookingDuration Int? // Duração padrão de reserva em minutos
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relações
+  bookings  ResourceBooking[]
+  maintenances ResourceMaintenance[]
+
+  @@index([type, status])
+  @@index([category])
+  @@map("resources")
+}
+
+model ResourceBooking {
+  id          String   @id @default(cuid())
+  resourceId  String
+  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  
+  userId      String // Quem reservou
+  patientId   String? // Para qual paciente (se aplicável)
+  consultationId String? // Vinculado a uma consulta
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  
+  startTime   DateTime
+  endTime     DateTime
+  
+  status      String @default("CONFIRMED") // CONFIRMED, CANCELLED, COMPLETED
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([resourceId, startTime])
+  @@index([userId])
+  @@index([consultationId])
+  @@map("resource_bookings")
+}
+
+model ResourceMaintenance {
+  id          String   @id @default(cuid())
+  resourceId  String
+  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  
+  type        String // PREVENTIVA, CORRETIVA, CALIBRACAO
+  description String
+  
+  scheduledDate DateTime
+  completedDate DateTime?
+  
+  cost        Float?
+  vendor      String? // Empresa que fez a manutenção
+  
+  status      String @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+  notes       String?
+  
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([resourceId])
+  @@index([status, scheduledDate])
+  @@map("resource_maintenances")
 }
 
 // Fornecedor

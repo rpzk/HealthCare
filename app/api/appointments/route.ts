@@ -141,7 +141,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       )
     }
     
-    const { patientId, doctorId, scheduledDate, type, notes } = parseResult.data
+    const { patientId, doctorId, scheduledDate, type, notes, duration, resourceIds } = parseResult.data
 
     // Verify patient exists
     const patient = await prisma.patient.findUnique({
@@ -182,23 +182,98 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
       )
     }
 
-    const consultation = await prisma.consultation.create({
-      data: {
-        patientId,
-        doctorId,
-        scheduledDate: appointmentDate,
-        type: type || 'CONSULTATION',
-        notes,
-        status: 'SCHEDULED'
-      },
-      include: {
-        patient: {
-          select: { id: true, name: true, cpf: true }
-        },
-        doctor: {
-          select: { id: true, name: true, speciality: true }
+    // Verificar disponibilidade dos recursos solicitados
+    const appointmentDuration = duration || 30
+    const endTime = new Date(appointmentDate.getTime() + appointmentDuration * 60 * 1000)
+    
+    if (resourceIds && resourceIds.length > 0) {
+      // Verificar se os recursos existem e estão disponíveis
+      const resources = await prisma.resource.findMany({
+        where: {
+          id: { in: resourceIds },
+          status: 'AVAILABLE',
+          isBookable: true
         }
+      })
+
+      if (resources.length !== resourceIds.length) {
+        return NextResponse.json(
+          { error: 'Um ou mais recursos não estão disponíveis para reserva' },
+          { status: 400 }
+        )
       }
+
+      // Verificar conflitos de reserva para cada recurso
+      const resourceConflicts = await prisma.resourceBooking.findFirst({
+        where: {
+          resourceId: { in: resourceIds },
+          status: { not: 'CANCELLED' },
+          OR: [
+            {
+              startTime: { lte: appointmentDate },
+              endTime: { gt: appointmentDate }
+            },
+            {
+              startTime: { lt: endTime },
+              endTime: { gte: endTime }
+            },
+            {
+              startTime: { gte: appointmentDate },
+              endTime: { lte: endTime }
+            }
+          ]
+        },
+        include: {
+          resource: { select: { name: true } }
+        }
+      })
+
+      if (resourceConflicts) {
+        return NextResponse.json(
+          { error: `O recurso "${resourceConflicts.resource.name}" já está reservado neste horário` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Criar consulta e reservas de recursos em uma transação
+    const consultation = await prisma.$transaction(async (tx) => {
+      const newConsultation = await tx.consultation.create({
+        data: {
+          patientId,
+          doctorId,
+          scheduledDate: appointmentDate,
+          type: type || 'CONSULTATION',
+          notes,
+          status: 'SCHEDULED',
+          duration: appointmentDuration
+        },
+        include: {
+          patient: {
+            select: { id: true, name: true, cpf: true }
+          },
+          doctor: {
+            select: { id: true, name: true, speciality: true }
+          }
+        }
+      })
+
+      // Criar reservas de recursos
+      if (resourceIds && resourceIds.length > 0) {
+        await tx.resourceBooking.createMany({
+          data: resourceIds.map(resourceId => ({
+            resourceId,
+            userId: user.id,
+            patientId,
+            consultationId: newConsultation.id,
+            startTime: appointmentDate,
+            endTime,
+            status: 'CONFIRMED'
+          }))
+        })
+      }
+
+      return newConsultation
     })
 
     const safeConsultation = {

@@ -100,7 +100,6 @@ const adminMenuItems: MenuItem[] = [
     submenu: [
       { title: 'Dashboard Analytics', href: '/admin/bi' },
       { title: 'Relatórios Gerenciais', href: '/reports' },
-      { title: 'Indicadores de Saúde', href: '/reports/health-indicators' },
       { title: 'Exportar Dados', href: '/reports/export' },
     ]
   },
@@ -108,11 +107,7 @@ const adminMenuItems: MenuItem[] = [
     title: 'Financeiro',
     icon: DollarSign,
     href: '/admin/financial',
-    submenu: [
-      { title: 'Visão Geral', href: '/admin/financial' },
-      { title: 'Faturamento', href: '/admin/financial/billing' },
-      { title: 'Custos', href: '/admin/financial/costs' },
-    ]
+    description: 'Gestão financeira'
   },
   {
     title: 'Estoque & Insumos',

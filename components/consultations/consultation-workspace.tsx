@@ -1648,7 +1648,7 @@ interface Medication {
                       <p className="text-muted-foreground truncate text-[10px]">{cert.description}</p>
                       {cert.days && <p className="text-muted-foreground text-[10px]">{cert.days} dias</p>}
 
-                      {!!cert.signature ? (
+                      {cert.signature ? (
                         <Badge variant="secondary" className="text-[10px] h-4 mt-1 inline-flex items-center gap-1">
                           <CheckCircle2 className="h-3 w-3" /> Assinado
                         </Badge>

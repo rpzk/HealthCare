@@ -1,0 +1,249 @@
+# Cursor Rules - Healthcare System Medical Documentation Standards
+
+## Padrões de Documentos Médicos (CFM + ABNT)
+
+Você está trabalhando em um sistema de saúde que deve gerar documentos médicos seguindo ESTRITAMENTE as normas do Conselho Federal de Medicina (CFM), Portaria 344/98 e padrões de assinatura digital brasileira (PAdES/ICP-Brasil).
+
+### 1. ESTRUTURA OBRIGATÓRIA DE PRESCRIÇÃO MÉDICA
+
+Toda receita médica deve conter estas 6 seções na seguinte ordem:
+
+#### 1.1 CABEÇALHO (Identificação Profissional)
+- Nome completo do profissional (em MAIÚSCULAS)
+- CRM (Conselho Regional de Medicina) com estado
+- RQE (Registro de Qualificação de Especialista) se aplicável
+- Endereço completo com cidade e telefone
+- CNPJ/CPF da instituição (se aplicável)
+- Logo da clínica/hospital (centralizado)
+
+#### 1.2 SUPERINSCRIÇÃO (Dados do Paciente)
+- Nome completo do paciente
+- Data de nascimento e idade
+- Endereço residencial (opcional mas recomendado)
+- Indicação clara de "USO INTERNO" ou "USO EXTERNO"
+- CPF do paciente (opcional, mas recomendado para rastreabilidade)
+
+#### 1.3 INSCRIÇÃO (Descrição do Medicamento)
+- Nome do fármaco em DCB (Denominação Comum Brasileira) ou genérico
+- Forma farmacêutica (comprimido, cápsula, solução, injeção, etc.)
+- Concentração/dosagem (ex: 500mg, 10mg/mL)
+- Número sequencial (1., 2., 3., etc.)
+
+#### 1.4 SUBINSCRIÇÃO (Quantidade)
+- Quantidade total em ALGARISMOS ARÁBICOS
+- Se controlado: QUANTIDADE POR EXTENSO entre parênteses (ex: 30 (trinta) cápsulas)
+- Evitar abreviações confusas (ml/mL, mg/mcg)
+
+#### 1.5 ADSCRIÇÃO (Posologia - modo de usar)
+- Instruções DETALHADAS e CLARAS para o paciente
+- NUNCA use "tomar se dor" ou "conforme necessário" sem limite
+- Use: "Administrar 1 comprimido por via oral a cada 6 horas, não excedendo 4 doses ao dia"
+- Indicar restrições: alimentos, bebidas, atividades
+- Duração do tratamento
+
+#### 1.6 FECHAMENTO (Autenticação Legal)
+- Localidade e data (dia, mês, ano)
+- Assinatura de próprio punho (ou assinatura digital certificada)
+- Carimbo do profissional com CRM (ou QR Code de verificação digital)
+- Campo de metadados para assinatura digital PAdES
+
+### 2. REGRAS ESPECÍFICAS POR TIPO DE MEDICAMENTO
+
+#### 2.1 Antimicrobianos (Antibióticos)
+- Gerar DUAS VIAS obrigatoriamente
+- 1ª Via: "1ª VIA - RETENÇÃO DA FARMÁCIA"
+- 2ª Via: "2ª VIA - ORIENTAÇÃO DO PACIENTE"
+- Validade: 10 dias (deve ser calculada e exibida)
+- Rotular como "MEDICAMENTO SUJEITO A CONTROLE ESPECIAL"
+
+#### 2.2 Medicamentos Controlados (Portaria 344/98)
+Listas A1, A2, A3, B1, B2:
+- Quantidade OBRIGATORIAMENTE por extenso entre parênteses
+- Exemplo CORRETO: "30 (trinta) cápsulas" ❌ NÃO: "30 cápsulas"
+- Exemplo ERRADO: "trinta cápsulas" (sem algarismo)
+- Justificar o uso (motivo da prescrição)
+- Indicar se há tiras de segurança ou numeração (para farmácia validar)
+- Marcar com ⚠️ CONTROLADO
+
+#### 2.3 Medicamentos Tópicos (Uso Externo)
+- Destacar em negrito "USO EXTERNO"
+- Especificar região de aplicação (mão esquerda, pé direito, etc.)
+- Frequência e duração clara
+- Evitar confusão com medicamentos sistêmicos
+
+#### 2.4 Injetáveis
+- Especificar via (intramuscular, intravenosa, subcutânea)
+- Intervalo entre doses
+- Local de aplicação se relevante
+- Quem administra (paciente, profissional de saúde)
+
+### 3. VALIDAÇÕES AUTOMÁTICAS OBRIGATÓRIAS
+
+Antes de gerar o PDF, o sistema DEVE validar:
+
+- [ ] Médico tem CRM válido no banco de dados
+- [ ] Paciente tem nome, idade e CPF registrados
+- [ ] Cada medicamento tem: nome, concentração, quantidade, posologia
+- [ ] Medicamentos controlados têm quantidade por extenso
+- [ ] Antibióticos geram 2 vias
+- [ ] Data é válida (não no futuro, não fora do contexto)
+- [ ] Posologia não contém instruções ambíguas ("conforme necessário", "à noite")
+- [ ] Assinatura digital está configurada e válida
+
+Se alguma validação falhar, retornar erro específico (ex: "Medicamento controlado requer quantidade por extenso").
+
+### 4. ASSINATURA DIGITAL (PAdES - PDF Advanced Electronic Signature)
+
+Cada prescrição gerada DEVE:
+- Incluir metadados de assinatura digital (PAdES-BASIC ou PAdES-LTV)
+- Usar certificado digital do médico (A1 ou A3 conforme CFM)
+- Gerar QR Code de verificação apontando para: `/api/prescriptions/{id}/verify`
+- Incluir campo "Documento assinado digitalmente" com timestamp
+- Hash SHA-256 do conteúdo deve ser armazenado no banco de dados
+- Resolução CFM nº 2.299/2021 requer assinatura digital para validade jurídica
+
+### 5. TERMINOLOGIA JURÍDICA CORRETA
+
+❌ NUNCA use:                          ✅ USE SEMPRE:
+- "tomar se dor"                       → "Em caso de dor, administrar 1 comprimido..."
+- "conforme necessário"                → "a cada 6 horas, não excedendo 4 doses"
+- "usar conforme orientação verbal"    → [escrever a orientação completa]
+- "gotas"                              → "0,5 mL" ou "10 gotas"
+- "colheres"                           → "5 mL" ou "10 mL"
+- "uma caixa"                          → "30 comprimidos"
+- "pó"                                 → "pó para inalação 100mg"
+
+### 6. INTEGRAÇÃO COM O SISTEMA GOTENBERG
+
+Ao gerar PDF com Gotenberg:
+- Usar template HTML com font-family serif para cabeçalho/corpo
+- Respeitar margens ABNT A4: 2cm superior/inferior, 2cm laterais
+- Espaçamento entre linhas: 1.5 para legibilidade
+- Resolução mínima 300 DPI para assinatura
+- Formato final: PDF/A-1a (para preservação de longo prazo)
+
+### 7. CAMPOS DE META-INFORMAÇÃO
+
+Todo PDF deve incluir em metadados:
+```json
+{
+  "title": "Prescrição Médica - [Nome Paciente]",
+  "author": "[Nome Médico] - CRM-[UF] [Número]",
+  "subject": "Prescrição eletrônica",
+  "keywords": "prescrição,medicamento,CFM,PAdES",
+  "creation_date": "2026-02-01T10:30:00Z",
+  "creator": "HealthCare System v2.0",
+  "producer": "Gotenberg PDF Service",
+  "signature_hash": "sha256:...",
+  "verification_url": "https://app.healthcare.com/api/prescriptions/{id}/verify"
+}
+```
+
+### 8. REFERÊNCIAS NORMATIVAS
+
+- Manual de Orientações Básicas para Prescrição Médica (CFM)
+- Portaria SVS/MS nº 344/98 (Medicamentos Controlados)
+- Resolução CFM nº 2.299/2021 (Assinatura Digital)
+- NBR ISO/IEC 32000-1:2015 (Especificação PDF)
+- ITI - Manual de Implementação da Prescrição Eletrônica
+- ABNT NBR ISO/IEC 27001:2013 (Segurança da Informação)
+
+### 9. PADRÃO DE LAYOUT CSS (Tailwind)
+
+```css
+/* Cabeçalho */
+header {
+  @apply text-center border-b-2 border-gray-900 pb-4 mb-6;
+  font-family: "Georgia", serif;
+}
+
+header h1 {
+  @apply text-xl font-bold uppercase;
+}
+
+header p {
+  @apply text-xs text-gray-600;
+}
+
+/* Corpo da prescrição */
+main {
+  @apply space-y-8 min-h-[400px];
+  font-family: "Georgia", serif;
+  line-height: 1.6;
+}
+
+/* Medicamentos */
+.medication {
+  @apply ml-4 mb-6;
+}
+
+.medication-header {
+  @apply flex justify-between items-baseline border-b border-dotted border-gray-400;
+}
+
+.medication-name {
+  @apply font-bold text-lg;
+}
+
+.medication-quantity {
+  @apply text-sm italic;
+}
+
+.medication-posology {
+  @apply mt-2 text-sm text-gray-700;
+}
+
+/* Rodapé */
+footer {
+  @apply mt-12 text-center;
+}
+
+footer .signature-line {
+  @apply inline-block border-t border-gray-900 px-12 pt-2;
+}
+```
+
+### 10. PIPELINE DE VALIDAÇÃO
+
+1. **Receção**: Valida entrada (schema Zod)
+2. **Negócio**: Verifica regras de medicamento (controlado? antibiótico?)
+3. **Renderização**: Gera HTML conforme template CFM
+4. **Assinatura**: Injeta certificado e assina com Gotenberg
+5. **Armazenamento**: Salva PDF, hash e metadados no banco
+6. **Entrega**: Retorna PDF assinado com headers apropriados
+
+Qualquer violação deve parar o pipeline com erro descritivo.
+
+### 11. CHECKLIST PARA REVISÃO DE CÓDIGO
+
+Ao revisar código que gera prescrições, verificar:
+
+- [ ] Componente respeita as 6 seções obrigatórias?
+- [ ] Medicamentos controlados têm validação?
+- [ ] Posologia não usa termos ambíguos?
+- [ ] Assinatura digital está configurada?
+- [ ] QR Code de verificação é gerado?
+- [ ] Metadados do PDF estão corretos?
+- [ ] Template HTML valida contra schema Zod?
+- [ ] Teste com Gotenberg foi feito?
+- [ ] Documento pode ser aberto e verificado?
+
+### 12. COMANDOS DE DEBUG
+
+```bash
+# Validar HTML gerado
+npm run validate:prescription-html
+
+# Testar geração com Gotenberg
+npm run test:gotenberg-pdf
+
+# Verificar certificado digital
+npm run test:certificate-validity
+
+# Validar conformidade CFM
+npm run validate:cfm-compliance
+```
+
+---
+
+**Resumo**: Este arquivo define o padrão OURO para geração de documentos médicos. TODO código que toca em prescrições, certificados ou receitas deve respeitar estas regras. Violações degradam a qualidade legal e profissional do sistema.

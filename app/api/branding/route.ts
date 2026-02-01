@@ -1,16 +1,29 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs'
 import { getBranding, upsertBranding } from '@/lib/branding-service'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
+// GET é público para carregar branding na UI
 export async function GET() {
   const branding = await getBranding()
   return Response.json(branding || {})
 }
 
+// POST requer autenticação ADMIN/OWNER
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+  
+  const userRole = session.user.role
+  if (!['ADMIN', 'OWNER'].includes(userRole as string)) {
+    return NextResponse.json({ error: 'Acesso negado. Apenas administradores podem alterar o branding.' }, { status: 403 })
+  }
   const contentType = req.headers.get('content-type') || ''
   const isMultipart = contentType.includes('multipart/form-data')
   let clinicName: string | undefined

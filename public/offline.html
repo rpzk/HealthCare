@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0ea5e9">
+  <title>Sem Conexão - Minha Saúde</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #1e293b;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 24px;
+      opacity: 0.8;
+    }
+    
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #0ea5e9;
+    }
+    
+    p {
+      font-size: 16px;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    
+    .features {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .features h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    
+    .feature-list {
+      list-style: none;
+      text-align: left;
+    }
+    
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .feature-list li:last-child {
+      border-bottom: none;
+    }
+    
+    .feature-list li span {
+      font-size: 20px;
+    }
+    
+    .retry-btn {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .retry-btn:hover {
+      background: #0284c7;
+      transform: translateY(-1px);
+    }
+    
+    .retry-btn:active {
+      transform: translateY(0);
+    }
+    
+    .status {
+      margin-top: 24px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #f1f5f9;
+      }
+      
+      .features {
+        background: #1e293b;
+      }
+      
+      .feature-list li {
+        border-bottom-color: #334155;
+      }
+      
+      h1 {
+        color: #38bdf8;
+      }
+      
+      p {
+        color: #94a3b8;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+      <line x1="4" y1="4" x2="20" y2="20" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    
+    <h1>Você está offline</h1>
+    <p>Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente.</p>
+    
+    <div class="features">
+      <h2>Disponível offline</h2>
+      <ul class="feature-list">
+        <li>
+          <span>📅</span>
+          <div>Ver suas consultas agendadas</div>
+        </li>
+        <li>
+          <span>💊</span>
+          <div>Consultar seus medicamentos</div>
+        </li>
+        <li>
+          <span>📋</span>
+          <div>Acessar histórico médico salvo</div>
+        </li>
+        <li>
+          <span>⏰</span>
+          <div>Receber lembretes de medicamentos</div>
+        </li>
+      </ul>
+    </div>
+    
+    <button class="retry-btn" onclick="window.location.reload()">
+      Tentar novamente
+    </button>
+    
+    <p class="status" id="status">Verificando conexão...</p>
+  </div>
+  
+  <script>
+    // Verificar conexão periodicamente
+    function checkConnection() {
+      const statusEl = document.getElementById('status');
+      
+      if (navigator.onLine) {
+        statusEl.textContent = 'Conexão detectada! Recarregando...';
+        statusEl.style.color = '#22c55e';
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        statusEl.textContent = 'Sem conexão com a internet';
+      }
+    }
+    
+    // Verificar ao carregar
+    checkConnection();
+    
+    // Verificar quando conexão mudar
+    window.addEventListener('online', checkConnection);
+    window.addEventListener('offline', () => {
+      document.getElementById('status').textContent = 'Sem conexão com a internet';
+    });
+    
+    // Verificar a cada 5 segundos
+    setInterval(checkConnection, 5000);
+  </script>
+</body>
+</html>
