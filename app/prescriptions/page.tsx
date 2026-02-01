@@ -21,7 +21,8 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  Edit
+  Edit,
+  Printer
 } from 'lucide-react'
 
 interface Medication {
@@ -325,9 +326,11 @@ export default function PrescriptionsPage() {
                             size="sm"
                             onClick={async (e) => {
                               e.stopPropagation();
-                              window.open(`/prescriptions/${prescription.id}?print=1`, '_blank')
+                              // Abre popup com HTML de impressão - imprime direto sem navegar
+                              window.open(`/api/prescriptions/${prescription.id}/print`, '_blank', 'width=800,height=600')
                             }}
                           >
+                            <Printer className="h-4 w-4 mr-2" />
                             Imprimir
                           </Button>
                           <Button
