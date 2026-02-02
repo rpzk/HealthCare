@@ -16,6 +16,45 @@ export interface PdfSigningOptions {
   certPassword?: string // Senha do certificado
 }
 
+/**
+ * Converte HTML para PDF via Gotenberg (sem assinatura digital)
+ */
+export async function convertHtmlToPdf(html: string, customCss?: string): Promise<Buffer> {
+  const tempFiles: string[] = []
+  try {
+    const form = new FormData()
+    
+    // Gera HTML temporário
+    const htmlPath = path.join('/tmp', `doc-${Date.now()}.html`)
+    let htmlContent = html
+    if (customCss) {
+      htmlContent = htmlContent.replace('</head>', `<style>${customCss}</style></head>`)
+    }
+    fs.writeFileSync(htmlPath, htmlContent)
+    form.append('files', fs.createReadStream(htmlPath), { filename: 'index.html' })
+    tempFiles.push(htmlPath)
+
+    const gotenbergResp = await axios.post(
+      `${GOTENBERG_URL}/forms/chromium/convert/html`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+        },
+        responseType: 'arraybuffer',
+        maxContentLength: 20 * 1024 * 1024,
+        maxBodyLength: 20 * 1024 * 1024,
+      }
+    )
+    return Buffer.from(gotenbergResp.data)
+  } finally {
+    // Limpa arquivos temporários
+    for (const f of tempFiles) {
+      try { fs.unlinkSync(f) } catch {}
+    }
+  }
+}
+
 export async function signPdfWithGotenberg(options: PdfSigningOptions): Promise<Buffer> {
   if (!options.html && !options.pdfBuffer) {
     throw new Error('É necessário fornecer html ou pdfBuffer')

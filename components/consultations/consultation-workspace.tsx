@@ -308,15 +308,21 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     }
   }
 
-  // Abre PDF via POST (fetch blob) para endpoints que não aceitam GET
-  const openPdfPost = async (url: string) => {
+  // Abre PDF via POST com senha do certificado (para assinatura digital)
+  const openPdfPostSigned = async (url: string, password: string) => {
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
       })
       if (!res.ok) {
-        toast({ title: 'Erro ao gerar PDF', description: `Falha ao gerar PDF (${res.status})`, variant: 'destructive' })
+        const errorData = await res.json().catch(() => ({}))
+        toast({ 
+          title: 'Erro ao gerar PDF assinado', 
+          description: errorData.error || `Falha ao gerar PDF (${res.status})`, 
+          variant: 'destructive' 
+        })
         return
       }
       const blob = await res.blob()
@@ -344,19 +350,21 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
 
     if (a1Status.hasActiveCertificate) {
       if (signed < total) {
+        // Documentos não assinados: abre dialog para pedir senha e assinar
         setPendingPdfUrl(url)
         setSignTarget(target)
         setA1Password('')
         setSignDialogOpen(true)
         return
       }
-      // PDF assinado: usar POST
-      openPdfPost(url)
+      // Documentos já assinados: gera PDF sem assinatura via GET (mais rápido)
+      // A assinatura já está nos documentos individuais
+      openPdf(url)
       return
     }
 
-    // PDF sem assinatura: GET (com stamp)
-    openPdf(withStampParam(url))
+    // PDF sem assinatura: GET
+    openPdf(url)
   }
 
   // Use centralized client to avoid flooding the server with parallel signature checks
@@ -519,8 +527,8 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       if (pendingPdfUrl) {
         const url = pendingPdfUrl
         setPendingPdfUrl(null)
-        // Após assinatura, baixar PDF via POST
-        await openPdfPost(url)
+        // Após assinatura, baixar PDF via GET (documentos já assinados individualmente)
+        openPdf(url)
       }
     } finally {
       setSigningDocs(false)
@@ -1692,11 +1700,8 @@ interface Medication {
                               return
                             }
                             const url = `/api/certificates/${cert.id}/pdf`
-                            if (a1Status.hasActiveCertificate) {
-                              await openPdfPost(url)
-                            } else {
-                              openPdf(withStampParam(url))
-                            }
+                            // Usa GET para gerar PDF (com ou sem certificado)
+                            openPdf(url)
                           }}
                         >
                           PDF

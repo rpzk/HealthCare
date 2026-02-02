@@ -70,12 +70,12 @@ export async function GET(
 
     // Check if prescription has items (PrescriptionItem[])
     if (prescription.items && prescription.items.length > 0) {
-      medications = prescription.items.map((item: { medication?: string; name?: string; dosage?: string; frequency?: string; duration?: string; instructions?: string }) => ({
-        name: item.medication || item.name || '',
+      medications = prescription.items.map((item) => ({
+        name: (item as any).medication?.name || (item as any).customName || (item as any).medication || (item as any).name || '',
         dosage: item.dosage || '',
         frequency: item.frequency || '',
         duration: item.duration || '',
-        instructions: item.instructions || undefined
+        instructions: item.instructions ?? undefined
       }))
     } 
     // Check if prescription.medications is set (JSON field)
@@ -94,7 +94,7 @@ export async function GET(
         dosage: prescription.dosage || '',
         frequency: prescription.frequency || '',
         duration: prescription.duration || '',
-        instructions: prescription.instructions || undefined
+        instructions: prescription.instructions ?? undefined
       }]
     }
 
@@ -265,9 +265,9 @@ export async function GET(
     `).join('')}
   </div>
 
-  ${prescription.notes ? `
+  ${(prescription as any).notes ? `
     <div class="notes">
-      <strong>Observações:</strong> ${prescription.notes}
+      <strong>Observações:</strong> ${(prescription as any).notes}
     </div>
   ` : ''}
 
