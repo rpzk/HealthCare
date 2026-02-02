@@ -29,6 +29,40 @@ function normalizeBcryptHash(hash: string) {
   return hash.startsWith('$2y$') ? `$2b$${hash.slice(4)}` : hash
 }
 
+// Função auxiliar para registrar auditoria de autenticação (LGPD)
+async function logAuthEvent(params: {
+  userId?: string
+  userEmail: string
+  action: 'LOGIN_SUCCESS' | 'LOGIN_FAILED' | 'LOGOUT' | 'PASSKEY_LOGIN_SUCCESS' | 'PASSKEY_LOGIN_FAILED'
+  success: boolean
+  ipAddress?: string
+  userAgent?: string
+  errorMessage?: string
+  metadata?: Record<string, string | number | boolean>
+}) {
+  try {
+    const prisma = await getPrisma()
+    await prisma.auditLog.create({
+      data: {
+        userId: params.userId || 'anonymous',
+        userEmail: params.userEmail,
+        userRole: 'AUTH',
+        action: params.action,
+        resourceType: 'Authentication',
+        success: params.success,
+        ipAddress: params.ipAddress || 'unknown',
+        userAgent: params.userAgent || 'unknown',
+        errorMessage: params.errorMessage,
+        metadata: params.metadata as any
+      }
+    })
+    logger.info({ action: params.action, email: params.userEmail, success: params.success }, 'Evento de autenticação registrado')
+  } catch (error) {
+    // Não falhar login por erro de auditoria
+    logger.error({ error }, 'Erro ao registrar auditoria de autenticação')
+  }
+}
+
 const providers: NextAuthOptions['providers'] = [
   CredentialsProvider({
       id: "passkey",
@@ -38,8 +72,19 @@ const providers: NextAuthOptions['providers'] = [
         assertion: { label: "Assertion", type: "text" }
       },
       async authorize(credentials, req) {
+        const ipAddress = (req as any)?.headers?.get?.('x-forwarded-for') || (req as any)?.headers?.get?.('x-real-ip') || 'unknown'
+        const userAgent = (req as any)?.headers?.get?.('user-agent') || 'unknown'
+        
         if (!credentials?.email || !credentials?.assertion) {
           logger.warn('Tentativa de login passkey sem email/assertion')
+          await logAuthEvent({
+            userEmail: credentials?.email || 'unknown',
+            action: 'PASSKEY_LOGIN_FAILED',
+            success: false,
+            ipAddress,
+            userAgent,
+            errorMessage: 'Credenciais incompletas'
+          })
           return null
         }
 
@@ -52,6 +97,14 @@ const providers: NextAuthOptions['providers'] = [
 
           if (!user || !user.isActive) {
             logger.warn('Usuário inválido/inativo para passkey', credentials.email)
+            await logAuthEvent({
+              userEmail: credentials.email,
+              action: 'PASSKEY_LOGIN_FAILED',
+              success: false,
+              ipAddress,
+              userAgent,
+              errorMessage: user ? 'Usuário inativo' : 'Usuário não encontrado'
+            })
             return null
           }
 
@@ -59,8 +112,28 @@ const providers: NextAuthOptions['providers'] = [
           const verification = await verifyAuthenticationResponseForUser(credentials.email, assertion, req as any)
           if (!verification.verified) {
             logger.warn('Passkey não verificada para', credentials.email)
+            await logAuthEvent({
+              userId: user.id,
+              userEmail: credentials.email,
+              action: 'PASSKEY_LOGIN_FAILED',
+              success: false,
+              ipAddress,
+              userAgent,
+              errorMessage: 'Verificação de passkey falhou'
+            })
             return null
           }
+
+          // Login bem-sucedido com passkey
+          await logAuthEvent({
+            userId: user.id,
+            userEmail: user.email,
+            action: 'PASSKEY_LOGIN_SUCCESS',
+            success: true,
+            ipAddress,
+            userAgent,
+            metadata: { method: 'passkey' }
+          })
 
           return {
             id: user.id,
@@ -70,6 +143,14 @@ const providers: NextAuthOptions['providers'] = [
           }
         } catch (error) {
           logger.error('Erro na autenticação passkey:', error)
+          await logAuthEvent({
+            userEmail: credentials.email,
+            action: 'PASSKEY_LOGIN_FAILED',
+            success: false,
+            ipAddress,
+            userAgent,
+            errorMessage: 'Erro interno'
+          })
           return null
         }
       }
@@ -83,9 +164,21 @@ const providers: NextAuthOptions['providers'] = [
       async authorize(credentials, req) {
         const email = normalizeEmail(credentials?.email || '')
         const password = credentials?.password || ''
+        
+        // Extrair IP e User-Agent para auditoria
+        const ipAddress = (req as any)?.headers?.get?.('x-forwarded-for') || (req as any)?.headers?.get?.('x-real-ip') || 'unknown'
+        const userAgent = (req as any)?.headers?.get?.('user-agent') || 'unknown'
 
         if (!email || !password) {
           logger.warn('Tentativa de login sem credenciais completas')
+          await logAuthEvent({
+            userEmail: email || 'unknown',
+            action: 'LOGIN_FAILED',
+            success: false,
+            ipAddress,
+            userAgent,
+            errorMessage: 'Credenciais incompletas'
+          })
           return null
         }
 
@@ -93,15 +186,20 @@ const providers: NextAuthOptions['providers'] = [
           // Extra: log de diagnóstico do DATABASE_URL (seguro, sem expor senha)
           // Only logged when DEBUG_AUTH=true, via logger.debug
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const ipRaw = (req as { headers?: { get?: (name: string) => string | null } })?.headers?.get?.('x-forwarded-for') || (req as { headers?: { get?: (name: string) => string | null } })?.headers?.get?.('x-real-ip')
-          const ip = ipRaw ?? undefined
-          const key = getLoginKey(email, ip)
+          const key = getLoginKey(email, ipAddress)
           const attempt = loginAttempts.get(key) || { count: 0 }
           const now = Date.now()
           const bruteForceDisabled = (process.env.DISABLE_LOGIN_BRUTEFORCE || '') === '1'
           if (!bruteForceDisabled && attempt.blockedUntil && attempt.blockedUntil > now) {
             logger.warn(`IP/email bloqueado temporariamente: ${email}`)
+            await logAuthEvent({
+              userEmail: email,
+              action: 'LOGIN_FAILED',
+              success: false,
+              ipAddress,
+              userAgent,
+              errorMessage: 'IP/email bloqueado por tentativas excessivas'
+            })
             return null
           }
 
@@ -126,12 +224,28 @@ const providers: NextAuthOptions['providers'] = [
 
           if (candidates.length === 0) {
             logger.warn(`Tentativa de login com email não encontrado: ${email}`)
+            await logAuthEvent({
+              userEmail: email,
+              action: 'LOGIN_FAILED',
+              success: false,
+              ipAddress,
+              userAgent,
+              errorMessage: 'Email não encontrado'
+            })
             return null
           }
 
           const activeCandidates = candidates.filter(u => u.isActive)
           if (activeCandidates.length === 0) {
             logger.warn(`Tentativa de login com usuário(s) inativo(s): ${email}`)
+            await logAuthEvent({
+              userEmail: email,
+              action: 'LOGIN_FAILED',
+              success: false,
+              ipAddress,
+              userAgent,
+              errorMessage: 'Usuário inativo'
+            })
             return null
           }
 
@@ -158,11 +272,32 @@ const providers: NextAuthOptions['providers'] = [
               }
               loginAttempts.set(key, attempt)
             }
+            await logAuthEvent({
+              userEmail: email,
+              action: 'LOGIN_FAILED',
+              success: false,
+              ipAddress,
+              userAgent,
+              errorMessage: 'Senha incorreta',
+              metadata: { attemptCount: attempt.count }
+            })
             return null
           }
 
           // reset em sucesso
           loginAttempts.delete(key)
+          
+          // Registrar login bem-sucedido (LGPD)
+          await logAuthEvent({
+            userId: matchedUser.id,
+            userEmail: matchedUser.email,
+            action: 'LOGIN_SUCCESS',
+            success: true,
+            ipAddress,
+            userAgent,
+            metadata: { method: 'credentials', role: matchedUser.role }
+          })
+          
           return {
             id: matchedUser.id,
             email: matchedUser.email,
@@ -171,6 +306,14 @@ const providers: NextAuthOptions['providers'] = [
           }
         } catch (error) {
           logger.error('Erro na autenticação:', error)
+          await logAuthEvent({
+            userEmail: email,
+            action: 'LOGIN_FAILED',
+            success: false,
+            ipAddress,
+            userAgent,
+            errorMessage: 'Erro interno'
+          })
           return null
         }
       }
