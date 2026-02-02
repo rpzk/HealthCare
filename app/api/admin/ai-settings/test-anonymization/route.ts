@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
       return acc
     }, {} as Record<string, number>)
 
+    // Criar mapa de substituições para UI
+    const replacementsMap: Record<string, string> = {}
+    result.replacements.forEach(r => {
+      replacementsMap[r.replacement] = r.original
+    })
+
+    // Tipos detectados únicos
+    const detectedTypes = [...new Set(result.replacements.map(r => r.type))]
+
     logger.info({ 
       userId: session.user.id,
       originalLength: text.length,
@@ -48,14 +57,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       original: text,
       anonymized: result.anonymizedText,
-      hadSensitiveData: result.hadSensitiveData,
-      totalReplacements,
-      byType,
-      replacements: result.replacements.map(r => ({
-        type: r.type,
-        original: r.original,
-        replacement: r.replacement
-      }))
+      replacements: replacementsMap,
+      detectedTypes,
+      isAnonymized: result.hadSensitiveData,
+      // Dados detalhados para debug
+      details: {
+        hadSensitiveData: result.hadSensitiveData,
+        totalReplacements,
+        byType,
+        allReplacements: result.replacements.map(r => ({
+          type: r.type,
+          original: r.original,
+          replacement: r.replacement
+        }))
+      }
     })
   } catch (error) {
     logger.error({ error }, 'Erro ao testar anonimização')

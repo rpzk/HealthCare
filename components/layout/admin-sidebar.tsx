@@ -147,7 +147,7 @@ const adminMenuItems: MenuItem[] = [
     submenu: [
       { title: 'Dashboard IA', href: '/ai-enterprise-analytics' },
       { title: 'Análises Médicas', href: '/ai-analytics' },
-      { title: 'Configurações IA', href: '/settings/ai' },
+      { title: 'Configurações IA', href: '/admin/ai-settings' },
     ]
   },
   {
