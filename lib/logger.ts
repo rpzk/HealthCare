@@ -8,7 +8,32 @@ export const logger = pino({
   level,
   base: undefined, // não incluir pid/hostname por simplificação
   redact: {
-    paths: ['req.headers.authorization', 'user.password', 'patient.cpf'],
+    paths: [
+      // Autenticação
+      'req.headers.authorization',
+      'user.password',
+      'password',
+      '*.password',
+      'token',
+      '*.token',
+      'apiKey',
+      '*.apiKey',
+      // Dados pessoais LGPD
+      'patient.cpf',
+      '*.cpf',
+      'cpf',
+      'patient.email',
+      '*.email',
+      'email',
+      'patient.phone',
+      '*.phone',
+      'phone',
+      'patient.rg',
+      '*.rg',
+      // Dados sensíveis de saúde
+      'patient.allergies',
+      'patient.medicalHistory'
+    ],
     censor: '[REDACTED]'
   },
   formatters: {
