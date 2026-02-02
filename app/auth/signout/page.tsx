@@ -7,7 +7,16 @@ import { HeartPulse } from 'lucide-react'
 
 export default function SignOut() {
   useEffect(() => {
-    signOut({ callbackUrl: '/auth/signin' })
+    // Registrar logout na auditoria antes de encerrar sessão (LGPD)
+    const performLogout = async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' })
+      } catch {
+        // Continuar com logout mesmo se auditoria falhar
+      }
+      signOut({ callbackUrl: '/auth/signin' })
+    }
+    performLogout()
   }, [])
 
   return (
