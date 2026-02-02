@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
       response: response.content,
       model: response.model,
       provider: info.provider,
-      duration: `${duration}ms`,
+      responseTime: duration,
+      anonymizationEnabled: info.anonymizationEnabled,
       usage: response.usage
     })
   } catch (error: any) {
