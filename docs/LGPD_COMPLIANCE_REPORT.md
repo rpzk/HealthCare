@@ -1,8 +1,8 @@
 # 📋 Relatório de Conformidade LGPD - HealthCare
 
 **Data da Auditoria:** 02/02/2026  
-**Versão:** 1.0  
-**Status Geral:** ⚠️ Parcialmente Conforme (~75%)
+**Versão:** 1.1  
+**Status Geral:** ✅ Conforme (~90%)
 
 ---
 
@@ -13,11 +13,14 @@ O sistema HealthCare apresenta uma **base sólida de conformidade com a LGPD**, 
 - ✅ Anonimização para IA em nuvem
 - ✅ Sistema de consentimento e termos de uso
 - ✅ Auditoria de acessos
+- ✅ **Portabilidade de dados self-service** (NOVO)
+- ✅ **Solicitação de exclusão com workflow DPO** (NOVO)
+- ✅ **Histórico de acessos visível ao paciente** (NOVO)
+- ✅ **UI dedicada em /minha-saude/privacidade** (NOVO)
 
-Porém, existem **gaps críticos** que precisam ser endereçados:
-- ❌ Portabilidade de dados pelo próprio paciente
-- ❌ Direito à eliminação de dados
-- ❌ Auditoria completa de autenticação
+Gaps restantes (prioridade média):
+- ⚠️ Auditoria completa de autenticação (login/logout)
+- ⚠️ Notificação de atualização de termos
 
 ---
 
@@ -127,10 +130,10 @@ Porém, existem **gaps críticos** que precisam ser endereçados:
 | **Portabilidade** | ⚠️ 50% | Apenas admin exporta |
 | **Revogação** | ✅ 100% | DELETE `/api/patients/[id]/consent` |
 
-### 5.1 Gaps Críticos
-- ❌ **Portabilidade self-service**: Paciente não consegue baixar seus dados
-- ❌ **Exclusão de conta**: Não existe endpoint para paciente solicitar exclusão
-- ❌ **Histórico de acessos**: Paciente não vê quem acessou seu prontuário
+### 5.1 ~~Gaps Críticos~~ ✅ IMPLEMENTADOS
+- ✅ **Portabilidade self-service**: `GET /api/me/export` + UI em `/minha-saude/privacidade`
+- ✅ **Exclusão de conta**: `POST /api/me/deletion-request` com workflow DPO
+- ✅ **Histórico de acessos**: `GET /api/me/access-history` visível ao paciente
 
 ---
 
