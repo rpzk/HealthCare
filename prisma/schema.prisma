@@ -39,6 +39,7 @@ model User {
   jobRoles               UserJobRole[]
   person                 Person?
   termAcceptances        TermAcceptance[]
+  dataDeletionRequests   DataDeletionRequest[]
   protocols              Protocol[] // Protocolos criados pelo médico
   stratumAssessments     StratumAssessment[]    @relation("UserStratumAssessments")
   morStratumValidations  StratumAssessment[]    @relation("StratumAssessmentMoR")
@@ -438,9 +439,10 @@ model Patient {
   deviceSyncSessions DeviceSyncSession[]
 
   // Consentimentos de biometria (LGPD)
-  biometricConsents PatientBiometricConsent[]
-  consentAuditLogs  ConsentAuditLog[]
-  patientInvite     PatientInvite?
+  biometricConsents    PatientBiometricConsent[]
+  consentAuditLogs     ConsentAuditLog[]
+  dataDeletionRequests DataDeletionRequest[]
+  patientInvite        PatientInvite?
 
   // Questionários integrativos recebidos
   questionnaires PatientQuestionnaire[]
@@ -3494,6 +3496,54 @@ enum ConsentAction {
   GRANTED
   REVOKED
   MODIFIED
+}
+
+// ==========================================
+// SOLICITAÇÕES DE EXCLUSÃO DE DADOS (LGPD)
+// ==========================================
+
+model DataDeletionRequest {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Detalhes da solicitação
+  reason String @db.Text
+  status DeletionRequestStatus @default(PENDING)
+
+  // Processamento
+  processedAt    DateTime?
+  processedBy    String?
+  processorNotes String? @db.Text
+
+  // Dados anonimizados/excluídos
+  anonymizedData Json? // Registro do que foi anonimizado
+  deletedData    Json? // Registro do que foi excluído
+
+  // Auditoria
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("data_deletion_requests")
+}
+
+enum DeletionRequestStatus {
+  PENDING      // Aguardando análise
+  IN_PROGRESS  // Em processamento
+  COMPLETED    // Concluída (dados excluídos/anonimizados)
+  REJECTED     // Rejeitada (com justificativa legal)
+  CANCELLED    // Cancelada pelo paciente
 }
 
 // ==========================================
