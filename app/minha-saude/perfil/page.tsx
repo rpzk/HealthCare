@@ -459,16 +459,16 @@ export default function PerfilPacientePage() {
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </Link>
-            <div className="flex items-center gap-4 p-4">
+            <Link href="/minha-saude/privacidade" className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
               <div className="p-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl">
                 <Lock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Privacidade</p>
-                <p className="text-xs text-muted-foreground">Configurações de privacidade</p>
+                <p className="font-medium">Privacidade e Dados</p>
+                <p className="text-xs text-muted-foreground">LGPD: exportar, acessos e exclusão</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </div>
+            </Link>
             <Link href="/help" className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
               <div className="p-2.5 bg-green-100 dark:bg-green-900/50 rounded-xl">
                 <HelpCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
