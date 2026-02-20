@@ -15,7 +15,6 @@ export class BIService {
       totalDoctors,
       consultationsThisMonth,
       npsScore,
-      revenueAggregate,
       completedConsultationsInPeriod,
       completedConsultationDurations
     ] = await Promise.all([
@@ -31,19 +30,6 @@ export class BIService {
         }
       }),
       this.getNPSScore(start, end),
-      prisma.financialTransaction.aggregate({
-        where: {
-          type: 'INCOME',
-          status: 'PAID',
-          paidDate: {
-            gte: start,
-            lte: end
-          }
-        },
-        _sum: {
-          amount: true
-        }
-      }),
       prisma.consultation.count({
         where: {
           status: 'COMPLETED',
@@ -69,8 +55,6 @@ export class BIService {
       })
     ])
 
-    const revenue = Number(revenueAggregate._sum.amount || 0)
-
     const durationMinutesList = completedConsultationDurations
       .map((c) => {
         if (typeof c.duration === 'number') return c.duration
@@ -81,9 +65,9 @@ export class BIService {
       })
       .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0)
 
-    durationMinutesList.sort((a, b) => a - b)
+    durationMinutesList.sort((a: number, b: number) => a - b)
 
-    const totalDurationMinutes = durationMinutesList.reduce((acc, v) => acc + v, 0)
+    const totalDurationMinutes = durationMinutesList.reduce((acc: number, v: number) => acc + v, 0)
     const avgDurationMinutes = durationMinutesList.length > 0
       ? totalDurationMinutes / durationMinutesList.length
       : 0
@@ -102,7 +86,7 @@ export class BIService {
       totalConsultations,
       totalDoctors,
       consultationsThisMonth,
-      revenue,
+      revenue: 0, // Financial module removed
       npsScore,
       consultationDuration: {
         completedCount: completedConsultationsInPeriod,
@@ -191,31 +175,11 @@ export class BIService {
   }
 
   /**
-    * Receita por método de pagamento
+    * Receita por método de pagamento (disabled - financial module removed)
    */
-  static async getRevenueByPaymentMethod(startDate: Date, endDate: Date) {
-    const transactions = await prisma.financialTransaction.findMany({
-      where: {
-        type: 'INCOME',
-        status: 'PAID',
-        paidDate: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      select: {
-        paymentMethod: true,
-        amount: true
-      }
-    })
-
-    const byMethod = new Map<string, number>()
-    for (const t of transactions) {
-      const method = t.paymentMethod || 'Não informado'
-      byMethod.set(method, (byMethod.get(method) || 0) + Number(t.amount || 0))
-    }
-
-    return Array.from(byMethod.entries()).map(([method, amount]) => ({ method, amount }))
+  static async getRevenueByPaymentMethod(_startDate: Date, _endDate: Date) {
+    // Financial module was removed during schema cleanup
+    return []
   }
 
   /**

@@ -50,6 +50,9 @@ services:
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3}
       REDIS_HOST: redis
+      STT_URL: http://stt:9000/asr
+      STT_LANGUAGE: pt
+      STT_PROVIDER: whisper
     ports:
       - "3000:3000"
     depends_on:
@@ -57,6 +60,9 @@ services:
       - redis
       - ollama
       - gotenberg
+    volumes:
+      - ./uploads:/app/uploads
+      - ./docs:/app/docs:ro
     networks:
       - healthcare-network
   # Gotenberg PDF Signing Service

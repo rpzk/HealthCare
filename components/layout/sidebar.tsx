@@ -124,15 +124,8 @@ const menuItems: MenuItem[] = [
       { title: 'Analytics', href: '/admin/questionnaire-analytics' },
     ]
   },
-  {
-    title: 'Saúde da Família',
-    icon: Building,
-    href: '/psf',
-    submenu: [
-      { title: 'Famílias', href: '/psf/families' },
-      { title: 'Visitas', href: '/psf/visits' },
-    ]
-  },
+  // PSF (Saúde da Família) desativado - páginas removidas; reative quando /app/psf existir
+  // { title: 'Saúde da Família', icon: Building, href: '/psf', submenu: [...] },
   {
     title: 'Relatórios',
     icon: BarChart3,

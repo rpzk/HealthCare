@@ -37,6 +37,8 @@ import {
   Settings as SettingsIcon,
   Calendar,
   Database,
+  PowerOff,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UploadA1Certificate } from '@/components/upload-a1-certificate'
@@ -74,6 +76,7 @@ export default function SettingsPage() {
   // Certificados digitais
   const [certificates, setCertificates] = useState<any[]>([])
   const [certificatesLoading, setCertificatesLoading] = useState(false)
+  const [certificateActionId, setCertificateActionId] = useState<string | null>(null)
 
   // Configurações de Email/SMTP
   const [emailConfig, setEmailConfig] = useState({
@@ -114,7 +117,9 @@ export default function SettingsPage() {
           email: data.email || '',
           phone: data.phone || '',
           specialty: data.specialty || '',
-          crmNumber: data.crmNumber || '',
+          crmNumber: data.licenseState && data.crmNumber
+            ? `${data.crmNumber}/${data.licenseState}`
+            : data.crmNumber || '',
         })
       }
     } catch (error) {
@@ -778,6 +783,63 @@ export default function SettingsPage() {
                                     </AlertDescription>
                                   </Alert>
                                 )}
+
+                                {/* Ações: Desativar / Excluir */}
+                                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                  {isActive && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={certificateActionId === cert.id}
+                                      onClick={async () => {
+                                        if (!confirm('Desativar este certificado? Você poderá ativar outro fazendo novo upload.')) return
+                                        setCertificateActionId(cert.id)
+                                        try {
+                                          const res = await fetch(`/api/digital-signatures/certificates/${cert.id}`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ isActive: false }),
+                                          })
+                                          if (!res.ok) throw new Error((await res.json()).error || 'Falha ao desativar')
+                                          toast.success('Certificado desativado')
+                                          loadCertificates()
+                                        } catch (e: any) {
+                                          toast.error(e?.message || 'Erro ao desativar')
+                                        } finally {
+                                          setCertificateActionId(null)
+                                        }
+                                      }}
+                                    >
+                                      {certificateActionId === cert.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />}
+                                      <span className="ml-1">Desativar</span>
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                    disabled={certificateActionId === cert.id}
+                                    onClick={async () => {
+                                      if (!confirm('Remover este certificado? O arquivo .pfx será excluído. Você pode fazer upload de outro depois.')) return
+                                      setCertificateActionId(cert.id)
+                                      try {
+                                        const res = await fetch(`/api/digital-signatures/certificates/${cert.id}`, { method: 'DELETE' })
+                                        if (!res.ok) throw new Error((await res.json()).error || 'Falha ao remover')
+                                        toast.success('Certificado removido')
+                                        loadCertificates()
+                                      } catch (e: any) {
+                                        toast.error(e?.message || 'Erro ao remover')
+                                      } finally {
+                                        setCertificateActionId(null)
+                                      }
+                                    }}
+                                  >
+                                    {certificateActionId === cert.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    <span className="ml-1">Excluir</span>
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           )

@@ -25,14 +25,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Apenas admins podem ver configurações
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-    }
-
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category') as SettingCategory | null
     const publicOnly = searchParams.get('publicOnly') === 'true'
+    const keysParam = searchParams.get('keys')
+
+    // Permitir leitura restrita para não-admins (ex.: dados públicos da clínica)
+    if (session.user.role !== 'ADMIN') {
+      if (keysParam) {
+        const keys = keysParam.split(',').map((k) => k.trim()).filter(Boolean)
+        const allowedKeys = ['clinic_name', 'clinic_address', 'clinic_phone', 'clinic_cnpj']
+        const allowed = keys.every((k) => allowedKeys.includes(k))
+        if (!allowed) {
+          return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+        }
+        const values = await SystemSettingsService.getMany(keys)
+        return NextResponse.json(values)
+      }
+
+      if (publicOnly) {
+        const settings = await SystemSettingsService.list({
+          publicOnly,
+          includeEncrypted: false,
+        })
+        return NextResponse.json({ success: true, settings })
+      }
+
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
 
     const settings = await SystemSettingsService.list({
       category: category || undefined,

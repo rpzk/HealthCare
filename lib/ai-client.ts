@@ -68,7 +68,7 @@ const CONFIG_CACHE_TTL = 60000 // 1 minuto
 /**
  * Busca configurações de IA do banco de dados ou env
  */
-async function getAIConfig() {
+export async function getAIConfig() {
   // Usar cache se válido
   if (configCache && Date.now() - configCache.lastFetch < CONFIG_CACHE_TTL) {
     return configCache

@@ -59,9 +59,13 @@ export async function GET() {
       email: user.email,
       phone: user.phone || '',
       specialty: user.speciality || '',
+      crmNumber: user.crmNumber || '',
+      licenseState: user.licenseState || '',
       crm: user.licenseType && user.licenseState && user.licenseNumber 
         ? `${user.licenseType}/${user.licenseState} ${user.licenseNumber}`
-        : user.crmNumber || '',
+        : user.crmNumber && user.licenseState
+          ? `CRM-${user.licenseState} ${user.crmNumber}`
+          : user.crmNumber || '',
       role: user.role,
       status: user.isActive ? 'active' : 'inactive',
       joinDate: user.createdAt.toISOString().split('T')[0],
@@ -99,7 +103,16 @@ export async function PUT(request: NextRequest) {
       )
     }
     
-    const { name, phone, specialty } = parseResult.data
+    let { name, phone, specialty, crmNumber, licenseState } = parseResult.data
+
+    // Parse CRM no formato "12345/SP" ou "12345" se vier em crmNumber
+    if (crmNumber?.includes('/')) {
+      const [num, uf] = crmNumber.split('/').map(s => s.trim())
+      if (num) crmNumber = num.replace(/\D/g, '') || num
+      if (uf && uf.length === 2) licenseState = uf.toUpperCase()
+    } else if (crmNumber) {
+      crmNumber = crmNumber.replace(/\D/g, '') || crmNumber
+    }
 
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email },
@@ -107,6 +120,8 @@ export async function PUT(request: NextRequest) {
         name: name || undefined,
         phone: phone || undefined,
         speciality: specialty || undefined,
+        crmNumber: crmNumber?.trim() ? crmNumber : null,
+        licenseState: licenseState?.trim() ? licenseState : null,
       },
       select: {
         id: true,
@@ -114,6 +129,8 @@ export async function PUT(request: NextRequest) {
         email: true,
         phone: true,
         speciality: true,
+        crmNumber: true,
+        licenseState: true,
       }
     })
 

@@ -17,7 +17,8 @@ import {
   XCircle,
   Download,
   Share2,
-  Info
+  Info,
+  ExternalLink
 } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
@@ -246,15 +247,57 @@ export default function MinhasReceitasPage() {
             )}
           </div>
 
-          {/* Ações */}
+          {/* Ações: Baixar PDF, Verificar, Compartilhar */}
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button 
+              variant="default" 
+              className="flex items-center gap-2"
+              onClick={() => window.open(`/api/prescriptions/${selectedPrescription.id}/pdf`, '_blank')}
+              title="Baixar o PDF da receita (documento assinado digitalmente)."
+            >
               <Download className="h-4 w-4" />
               Baixar PDF
             </Button>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/prescriptions/${selectedPrescription.id}/signature`)
+                  const data = await res.json()
+                  const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                  if (pageUrl) window.open(pageUrl, '_blank')
+                  else alert('Verificação disponível apenas para receitas assinadas digitalmente.')
+                } catch {
+                  alert('Não foi possível abrir a verificação.')
+                }
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Verificar
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 col-span-2"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/prescriptions/${selectedPrescription.id}/signature`)
+                  const data = await res.json()
+                  const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                  const shareUrl = pageUrl ? `${window.location.origin}${pageUrl}` : `${window.location.origin}/api/prescriptions/${selectedPrescription.id}/pdf`
+                  if (navigator.share) {
+                    await navigator.share({ title: 'Receita Médica', url: shareUrl })
+                  } else {
+                    await navigator.clipboard.writeText(shareUrl)
+                    alert('Link copiado para a área de transferência!')
+                  }
+                } catch (err) {
+                  console.error('Erro ao compartilhar:', err)
+                }
+              }}
+            >
               <Share2 className="h-4 w-4" />
-              Compartilhar
+              Compartilhar link de verificação
             </Button>
           </div>
 

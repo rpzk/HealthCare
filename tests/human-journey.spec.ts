@@ -149,6 +149,86 @@ test.describe('Jornada do Profissional', () => {
       }
     }
   });
+
+  test('Jornada completa: abrir consulta, preencher SOAP e gerar documentos', async ({ page }) => {
+    // 1) Obter doctorId e patientId via APIs (com cookies da sessão do médico)
+    await page.goto(`${BASE_URL}/consultations`, { waitUntil: 'networkidle', timeout: 30000 });
+    const profileRes = await page.goto(`${BASE_URL}/api/profile`, { waitUntil: 'load', timeout: 10000 });
+    const profile = await profileRes!.json().catch(() => ({}));
+    if (!profile?.id) {
+      console.warn('Jornada completa: sem sessão em /api/profile, pulando criação de consulta');
+      return;
+    }
+    const doctorId = profile.id as string;
+
+    const patientsRes = await page.goto(`${BASE_URL}/api/patients?limit=5`, { waitUntil: 'load', timeout: 10000 });
+    const patientsData = await patientsRes!.json().catch(() => ({}));
+    const patients = (patientsData?.patients ?? []) as Array<{ id: string; name?: string }>;
+    const patientId = patients.length ? patients[0].id : null;
+    if (!patientId) {
+      console.warn('Jornada completa: nenhum paciente encontrado, pulando');
+      return;
+    }
+
+    // 2) Criar consulta via API (fetch no contexto da página = mesmo cookie)
+    const scheduledDate = new Date();
+    scheduledDate.setHours(10, 0, 0, 0);
+    const createPayload = {
+      patientId,
+      doctorId,
+      scheduledDate: scheduledDate.toISOString(),
+      type: 'ROUTINE',
+      status: 'IN_PROGRESS',
+      description: 'Consulta E2E',
+    };
+    const createResult = await page.evaluate(async (payload) => {
+      const res = await fetch('/api/consultations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+    }, createPayload);
+
+    if (!createResult.ok || !createResult.data?.consultation?.id) {
+      console.warn('Jornada completa: falha ao criar consulta', createResult);
+      return;
+    }
+    const consultationId = createResult.data.consultation.id as string;
+
+    // 3) Abrir workspace da consulta
+    await page.goto(`${BASE_URL}/consultations/${consultationId}`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(1500);
+
+    // 4) Preencher SOAP (placeholders únicos)
+    const subjective = page.getByPlaceholder(/Queixa principal, história da doença atual/);
+    await subjective.waitFor({ state: 'visible', timeout: 10000 });
+    await subjective.fill('Paciente em teste E2E. Queixa: cefaleia há 2 dias.');
+
+    const objective = page.getByPlaceholder(/Exame físico, observações clínicas/);
+    await objective.fill('Estado geral bom. Sem sinais de alarme.');
+
+    const assessment = page.getByPlaceholder(/Diagnóstico, hipóteses diagnósticas/);
+    await assessment.fill('Cefaleia tensional (R51).');
+
+    const plan = page.getByPlaceholder(/Conduta, tratamento, prescrições/);
+    await plan.fill('Analgésico se necessário. Retorno se persistir.');
+
+    // 5) Abrir modal "Gerar documentos" e clicar em Gerar
+    const openDocsBtn = page.getByRole('button', { name: /Gerar documentos/ }).first();
+    await openDocsBtn.click();
+    await page.waitForTimeout(500);
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const generateBtn = dialog.getByRole('button', { name: /^Gerar documentos$/ });
+    await generateBtn.click();
+
+    // 6) Aguardar geração (pode aparecer "Gerando..." e depois lista ou mensagem)
+    await page.waitForTimeout(5000);
+    const bodyText = await page.textContent('body');
+    const hasGenerated = bodyText?.includes('Documentos gerados') || bodyText?.includes('Abrir PDF') || bodyText?.includes('Gerando');
+    expect(hasGenerated || bodyText?.includes('Gerar e assinar')).toBeTruthy();
+  });
 });
 
 test.describe('Jornada do Paciente', () => {

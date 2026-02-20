@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthCare - Portal do Paciente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html { font-size: 16px; }
+        body { background: #1e3a8a; overflow: hidden; }
+        
+        .slides-container { width: 100vw; height: 100vh; overflow: hidden; }
+        
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 3rem 4rem;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .slide-content {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+        }
+        
+        h1 { font-size: 3rem; color: #ffffff; font-weight: 700; }
+        h2 { font-size: 2rem; color: #ffffff; font-weight: 700; margin-bottom: 1rem; }
+        h3 { font-size: 1.125rem; color: #dbeafe; font-weight: 600; }
+        p, li, span { color: #bfdbfe; font-size: 0.9rem; }
+        
+        .text-accent { color: #93c5fd; }
+        .check-icon { color: #4ade80; }
+        
+        .icon-box {
+            width: 48px; height: 48px;
+            min-width: 48px; min-height: 48px;
+            max-width: 48px; max-height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .icon-box svg { width: 24px; height: 24px; }
+        
+        .icon-box-lg {
+            width: 64px; height: 64px;
+            min-width: 64px; min-height: 64px;
+            max-width: 64px; max-height: 64px;
+        }
+        .icon-box-lg svg { width: 32px; height: 32px; }
+        
+        .icon-box-xl {
+            width: 80px; height: 80px;
+            min-width: 80px; min-height: 80px;
+            max-width: 80px; max-height: 80px;
+        }
+        .icon-box-xl svg { width: 40px; height: 40px; }
+        
+        .step-number {
+            width: 40px; height: 40px; min-width: 40px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1rem; color: white;
+        }
+
+        #progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #60a5fa, #a855f7); transition: width 0.3s ease; z-index: 100; }
+        #slide-counter { position: fixed; bottom: 16px; right: 24px; color: #93c5fd; font-size: 12px; z-index: 100; }
+        #nav-hint { position: fixed; bottom: 16px; left: 24px; color: #60a5fa; font-size: 11px; z-index: 100; }
+        
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="slides-container">
+        <div id="progress-bar" style="width: 0%"></div>
+        <div id="slide-counter"><span id="current">1</span> / <span id="total">10</span></div>
+        <div id="nav-hint">← → navegar | Espaço avançar</div>
+
+        <!-- SLIDE 1: Boas-vindas -->
+        <section class="slide active">
+            <div class="slide-content" style="align-items: center; text-align: center;">
+                <div class="icon-box-xl" style="background: rgba(255, 255, 255, 0.2); border-radius: 50%;">
+                    <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                </div>
+                <h1>Bem-vindo ao HealthCare</h1>
+                <p class="text-accent" style="font-size: 1.25rem;">Sua saúde na palma da mão</p>
+                
+                <div style="display: flex; gap: 2rem; margin-top: 1rem;">
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="font-size: 1.25rem;">📱</span> Fácil de usar</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="font-size: 1.25rem;">🔒</span> 100% seguro</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="font-size: 1.25rem;">✨</span> Gratuito</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 2: O que é -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">O que é o HealthCare?</h2>
+                
+                <div class="grid-3">
+                    <div class="card" style="padding: 1.5rem; text-align: center;">
+                        <div class="icon-box-lg" style="background: rgba(255, 255, 255, 0.15); margin: 0 auto 1rem; border-radius: 16px;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <h3 style="color: #fff;">Seus Documentos</h3>
+                        <p>Receitas, atestados e exames sempre disponíveis</p>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.5rem; text-align: center;">
+                        <div class="icon-box-lg" style="background: rgba(255, 255, 255, 0.15); margin: 0 auto 1rem; border-radius: 16px;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                        <h3 style="color: #fff;">Agendamentos</h3>
+                        <p>Marque consultas a qualquer hora, sem espera</p>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.5rem; text-align: center;">
+                        <div class="icon-box-lg" style="background: rgba(255, 255, 255, 0.15); margin: 0 auto 1rem; border-radius: 16px;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        </div>
+                        <h3 style="color: #fff;">Teleconsulta</h3>
+                        <p>Consulte seu médico sem sair de casa</p>
+                    </div>
+                </div>
+                
+                <p style="text-align: center; font-size: 1.1rem; color: #dbeafe;">Um sistema criado para facilitar sua vida e proteger seus dados de saúde</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 3: Direitos -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Seus Direitos (LGPD)</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(34, 197, 94, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">📤</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Exportar seus dados</p>
+                                    <p style="font-size: 0.8rem;">Baixe tudo em um clique</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(59, 130, 246, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">👁️</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Ver quem acessou</p>
+                                    <p style="font-size: 0.8rem;">Histórico completo de acessos</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(168, 85, 247, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">✋</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Controlar permissões</p>
+                                    <p style="font-size: 0.8rem;">Você decide quem vê o quê</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(236, 72, 153, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">📋</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Ver termos aceitos</p>
+                                    <p style="font-size: 0.8rem;">Histórico de consentimentos</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(234, 179, 8, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">🚫</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Se opor ao tratamento</p>
+                                    <p style="font-size: 0.8rem;">Seu direito garantido</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(239, 68, 68, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">🗑️</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Solicitar exclusão</p>
+                                    <p style="font-size: 0.8rem;">Quando permitido por lei</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); text-align: center;">
+                    <p style="color: #86efac;">✓ Tudo isso em um único painel: <strong>Minha Saúde → Privacidade</strong></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: Agendamentos -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Agende suas Consultas</h2>
+                
+                <div class="grid-4">
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="step-number" style="background: linear-gradient(135deg, #60a5fa, #3b82f6); margin: 0 auto 0.75rem;">1</div>
+                        <p style="color: #fff; font-weight: 500;">Escolha o médico</p>
+                        <p style="font-size: 0.8rem;">Veja especialidades</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="step-number" style="background: linear-gradient(135deg, #22c55e, #16a34a); margin: 0 auto 0.75rem;">2</div>
+                        <p style="color: #fff; font-weight: 500;">Escolha a data</p>
+                        <p style="font-size: 0.8rem;">Calendário visual</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="step-number" style="background: linear-gradient(135deg, #a855f7, #9333ea); margin: 0 auto 0.75rem;">3</div>
+                        <p style="color: #fff; font-weight: 500;">Escolha o horário</p>
+                        <p style="font-size: 0.8rem;">Só horários livres</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="step-number" style="background: linear-gradient(135deg, #ec4899, #db2777); margin: 0 auto 0.75rem;">4</div>
+                        <p style="color: #fff; font-weight: 500;">Confirme!</p>
+                        <p style="font-size: 0.8rem;">Receba lembrete</p>
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <div class="icon-box" style="background: rgba(59, 130, 246, 0.2);">
+                            <span style="font-size: 1.25rem;">📱</span>
+                        </div>
+                        <div>
+                            <p style="color: #fff; font-weight: 500;">Notificações</p>
+                            <p style="font-size: 0.8rem;">Lembretes antes da consulta</p>
+                        </div>
+                    </div>
+                    <div class="card" style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <div class="icon-box" style="background: rgba(234, 179, 8, 0.2);">
+                            <span style="font-size: 1.25rem;">🔄</span>
+                        </div>
+                        <div>
+                            <p style="color: #fff; font-weight: 500;">Remarcar fácil</p>
+                            <p style="font-size: 0.8rem;">Mudou de planos? Sem problema!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 5: Receitas -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Receitas Digitais</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="color: #fff; margin-bottom: 1rem;">Como funciona</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #93c5fd; font-size: 0.8rem; font-weight: 700;">1</span>
+                                <span style="color: #dbeafe;">Médico prescreve digitalmente</span>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #93c5fd; font-size: 0.8rem; font-weight: 700;">2</span>
+                                <span style="color: #dbeafe;">Assina com certificado digital</span>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #93c5fd; font-size: 0.8rem; font-weight: 700;">3</span>
+                                <span style="color: #dbeafe;">Você recebe o PDF</span>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #93c5fd; font-size: 0.8rem; font-weight: 700;">4</span>
+                                <span style="color: #dbeafe;">Leva à farmácia no celular!</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="color: #fff; margin-bottom: 1rem;">Vantagens</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; color: #dbeafe;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Não perde mais receita</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Letra sempre legível</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Válida em todo Brasil</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> QR Code para validação</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Histórico sempre disponível</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(255,255,255,0.1); text-align: center;">
+                    <p style="color: #dbeafe;">📄 Acesse suas receitas em: <strong>Minha Saúde → Receitas</strong></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 6: Exames -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Resultados de Exames</h2>
+                
+                <div class="grid-3">
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box-lg" style="background: rgba(34, 197, 94, 0.2); margin: 0 auto 1rem;">
+                            <span style="font-size: 1.75rem;">🔔</span>
+                        </div>
+                        <h3 style="color: #fff;">Notificação Automática</h3>
+                        <p style="font-size: 0.85rem;">Saiba quando o resultado chegar</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box-lg" style="background: rgba(59, 130, 246, 0.2); margin: 0 auto 1rem;">
+                            <span style="font-size: 1.75rem;">📊</span>
+                        </div>
+                        <h3 style="color: #fff;">Visualização Clara</h3>
+                        <p style="font-size: 0.85rem;">Entenda seus resultados</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box-lg" style="background: rgba(168, 85, 247, 0.2); margin: 0 auto 1rem;">
+                            <span style="font-size: 1.75rem;">📁</span>
+                        </div>
+                        <h3 style="color: #fff;">Histórico Completo</h3>
+                        <p style="font-size: 0.85rem;">Compare com exames anteriores</p>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1.25rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 2rem;">🏥</span>
+                            <div>
+                                <p style="color: #fff; font-weight: 500;">Integração com Laboratórios</p>
+                                <p style="font-size: 0.85rem;">Resultados chegam automaticamente</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <span style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">Sangue</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">Imagem</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">Outros</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 7: Segurança -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Sua Segurança</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="color: #fff; margin-bottom: 1rem;">Como protegemos você</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(59, 130, 246, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">🔐</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Criptografia forte</p>
+                                    <p style="font-size: 0.8rem;">Seus dados são codificados</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(34, 197, 94, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">📲</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Login seguro</p>
+                                    <p style="font-size: 0.8rem;">Use biometria ou chave de acesso</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(168, 85, 247, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">👤</span>
+                                </div>
+                                <div>
+                                    <p style="color: #fff; font-weight: 500;">Só você acessa</p>
+                                    <p style="font-size: 0.8rem;">Controle total de permissões</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="color: #fff; margin-bottom: 1rem;">Conformidade Legal</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.08); border-radius: 8px;">
+                                <span style="font-size: 1.5rem;">🇧🇷</span>
+                                <span style="color: #dbeafe;">LGPD - Lei de Proteção de Dados</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.08); border-radius: 8px;">
+                                <span style="font-size: 1.5rem;">🏛️</span>
+                                <span style="color: #dbeafe;">CFM - Conselho Federal de Medicina</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(255,255,255,0.08); border-radius: 8px;">
+                                <span style="font-size: 1.5rem;">🔏</span>
+                                <span style="color: #dbeafe;">ICP-Brasil - Assinatura Digital</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); text-align: center;">
+                    <p style="color: #86efac;">✓ Seus dados de saúde são guardados com a mesma segurança de um banco</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 8: Teleconsulta -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Teleconsulta</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="color: #fff; margin-bottom: 1rem;">Consulte sem sair de casa</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(236, 72, 153, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">📹</span>
+                                </div>
+                                <span style="color: #dbeafe;">Videochamada com seu médico</span>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(59, 130, 246, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">💬</span>
+                                </div>
+                                <span style="color: #dbeafe;">Chat durante a consulta</span>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(34, 197, 94, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">📎</span>
+                                </div>
+                                <span style="color: #dbeafe;">Envie fotos e documentos</span>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="icon-box" style="background: rgba(168, 85, 247, 0.2); width: 40px; height: 40px; min-width: 40px;">
+                                    <span style="font-size: 1.25rem;">💊</span>
+                                </div>
+                                <span style="color: #dbeafe;">Receita enviada na hora</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="color: #fff; margin-bottom: 1rem;">O que você precisa</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; color: #dbeafe;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Celular ou computador</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Conexão com internet</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Câmera e microfone</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Ambiente tranquilo</li>
+                        </ul>
+                        
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.15); border-radius: 8px;">
+                            <p style="font-size: 0.85rem; color: #93c5fd;">💡 Dica: teste sua câmera antes da consulta!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 9: Dicas -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Dicas de Uso</h2>
+                
+                <div class="grid-3">
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="font-size: 2rem; margin-bottom: 0.75rem;">🔑</div>
+                        <h3 style="color: #fff; margin-bottom: 0.75rem;">Senha segura</h3>
+                        <ul style="list-style: none; font-size: 0.85rem; color: #bfdbfe; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <li>• Use letras, números e símbolos</li>
+                            <li>• Nunca compartilhe sua senha</li>
+                            <li>• Ative a biometria se possível</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="font-size: 2rem; margin-bottom: 0.75rem;">📱</div>
+                        <h3 style="color: #fff; margin-bottom: 0.75rem;">Notificações</h3>
+                        <ul style="list-style: none; font-size: 0.85rem; color: #bfdbfe; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <li>• Ative as notificações do app</li>
+                            <li>• Receba lembretes de consultas</li>
+                            <li>• Saiba quando exames chegarem</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="font-size: 2rem; margin-bottom: 0.75rem;">📋</div>
+                        <h3 style="color: #fff; margin-bottom: 0.75rem;">Prontuário</h3>
+                        <ul style="list-style: none; font-size: 0.85rem; color: #bfdbfe; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <li>• Mantenha dados atualizados</li>
+                            <li>• Informe alergias importantes</li>
+                            <li>• Registre medicamentos em uso</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1.25rem; text-align: center;">
+                    <p style="font-size: 1.1rem; color: #fff; margin-bottom: 0.5rem;">Precisa de ajuda?</p>
+                    <p style="color: #bfdbfe;">Entre em contato com a recepção da clínica ou use o chat do app</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 10: Final -->
+        <section class="slide">
+            <div class="slide-content" style="align-items: center; text-align: center;">
+                <div class="icon-box-xl" style="background: rgba(255, 255, 255, 0.2); border-radius: 50%;">
+                    <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                </div>
+                
+                <h1 style="margin-top: 1rem; font-size: 2.5rem;">Sua Saúde em Boas Mãos</h1>
+                <p style="font-size: 1.125rem; margin-bottom: 1.5rem;">Obrigado por escolher o HealthCare</p>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                    <div class="card" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.25rem;">📱</span>
+                        <span style="color: #dbeafe;">Fácil</span>
+                    </div>
+                    <div class="card" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.25rem;">🔒</span>
+                        <span style="color: #dbeafe;">Seguro</span>
+                    </div>
+                    <div class="card" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.25rem;">💙</span>
+                        <span style="color: #dbeafe;">Para você</span>
+                    </div>
+                </div>
+                
+                <p style="color: #93c5fd; font-size: 1.125rem;">Dúvidas? Fale com a equipe do consultório</p>
+                <p style="color: #60a5fa; font-size: 0.75rem; margin-top: 1.5rem;">Última atualização: 20 de Fevereiro de 2026</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        document.getElementById('total').textContent = total;
+        
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + total) % total;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('current').textContent = currentSlide + 1;
+            document.getElementById('progress-bar').style.width = ((currentSlide + 1) / total * 100) + '%';
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'Home') showSlide(0);
+            if (e.key === 'End') showSlide(total - 1);
+        });
+        
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) diff > 0 ? showSlide(currentSlide + 1) : showSlide(currentSlide - 1);
+        });
+    </script>
+</body>
+</html>

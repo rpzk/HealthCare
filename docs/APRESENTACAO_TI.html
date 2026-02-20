@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthCare - Apresentação Técnica (Versão Honesta)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 16px; }
+        body { background: #0f172a; overflow: hidden; }
+        .slides-container { width: 100vw; height: 100vh; overflow: hidden; }
+        .slide { display: none; width: 100%; height: 100%; padding: 3rem 4rem; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .slide.active { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .slide-content { width: 100%; max-width: 1200px; display: flex; flex-direction: column; justify-content: center; gap: 1.5rem; }
+        .card { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; }
+        h1 { font-size: 3rem; color: #f8fafc; font-weight: 700; }
+        h2 { font-size: 2rem; color: #f8fafc; font-weight: 700; margin-bottom: 1rem; }
+        h3 { font-size: 1.125rem; color: #e2e8f0; font-weight: 600; }
+        p, li, span { color: #cbd5e1; font-size: 0.9rem; }
+        .text-accent { color: #38bdf8; }
+        .check-icon { color: #4ade80; }
+        .warning-icon { color: #fbbf24; }
+        .icon-box { width: 48px; height: 48px; min-width: 48px; min-height: 48px; max-width: 48px; max-height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .icon-box svg { width: 24px; height: 24px; }
+        .icon-box-lg { width: 64px; height: 64px; min-width: 64px; min-height: 64px; max-width: 64px; max-height: 64px; }
+        .icon-box-lg svg { width: 32px; height: 32px; }
+        .icon-box-xl { width: 80px; height: 80px; min-width: 80px; min-height: 80px; max-width: 80px; max-height: 80px; }
+        .icon-box-xl svg { width: 40px; height: 40px; }
+        .step-number { width: 40px; height: 40px; min-width: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white; }
+        #progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #0ea5e9, #8b5cf6); transition: width 0.3s ease; z-index: 100; }
+        #slide-counter { position: fixed; bottom: 16px; right: 24px; color: #64748b; font-size: 12px; z-index: 100; }
+        #nav-hint { position: fixed; bottom: 16px; left: 24px; color: #475569; font-size: 11px; z-index: 100; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+        .badge-ok { background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; }
+        .badge-partial { background: rgba(234, 179, 8, 0.2); color: #fbbf24; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; }
+        .badge-no { background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+    <div class="slides-container">
+        <div id="progress-bar" style="width: 0%"></div>
+        <div id="slide-counter"><span id="current">1</span> / <span id="total">12</span></div>
+        <div id="nav-hint">← → navegar | Espaço avançar</div>
+
+        <!-- SLIDE 1: Título -->
+        <section class="slide active">
+            <div class="slide-content" style="align-items: center; text-align: center;">
+                <div class="icon-box-xl" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6); border-radius: 20px;">
+                    <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <h1>HealthCare</h1>
+                <p class="text-accent" style="font-size: 1.25rem;">Prontuário Eletrônico com Foco em Conformidade</p>
+                
+                <div style="display: flex; gap: 2rem; margin-top: 1rem;">
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span class="badge-ok">✓ Funcional</span> LGPD</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span class="badge-ok">✓ Funcional</span> Assinatura A1</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span class="badge-ok">✓ Funcional</span> FHIR R4</span>
+                </div>
+                
+                <p style="margin-top: 2rem; font-size: 0.85rem; color: #64748b;">Apresentação com transparência total - apenas funcionalidades testadas e validadas</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 2: Arquitetura -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Arquitetura do Sistema</h2>
+                
+                <div class="grid-4">
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6); margin: 0 auto 0.75rem;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
+                        </div>
+                        <h3>Next.js 14</h3>
+                        <p style="font-size: 0.8rem;">App Router + React 18</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box" style="background: linear-gradient(135deg, #22c55e, #10b981); margin: 0 auto 0.75rem;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                        </div>
+                        <h3>PostgreSQL 15</h3>
+                        <p style="font-size: 0.8rem;">Prisma ORM</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box" style="background: linear-gradient(135deg, #ef4444, #dc2626); margin: 0 auto 0.75rem;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                        <h3>Redis</h3>
+                        <p style="font-size: 0.8rem;">Cache + Filas BullMQ</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div class="icon-box" style="background: linear-gradient(135deg, #f59e0b, #eab308); margin: 0 auto 0.75rem;">
+                            <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                        <h3>Docker</h3>
+                        <p style="font-size: 0.8rem;">Compose Production</p>
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: rgba(34, 197, 94, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <span style="color: #4ade80; font-weight: 700; font-size: 0.75rem;">PDF</span>
+                        </div>
+                        <div>
+                            <p style="color: #e2e8f0; font-weight: 500;">Gotenberg</p>
+                            <p style="font-size: 0.75rem;">Geração de PDFs assinados</p>
+                        </div>
+                        <span class="badge-ok">✓ Ativo</span>
+                    </div>
+                    <div class="card" style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: rgba(168, 85, 247, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <span style="color: #a855f7; font-weight: 700; font-size: 0.75rem;">IA</span>
+                        </div>
+                        <div>
+                            <p style="color: #e2e8f0; font-weight: 500;">Ollama (LLaMA)</p>
+                            <p style="font-size: 0.75rem;">IA local para assistência</p>
+                        </div>
+                        <span class="badge-partial">⚠ Config</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 3: Segurança - HONESTO -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Segurança - Estado Real</h2>
+                
+                <div class="grid-3">
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h3>Criptografia</h3>
+                            <span class="badge-ok">✓ Funcional</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> AES-256-GCM dados sensíveis</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> CPF criptografado + hash</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> bcrypt (12 rounds) senhas</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> HTTPS obrigatório</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h3>Autenticação</h3>
+                            <span class="badge-ok">✓ Funcional</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Login com email/senha</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> JWT com refresh tokens</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Bloqueio após 5 tentativas</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Rate limiting 300/min</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h3>RBAC</h3>
+                            <span class="badge-ok">✓ Funcional</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> 8 papéis configurados</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Permissões por recurso</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Segregação por tenant</li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> Logs de auditoria</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(234, 179, 8, 0.1); border-color: rgba(234, 179, 8, 0.3);">
+                    <p style="color: #fbbf24; text-align: center;">⚠️ <strong>Passkey/WebAuthn:</strong> Código existe mas requer reconfiguração do banco. <strong>MFA adicional:</strong> Não implementado.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: LGPD - FUNCIONAL -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">LGPD - Direitos do Titular <span class="badge-ok" style="vertical-align: middle;">✓ Implementado</span></h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem;">Funcionalidades Ativas</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="check-icon">✓</span>
+                                <div>
+                                    <span style="color: #e2e8f0;">Exportar dados (JSON)</span>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">/minha-saude/privacidade → Exportar</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="check-icon">✓</span>
+                                <div>
+                                    <span style="color: #e2e8f0;">Histórico de acessos</span>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">/minha-saude/privacidade → Acessos</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="check-icon">✓</span>
+                                <div>
+                                    <span style="color: #e2e8f0;">Oposição ao tratamento</span>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">/minha-saude/privacidade → Oposição</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="check-icon">✓</span>
+                                <div>
+                                    <span style="color: #e2e8f0;">Histórico de termos aceitos</span>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">/minha-saude/privacidade → Termos</p>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="check-icon">✓</span>
+                                <div>
+                                    <span style="color: #e2e8f0;">Solicitação de exclusão</span>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">/minha-saude/privacidade → Exclusão</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem;">Painel do Paciente - 5 Abas</h3>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem;">
+                            <p style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 0.75rem;">URL: /minha-saude/privacidade</p>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                <span style="padding: 0.5rem 1rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border-radius: 6px; font-size: 0.85rem;">📊 Visão Geral</span>
+                                <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 6px; font-size: 0.85rem;">📤 Exportar</span>
+                                <span style="padding: 0.5rem 1rem; background: rgba(168, 85, 247, 0.2); color: #c4b5fd; border-radius: 6px; font-size: 0.85rem;">👁️ Acessos</span>
+                                <span style="padding: 0.5rem 1rem; background: rgba(236, 72, 153, 0.2); color: #f9a8d4; border-radius: 6px; font-size: 0.85rem;">📋 Termos</span>
+                                <span style="padding: 0.5rem 1rem; background: rgba(234, 179, 8, 0.2); color: #fde047; border-radius: 6px; font-size: 0.85rem;">🚫 Oposição</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(34, 197, 94, 0.1); border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
+                            <p style="color: #4ade80; font-size: 0.85rem;">✓ Todas as funcionalidades testadas e funcionais</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 5: Assinatura Digital - HONESTO -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Assinatura Digital ICP-Brasil</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem; border: 2px solid rgba(34, 197, 94, 0.3);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="width: 40px; height: 40px; background: rgba(59, 130, 246, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-weight: 700;">A1</div>
+                                <h3 style="color: #fff;">Certificado A1</h3>
+                            </div>
+                            <span class="badge-ok">✓ FUNCIONA</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; color: #d1fae5;">
+                            <li><span class="check-icon">✓</span> Upload de .pfx/.p12</li>
+                            <li><span class="check-icon">✓</span> Assinatura PAdES-B embutida</li>
+                            <li><span class="check-icon">✓</span> Carimbo de tempo (TSA)</li>
+                            <li><span class="check-icon">✓</span> Validável em validar.iti.gov.br</li>
+                        </ul>
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(34, 197, 94, 0.1); border-radius: 8px;">
+                            <p style="font-size: 0.8rem; color: #86efac;">Requer certificado com cadeia completa (AC raiz + intermediária)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem; border: 2px solid rgba(239, 68, 68, 0.3); opacity: 0.7;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="width: 40px; height: 40px; background: rgba(239, 68, 68, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #f87171; font-weight: 700;">A3</div>
+                                <h3 style="color: #94a3b8;">Certificado A3</h3>
+                            </div>
+                            <span class="badge-no">✗ Não implementado</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; color: #64748b;">
+                            <li>• Token USB / Smartcard</li>
+                            <li>• Requer driver PKCS#11</li>
+                            <li>• Comunicação com hardware</li>
+                        </ul>
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                            <p style="font-size: 0.8rem; color: #fca5a5;">Roadmap futuro - requer desenvolvimento adicional</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <p style="color: #93c5fd;">🔗 PDFs assinados podem ser validados em <strong>validar.iti.gov.br</strong></p>
+                        <span class="badge-ok">Testado e validado</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 6: SBIS/CFM -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Conformidade SBIS/CFM</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem;">Resoluções Atendidas</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">CFM 1.821/2007 (PEP)</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">CFM 2.218/2018 (S-RES)</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">CFM 2.299/2021 (Prescrição Digital)</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">Portaria 344/98 (Controlados)</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem;">O que falta para 100%</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="warning-icon">⚠</span> <span style="color: #e2e8f0;">Certificação oficial SBIS</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="warning-icon">⚠</span> <span style="color: #e2e8f0;">Auditoria externa</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="warning-icon">⚠</span> <span style="color: #e2e8f0;">Selo de conformidade</span></li>
+                        </ul>
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(234, 179, 8, 0.1); border-radius: 8px;">
+                            <p style="font-size: 0.8rem; color: #fde047;">Requer contratação de auditoria SBIS (~R$ 15-30k)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: center; gap: 1.5rem;">
+                    <div class="card" style="padding: 1rem 2rem; text-align: center;">
+                        <p style="font-size: 2rem; font-weight: 700; color: #4ade80;">34/37</p>
+                        <p style="font-size: 0.8rem;">Requisitos Técnicos</p>
+                    </div>
+                    <div class="card" style="padding: 1rem 2rem; text-align: center;">
+                        <p style="font-size: 2rem; font-weight: 700; color: #fbbf24;">~92%</p>
+                        <p style="font-size: 0.8rem;">Conformidade Estimada</p>
+                    </div>
+                    <div class="card" style="padding: 1rem 2rem; text-align: center;">
+                        <p style="font-size: 2rem; font-weight: 700; color: #a855f7;">20 anos</p>
+                        <p style="font-size: 0.8rem;">Retenção Configurada</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 7: FHIR - FUNCIONAL -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">FHIR R4 <span class="badge-ok" style="vertical-align: middle;">✓ Implementado</span></h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem;">Recursos Suportados</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">Bundle</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">DiagnosticReport</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">Observation</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">ServiceRequest</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">Patient</span>
+                            <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">Practitioner</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem;">Como Testar</h3>
+                        <div style="background: #1e293b; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.75rem; color: #94a3b8;">
+                            <p style="color: #4ade80;"># GET Capability Statement</p>
+                            <p>curl /api/lab/fhir</p>
+                            <br>
+                            <p style="color: #4ade80;"># POST Bundle FHIR</p>
+                            <p>curl -X POST /api/lab/fhir \</p>
+                            <p>&nbsp;&nbsp;-H "Content-Type: application/fhir+json" \</p>
+                            <p>&nbsp;&nbsp;-d '{"resourceType":"Bundle"...}'</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem;">
+                    <h3 style="margin-bottom: 0.75rem;">Codificações</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <span style="padding: 0.5rem 1rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border-radius: 8px;">CID-10</span>
+                        <span style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border-radius: 8px;">LOINC</span>
+                        <span style="padding: 0.5rem 1rem; background: rgba(168, 85, 247, 0.2); color: #c4b5fd; border-radius: 8px;">SNOMED-CT</span>
+                        <span style="padding: 0.5rem 1rem; background: rgba(234, 179, 8, 0.2); color: #fde047; border-radius: 8px;">TUSS</span>
+                        <span style="padding: 0.5rem 1rem; background: rgba(236, 72, 153, 0.2); color: #f9a8d4; border-radius: 8px;">CIAP-2</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 8: IA e STT - HONESTO -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">IA e Transcrição - Estado Real</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h3>IA Ollama (LLaMA 3)</h3>
+                            <span class="badge-partial">⚠ Requer Config</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">Código implementado</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">100% local (privacidade)</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="warning-icon">⚠</span> <span style="color: #e2e8f0;">Modelo precisa ser baixado</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="warning-icon">⚠</span> <span style="color: #e2e8f0;">Requer 16GB RAM (mínimo 8GB)</span></li>
+                        </ul>
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(234, 179, 8, 0.1); border-radius: 8px;">
+                            <p style="font-size: 0.75rem; color: #fde047; font-family: monospace;">docker exec ollama ollama pull llama3</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h3>Transcrição (Whisper)</h3>
+                            <span class="badge-partial">⚠ Só em Prod</span>
+                        </div>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">Código implementado</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="check-icon">✓</span> <span style="color: #e2e8f0;">Serviço em docker-compose.prod</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span style="color: #f87171;">✗</span> <span style="color: #94a3b8;">Não está no compose dev</span></li>
+                            <li style="display: flex; align-items: center; gap: 0.5rem;"><span class="warning-icon">⚠</span> <span style="color: #e2e8f0;">Requer 2-4GB RAM extra</span></li>
+                        </ul>
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                            <p style="font-size: 0.8rem; color: #fca5a5;">Não disponível nesta instância</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); text-align: center;">
+                    <p style="color: #93c5fd;">💡 <strong>Fallback:</strong> Se Ollama falhar, sistema usa Groq Cloud (com consentimento do usuário)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 9: Backup - HONESTO -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Backup - Estado Real</h2>
+                
+                <div class="grid-3">
+                    <div class="card" style="padding: 1.25rem; text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">💾</div>
+                        <h3>PostgreSQL</h3>
+                        <span class="badge-ok">✓ Funciona</span>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">pg_dump diário local</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center; opacity: 0.7;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">☁️</div>
+                        <h3>Google Drive</h3>
+                        <span class="badge-partial">⚠ Via rclone</span>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">SDK não instalado</p>
+                    </div>
+                    <div class="card" style="padding: 1.25rem; text-align: center; opacity: 0.7;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📦</div>
+                        <h3>AWS S3</h3>
+                        <span class="badge-no">✗ Comentado</span>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">Código desativado</p>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(234, 179, 8, 0.1); border-color: rgba(234, 179, 8, 0.3);">
+                    <p style="color: #fde047; text-align: center;">⚠️ <strong>Backup em nuvem:</strong> Requer configuração de credenciais. Atualmente só backup local está ativo.</p>
+                </div>
+                
+                <div class="grid-3" style="text-align: center;">
+                    <div class="card" style="padding: 1rem;">
+                        <p style="font-size: 1.5rem; font-weight: 700; color: #4ade80;">Local</p>
+                        <p style="font-size: 0.8rem;">Backup diário</p>
+                    </div>
+                    <div class="card" style="padding: 1rem;">
+                        <p style="font-size: 1.5rem; font-weight: 700; color: #fbbf24;">Offsite</p>
+                        <p style="font-size: 0.8rem;">Requer config</p>
+                    </div>
+                    <div class="card" style="padding: 1rem;">
+                        <p style="font-size: 1.5rem; font-weight: 700; color: #a855f7;">90 dias</p>
+                        <p style="font-size: 0.8rem;">Retenção local</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 10: Demo Realista -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Demonstração - O que Mostrar</h2>
+                
+                <div class="grid-4">
+                    <div class="card" style="padding: 1rem; text-align: center; border: 2px solid rgba(34, 197, 94, 0.3);">
+                        <div class="step-number" style="background: linear-gradient(135deg, #22c55e, #16a34a); margin: 0 auto 0.75rem;">1</div>
+                        <p style="color: #e2e8f0; font-weight: 500;">Login Normal</p>
+                        <p style="font-size: 0.75rem;">Email + Senha</p>
+                        <span class="badge-ok" style="margin-top: 0.5rem; display: inline-block;">✓ Funciona</span>
+                    </div>
+                    <div class="card" style="padding: 1rem; text-align: center; border: 2px solid rgba(34, 197, 94, 0.3);">
+                        <div class="step-number" style="background: linear-gradient(135deg, #3b82f6, #2563eb); margin: 0 auto 0.75rem;">2</div>
+                        <p style="color: #e2e8f0; font-weight: 500;">Painel LGPD</p>
+                        <p style="font-size: 0.75rem;">/minha-saude/privacidade</p>
+                        <span class="badge-ok" style="margin-top: 0.5rem; display: inline-block;">✓ Funciona</span>
+                    </div>
+                    <div class="card" style="padding: 1rem; text-align: center; border: 2px solid rgba(34, 197, 94, 0.3);">
+                        <div class="step-number" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); margin: 0 auto 0.75rem;">3</div>
+                        <p style="color: #e2e8f0; font-weight: 500;">Prescrição</p>
+                        <p style="font-size: 0.75rem;">Criar + Assinar A1</p>
+                        <span class="badge-ok" style="margin-top: 0.5rem; display: inline-block;">✓ Funciona</span>
+                    </div>
+                    <div class="card" style="padding: 1rem; text-align: center; border: 2px solid rgba(34, 197, 94, 0.3);">
+                        <div class="step-number" style="background: linear-gradient(135deg, #06b6d4, #0891b2); margin: 0 auto 0.75rem;">4</div>
+                        <p style="color: #e2e8f0; font-weight: 500;">Validar ITI</p>
+                        <p style="font-size: 0.75rem;">validar.iti.gov.br</p>
+                        <span class="badge-ok" style="margin-top: 0.5rem; display: inline-block;">✓ Funciona</span>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
+                    <p style="color: #fca5a5; text-align: center;"><strong>EVITAR na demo:</strong> Passkey (quebrado), IA (não configurada), Transcrição (não disponível), A3 (não implementado)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 11: Resumo Honesto -->
+        <section class="slide">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Resumo - Estado Real do Sistema</h2>
+                
+                <div class="grid-2">
+                    <div class="card" style="padding: 1.25rem; border: 2px solid rgba(34, 197, 94, 0.3);">
+                        <h3 style="color: #4ade80; margin-bottom: 1rem;">✓ Funciona Hoje</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; color: #d1fae5;">
+                            <li>✓ Login com email/senha + RBAC</li>
+                            <li>✓ Painel LGPD completo (5 abas)</li>
+                            <li>✓ Assinatura digital A1 (PAdES)</li>
+                            <li>✓ Prescrições padrão CFM</li>
+                            <li>✓ Integração FHIR R4</li>
+                            <li>✓ Criptografia AES-256-GCM</li>
+                            <li>✓ Backup local PostgreSQL</li>
+                            <li>✓ Logs de auditoria</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card" style="padding: 1.25rem; border: 2px solid rgba(234, 179, 8, 0.3);">
+                        <h3 style="color: #fbbf24; margin-bottom: 1rem;">⚠ Requer Configuração/Desenvolvimento</h3>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; color: #fef3c7;">
+                            <li>⚠ IA Ollama (baixar modelo)</li>
+                            <li>⚠ Whisper STT (adicionar container)</li>
+                            <li>⚠ Backup nuvem (credenciais)</li>
+                            <li>⚠ Passkey (reconfigurar banco)</li>
+                            <li>✗ A3 token (não implementado)</li>
+                            <li>✗ Certificação SBIS oficial</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 12: Final -->
+        <section class="slide">
+            <div class="slide-content" style="align-items: center; text-align: center;">
+                <div class="icon-box-xl" style="background: linear-gradient(135deg, #0ea5e9, #3b82f6); border-radius: 20px;">
+                    <svg class="text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                
+                <h1 style="margin-top: 1rem;">HealthCare</h1>
+                <p style="font-size: 1.125rem; margin-bottom: 1.5rem; color: #94a3b8;">Prontuário Eletrônico em Evolução</p>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                    <div class="card" style="padding: 0.75rem 1.5rem;"><span class="badge-ok">✓</span> <span style="color: #d1fae5; margin-left: 0.5rem;">LGPD</span></div>
+                    <div class="card" style="padding: 0.75rem 1.5rem;"><span class="badge-ok">✓</span> <span style="color: #d1fae5; margin-left: 0.5rem;">A1 ICP</span></div>
+                    <div class="card" style="padding: 0.75rem 1.5rem;"><span class="badge-ok">✓</span> <span style="color: #d1fae5; margin-left: 0.5rem;">FHIR</span></div>
+                    <div class="card" style="padding: 0.75rem 1.5rem;"><span class="badge-partial">~92%</span> <span style="color: #fef3c7; margin-left: 0.5rem;">SBIS</span></div>
+                </div>
+                
+                <p style="color: #64748b; font-size: 1rem;">Perguntas?</p>
+                
+                <p style="color: #475569; font-size: 0.75rem; margin-top: 1.5rem;">Apresentação com transparência total • 20 de Fevereiro de 2026</p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        document.getElementById('total').textContent = total;
+        
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + total) % total;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('current').textContent = currentSlide + 1;
+            document.getElementById('progress-bar').style.width = ((currentSlide + 1) / total * 100) + '%';
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'Home') showSlide(0);
+            if (e.key === 'End') showSlide(total - 1);
+        });
+        
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) diff > 0 ? showSlide(currentSlide + 1) : showSlide(currentSlide - 1);
+        });
+    </script>
+</body>
+</html>

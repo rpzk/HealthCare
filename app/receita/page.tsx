@@ -28,7 +28,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { 
-  Printer, 
   Plus, 
   Trash2, 
   FileText, 
@@ -402,13 +401,6 @@ export default function ReceitaMedicaPage() {
       console.error(error)
     } finally {
       setGenerating(false)
-    }
-  }
-  
-  const handlePrint = () => {
-    if (generatedPdfUrl) {
-      // Abrir PDF em nova aba para impressão
-      window.open(generatedPdfUrl, '_blank')
     }
   }
   
@@ -847,15 +839,55 @@ export default function ReceitaMedicaPage() {
                       
                       <Separator />
                       
-                      <Button className="w-full" size="lg" onClick={handlePrint}>
-                        <Printer className="h-4 w-4 mr-2" />
-                        Imprimir
-                      </Button>
-                      
-                      <Button variant="outline" className="w-full" onClick={handleDownload}>
+                      <Button variant="default" className="w-full" size="lg" onClick={handleDownload}>
                         <Download className="h-4 w-4 mr-2" />
                         Baixar PDF
                       </Button>
+                      
+                      {prescriptionId && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/prescriptions/${prescriptionId}/signature`)
+                                const data = await res.json()
+                                const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                                if (pageUrl) window.open(pageUrl, '_blank')
+                                else toast.error('Verificação disponível após assinatura.')
+                              } catch {
+                                toast.error('Erro ao abrir verificação')
+                              }
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Verificar
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            className="w-full"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/prescriptions/${prescriptionId}/signature`)
+                                const data = await res.json()
+                                const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                                if (!pageUrl) {
+                                  toast.error('Compartilhe após assinar.')
+                                  return
+                                }
+                                const shareUrl = `${window.location.origin}${pageUrl}`
+                                await navigator.clipboard.writeText(shareUrl)
+                                toast.success('Link de verificação copiado.')
+                              } catch {
+                                toast.error('Erro ao copiar link')
+                              }
+                            }}
+                          >
+                            Compartilhar link de verificação
+                          </Button>
+                        </>
+                      )}
                       
                       <Button 
                         variant="ghost" 

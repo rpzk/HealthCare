@@ -45,7 +45,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Printer,
-  PenLine
+  PenLine,
+  Share2
 } from 'lucide-react'
 
 import { toast } from '@/hooks/use-toast'
@@ -188,6 +189,7 @@ type SignatureInfo = {
   signed: boolean
   valid?: boolean
   verificationUrl?: string
+  verificationPageUrl?: string
   signatureHash?: string
 }
 
@@ -283,6 +285,11 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const [a1Password, setA1Password] = useState('')
   const [signingDocs, setSigningDocs] = useState(false)
   const [pendingPdfUrl, setPendingPdfUrl] = useState<string | null>(null)
+
+  const [generateDocsOpen, setGenerateDocsOpen] = useState(false)
+  const [generateDocsPassword, setGenerateDocsPassword] = useState('')
+  const [generatingDocs, setGeneratingDocs] = useState(false)
+  const [generatedDocs, setGeneratedDocs] = useState<Array<{ type: string; documentId: string; label: string }>>([])
 
   useEffect(() => {
     // Indicador simples para dar feedback se o A1 está ativo (para assinatura digital)
@@ -396,6 +403,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
           signed: !!data?.signed,
           valid: typeof data?.valid === 'boolean' ? data.valid : undefined,
           verificationUrl: data?.verificationUrl,
+          verificationPageUrl: data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : undefined),
           signatureHash: data?.signatureHash,
         }
         setSignatureMap((prev) => ({ ...prev, [key]: info }))
@@ -532,6 +540,136 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       }
     } finally {
       setSigningDocs(false)
+    }
+  }
+
+  const patientId = consultation?.patient?.id
+
+  const handleGenerateDocuments = async () => {
+    if (!patientId) {
+      toast({ title: 'Paciente necessário', description: 'Carregue a consulta para gerar documentos.', variant: 'destructive' })
+      return
+    }
+    setGeneratingDocs(true)
+    setGeneratedDocs([])
+    const created: Array<{ type: string; documentId: string; label: string }> = []
+    const base: Record<string, string> = {}
+    if (generateDocsPassword) base.certificatePassword = generateDocsPassword
+
+    try {
+      if (prescriptions.length > 0) {
+        const meds = prescriptions.map((rx) => ({
+          genericName: rx.medication,
+          concentration: '',
+          pharmaceuticalForm: (rx as { form?: string }).form || 'comprimido',
+          quantity: 1,
+          quantityUnit: 'unidade(s)',
+          dosage: rx.dosage,
+          route: (rx as { route?: string }).route || 'oral',
+          frequency: rx.frequency,
+          duration: rx.duration,
+          instructions: rx.instructions || undefined
+        }))
+        const res = await fetch('/api/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'PRESCRIPTION',
+            patientId,
+            usageType: 'INTERNAL',
+            medications: meds,
+            notes: undefined,
+            ...base
+          })
+        })
+        const data = await res.json()
+        if (data.success && data.documentId) {
+          created.push({ type: 'PRESCRIPTION', documentId: data.documentId, label: 'Receita médica' })
+        } else if (!res.ok) {
+          toast({ title: 'Receita', description: data.error || data.details?.[0] || 'Erro ao gerar', variant: 'destructive' })
+        }
+      }
+
+      for (const cert of certificates) {
+        const startDate = new Date()
+        const days = (cert as { days?: number }).days ?? 0
+        const endDate = days ? new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000) : undefined
+        const res = await fetch('/api/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'CERTIFICATE',
+            patientId,
+            certificateType: cert.type === 'MEDICAL_LEAVE' ? 'MEDICAL_LEAVE' : 'CUSTOM',
+            title: 'Atestado médico',
+            content: (cert as { description?: string }).description || cert.type,
+            days,
+            startDate: startDate.toISOString(),
+            endDate: endDate?.toISOString(),
+            includeCid: false,
+            ...base
+          })
+        })
+        const data = await res.json()
+        if (data.success && data.documentId) {
+          created.push({ type: 'CERTIFICATE', documentId: data.documentId, label: `Atestado (${cert.type})` })
+        }
+      }
+
+      if (referrals.length > 0) {
+        for (const ref of referrals) {
+          const res = await fetch('/api/documents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'REFERRAL',
+              patientId,
+              targetSpecialty: ref.specialty,
+              reason: ref.description,
+              priority: ref.priority === 'HIGH' ? 'URGENT' : 'ROUTINE',
+              ...base
+            })
+          })
+          const data = await res.json()
+          if (data.success && data.documentId) {
+            created.push({ type: 'REFERRAL', documentId: data.documentId, label: `Encaminhamento ${ref.specialty}` })
+          }
+        }
+      }
+
+      if (exams.length > 0) {
+        const res = await fetch('/api/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'EXAM_REQUEST',
+            patientId,
+            exams: exams.map((ex) => ({
+              name: ex.examType || ex.description,
+              notes: ex.description
+            })),
+            priority: exams.some((e) => e.priority === 'HIGH') ? 'URGENT' : 'ROUTINE',
+            clinicalIndication: 'Solicitação a partir da consulta.',
+            ...base
+          })
+        })
+        const data = await res.json()
+        if (data.success && data.documentId) {
+          created.push({ type: 'EXAM_REQUEST', documentId: data.documentId, label: 'Solicitação de exames' })
+        }
+      }
+
+      setGeneratedDocs(created)
+      if (created.length > 0) {
+        toast({ title: 'Documentos gerados', description: `${created.length} documento(s) criado(s). Assinatura digital aplicada quando certificado disponível.` })
+      } else {
+        toast({ title: 'Nada para gerar', description: 'Adicione prescrições, atestados, encaminhamentos ou exames na consulta.', variant: 'default' })
+      }
+    } catch (e) {
+      const err = e as Error
+      toast({ title: 'Erro', description: err.message || 'Falha ao gerar documentos', variant: 'destructive' })
+    } finally {
+      setGeneratingDocs(false)
     }
   }
 
@@ -750,36 +888,131 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     }
   }
 
+  // Converte SOAP aninhado (retorno do job IA) para formato plano da tela
+  const soapNoteToFlat = (note: {
+    subjective?: { chiefComplaint?: string; historyOfPresentIllness?: string; pastMedicalHistory?: string[]; medications?: string[]; allergies?: string[]; socialHistory?: string }
+    objective?: { vitals?: Record<string, unknown>; physicalExam?: string; labsAndImaging?: string[] }
+    assessment?: { diagnoses?: Array<{ label: string }>; summary?: string }
+    plan?: { medications?: string[]; tests?: string[]; treatments?: string[]; education?: string[]; followUp?: string }
+  }) => {
+    const s = note.subjective
+    const subjective = [
+      s?.chiefComplaint,
+      s?.historyOfPresentIllness,
+      s?.pastMedicalHistory?.length ? `Antecedentes: ${s.pastMedicalHistory.join('; ')}` : '',
+      s?.medications?.length ? `Medicamentos em uso: ${s.medications.join(', ')}` : '',
+      s?.allergies?.length ? `Alergias: ${s.allergies.join(', ')}` : '',
+      s?.socialHistory
+    ].filter(Boolean).join('\n')
+    const o = note.objective
+    const objective = [
+      o?.physicalExam,
+      o?.labsAndImaging?.length ? o.labsAndImaging.join('; ') : ''
+    ].filter(Boolean).join('\n')
+    const a = note.assessment
+    const assessment = [a?.summary, a?.diagnoses?.length ? a.diagnoses.map((d: { label: string }) => d.label).join(', ') : ''].filter(Boolean).join('\n')
+    const p = note.plan
+    const plan = [
+      p?.medications?.length ? `Medicamentos: ${p.medications.join('; ')}` : '',
+      p?.tests?.length ? `Exames: ${p.tests.join('; ')}` : '',
+      p?.treatments?.length ? `Tratamentos: ${p.treatments.join('; ')}` : '',
+      p?.education?.length ? p.education.join('; ') : '',
+      p?.followUp
+    ].filter(Boolean).join('\n')
+    return { subjective, objective, assessment, plan }
+  }
+
   const stopRecording = async () => {
     const mr = mediaRecorderRef.current
     if (!mr) return
-    
+
     setRecording(false)
     setProcessing(true)
     mr.stop()
-    
-    await new Promise(r => setTimeout(r, 300))
+
+    await new Promise((r) => setTimeout(r, 300))
     const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-    
+
     try {
       const form = new FormData()
       form.append('audio', blob, `consulta-${consultationId}.webm`)
-      
-      const res = await fetch('/api/ai/transcribe', { method: 'POST', body: form })
-      const data = await res.json()
-      
-      if (data.soap) {
-        setSoap({
-          subjective: data.soap.subjective || soap.subjective,
-          objective: data.soap.objective || soap.objective,
-          assessment: data.soap.assessment || soap.assessment,
-          plan: data.soap.plan || soap.plan
-        })
-        toast({ title: 'Transcrição concluída', description: 'SOAP preenchido automaticamente' })
+      form.append('locale', 'pt-BR')
+      if (consultation?.patient?.id) form.append('patientId', consultation.patient.id)
+      if (userId) form.append('doctorId', userId)
+
+      const uploadRes = await fetch(
+        `/api/ai/transcribe/upload?enqueue=true&mode=draft`,
+        { method: 'POST', body: form }
+      )
+      const uploadData = await uploadRes.json()
+
+      if (!uploadRes.ok) {
+        throw new Error(uploadData.error || 'Falha ao enviar áudio')
+      }
+
+      if (uploadData.enqueued && uploadData.jobId) {
+        toast({ title: 'Processando áudio...', description: 'A IA está gerando as anotações. Aguarde.' })
+        const jobId = uploadData.jobId
+        const pollMax = 60
+        let pollCount = 0
+        let jobResult: { state?: string; result?: { soap?: unknown } } | null = null
+
+        while (pollCount < pollMax) {
+          await new Promise((r) => setTimeout(r, 1500))
+          const jobRes = await fetch(`/api/ai/jobs/${jobId}`)
+          jobResult = await jobRes.json()
+          const state = (jobResult as { state?: string })?.state
+          if (state === 'completed') break
+          if (state === 'failed') {
+            const errMsg = (jobResult as { error?: string })?.error || 'Job falhou'
+            throw new Error(errMsg)
+          }
+          pollCount++
+        }
+
+        if (jobResult?.state === 'completed' && (jobResult as { result?: { soap?: unknown } }).result?.soap) {
+          const nested = (jobResult as { result: { soap: unknown } }).result.soap as Parameters<typeof soapNoteToFlat>[0]
+          const flat = soapNoteToFlat(nested)
+          setSoap((prev) => ({
+            subjective: flat.subjective || prev.subjective,
+            objective: flat.objective || prev.objective,
+            assessment: flat.assessment || prev.assessment,
+            plan: flat.plan || prev.plan
+          }))
+          toast({ title: 'Anotações prontas', description: 'SOAP preenchido pela IA. Revise e edite se necessário.' })
+
+          try {
+            const suggestRes = await fetch('/api/ai/suggest-treatment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                soap: { ...flat },
+                patientAge: consultation?.patient?.age,
+                patientSex: consultation?.patient?.sex
+              })
+            })
+            if (suggestRes.ok) {
+              const suggestData = await suggestRes.json()
+              const sug = suggestData.suggestions
+              if (sug?.prescriptions?.length || sug?.exams?.length || sug?.referrals?.length) {
+                handleAISuggestions({
+                  prescriptions: sug.prescriptions || [],
+                  exams: sug.exams || [],
+                  referrals: sug.referrals || []
+                })
+                toast({ title: 'Sugestões aplicadas', description: 'Prescrições, exames e encaminhamentos sugeridos pela IA foram adicionados. Revise na consulta.' })
+              }
+            }
+          } catch {
+            // Sugestões opcionais; não falhar o fluxo
+          }
+        }
+      } else {
+        toast({ title: 'Áudio recebido', description: 'Transcrição assíncrona em andamento. Ative o worker de IA (npm run worker:ai) para processar.' })
       }
     } catch (e) {
       const err = e as Error
-      toast({ title: 'Erro', description: `Falha na transcrição: ${err.message}`, variant: 'destructive' })
+      toast({ title: 'Erro', description: err.message || 'Falha ao processar áudio.', variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
@@ -1241,6 +1474,72 @@ interface Medication {
         </div>
       )}
 
+      {/* Modal Gerar e assinar documentos */}
+      <Dialog open={generateDocsOpen} onOpenChange={setGenerateDocsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Gerar e assinar documentos
+            </DialogTitle>
+            <DialogDescription>
+              Gera receita, atestados, encaminhamentos e solicitação de exames a partir dos dados da consulta.
+              Se você tiver certificado A1 configurado, informe a senha para assinar digitalmente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {a1Status.hasActiveCertificate && (
+              <div>
+                <Label htmlFor="generate-docs-password">Senha do certificado (opcional)</Label>
+                <Input
+                  id="generate-docs-password"
+                  type="password"
+                  value={generateDocsPassword}
+                  onChange={(e) => setGenerateDocsPassword(e.target.value)}
+                  placeholder="Deixe em branco para gerar sem assinar"
+                  className="mt-1"
+                />
+              </div>
+            )}
+            {generatedDocs.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Documentos gerados:</p>
+                <ul className="space-y-1">
+                  {generatedDocs.map((doc) => (
+                    <li key={doc.documentId} className="flex items-center justify-between text-sm">
+                      <span>{doc.label}</span>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-primary"
+                        onClick={() => window.open(`/api/documents/${doc.documentId}/pdf`, '_blank')}
+                      >
+                        Abrir PDF
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGenerateDocsOpen(false)} disabled={generatingDocs}>
+              Fechar
+            </Button>
+            <Button onClick={handleGenerateDocuments} disabled={generatingDocs || !patientId}>
+              {generatingDocs ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Gerando...
+                </>
+              ) : (
+                'Gerar documentos'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* HEADER - Compacto e responsivo */}
       <Card className="flex-shrink-0">
         <CardContent className="py-2 px-4">
@@ -1302,6 +1601,18 @@ interface Medication {
                 patientSex={consultation?.patient?.sex}
                 onApply={handleAISuggestions}
               />
+              {!isFinalized && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => { setGeneratedDocs([]); setGenerateDocsOpen(true) }}
+                  disabled={!patientId}
+                  title="Gerar e assinar documentos (receita, atestados, encaminhamentos, exames)"
+                >
+                  <FileText className="h-3 w-3 mr-1" /> Gerar documentos
+                </Button>
+              )}
               <Badge variant="outline" className="text-xs h-7">{consultation?.status || 'IN_PROGRESS'}</Badge>
             </div>
           </div>
@@ -1699,12 +2010,10 @@ interface Medication {
                               toast({ title: 'Salve o atestado antes', description: 'O PDF precisa do ID do documento.' })
                               return
                             }
-                            const url = `/api/certificates/${cert.id}/pdf`
-                            // Usa GET para gerar PDF (com ou sem certificado)
-                            openPdf(url)
+                            openPdf(`/api/certificates/${cert.id}/pdf`)
                           }}
                         >
-                          PDF
+                          Baixar PDF
                         </Button>
                         <Button
                           type="button"
@@ -1719,7 +2028,8 @@ interface Medication {
                             }
                             try {
                               const info = await fetchSignatureInfo('MEDICAL_CERTIFICATE', String(cert.id))
-                              if (info?.verificationUrl) openPdf(info.verificationUrl)
+                              const pageUrl = info?.verificationPageUrl ?? (info?.signatureHash ? `/verify/${info.signatureHash}` : null)
+                              if (pageUrl) window.open(pageUrl, '_blank')
                               else toast({ title: 'Sem verificação', description: 'Atestado ainda não foi assinado.' })
                             } catch {
                               toast({ title: 'Erro', description: 'Falha ao consultar assinatura.', variant: 'destructive' })
@@ -1727,6 +2037,34 @@ interface Medication {
                           }}
                         >
                           Verificar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!cert.id || isLikelyLocalId(String(cert.id))) {
+                              toast({ title: 'Salve o atestado antes', description: 'O link de verificação precisa do ID do documento.' })
+                              return
+                            }
+                            try {
+                              const info = await fetchSignatureInfo('MEDICAL_CERTIFICATE', String(cert.id))
+                              const pageUrl = info?.verificationPageUrl ?? (info?.signatureHash ? `/verify/${info.signatureHash}` : null)
+                              if (!pageUrl || !info?.signed) {
+                                toast({ title: 'Sem verificação', description: 'Atestado ainda não foi assinado.' })
+                                return
+                              }
+                              const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${pageUrl}` : pageUrl
+                              await navigator.clipboard.writeText(shareUrl)
+                              toast({ title: 'Link copiado', description: 'Link da página de verificação copiado.' })
+                            } catch {
+                              toast({ title: 'Erro', description: 'Falha ao copiar link.', variant: 'destructive' })
+                            }
+                          }}
+                        >
+                          <Share2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>

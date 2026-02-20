@@ -56,17 +56,6 @@ export async function POST(
     // Obter dados do médico
     const doctor = await prisma.user.findUnique({
       where: { id: validated.doctorId },
-      include: {
-        person: {
-          include: {
-            addresses: {
-              include: {
-                address: true,
-              },
-            },
-          },
-        },
-      },
     })
 
     if (!doctor) {
@@ -81,14 +70,11 @@ export async function POST(
     if (validated.patientId) {
       patient = await prisma.patient.findUnique({
         where: { id: validated.patientId },
-        include: {
-          addresses: true,
-        },
       })
     }
 
-    // Preparar contexto de dados
-    const doctorAddress = doctor.person?.addresses?.[0]?.address
+    // Preparar contexto de dados (sem endereço do médico já que Person foi removido)
+    const doctorAddress = null
 
     const context: TemplateDataContext = {
       clinic: {
@@ -110,10 +96,10 @@ export async function POST(
         licenseState: doctor.licenseState || undefined,
         phone: doctor.phone || undefined,
         email: doctor.email || undefined,
-        address: doctorAddress?.street ?? undefined,
-        city: doctorAddress?.city ?? undefined,
-        state: doctorAddress?.state ?? undefined,
-        zipCode: doctorAddress?.zipCode ?? undefined,
+        address: undefined, // Person model removed - use branding or custom data
+        city: undefined,
+        state: undefined,
+        zipCode: undefined,
       },
       patient: patient
         ? {
@@ -123,10 +109,11 @@ export async function POST(
             cpf: patient.cpf || undefined,
             birthDate: patient.birthDate,
             gender: patient.gender ? String(patient.gender) : undefined,
-            address: patient.addresses?.[0]?.street ?? undefined,
-            city: patient.addresses?.[0]?.city ?? undefined,
-            state: patient.addresses?.[0]?.state ?? undefined,
-            zipCode: patient.addresses?.[0]?.zipCode ?? undefined,
+            // Patient.address is now a single text field
+            address: patient.address ?? undefined,
+            city: undefined,
+            state: undefined,
+            zipCode: undefined,
           }
         : undefined,
       document: {

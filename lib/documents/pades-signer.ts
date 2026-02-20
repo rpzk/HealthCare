@@ -16,6 +16,7 @@
 
 import { SignPdf } from '@signpdf/signpdf'
 import { P12Signer } from '@signpdf/signer-p12'
+import { SUBFILTER_ETSI_CADES_DETACHED, SUBFILTER_ADOBE_PKCS7_DETACHED } from '@signpdf/utils'
 import { PDFDocument, PDFName, PDFDict, PDFHexString, PDFString, PDFArray, PDFNumber } from 'pdf-lib'
 import * as forge from 'node-forge'
 import * as fs from 'fs'
@@ -57,6 +58,34 @@ const DEFAULT_SIGNING_OPTIONS: SigningOptions = {
   reason: 'Documento assinado digitalmente',
   location: 'Brasil',
   includeTimestamp: false,
+}
+
+/** SubFilter para PAdES. Padrão: adbe.pkcs7.detached (compatível com validar.iti.gov.br e Adobe AATL/ICP-Brasil). Use PADES_SUBFILTER=etsi para ETSI.CAdES.detached. */
+function getPadesSubFilter(): string {
+  const env = process.env.PADES_SUBFILTER?.toLowerCase()
+  return env === 'etsi' ? SUBFILTER_ETSI_CADES_DETACHED : SUBFILTER_ADOBE_PKCS7_DETACHED
+}
+
+/**
+ * Retorna a quantidade de certificados no P12 (signatário + cadeia).
+ * O @signpdf/signer-p12 já inclui TODOS os certs do P12 no PKCS#7.
+ * Para validação no ITI, o .pfx deve conter a cadeia completa (exportar com "incluir cadeia").
+ */
+export function getCertificateChainCount(pfxBuffer: Buffer, password: string): number {
+  try {
+    const pfxAsn1 = forge.asn1.fromDer(pfxBuffer.toString('binary'))
+    const p12 = forge.pkcs12.pkcs12FromAsn1(pfxAsn1, password)
+    const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag]
+    const count = certBags?.length ?? 0
+    if (count <= 1) {
+      logger.warn('[PAdES] O .pfx contém apenas 1 certificado. Para validação no ITI, exporte o certificado com "incluir cadeia completa" (AC intermediária + raiz).')
+    } else {
+      logger.info('[PAdES] Cadeia no P12:', { certCount: count })
+    }
+    return count
+  } catch {
+    return 0
+  }
 }
 
 /**
@@ -256,6 +285,10 @@ export async function signPdfWithPAdES(
   const pfxBuffer = fs.readFileSync(pfxPath)
   
   // 2. Validar certificado
+  const chainCount = getCertificateChainCount(pfxBuffer, pfxPassword)
+  if (chainCount <= 1) {
+    throw new Error('CERTIFICATE_CHAIN_INCOMPLETE: o .pfx não contém a cadeia completa (AC intermediária + raiz). Reexporte com “incluir cadeia completa”.')
+  }
   const validation = validateCertificate(pfxBuffer, pfxPassword)
   if (!validation.valid) {
     throw new Error(`Certificado inválido: ${validation.errors.join('; ')}`)
@@ -272,13 +305,14 @@ export async function signPdfWithPAdES(
   
   let pdfWithPlaceholder: Buffer
   try {
-    pdfWithPlaceholder = plainAddPlaceholder({
+  pdfWithPlaceholder = plainAddPlaceholder({
       pdfBuffer,
       reason: opts.reason || 'Documento assinado digitalmente',
       location: opts.location || 'Brasil',
       signatureLength: 16384, // Espaço suficiente para certificado + cadeia ICP-Brasil
       contactInfo: opts.contactInfo || '',
       name: opts.name || validation.info?.name || 'Assinante',
+      subFilter: getPadesSubFilter(),
     })
     
     logger.info('[PAdES] Placeholder adicionado', {
@@ -433,6 +467,7 @@ export async function signPdfWithPAdESFromBuffer(
     signatureLength: 16384,
     contactInfo: opts.contactInfo || '',
     name: validation.info?.name || 'Assinante',
+    subFilter: getPadesSubFilter(),
   })
   
   // 5. Assinar
@@ -456,4 +491,254 @@ export async function signPdfWithPAdESFromBuffer(
       hashAlgorithm: 'SHA-256',
     },
   }
+}
+// ============================================
+// Integração com TSA (Time Stamping Authority)
+// Conformidade PAdES-T (PDF Advanced Electronic Signatures - Timestamp)
+// ============================================
+
+import { getTimestamp, TimestampResponse } from './tsa-service'
+import { validateCertificateForSigning } from './ocsp-service'
+
+export interface PAdESTSignatureResult extends PAdESSignatureResult {
+  timestamp?: {
+    tokenBase64: string
+    generationTime?: Date
+    tsaName?: string
+    authority: string
+  }
+}
+
+/**
+ * Assina PDF com certificado A1 e adiciona carimbo de tempo (PAdES-T)
+ * 
+ * Conformidade:
+ * - PAdES-T: Assinatura com timestamp RFC 3161
+ * - CFM 2.218/2018: Requisito NGS2 para validade jurídica plena
+ * - ICP-Brasil DOC-ICP-11: Carimbo de tempo
+ */
+export async function signPdfWithPAdEST(
+  pdfBuffer: Buffer,
+  pfxPath: string,
+  pfxPassword: string,
+  options: SigningOptions & { 
+    checkRevocation?: boolean 
+    requireTimestamp?: boolean 
+  } = {}
+): Promise<PAdESTSignatureResult> {
+  const opts = { 
+    ...DEFAULT_SIGNING_OPTIONS, 
+    includeTimestamp: true,
+    ...options 
+  }
+  
+  logger.info('[PAdES-T] Iniciando assinatura com timestamp', {
+    pdfSize: pdfBuffer.length,
+    pfxPath: pfxPath.split('/').pop(),
+    checkRevocation: opts.checkRevocation,
+  })
+  
+  // 1. Ler certificado
+  const pfxBuffer = fs.readFileSync(pfxPath)
+  
+  // 2. Verificar revogação (se habilitado)
+  if (opts.checkRevocation) {
+    logger.info('[PAdES-T] Verificando status de revogação do certificado')
+    const revocationCheck = await validateCertificateForSigning(pfxBuffer, pfxPassword)
+    
+    if (!revocationCheck.valid) {
+      throw new Error(`Certificado inválido para assinatura: ${revocationCheck.errors.join('; ')}`)
+    }
+    
+    if (revocationCheck.warnings.length > 0) {
+      logger.warn('[PAdES-T] Avisos do certificado:', revocationCheck.warnings)
+    }
+  }
+  
+  // 3. Validar certificado (estrutura e validade)
+  const validation = validateCertificate(pfxBuffer, pfxPassword)
+  if (!validation.valid) {
+    throw new Error(`Certificado inválido: ${validation.errors.join('; ')}`)
+  }
+  
+  // 4. Calcular hash do PDF original
+  const originalHash = crypto.createHash('sha256').update(pdfBuffer).digest('hex')
+  
+  // 5. Criar signer e assinar (PAdES-B primeiro)
+  const signer = new P12Signer(pfxBuffer, { passphrase: pfxPassword })
+  
+  const { plainAddPlaceholder } = await import('@signpdf/placeholder-plain')
+  
+  const pdfWithPlaceholder = plainAddPlaceholder({
+    pdfBuffer,
+    reason: opts.reason || 'Documento assinado digitalmente',
+    location: opts.location || 'Brasil',
+    signatureLength: 16384,
+    contactInfo: opts.contactInfo || '',
+    name: opts.name || validation.info?.name || 'Assinante',
+    subFilter: getPadesSubFilter(),
+  })
+  
+  const signPdf = new SignPdf()
+  const signedPdf = await signPdf.sign(pdfWithPlaceholder, signer)
+  
+  // 6. Obter carimbo de tempo (TSA)
+  let timestampResult: TimestampResponse | null = null
+  
+  try {
+    logger.info('[PAdES-T] Solicitando carimbo de tempo')
+    timestampResult = await getTimestamp(signedPdf)
+    
+    if (!timestampResult.success) {
+      const message = `Falha ao obter carimbo de tempo: ${timestampResult.error}`
+      if (opts.requireTimestamp) {
+        throw new Error(message)
+      }
+      logger.warn('[PAdES-T]', message)
+    } else {
+      logger.info('[PAdES-T] Carimbo de tempo obtido com sucesso', {
+        generationTime: timestampResult.generationTime?.toISOString(),
+      })
+    }
+  } catch (tsaError: any) {
+    const message = `Erro na TSA: ${tsaError.message}`
+    if (opts.requireTimestamp) {
+      throw new Error(message)
+    }
+    logger.warn('[PAdES-T]', message)
+  }
+  
+  // 7. Montar resultado
+  const certInfo = validation.info!
+  const signatureValue = extractPkcs7FromSignedPdf(signedPdf)
+  
+  const result: PAdESTSignatureResult = {
+    signedPdf,
+    signature: {
+      value: signatureValue,
+      algorithm: 'SHA256withRSA',
+      signedAt: new Date(),
+    },
+    certificate: certInfo,
+    document: {
+      hash: originalHash,
+      hashAlgorithm: 'SHA-256',
+    },
+  }
+  
+  // Adicionar informações do timestamp se obtido
+  if (timestampResult?.success && timestampResult.tokenBase64) {
+    result.timestamp = {
+      tokenBase64: timestampResult.tokenBase64,
+      generationTime: timestampResult.generationTime,
+      tsaName: timestampResult.tsaName,
+      authority: process.env.TSA_URL || 'configured-tsa',
+    }
+  }
+  
+  return result
+}
+
+/**
+ * Verifica se um PDF tem carimbo de tempo válido
+ */
+export function hasPdfTimestamp(pdfBuffer: Buffer): boolean {
+  const pdfString = pdfBuffer.toString('binary')
+  // Procurar por estrutura de timestamp (simplificado)
+  return /\/Type\s*\/DocTimeStamp/.test(pdfString) ||
+         /\/SubFilter\s*\/ETSI\.RFC3161/.test(pdfString) ||
+         /1\.2\.840\.113549\.1\.9\.16\.2\.14/.test(pdfString) // OID id-aa-signatureTimeStampToken
+}
+
+// ============================================
+// PAdES-T com DocTimeStamp embutido no PDF
+// ============================================
+
+import { appendDocTimeStampToPdf } from './doc-timestamp'
+
+/**
+ * Assina PDF com PAdES-B e, se TSA estiver configurada, incorpora DocTimeStamp
+ * no próprio PDF (PAdES-T) para validação de longo prazo no ITI.
+ *
+ * - Cadeia: o @signpdf/signer-p12 já inclui todos os certificados do P12 no PKCS#7.
+ *   Para ITI, exporte o .pfx com "incluir cadeia completa".
+ * - Timestamp: quando TSA_URL (ou TSA em dev) está definida, o token RFC 3161
+ *   é anexado como assinatura DocTimeStamp (SubFilter ETSI.RFC3161) no PDF.
+ */
+export async function signPdfWithPAdESAndOptionalTimestamp(
+  pdfBuffer: Buffer,
+  pfxPath: string,
+  pfxPassword: string,
+  options: SigningOptions & { includeTimestamp?: boolean } = {}
+): Promise<PAdESTSignatureResult> {
+  const opts = { ...DEFAULT_SIGNING_OPTIONS, ...options }
+
+  const pfxBuffer = fs.readFileSync(pfxPath)
+  getCertificateChainCount(pfxBuffer, pfxPassword)
+
+  const validation = validateCertificate(pfxBuffer, pfxPassword)
+  if (!validation.valid) {
+    throw new Error(`Certificado inválido: ${validation.errors.join('; ')}`)
+  }
+
+  const signer = new P12Signer(pfxBuffer, { passphrase: pfxPassword })
+  const { plainAddPlaceholder } = await import('@signpdf/placeholder-plain')
+  const pdfWithPlaceholder = plainAddPlaceholder({
+    pdfBuffer,
+    reason: opts.reason || 'Documento assinado digitalmente',
+    location: opts.location || 'Brasil',
+    signatureLength: 16384,
+    contactInfo: opts.contactInfo || '',
+    name: opts.name || validation.info?.name || 'Assinante',
+    subFilter: getPadesSubFilter(),
+  })
+
+  const signPdf = new SignPdf()
+  let signedPdf = await signPdf.sign(pdfWithPlaceholder, signer)
+
+  let timestampResult: TimestampResponse | null = null
+  const wantTimestamp = opts.includeTimestamp !== false
+
+  if (wantTimestamp) {
+    try {
+      const ts = await getTimestamp(signedPdf)
+      if (ts.success && ts.token && ts.token.length > 0) {
+        timestampResult = ts
+        signedPdf = appendDocTimeStampToPdf(signedPdf, ts.token)
+        logger.info('[PAdES-T] DocTimeStamp incorporado ao PDF', {
+          generationTime: ts.generationTime?.toISOString(),
+        })
+      } else if (ts.error) {
+        logger.warn('[PAdES-T] TSA não disponível:', ts.error)
+      }
+    } catch (err: any) {
+      logger.warn('[PAdES-T] Erro ao obter carimbo de tempo:', err?.message)
+    }
+  }
+
+  const certInfo = validation.info!
+  const signatureValue = extractPkcs7FromSignedPdf(signedPdf)
+  const originalHash = crypto.createHash('sha256').update(pdfBuffer).digest('hex')
+
+  const result: PAdESTSignatureResult = {
+    signedPdf,
+    signature: {
+      value: signatureValue,
+      algorithm: 'SHA256withRSA',
+      signedAt: new Date(),
+    },
+    certificate: certInfo,
+    document: { hash: originalHash, hashAlgorithm: 'SHA-256' },
+  }
+
+  if (timestampResult?.success && timestampResult.tokenBase64) {
+    result.timestamp = {
+      tokenBase64: timestampResult.tokenBase64,
+      generationTime: timestampResult.generationTime,
+      tsaName: timestampResult.tsaName,
+      authority: process.env.TSA_URL || 'configured-tsa',
+    }
+  }
+
+  return result
 }

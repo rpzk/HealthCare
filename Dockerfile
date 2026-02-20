@@ -59,6 +59,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 RUN mkdir -p /app/data /app/uploads /app/uploads/certificates /app/uploads/recordings /app/backups && \
     chown -R nextjs:nodejs /app/data /app/uploads /app/backups /app/.puppeteer
 
+# PDFKit (Next.js bundle) precisa dos AFMs das fontes padrão
+RUN mkdir -p /app/.next/server/chunks/data && \
+    cp -r /app/node_modules/pdfkit/js/data/* /app/.next/server/chunks/data/
+
 RUN chmod +x ./scripts/docker-entrypoint.sh
 
 USER nextjs

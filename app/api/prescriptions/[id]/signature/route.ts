@@ -11,11 +11,21 @@ export const GET = withAuth(async (_req, { params, user }) => {
     logger.warn('[SignatureCheck] prescriptions GET', { id, ip: String(_req.headers.get('x-forwarded-for') || _req.headers.get('x-real-ip') || _req.headers.get('x-cluster-client-ip') || 'unknown'), user: user?.id })
     if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
 
-    // Only the signing doctor or admins can view signature details
-    // We check ownership via the prescription itself first
-    const prescription = await prisma.prescription.findUnique({ where: { id } })
+    // Doctor, admin, or the patient can view signature details
+    const prescription = await prisma.prescription.findUnique({ 
+      where: { id },
+      include: { patient: { select: { id: true, userId: true } } }
+    })
     if (!prescription) return NextResponse.json({ error: 'Prescrição não encontrada' }, { status: 404 })
-    if (prescription.doctorId !== user.id && user.role !== 'ADMIN') {
+    
+    const isDoctor = prescription.doctorId === user.id
+    const isAdmin = user.role === 'ADMIN'
+    const isPatient = user.role === 'PATIENT' && (
+      prescription.patient?.userId === user.id || 
+      user.patientId === prescription.patientId
+    )
+    
+    if (!isDoctor && !isAdmin && !isPatient) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
@@ -56,6 +66,7 @@ export const GET = withAuth(async (_req, { params, user }) => {
       reason,
       signatureHash: signed.signatureHash,
       verificationUrl: `/api/digital-signatures/validate/${signed.signatureHash}`,
+      verificationPageUrl: `/verify/${signed.signatureHash}`,
       signedAt: signed.signedAt,
       signatureAlgorithm: signed.signatureAlgorithm,
       isValid: signed.isValid,

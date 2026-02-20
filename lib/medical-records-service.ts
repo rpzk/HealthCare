@@ -1,4 +1,4 @@
-﻿import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { Prisma, RecordType } from '@prisma/client'
 import { logger } from '@/lib/logger'
 
@@ -48,7 +48,7 @@ export class MedicalRecordsService {
 
       if (patientId) where.patientId = patientId;
       if (doctorId) where.doctorId = doctorId;
-      
+
       if (type && type !== 'ALL') {
         where.recordType = type as RecordType;
       }
@@ -103,7 +103,7 @@ export class MedicalRecordsService {
         })
       ]);
 
-      return { 
+      return {
         records: medicalRecords,
         pagination: {
           page,
@@ -123,26 +123,67 @@ export class MedicalRecordsService {
    */
   static async createMedicalRecord(data: MedicalRecordCreateData) {
     try {
-      return await prisma.medicalRecord.create({
-        data: {
-          ...data,
-          recordType: data.recordType as RecordType,
-        },
-        include: {
-          patient: {
-            select: {
-              id: true,
-              name: true
-            }
+      const { signCertificate } = await import('@/lib/signature-service')
+
+      return await prisma.$transaction(async (tx) => {
+        // 1. Criar o Prontuário
+        const record = await tx.medicalRecord.create({
+          data: {
+            ...data,
+            recordType: data.recordType as RecordType,
           },
-          doctor: {
-            select: {
-              id: true,
-              name: true
-            }
+          include: {
+            patient: { select: { id: true, name: true, cpf: true } },
+            doctor: { select: { id: true, name: true, crmNumber: true } }
           }
+        })
+
+        // 2. Preparar dados para assinatura
+        const dataToSign = JSON.stringify({
+          recordId: record.id,
+          patientId: record.patientId,
+          doctorId: record.doctorId,
+          title: record.title,
+          description: record.description,
+          diagnosis: record.diagnosis,
+          treatment: record.treatment,
+          createdAt: record.createdAt.toISOString()
+        })
+
+        // 3. Assinar o prontuário
+        let signature = null
+        let signatureMethod = 'NONE'
+        try {
+          // Usa PKI_LOCAL como padrão (pode evoluir para ICP_BRASIL)
+          const signResult = signCertificate(dataToSign, 'PKI_LOCAL')
+          signature = signResult.signature
+          signatureMethod = signResult.method
+        } catch (error) {
+          logger.warn('Falha ao assinar prontuário digitalmente:', error)
         }
-      });
+
+        // 4. Salvar Assinatura se tiver sucesso
+        if (signature) {
+          await tx.medicalRecordSignature.create({
+            data: {
+              medicalRecordId: record.id,
+              signerId: data.doctorId,
+              signatureType: signatureMethod,
+              signatureHash: signature,
+              certificateInfo: { signedBy: 'HealthCare Local', signedAt: new Date().toISOString() }
+            }
+          })
+
+          // Atualiza status do Prontuário indicando assinatura
+          await tx.medicalRecord.update({
+            where: { id: record.id },
+            data: { signedDocumentId: signatureMethod } // Usando isso temporariamente para mostrar UI
+          })
+        }
+
+        return record
+      })
+
     } catch (error) {
       logger.error({ error }, '[MedicalRecordsService] Error creating medical record')
       throw error
@@ -155,7 +196,7 @@ export class MedicalRecordsService {
   static async getMedicalRecordById(id: string) {
     try {
       return await prisma.medicalRecord.findFirst({
-        where: { 
+        where: {
           id,
           deletedAt: null
         },
@@ -163,7 +204,8 @@ export class MedicalRecordsService {
           patient: true,
           doctor: true,
           attachments: true,
-          aiAnalysis: true
+          aiAnalysis: true,
+          signatures: true
         }
       });
     } catch (error) {

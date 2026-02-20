@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { useAutoPrint } from '@/hooks/use-auto-print'
 import { 
   TestTube, 
   User, 
@@ -27,7 +26,7 @@ import {
   XCircle,
   Link as LinkIcon,
   Loader2,
-  Printer,
+  Download,
   Share2,
   FileCheck
 } from 'lucide-react'
@@ -77,11 +76,6 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
 
   // Auto-print when ?print=1 is in URL
-  const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
-  useAutoPrint({
-    isReady: !loading && !!data,
-    canPrint: canPrintNow
-  })
 
   const fetchExamRequest = useCallback(async () => {
     try {
@@ -252,18 +246,6 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
     }
   }
 
-  const handlePrint = () => {
-    if (!isSigned && requireSignBeforePrint) {
-      toast({
-        title: 'Assinatura necessária',
-        description: 'Esta solicitação deve ser assinada antes de imprimir',
-        variant: 'destructive'
-      })
-      return
-    }
-    window.print()
-  }
-
   const handleShare = () => {
     if (!isSigned && requireSignBeforePrint) {
       toast({
@@ -420,9 +402,9 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
                   onClick: () => setShowResultDialog(true),
                 },
                 {
-                  label: 'Imprimir',
-                  icon: <Printer className="h-4 w-4" />,
-                  onClick: handlePrint,
+                  label: 'Baixar PDF',
+                  icon: <Download className="h-4 w-4" />,
+                  onClick: () => window.open(`/api/documents/${id}/pdf`, '_blank'),
                 },
                 {
                   label: 'Compartilhar',

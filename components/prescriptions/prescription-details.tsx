@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Loader2, Link as LinkIcon, Printer, FileText } from 'lucide-react'
-import { useAutoPrint } from '@/hooks/use-auto-print'
+import { Loader2, Link as LinkIcon, FileText, Share2, Mail, MessageCircle } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
 
 interface Medication {
   name: string
@@ -20,7 +20,7 @@ interface Medication {
 
 interface PrescriptionDetail {
   id: string
-  patient: { id: string; name: string; cpf?: string }
+  patient: { id: string; name: string; cpf?: string; email?: string | null }
   doctor: { id: string; name: string; speciality?: string; crmNumber?: string }
   medications: Medication[]
   notes?: string
@@ -32,7 +32,6 @@ interface PrescriptionDetail {
 
 export default function PrescriptionDetails({ id }: { id: string }) {
   const router = useRouter()
-  const printRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [signing, setSigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,13 +53,10 @@ export default function PrescriptionDetails({ id }: { id: string }) {
       notAfter?: string
     }
   } | null>(null)
-
-  // Auto-print when ?print=1 is in URL
-  const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
-  useAutoPrint({
-    isReady: !loading && !!data,
-    canPrint: canPrintNow
-  })
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [showEmailDialog, setShowEmailDialog] = useState(false)
+  const [emailToSend, setEmailToSend] = useState('')
+  const [loadingShareLink, setLoadingShareLink] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -159,8 +155,54 @@ export default function PrescriptionDetails({ id }: { id: string }) {
   if (error) return <div className="text-red-600 p-4">Erro: {error}</div>
   if (!data) return <div className="p-4">Não encontrado</div>
 
-  const handlePrint = () => {
-    window.print()
+
+  const handleCopyShareLink = async () => {
+    setLoadingShareLink(true)
+    try {
+      const res = await fetch(`/api/prescriptions/${id}/share-link`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast({ title: 'Erro', description: data?.error || 'Não foi possível gerar o link.', variant: 'destructive' })
+        return
+      }
+      const url = data?.url
+      if (url) {
+        await navigator.clipboard.writeText(url)
+        toast({ title: 'Link copiado', description: 'Envie este link ao paciente (WhatsApp, etc.). Ele abre o PDF sem precisar logar. Válido por 7 dias.' })
+      }
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao copiar link.', variant: 'destructive' })
+    } finally {
+      setLoadingShareLink(false)
+    }
+  }
+
+  const handleSendEmail = async (email?: string) => {
+    const to = email || emailToSend || (data?.patient as { email?: string })?.email
+    if (!to?.trim()) {
+      setShowEmailDialog(true)
+      return
+    }
+    setSendingEmail(true)
+    try {
+      const res = await fetch(`/api/prescriptions/${id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: to.trim(), method: 'email' }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast({ title: 'Erro ao enviar', description: json?.error || 'Tente novamente.', variant: 'destructive' })
+        return
+      }
+      toast({ title: 'E-mail enviado', description: `Receita enviada para ${to}. O paciente recebe o PDF em anexo quando disponível.` })
+      setShowEmailDialog(false)
+      setEmailToSend('')
+    } catch {
+      toast({ title: 'Erro ao enviar', description: 'Falha de conexão.', variant: 'destructive' })
+    } finally {
+      setSendingEmail(false)
+    }
   }
 
   const formatDateTime = (date: string | Date) => {
@@ -173,185 +215,108 @@ export default function PrescriptionDetails({ id }: { id: string }) {
     })
   }
 
-  // Generate full verification URL
-  const fullVerificationUrl = typeof window !== 'undefined' && verificationUrl 
-    ? `${window.location.origin}${verificationUrl}` 
-    : ''
-
   return (
     <>
-      {/* Print-only version - hidden on screen */}
-      <div ref={printRef} className="print-area hidden print:block">
-        <div className="max-w-[700px] mx-auto p-4" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-          {/* Header with doctor info */}
-          <div className="text-center border-b-2 border-gray-800 pb-3 mb-4">
-            <h1 className="text-xl font-bold">{data.doctor.name}</h1>
-            {data.doctor.crmNumber && <p className="text-sm">CRM: {data.doctor.crmNumber}</p>}
-            {data.doctor.speciality && <p className="text-sm">{data.doctor.speciality}</p>}
-            <p className="text-xs text-gray-600 mt-1">{clinicInfo.name || 'Clínica Médica'}</p>
-            {clinicInfo.address && <p className="text-xs text-gray-600">{clinicInfo.address}</p>}
-          </div>
-
-          {/* Patient Info */}
-          <div className="mb-4 p-2 bg-gray-50 border rounded">
-            <p className="text-sm"><strong>Nome:</strong> {data.patient.name}</p>
-            {data.patient.cpf && <p className="text-sm"><strong>CPF:</strong> {data.patient.cpf}</p>}
-          </div>
-
-          {/* Medications */}
-          <div className="mb-6">
-            {data.medications.map((m, i) => (
-              <div key={i} className="mb-4 pb-2 border-b border-gray-200">
-                <p className="font-bold text-sm">{m.name}</p>
-                <p className="text-xs">- {m.dosage}</p>
-                <p className="text-xs">{m.frequency}</p>
-                <p className="text-xs">Duração: {m.duration}</p>
-                {m.instructions && <p className="text-xs italic mt-1">{m.instructions}</p>}
-              </div>
-            ))}
-          </div>
-
-          {/* Notes */}
-          {data.notes && (
-            <div className="mb-4 p-2 bg-gray-50 border rounded text-sm">
-              <p>{data.notes}</p>
-            </div>
-          )}
-
-          {/* Date and signature section */}
-          <div className="mt-6 pt-4 border-t-2 border-gray-800">
-            <div className="flex justify-between items-start">
-              {/* Left: Date and signature info */}
-              <div className="flex-1">
-                <p className="text-sm mb-4">
-                  <strong>Data e hora:</strong> {formatDateTime(signatureData?.signedAt || data.createdAt)}
-                </p>
-                
-                {/* Signature line */}
-                <div className="mt-6">
-                  <div className="w-56 border-t border-gray-800 pt-1">
-                    <p className="font-semibold text-sm">{data.doctor.name}</p>
-                    {data.doctor.crmNumber && <p className="text-xs">CRM {data.doctor.crmNumber}</p>}
-                  </div>
-                </div>
-
-                {/* Digital signature info */}
-                {isSigned && (
-                  <div className="mt-4 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                    <p className="font-bold text-green-800">✓ Documento Assinado Digitalmente</p>
-                    <p className="text-green-700 mt-1">
-                      Assinado por: {signatureData?.certificate?.subject || data.doctor.name}
-                    </p>
-                    {signatureData?.signedAt && (
-                      <p className="text-green-700">
-                        Em: {formatDateTime(signatureData.signedAt)}
-                      </p>
-                    )}
-                    {signatureData?.certificate?.issuer && (
-                      <p className="text-green-700 text-[10px] mt-1">
-                        Emissor: {signatureData.certificate.issuer}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Right: QR Code for verification */}
-              {isSigned && fullVerificationUrl && (
-                <div className="ml-4 text-center">
-                  <div className="border-2 border-gray-800 p-1 inline-block bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(fullVerificationUrl)}`}
-                      alt="QR Code para verificação"
-                      width={100}
-                      height={100}
-                      style={{ display: 'block' }}
-                    />
-                  </div>
-                  <p className="text-[9px] mt-1 text-gray-600 max-w-[110px]">
-                    Escaneie para validar a assinatura
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer with validation info */}
-          <div className="mt-4 pt-2 border-t text-[9px] text-gray-500">
-            <p className="text-center">
-              Para validar este documento, acesse: {fullVerificationUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/api/digital-signatures/validate`}
-            </p>
-            <p className="text-center mt-1">
-              ID do documento: {data.id}
-              {signatureData?.signatureHash && ` | Hash: ${signatureData.signatureHash.slice(0, 16)}...`}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Screen version */}
-      <div className="space-y-4 print:hidden">
+      <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Prescrição #{data.id}</h3>
           <p className="text-sm text-gray-600">Paciente: {data.patient.name} • Médico: {data.doctor.name}</p>
         </div>
-        <div className="space-x-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="default"
+            onClick={() => window.open(`/api/prescriptions/${id}/pdf`, '_blank')}
+            disabled={loading}
+            title="Baixar o PDF da receita (documento assinado digitalmente; não use impressão para preservar a assinatura)."
+            className="gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Baixar PDF
+          </Button>
           {!data.digitalSignature && (
             <Button 
               onClick={() => setShowPasswordDialog(true)} 
               disabled={signing}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white gap-2"
             >
-              {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar Digitalmente'}
+              {signing ? (<><Loader2 className="h-4 w-4 animate-spin" />Assinando...</>) : <>Assinar Digitalmente</>}
             </Button>
           )}
           <Button
             variant="outline"
-            onClick={handlePrint}
-            disabled={!isSigned && requireSignBeforePrint || loading}
-            title={!isSigned && requireSignBeforePrint ? 'Assine antes de imprimir' : undefined}
+            onClick={() => handleSendEmail()}
+            disabled={loading || sendingEmail}
+            title="Envia a receita por e-mail ao paciente (com PDF em anexo quando disponível)."
             className="gap-2"
           >
-            <Printer className="h-4 w-4" />
-            Imprimir
+            {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            Enviar por e-mail
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleCopyShareLink}
+            disabled={loading || loadingShareLink}
+            title="Gera um link que o paciente pode abrir no celular (ex.: WhatsApp) para ver o PDF sem precisar logar. Válido 7 dias."
+            className="gap-2"
+          >
+            {loadingShareLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+            Link para enviar ao paciente
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+              if (!signatureData?.signatureHash) return
+              const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/verify/${signatureData.signatureHash}` : ''
               if ((navigator as any)?.share) {
-                (navigator as any).share({ title: 'Prescrição', url: shareUrl }).catch(() => {})
+                (navigator as any).share({ title: 'Conferência de assinatura (sistema)', url: shareUrl }).catch(() => {})
               } else {
-                try { navigator.clipboard.writeText(shareUrl) } catch {}
-                alert('Link copiado para a área de transferência')
+                try {
+                  navigator.clipboard.writeText(shareUrl)
+                  toast({ title: 'Link copiado', description: 'Link de conferência no sistema. Para validade oficial, o paciente deve usar o PDF no validar.iti.gov.br.' })
+                } catch {}
               }
             }}
-            disabled={!isSigned && requireSignBeforePrint || loading}
-            title={!isSigned && requireSignBeforePrint ? 'Assine antes de compartilhar' : undefined}
+            disabled={(!isSigned && requireSignBeforePrint) || loading || !signatureData?.signatureHash}
+            title="Copiar link de conferência no sistema (não mostra o documento; para validade oficial use o PDF no validar.iti.gov.br)"
+            className="gap-2"
           >
-            Compartilhar
+            <Share2 className="h-4 w-4" />
+            Compartilhar link (conferência)
           </Button>
-          <Button variant="outline" onClick={() => router.push(`/prescriptions/${id}/edit`)} disabled={loading}>Editar</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (isSigned) {
+                toast({
+                  title: 'Edição bloqueada',
+                  description: 'Esta prescrição já foi assinada digitalmente. Para alterações, crie uma nova prescrição.',
+                  variant: 'destructive',
+                })
+                return
+              }
+              router.push(`/prescriptions/${id}/edit`)
+            }}
+            disabled={loading}
+          >
+            Editar
+          </Button>
         </div>
       </div>
 
       {isSigned && (
-        <div className="bg-green-50 border border-green-200 p-3 rounded-md flex items-center text-green-800 text-sm">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <div className="flex items-center gap-3">
-            <span>Assinatura registrada no sistema.</span>
-            {verificationUrl && (
-              <Button
-                variant="link"
-                className="text-green-700 underline p-0 h-auto"
-                onClick={() => window.open(verificationUrl!, '_blank')}
-              >
-                <LinkIcon className="w-4 h-4 mr-1" /> Verificar
-              </Button>
-            )}
-          </div>
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-md flex items-center flex-wrap gap-2 text-green-800 dark:text-green-200 text-sm">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>Assinatura registrada no sistema.</span>
+          {signatureData?.signatureHash && (
+            <Button
+              variant="link"
+              className="text-green-700 dark:text-green-300 underline p-0 h-auto font-medium"
+              onClick={() => window.open(`/verify/${signatureData.signatureHash}`, '_blank')}
+            >
+              <LinkIcon className="w-4 h-4 mr-1" /> Ver resultado da verificação
+            </Button>
+          )}
         </div>
       )}
 
@@ -423,6 +388,40 @@ export default function PrescriptionDetails({ id }: { id: string }) {
                 disabled={!password || signing}
               >
                 {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar e Prosseguir'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: informar e-mail quando o paciente não tem e-mail cadastrado */}
+      <Dialog open={showEmailDialog} onOpenChange={(open) => { setShowEmailDialog(open); if (!open) setEmailToSend('') }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar receita por e-mail</DialogTitle>
+            <DialogDescription>
+              O paciente não possui e-mail cadastrado. Informe o e-mail para envio. A receita será enviada com o PDF em anexo (quando disponível).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="email-send">E-mail do destinatário</Label>
+              <Input
+                id="email-send"
+                type="email"
+                value={emailToSend}
+                onChange={(e) => setEmailToSend(e.target.value)}
+                placeholder="email@exemplo.com"
+                disabled={sendingEmail}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendEmail(emailToSend)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowEmailDialog(false)} disabled={sendingEmail}>
+                Cancelar
+              </Button>
+              <Button className="flex-1" onClick={() => handleSendEmail(emailToSend)} disabled={!emailToSend?.trim() || sendingEmail}>
+                {sendingEmail ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : 'Enviar'}
               </Button>
             </div>
           </div>

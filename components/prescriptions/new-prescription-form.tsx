@@ -73,6 +73,21 @@ export default function NewPrescriptionForm() {
     setPatientSearchText(`${patient.name} (${patient.email})`)
   }
 
+  // Adiciona medicamento não cadastrado (digitado pelo médico quando não encontra no catálogo)
+  const addCustomMedicationByName = (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setMedications(prev => [...prev, {
+      name: trimmed,
+      dosage: '',
+      frequency: '1x ao dia',
+      duration: '7 dias',
+      instructions: '',
+      type: 'custom',
+    }])
+    setMedicationSearch('')
+  }
+
   // Adiciona medicamento do catálogo com valores DEFAULT
   const addFromMedication = (med: MedicationSuggestion) => {
     // Preparar valores defaults melhorados
@@ -285,10 +300,11 @@ export default function NewPrescriptionForm() {
               value={medicationSearch}
               onChange={setMedicationSearch}
               onSelect={addFromMedication}
+              onAddCustom={addCustomMedicationByName}
               placeholder="Buscar medicamento por nome..."
             />
             <p className="text-xs text-muted-foreground mt-2">
-              Busque medicamentos do catálogo por nome, princípio ativo ou código SUS
+              Busque no catálogo ou, se não encontrar, use a opção &quot;Adicionar (não cadastrado)&quot; para prescrever pelo nome digitado
             </p>
           </TabsContent>
 

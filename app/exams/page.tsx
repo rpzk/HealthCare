@@ -25,7 +25,6 @@ import {
   Edit,
   Download,
   MoreVertical,
-  Printer
 } from 'lucide-react'
 
 interface ExamRequest {
@@ -301,11 +300,11 @@ export default function ExamsPage() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  title="Imprimir"
+                                  title="Baixar PDF"
                                   className="text-muted-foreground hover:text-primary"
-                                  onClick={() => window.open(`/exams/requests/${exam.id}?print=1`, '_blank')}
+                                  onClick={() => window.open(`/api/documents/${exam.id}/pdf`, '_blank')}
                                 >
-                                  <Printer className="h-4 w-4" />
+                                  <Download className="h-4 w-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 

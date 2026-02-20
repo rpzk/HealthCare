@@ -64,6 +64,7 @@ export interface PatientInfo {
   name: string           // Nome completo
   documentNumber: string // CPF ou outro documento legal
   documentType?: 'CPF' | 'RG' | 'CNS' | 'PASSPORT'
+  cpf?: string           // CPF (campo adicional CFM 2026)
   
   // Recomendados
   birthDate?: Date       // Data de nascimento
@@ -84,20 +85,22 @@ export interface PatientInfo {
 export interface MedicationItem {
   // Identificação (Lei 9.787/99 - DCB obrigatório)
   genericName: string         // Nome genérico (DCB) - OBRIGATÓRIO
+  name?: string               // Alias para genericName (compatibilidade CFM)
   brandName?: string          // Nome comercial (opcional)
   
   // Apresentação
   concentration: string       // Ex: "500mg", "10mg/mL"
-  pharmaceuticalForm: PharmaceuticalForm
+  pharmaceuticalForm?: PharmaceuticalForm
   
   // Quantidade
   quantity: number            // Quantidade numérica
-  quantityUnit: string        // Unidade (comprimido, frasco, etc.)
+  quantityUnit?: string       // Unidade (comprimido, frasco, etc.)
+  unit?: string               // Alias para quantityUnit (compatibilidade CFM)
   quantityWritten?: string    // Por extenso (OBRIGATÓRIO para controlados)
   
   // Posologia (DEVE ser técnica e específica)
   dosage: string              // Ex: "1 comprimido"
-  route: AdministrationRoute  // Via de administração
+  route?: AdministrationRoute // Via de administração
   frequency: string           // Ex: "a cada 8 horas"
   duration: string            // Ex: "por 7 dias"
   maxDailyDose?: string       // Ex: "não exceder 4g/dia"
@@ -177,7 +180,11 @@ export interface PrescriptionDocument {
   
   // Metadados
   issuedAt: Date
+  date?: Date                 // Alias para issuedAt (compatibilidade CFM)
   validUntil?: Date           // Validade (10 dias para antimicrobianos)
+  
+  // URL de verificação (QR Code)
+  verificationUrl?: string
   
   // Assinatura
   signatureInfo?: SignatureInfo

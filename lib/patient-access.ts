@@ -80,24 +80,6 @@ export async function checkPatientAccess(
     }
   }
 
-  // Fallback: acesso via convite já utilizado (antes do vínculo via care team estar presente)
-  const inviteLink = await prisma.patientInvite.findFirst({
-    where: {
-      patientId,
-      status: 'USED',
-      OR: [{ invitedById: userId }, { assignedDoctorId: userId }],
-    },
-    select: { id: true },
-  })
-
-  if (inviteLink) {
-    return {
-      hasAccess: true,
-      accessLevel: 'FULL',
-      reason: 'Acesso concedido via convite de cadastro do paciente',
-    }
-  }
-
   // Buscar se existe um membro primário na equipe e se o usuário é membro ativo
   const primary = await prisma.patientCareTeam.findFirst({
     where: { patientId, isPrimary: true, isActive: true }
@@ -423,15 +405,8 @@ export function getPatientAccessFilter(userId: string, userRole?: string) {
 
   return {
     OR: [
-      // Fallback: pacientes oriundos de convite onde o usuário é o criador ou médico escolhido
-      {
-        patientInvite: {
-          is: {
-            status: 'USED',
-            OR: [{ invitedById: userId }, { assignedDoctorId: userId }],
-          },
-        },
-      },
+      // Paciente vinculado ao usuário (criado por ele)
+      { userId },
       // É o médico responsável (via care team isPrimary)
       { careTeam: { some: { userId: userId, isPrimary: true } } },
       // Está na equipe de atendimento ativa

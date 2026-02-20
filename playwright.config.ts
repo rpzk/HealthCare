@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  testMatch: /.*\.spec\.ts/,
   projects: [
     {
       name: 'chromium',

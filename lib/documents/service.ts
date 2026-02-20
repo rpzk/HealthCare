@@ -42,6 +42,7 @@ import {
   isPdfSigned,
 } from './pades-signer'
 import { getCertificatePassword } from '@/lib/certificate-session'
+import { decryptField } from '@/lib/encryption'
 import crypto from 'crypto'
 import path from 'path'
 import fs from 'fs/promises'
@@ -146,6 +147,9 @@ async function getDoctorInfo(doctorId: string): Promise<DoctorInfo | null> {
         orderBy: { createdAt: 'desc' },
         take: 1,
       },
+      person: {
+        select: { cpf: true },
+      },
     },
   })
   
@@ -174,6 +178,8 @@ async function getDoctorInfo(doctorId: string): Promise<DoctorInfo | null> {
   
   // Obter certificado digital
   const cert = user.digitalCertificates?.[0]
+  const rawDoctorCpf = user.person?.cpf || null
+  const decryptedDoctorCpf = decryptField(rawDoctorCpf) || rawDoctorCpf || undefined
   
   return {
     name: user.name || 'Médico',
@@ -181,7 +187,7 @@ async function getDoctorInfo(doctorId: string): Promise<DoctorInfo | null> {
     crmState,
     specialty: user.speciality || undefined,
     rqe: undefined, // Adicionar ao User model se necessário
-    cpf: undefined, // Adicionar ao User model se necessário
+    cpf: decryptedDoctorCpf,
     address: '', // Deve vir do perfil ou clínica
     city: '', // Deve vir do perfil ou clínica
     phone: user.phone || undefined,
@@ -199,11 +205,13 @@ async function getPatientInfo(patientId: string): Promise<PatientInfo | null> {
   })
   
   if (!patient) return null
+  const rawCpf = patient.cpf || null
+  const decryptedCpf = decryptField(rawCpf) || rawCpf || ''
   
   return {
     name: patient.name,
     documentType: 'CPF',
-    documentNumber: patient.cpf || '',
+    documentNumber: decryptedCpf,
     birthDate: patient.birthDate ? new Date(patient.birthDate) : undefined,
     age: patient.birthDate ? calculateAge(new Date(patient.birthDate)) : undefined,
     address: patient.address || undefined,

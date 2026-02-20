@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { logger } from '@/lib/logger'
 import { PrescriptionsServiceDb } from '@/lib/prescriptions-service'
+import { prisma } from '@/lib/prisma'
 
 // GET /api/prescriptions/[id]
 export const GET = withAuth(async (_req, { params }) => {
@@ -20,6 +21,15 @@ export const GET = withAuth(async (_req, { params }) => {
 export const PATCH = withAuth(async (req, { params, user }) => {
   try {
     const { id } = params
+    const signed = await prisma.signedDocument.findFirst({
+      where: { documentType: 'PRESCRIPTION', documentId: id }
+    })
+    if (signed) {
+      return NextResponse.json(
+        { error: 'Prescrição assinada digitalmente não pode ser alterada (conformidade CFM).' },
+        { status: 403 }
+      )
+    }
     const body = await req.json()
     // Permite atualização parcial: se vier medications, validar formato básico
     if (body.medications && !Array.isArray(body.medications)) {

@@ -8,6 +8,7 @@ import {
 } from '@/lib/terms-enforcement'
 import { termsEnforcementErrorResponse } from '@/lib/terms-http'
 import { logger } from '@/lib/logger'
+import { pseudonymizeName, maskEmail, maskPhone } from '@/lib/masking'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -100,8 +101,22 @@ export async function GET(req: Request) {
       return acc
     }, {} as Record<string, number>)
 
+    // LGPD: Pseudonimizar dados de pacientes para admin
+    // Admin pode gerenciar o sistema mas não deve ter acesso irrestrito a dados pessoais de pacientes
+    const pseudonymizedUsers = users.map(user => {
+      if (user.role === 'PATIENT') {
+        return {
+          ...user,
+          name: pseudonymizeName(user.name),
+          email: maskEmail(user.email),
+          phone: user.phone ? maskPhone(user.phone) : null,
+        }
+      }
+      return user
+    })
+
     return NextResponse.json({
-      users,
+      users: pseudonymizedUsers,
       total,
       page,
       limit,

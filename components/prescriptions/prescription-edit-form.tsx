@@ -27,6 +27,7 @@ export default function PrescriptionEditForm({ id }: { id: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [signed, setSigned] = useState(false)
   const [patientId, setPatientId] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState('ACTIVE')
@@ -35,13 +36,20 @@ export default function PrescriptionEditForm({ id }: { id: string }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`/api/prescriptions/${id}`)
+        const [res, sigRes] = await Promise.all([
+          fetch(`/api/prescriptions/${id}`),
+          fetch(`/api/prescriptions/${id}/signature`).catch(() => null)
+        ])
         if (!res.ok) throw new Error('Falha ao carregar prescrição')
         const json: PrescriptionDetail = await res.json()
         setPatientId(json.patient.id)
         setNotes(json.notes || '')
         setStatus(json.status)
         setMedications(json.medications)
+        if (sigRes?.ok) {
+          const sig = await sigRes.json()
+          setSigned(!!sig?.signed)
+        }
       } catch (e) {
         setError((e as Error).message)
       } finally {
@@ -77,6 +85,22 @@ export default function PrescriptionEditForm({ id }: { id: string }) {
 
   if (loading) return <div>Carregando...</div>
   if (error) return <div className="text-red-600">Erro: {error}</div>
+
+  if (signed) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-6 space-y-4">
+        <p className="font-medium text-amber-900 dark:text-amber-200">
+          Esta prescrição já foi assinada digitalmente. Alterações não são permitidas (conformidade CFM e validade jurídica).
+        </p>
+        <p className="text-sm text-amber-800 dark:text-amber-300">
+          Para mudanças, crie uma nova prescrição. Você pode visualizar ou compartilhar o link de verificação desta prescrição na página de detalhes.
+        </p>
+        <Button type="button" variant="outline" onClick={() => router.push(`/prescriptions/${id}`)}>
+          Voltar para a prescrição
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <form onSubmit={submit} className="space-y-4">

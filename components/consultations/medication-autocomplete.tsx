@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Pill, AlertTriangle, Check, Loader2 } from 'lucide-react'
+import { Pill, AlertTriangle, Check, Loader2, Plus } from 'lucide-react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/logger'
@@ -33,6 +33,8 @@ interface MedicationAutocompleteProps {
   value: string
   onChange: (value: string) => void
   onSelect: (medication: MedicationSuggestion) => void
+  /** Quando o médico digita um nome e não há resultado no catálogo, permite adicionar como medicamento não cadastrado */
+  onAddCustom?: (name: string) => void
   patientAge?: number
   patientSex?: 'M' | 'F'
   availabilityFilter?: 'basic' | 'popular' | 'hospital' | 'all'
@@ -45,6 +47,7 @@ export function MedicationAutocomplete({
   value,
   onChange,
   onSelect,
+  onAddCustom,
   patientAge,
   patientSex,
   availabilityFilter = 'all',
@@ -58,6 +61,14 @@ export function MedicationAutocomplete({
   const [highlightIndex, setHighlightIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<NodeJS.Timeout>()
+
+  const showAddCustom = Boolean(
+    onAddCustom &&
+    value.trim().length >= 2 &&
+    !isLoading &&
+    suggestions.length === 0
+  )
+  const totalOptions = suggestions.length + (showAddCustom ? 1 : 0)
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -113,8 +124,8 @@ export function MedicationAutocomplete({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setHighlightIndex(prev => 
-          prev < suggestions.length - 1 ? prev + 1 : prev
+        setHighlightIndex(prev =>
+          prev < totalOptions - 1 ? prev + 1 : prev
         )
         break
       case 'ArrowUp':
@@ -123,13 +134,25 @@ export function MedicationAutocomplete({
         break
       case 'Enter':
         e.preventDefault()
-        if (suggestions[highlightIndex]) {
+        if (showAddCustom && highlightIndex === suggestions.length) {
+          handleAddCustom()
+        } else if (suggestions[highlightIndex]) {
           handleSelect(suggestions[highlightIndex])
         }
         break
       case 'Escape':
         setIsOpen(false)
         break
+    }
+  }
+
+  const handleAddCustom = () => {
+    const name = value.trim()
+    if (name && onAddCustom) {
+      onAddCustom(name)
+      onChange('')
+      setIsOpen(false)
+      setSuggestions([])
     }
   }
 
@@ -189,10 +212,10 @@ export function MedicationAutocomplete({
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
             'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
-            (suggestions.length > 0 ? 'p-0' : 'p-3')
+            (suggestions.length > 0 || showAddCustom ? 'p-0' : 'p-3')
           )}
         >
-          {suggestions.length > 0 ? (
+          {suggestions.length > 0 || showAddCustom ? (
             <div className="max-h-80 overflow-auto">
               {suggestions.map((med, index) => (
                 <div
@@ -239,9 +262,24 @@ export function MedicationAutocomplete({
                   )}
                 </div>
               ))}
+              {showAddCustom && (
+                <div
+                  className={cn(
+                    'px-3 py-2.5 cursor-pointer border-t border-border flex items-center gap-2',
+                    highlightIndex === suggestions.length ? 'bg-accent' : 'hover:bg-muted/50 bg-muted/30'
+                  )}
+                  onClick={handleAddCustom}
+                  onMouseEnter={() => setHighlightIndex(suggestions.length)}
+                >
+                  <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">
+                    Adicionar <strong>&quot;{value.trim()}&quot;</strong> (não cadastrado)
+                  </span>
+                </div>
+              )}
             </div>
           ) : value.length >= 2 && !isLoading ? (
-            <div className="text-center text-muted-foreground">Nenhum medicamento encontrado</div>
+            <div className="text-center text-muted-foreground p-2">Nenhum medicamento encontrado no catálogo</div>
           ) : null}
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>

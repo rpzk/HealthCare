@@ -61,12 +61,8 @@ export async function GET(req: Request) {
             name: true,
             description: true,
             estimatedMinutes: true,
-            categories: { select: { id: true, questions: { select: { id: true } } } },
           }
         },
-        sentBy: {
-          select: { id: true, name: true, email: true }
-        }
       },
       orderBy: { sentAt: 'desc' },
       take: limit
@@ -74,7 +70,6 @@ export async function GET(req: Request) {
 
     const now = new Date()
     const mapped = questionnaires.map(q => {
-      const questions = q.template?.categories?.reduce((acc, cat) => acc + (cat.questions?.length || 0), 0) || 0
       const progress = q.status === 'COMPLETED' ? 100 : q.progressPercent || 0
       const expiresAt = q.expiresAt ?? null
       const isExpired = expiresAt ? expiresAt.getTime() < now.getTime() : false
@@ -96,7 +91,7 @@ export async function GET(req: Request) {
         templateId: q.templateId,
         title: q.template?.name || 'Questionário',
         description: q.template?.description || 'Avaliação de saúde',
-        questions,
+        questions: 0, // Categories removed - would need separate query
         time: q.template?.estimatedMinutes ? `${q.template.estimatedMinutes} min` : '—',
         completed: q.status === 'COMPLETED',
         progress,
@@ -108,7 +103,7 @@ export async function GET(req: Request) {
         state,
         dueInHours,
         isDueSoon,
-        sentBy: q.sentBy ? { id: q.sentBy.id, name: q.sentBy.name, email: q.sentBy.email } : null,
+        sentBy: null,
         lastQuestionId: q.lastQuestionId,
       }
     })

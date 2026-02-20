@@ -57,8 +57,7 @@ export async function GET(request: NextRequest) {
       prisma.patient.findUnique({
         where: { id: patientId },
         include: {
-          addresses: true,
-          household: true
+          addresses: true
         }
       }),
       // Consultas

@@ -1,6 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getAIConfig, aiClient } from '@/lib/ai-client'
+
+// Tipos das sugestões (prescrições, exames, encaminhamentos)
+type PrescriptionSuggestion = {
+  medication: string
+  dosage: string
+  frequency: string
+  duration: string
+  instructions: string
+  reasoning: string
+}
+type ExamSuggestion = { examType: string; description: string; priority: 'HIGH' | 'NORMAL'; reasoning: string }
+type ReferralSuggestion = { specialty: string; description: string; priority: 'HIGH' | 'NORMAL'; reasoning: string }
+
+/** Extrai JSON de uma resposta que pode vir dentro de ```json ... ``` */
+function extractJsonFromResponse(text: string): Record<string, unknown> | null {
+  const trimmed = text.trim()
+  const jsonBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1]
+  const toParse = jsonBlock ?? trimmed
+  try {
+    return JSON.parse(toParse) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+/** Chama a IA (Groq/Ollama) para sugerir tratamento, incluindo fitoterapia, homeopatia, florais quando apropriado */
+async function getLLMSuggestions(params: {
+  fullText: string
+  patientAge?: number
+  patientSex?: string
+}): Promise<{ prescriptions: PrescriptionSuggestion[]; exams: ExamSuggestion[]; referrals: ReferralSuggestion[] }> {
+  const config = await getAIConfig()
+  const hasCloud = config.provider === 'groq' && config.groqApiKey
+  const hasLocal = config.provider === 'ollama'
+  if (!hasCloud && !hasLocal) return { prescriptions: [], exams: [], referrals: [] }
+
+  const userPrompt = `Analise o seguinte resumo clínico e sugira tratamento quando apropriado.
+
+TEXTO (SOAP / anamnese):
+${params.fullText.slice(0, 4000)}
+
+DADOS: Idade ${params.patientAge ?? 'não informada'}, Sexo ${params.patientSex ?? 'não informado'}.
+
+INSTRUÇÕES:
+- Você pode sugerir medicamentos convencionais (alopáticos), fitoterapia (plantas medicinais), fitoterapia chinesa, florais (ex.: Bach, Australian Bush), homeopatia e outras terapias complementares quando fizerem sentido para o caso.
+- Para cada prescrição retorne: medication (nome completo do produto ou princípio ativo, ex.: "Arnica montana 6CH", "Floral Rescue", "Valeriana officinalis"), dosage, frequency, duration, instructions, reasoning.
+- Retorne APENAS um JSON válido, sem texto antes ou depois, no formato:
+{"prescriptions":[{"medication":"...","dosage":"...","frequency":"...","duration":"...","instructions":"...","reasoning":"..."}],"exams":[{"examType":"...","description":"...","priority":"HIGH ou NORMAL","reasoning":"..."}],"referrals":[{"specialty":"...","description":"...","priority":"HIGH ou NORMAL","reasoning":"..."}]}
+- Se não houver sugestão de um tipo, use array vazio [].
+- Máximo 8 prescrições, 5 exames, 3 encaminhamentos. Seja objetivo.`
+
+  try {
+    const response = await aiClient.chat({
+      messages: [
+        { role: 'system', content: 'Você é um assistente clínico. Responda somente com JSON válido no formato solicitado. Não use markdown nem texto extra.' },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: 2048,
+      temperature: 0.3,
+      skipAnonymization: true
+    })
+    const parsed = extractJsonFromResponse(response.content)
+    if (!parsed || typeof parsed.prescriptions !== 'object' || !Array.isArray(parsed.prescriptions)) {
+      return { prescriptions: [], exams: [], referrals: [] }
+    }
+    const prescriptions = (parsed.prescriptions as unknown[]).filter(
+      (p): p is PrescriptionSuggestion =>
+        p != null &&
+        typeof (p as Record<string, unknown>).medication === 'string' &&
+        typeof (p as Record<string, unknown>).dosage === 'string'
+    ).map(p => ({
+      medication: String(p.medication),
+      dosage: String(p.dosage ?? ''),
+      frequency: String(p.frequency ?? ''),
+      duration: String(p.duration ?? ''),
+      instructions: String(p.instructions ?? ''),
+      reasoning: String(p.reasoning ?? '')
+    }))
+    const exams = Array.isArray(parsed.exams)
+      ? (parsed.exams as unknown[]).filter(
+          (e): e is ExamSuggestion =>
+            e != null &&
+            typeof (e as Record<string, unknown>).examType === 'string' &&
+            typeof (e as Record<string, unknown>).description === 'string'
+        ).map(e => ({
+          examType: String(e.examType),
+          description: String(e.description),
+          priority: (e.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'HIGH' | 'NORMAL',
+          reasoning: String(e.reasoning ?? '')
+        }))
+      : []
+    const referrals = Array.isArray(parsed.referrals)
+      ? (parsed.referrals as unknown[]).filter(
+          (r): r is ReferralSuggestion =>
+            r != null &&
+            typeof (r as Record<string, unknown>).specialty === 'string' &&
+            typeof (r as Record<string, unknown>).description === 'string'
+        ).map(r => ({
+          specialty: String(r.specialty),
+          description: String(r.description),
+          priority: (r.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'HIGH' | 'NORMAL',
+          reasoning: String(r.reasoning ?? '')
+        }))
+      : []
+    return { prescriptions, exams, referrals }
+  } catch (err) {
+    logger.warn({ err }, 'Sugestão de tratamento por IA falhou; usando apenas regras estáticas')
+    return { prescriptions: [], exams: [], referrals: [] }
+  }
+}
 
 // Banco de conhecimento clínico simplificado para sugestões
 // Em produção, isso seria substituído por um LLM real (GPT-4, Claude, etc.)
@@ -423,6 +533,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Sugestões da IA (Groq/Ollama): fitoterapia, homeopatia, florais, etc.
+    const llm = await getLLMSuggestions({
+      fullText: fullText.slice(0, 5000),
+      patientAge: patientAge ?? undefined,
+      patientSex: patientSex ?? undefined
+    })
+    for (const rx of llm.prescriptions) {
+      const key = rx.medication.trim().toLowerCase()
+      if (key && !addedMedications.has(key)) {
+        aggregatedSuggestions.prescriptions.push(rx)
+        addedMedications.add(key)
+      }
+    }
+    for (const exam of llm.exams) {
+      const examKey = `${exam.examType}-${exam.description}`.toLowerCase()
+      if (!addedExams.has(examKey)) {
+        aggregatedSuggestions.exams.push(exam)
+        addedExams.add(examKey)
+      }
+    }
+    for (const ref of llm.referrals) {
+      if (!addedReferrals.has(ref.specialty.toLowerCase())) {
+        aggregatedSuggestions.referrals.push(ref)
+        addedReferrals.add(ref.specialty.toLowerCase())
+      }
+    }
+
     // Gerar warnings baseado na idade e sexo
     const warnings: string[] = []
     
@@ -437,15 +574,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Gerar resumo
+    const hasSuggestions = aggregatedSuggestions.prescriptions.length > 0 ||
+      aggregatedSuggestions.exams.length > 0 ||
+      aggregatedSuggestions.referrals.length > 0
     let summary = ''
-    if (applicableRules.length > 0) {
-      summary = `Análise identificou ${applicableRules.length} padrão(ões) clínico(s). ` +
-                `Sugeridas ${aggregatedSuggestions.prescriptions.length} medicação(ões), ` +
+    if (hasSuggestions) {
+      summary = `Sugeridas ${aggregatedSuggestions.prescriptions.length} medicação(ões) (podem incluir fitoterapia, homeopatia, florais conforme o caso), ` +
                 `${aggregatedSuggestions.exams.length} exame(s) e ` +
-                `${aggregatedSuggestions.referrals.length} encaminhamento(s).`
+                `${aggregatedSuggestions.referrals.length} encaminhamento(s). Revise e aplique o que fizer sentido.`
+      if (applicableRules.length > 0) {
+        summary = `Análise identificou ${applicableRules.length} padrão(ões) clínico(s). ` + summary
+      }
     } else {
-      summary = 'Nenhum padrão clínico específico identificado na anamnese. ' +
-                'Continue o atendimento com avaliação clínica individual.'
+      summary = 'Nenhuma sugestão específica para este caso. Continue a avaliação clínica individual.'
     }
 
     return NextResponse.json({
