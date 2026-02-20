@@ -55,6 +55,7 @@ export const GET = withAuth(async (_req, { params, user }) => {
       reason,
       signatureHash: signed.signatureHash,
       verificationUrl: `/api/digital-signatures/validate/${signed.signatureHash}`,
+      verificationPageUrl: `/verify/${signed.signatureHash}`,
       signedAt: signed.signedAt,
       signatureAlgorithm: signed.signatureAlgorithm,
       isValid: signed.isValid,

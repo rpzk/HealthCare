@@ -560,7 +560,7 @@ export async function POST(request: NextRequest) {
 
     const prescriptionId = `RX-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`
     const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_BASE_URL || 'http://localhost:3000'
-    const verificationUrl = `${baseUrl}/api/prescriptions/${prescriptionId}/verify`
+    const verificationUrl = `${baseUrl}/validar/${prescriptionId}`
 
     // Hash SHA-256 do conteúdo
     const contentHash = createHash('sha256')

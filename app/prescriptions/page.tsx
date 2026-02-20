@@ -22,8 +22,10 @@ import {
   XCircle,
   Eye,
   Edit,
-  Printer
+  FileText,
+  Share2
 } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
 
 interface Medication {
   name: string;
@@ -239,7 +241,7 @@ export default function PrescriptionsPage() {
                   const medDuration = main?.duration || '-'
                   const instructions = main?.instructions
                   return (
-                  <Card key={prescription.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/prescriptions/${prescription.id}`)}>
+                  <Card key={prescription.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.open(`/api/prescriptions/${prescription.id}/pdf`, '_blank')}>
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex-1 space-y-3">
@@ -304,49 +306,95 @@ export default function PrescriptionsPage() {
                         </div>
 
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => router.push(`/prescriptions/${prescription.id}`)}
+                            title="Baixar o PDF da receita (documento assinado digitalmente; preserve o arquivo para validar no ITI)."
+                            onClick={(e) => { e.stopPropagation(); window.open(`/api/prescriptions/${prescription.id}/pdf`, '_blank') }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Baixar PDF
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Abrir detalhes da prescrição (editar, assinar, enviar e-mail)."
+                            onClick={(e) => { e.stopPropagation(); router.push(`/prescriptions/${prescription.id}`) }}
                           >
                             <Eye className="h-4 w-4 mr-2" />
-                            Visualizar
+                            Detalhes
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => router.push(`/prescriptions/${prescription.id}/edit`)}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                const res = await fetch(`/api/prescriptions/${prescription.id}/signature`)
+                                const data = (await res.ok ? res.json() : {}) as { signed?: boolean }
+                                if (data?.signed) {
+                                  toast({
+                                    title: 'Edição bloqueada',
+                                    description: 'Esta prescrição já foi assinada digitalmente. Para alterações, crie uma nova prescrição.',
+                                    variant: 'destructive',
+                                  })
+                                  return
+                                }
+                              } catch {
+                                // Se falhar a verificação, deixa navegar
+                              }
+                              router.push(`/prescriptions/${prescription.id}/edit`)
+                            }}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </Button>
-                          {/* Ações rápidas: Imprimir, Compartilhar, Assinar */}
                           <Button
                             variant="outline"
                             size="sm"
+                            title="Abre a página de verificação da assinatura no sistema. Para validade oficial use o PDF no validar.iti.gov.br."
                             onClick={async (e) => {
                               e.stopPropagation();
-                              // Abre popup com HTML de impressão - imprime direto sem navegar
-                              window.open(`/api/prescriptions/${prescription.id}/print`, '_blank', 'width=800,height=600')
+                              try {
+                                const res = await fetch(`/api/prescriptions/${prescription.id}/signature`)
+                                const data = await res.json()
+                                const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                                if (pageUrl) window.open(pageUrl, '_blank')
+                                else toast({ title: 'Assine primeiro', description: 'Assine a prescrição para poder verificar.', variant: 'destructive' })
+                              } catch {
+                                toast({ title: 'Erro', description: 'Não foi possível abrir a verificação.', variant: 'destructive' })
+                              }
                             }}
                           >
-                            <Printer className="h-4 w-4 mr-2" />
-                            Imprimir
+                            Verificar
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            title="Copia o link do PDF para enviar ao paciente (ex.: WhatsApp). O paciente abre o documento sem precisar logar. Válido 7 dias."
                             onClick={async (e) => {
-                              e.stopPropagation();
-                              const shareUrl = `${window.location.origin}/prescriptions/${prescription.id}`
-                              if ((navigator as any)?.share) {
-                                (navigator as any).share({ title: 'Prescrição', url: shareUrl }).catch(() => {})
-                              } else {
-                                try { navigator.clipboard.writeText(shareUrl) } catch {}
-                                alert('Link copiado para a área de transferência')
+                              e.stopPropagation()
+                              try {
+                                const res = await fetch(`/api/prescriptions/${prescription.id}/share-link`)
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}))
+                                  toast({ title: 'Erro', description: err?.error || 'Não foi possível gerar o link.', variant: 'destructive' })
+                                  return
+                                }
+                                const { url } = await res.json()
+                                if ((navigator as any)?.share) {
+                                  await (navigator as any).share({ title: 'Receita médica', url })
+                                  toast({ title: 'Compartilhado', description: 'Link do PDF enviado. Válido 7 dias.' })
+                                } else {
+                                  await navigator.clipboard.writeText(url)
+                                  toast({ title: 'Link copiado', description: 'Link do PDF para o paciente. Envie por WhatsApp ou e-mail. Válido 7 dias.' })
+                                }
+                              } catch {
+                                toast({ title: 'Erro', description: 'Não foi possível obter o link.', variant: 'destructive' })
                               }
                             }}
                           >
+                            <Share2 className="h-4 w-4 mr-2" />
                             Compartilhar
                           </Button>
                           {/* Exibe botão Assinar apenas se não estiver assinada (mock: prescription.digitalSignature) */}

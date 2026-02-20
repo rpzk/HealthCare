@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
-import { FileText, Calendar, Clock, Download, QrCode, Loader2, Ban } from 'lucide-react'
+import { FileText, Calendar, Clock, Download, QrCode, Loader2, Ban, ExternalLink, Share2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { A1SignButton } from '@/components/a1-sign-button'
@@ -182,28 +182,77 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
             {/* Actions */}
             {!cert.revokedAt && (
               <div className="flex flex-col gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch(`/api/certificates/${cert.id}/pdf`);
-                        if (!res.ok) throw new Error('Falha ao gerar PDF');
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `atestado_${cert.sequenceNumber}_${cert.year}.pdf`;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        URL.revokeObjectURL(url);
-                      } catch (err) {
-                        logger.error(err);
-                      }
-                    }}
-                  >
-                    Baixar PDF
-                  </button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/certificates/${cert.id}/pdf`);
+                      if (!res.ok) throw new Error('Falha ao gerar PDF');
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `atestado_${cert.sequenceNumber}_${cert.year}.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                      toast({ title: 'Download iniciado' })
+                    } catch (err) {
+                      logger.error(err)
+                      toast({ title: 'Erro ao baixar PDF', variant: 'destructive' })
+                    }
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Baixar PDF
+                </Button>
+                {(cert.signature || cert.digitalSignature) ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/medical-certificates/${cert.id}/signature`)
+                          const data = await res.json()
+                          const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                          if (pageUrl) window.open(pageUrl, '_blank')
+                          else toast({ title: 'Verificação indisponível', variant: 'destructive' })
+                        } catch {
+                          toast({ title: 'Erro ao abrir verificação', variant: 'destructive' })
+                        }
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Verificar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/medical-certificates/${cert.id}/signature`)
+                          const data = await res.json()
+                          const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
+                          if (!pageUrl) {
+                            toast({ title: 'Link indisponível', variant: 'destructive' })
+                            return
+                          }
+                          const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${pageUrl}` : pageUrl
+                          await navigator.clipboard.writeText(shareUrl)
+                          toast({ title: 'Link copiado', description: 'Link da página de verificação copiado.' })
+                        } catch {
+                          toast({ title: 'Erro ao copiar link', variant: 'destructive' })
+                        }
+                      }}
+                    >
+                      <Share2 className="w-4 h-4 mr-1" />
+                      Compartilhar
+                    </Button>
+                  </>
+                ) : null}
                 {cert.qrCodeData && (cert.signature || cert.digitalSignature) ? (
                   <Button
                     size="sm"
@@ -216,23 +265,12 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
                     <QrCode className="w-4 h-4 mr-1" />
                     QR Code
                   </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled
-                    title="QR Code disponível apenas após assinatura digital"
-                  >
-                    <QrCode className="w-4 h-4 mr-1" />
-                    QR Code
-                  </Button>
-                )}
+                ) : null}
                 {/* Assinatura ICP-Brasil A1 se ainda não assinado */}
                 {(!cert.signature || cert.signatureMethod !== 'ICP_BRASIL') && (
                   <A1SignButton
                     certificateId={cert.id}
                     onSuccess={() => {
-                      // reload list after successful signing
                       loadCertificates()
                     }}
                   />

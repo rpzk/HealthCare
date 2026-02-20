@@ -198,6 +198,15 @@ export function MedicalRecordDetail({
                     Editar
                   </Link>
                 )}
+                <a
+                  href={`/api/medical-records/${recordId}/export/pdf`}
+                  target="_blank"
+                  className="btn btn-secondary"
+                  title="Exportar Prontuário para PDF"
+                  rel="noreferrer"
+                >
+                  Exportar PDF 📄
+                </a>
                 {canDelete && (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}

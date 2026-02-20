@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Loader2, Link as LinkIcon, Send } from 'lucide-react'
-import { useAutoPrint } from '@/hooks/use-auto-print'
 
 interface ReferralDetail {
   id: string
@@ -34,13 +33,6 @@ export default function ReferralDetails({ id }: { id: string }) {
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
   const [isSigned, setIsSigned] = useState(false)
   const [requireSignBeforePrint, setRequireSignBeforePrint] = useState(false)
-
-  // Auto-print when ?print=1 is in URL
-  const canPrintNow = !loading && !!data && (isSigned || !requireSignBeforePrint)
-  useAutoPrint({
-    isReady: !loading && !!data,
-    canPrint: canPrintNow
-  })
 
   useEffect(() => {
     const load = async () => {
@@ -117,7 +109,15 @@ export default function ReferralDetails({ id }: { id: string }) {
           </h3>
           <p className="text-sm text-gray-600">Paciente: {data.patient.name} • Médico: {data.doctor.name}</p>
         </div>
-        <div className="space-x-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="default"
+            onClick={() => window.open(`/api/documents/${id}/pdf`, '_blank')}
+            className="gap-2"
+            title="Baixar o PDF (documento assinado digitalmente; preserve o arquivo para validar no ITI)."
+          >
+            Baixar PDF
+          </Button>
           {!isSigned && (
             <Button 
               onClick={() => setShowPasswordDialog(true)} 
@@ -129,25 +129,27 @@ export default function ReferralDetails({ id }: { id: string }) {
           )}
           <Button
             variant="outline"
-            onClick={() => window.print()}
-            disabled={!isSigned && requireSignBeforePrint}
-            title={!isSigned && requireSignBeforePrint ? 'Assine antes de imprimir' : undefined}
-          >
-            Imprimir
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
-              if ((navigator as any)?.share) {
-                (navigator as any).share({ title: 'Encaminhamento', url: shareUrl }).catch(() => {})
-              } else {
-                try { navigator.clipboard.writeText(shareUrl) } catch {}
-                alert('Link copiado para a área de transferência')
+            onClick={async () => {
+              try {
+                const res = await fetch(`/api/referrals/${id}/signature`)
+                const s = await res.json()
+                if (!s?.signed || !s?.verificationPageUrl) {
+                  alert('Assine o encaminhamento antes de compartilhar. Quem abrir o link poderá verificar a autenticidade.')
+                  return
+                }
+                const shareUrl = `${window.location.origin}${s.verificationPageUrl}`
+                if ((navigator as any)?.share) {
+                  await (navigator as any).share({ title: 'Verificação de encaminhamento', url: shareUrl })
+                } else {
+                  await navigator.clipboard.writeText(shareUrl)
+                  alert('Link de verificação copiado. Quem abrir verá se o documento é válido.')
+                }
+              } catch {
+                alert('Não foi possível obter o link. Tente novamente.')
               }
             }}
             disabled={!isSigned && requireSignBeforePrint}
-            title={!isSigned && requireSignBeforePrint ? 'Assine antes de compartilhar' : undefined}
+            title={!isSigned && requireSignBeforePrint ? 'Assine antes de compartilhar' : 'Copiar link para verificação pública'}
           >
             Compartilhar
           </Button>
@@ -156,20 +158,22 @@ export default function ReferralDetails({ id }: { id: string }) {
       </div>
 
       {isSigned && (
-        <div className="bg-green-50 border border-green-200 p-3 rounded-md flex items-center text-green-800 text-sm">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <div className="flex items-center gap-3">
-            <span>Assinatura registrada no sistema.</span>
-            {verificationUrl && (
-              <Button
-                variant="link"
-                className="text-green-700 underline p-0 h-auto"
-                onClick={() => window.open(verificationUrl!, '_blank')}
-              >
-                <LinkIcon className="w-4 h-4 mr-1" /> Verificar
-              </Button>
-            )}
-          </div>
+        <div className="bg-green-50 border border-green-200 p-3 rounded-md flex items-center flex-wrap gap-2 text-green-800 text-sm">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>Assinatura registrada no sistema.</span>
+          {verificationUrl && (
+            <Button
+              variant="link"
+              className="text-green-700 underline p-0 h-auto"
+              onClick={() => {
+                const hash = verificationUrl!.split('/').pop()
+                if (!hash) return
+                window.open(`/verify/${hash}`, '_blank')
+              }}
+            >
+              <LinkIcon className="w-4 h-4 mr-1" /> Ver resultado da verificação
+            </Button>
+          )}
         </div>
       )}
 

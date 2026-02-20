@@ -22,7 +22,7 @@ import {
   XCircle,
   ChevronRight,
   Loader2,
-  Printer,
+  FileText,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -296,13 +296,13 @@ export default function ReferralsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            title="Imprimir"
+                            title="Baixar PDF"
                             onClick={(e) => {
                               e.stopPropagation()
-                              window.open(`/referrals/${referral.id}?print=1`, '_blank')
+                              window.open(`/api/documents/${referral.id}/pdf`, '_blank')
                             }}
                           >
-                            <Printer className="h-4 w-4" />
+                            <FileText className="h-4 w-4" />
                           </Button>
                           <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>

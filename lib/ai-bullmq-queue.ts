@@ -60,12 +60,12 @@ async function updateJobProgress(
   message?: string
 ) {
   try {
-    await prisma.patientPdfExportLog.create({
+    // Atualize o progresso no modelo PatientPdfExport
+    await prisma.patientPdfExport.update({
+      where: { id: exportId },
       data: {
-        exportId,
-        step,
-        percentage,
-        message,
+        progress: percentage,
+        errorMessage: message || undefined,
       },
     })
   } catch (e) {

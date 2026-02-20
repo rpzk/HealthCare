@@ -59,7 +59,7 @@ export function LandingPage() {
                 Entrar
               </Link>
               <Link 
-                href="/register"
+                href="/auth/register"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
               >
                 Cadastrar-se
@@ -91,7 +91,7 @@ export function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link 
-                  href="/register"
+                  href="/auth/register"
                   className="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-lg shadow-lg hover:shadow-xl"
                 >
                   <UserPlus className="h-5 w-5 mr-2" />
@@ -396,7 +396,7 @@ export function LandingPage() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="/register"
+              href="/auth/register"
               className="inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-semibold text-lg shadow-xl"
             >
               <UserPlus className="h-5 w-5 mr-2" />
@@ -443,10 +443,10 @@ export function LandingPage() {
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-4">Empresa</h4>
+              <h4 className="text-white font-semibold mb-4">Recursos</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="/help" className="hover:text-white transition">Ajuda</a></li>
-                <li><a href="/settings/privacy" className="hover:text-white transition">Privacidade</a></li>
+                <li><Link href="/docs" className="hover:text-white transition">Documentação</Link></li>
+                <li><Link href="/settings/privacy" className="hover:text-white transition">Privacidade</Link></li>
               </ul>
             </div>
 
@@ -459,7 +459,7 @@ export function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/register" className="hover:text-white transition">
+                  <Link href="/auth/register" className="hover:text-white transition">
                     Cadastro
                   </Link>
                 </li>

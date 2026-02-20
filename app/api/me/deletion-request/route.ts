@@ -134,18 +134,6 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Criar alerta para DPO
-    await prisma.auditAlert.create({
-      data: {
-        alertType: 'GDPR_DATA_DELETION',
-        severity: 'HIGH',
-        title: 'Solicitação de exclusão de dados LGPD',
-        description: `Paciente ${user.patient.name} solicitou exclusão. Motivo: ${reason}`,
-        userId: session.user.id,
-        metadata: { requestId: deletionRequest.id, patientId: user.patient.id }
-      }
-    })
-
     // Registrar auditoria
     await prisma.auditLog.create({
       data: {

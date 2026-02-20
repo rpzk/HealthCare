@@ -49,13 +49,20 @@ export const GET = withPatientAuth(async (req, { user }) => {
       page,
       limit
     ))
-    // Aplicar masking na coleção; para perfis clínicos mantemos campos clínicos
-    const clinicalRoles = ['DOCTOR','NURSE','PHYSIOTHERAPIST','PSYCHOLOGIST','HEALTH_AGENT','TECHNICIAN','PHARMACIST','DENTIST','NUTRITIONIST','SOCIAL_WORKER','OTHER','ADMIN'] as const
-    const exposeClinical = clinicalRoles.includes(user.role as typeof clinicalRoles[number])
-    const isAdmin = user.role === 'ADMIN'
+    // Aplicar masking na coleção conforme LGPD
+    // Profissionais de saúde veem dados completos, admin vê pseudonimizado
+    const healthcareRoles = ['DOCTOR', 'NURSE'] as const
+    const isHealthcareProfessional = healthcareRoles.includes(user.role as typeof healthcareRoles[number])
+    const isAdmin = ['ADMIN', 'OWNER'].includes(user.role)
+    const exposeClinical = isHealthcareProfessional // Apenas profissionais de saúde veem dados clínicos
+    
     const masked = {
       ...result,
-      patients: applyPatientsCollectionMasking(result.patients, { exposeClinical, isAdmin })
+      patients: applyPatientsCollectionMasking(result.patients, { 
+        exposeClinical, 
+        isAdmin,
+        isHealthcareProfessional 
+      })
     }
     
     // Transformar para o formato esperado pelo frontend

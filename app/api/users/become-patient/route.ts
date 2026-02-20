@@ -127,23 +127,6 @@ export async function POST(request: NextRequest) {
       )
       await Promise.all(consentPromises)
 
-      // 4. Criar logs de auditoria
-      const auditPromises = (biometricConsents as string[]).map(dataType =>
-        tx.consentAuditLog.create({
-          data: {
-            patientId: patient.id,
-            dataType: dataType as BiometricDataType,
-            action: 'GRANTED',
-            previousValue: false,
-            newValue: true,
-            ipAddress,
-            userAgent,
-            reason: 'Ativação de perfil de paciente pelo próprio usuário'
-          }
-        })
-      )
-      await Promise.all(auditPromises)
-
       return patient
     })
 

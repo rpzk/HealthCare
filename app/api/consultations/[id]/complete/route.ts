@@ -5,6 +5,7 @@ import { auditLogger, AuditAction } from '@/lib/audit-logger'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { MedicalCertificateService } from '@/lib/medical-certificate-service'
+import { autoFillBI } from '@/lib/bi-auto-classifier'
 
 interface RouteParams {
   params: {
@@ -29,6 +30,14 @@ export const PATCH = withDoctorAuth(async (request: NextRequest, { params, user 
 
     // Preparar dados SOAP para salvar
     const soapData = notes || {}
+
+    // Auto-preencher BI/SSF a partir do contexto clínico (sem exigir cliques extras)
+    const autoBi = autoFillBI(biData, {
+      soap: soapData,
+      diagnoses: diagnoses || [],
+      prescriptions: prescriptions || [],
+      examRequests: examRequests || [],
+    })
     
     // Atualizar a consulta com os dados SOAP e sinais vitais
     await prisma.consultation.update({
@@ -43,37 +52,37 @@ export const PATCH = withDoctorAuth(async (request: NextRequest, { params, user 
         notes: JSON.stringify({
           soap: soapData,
           vitals: vitals,
-          biData: biData,
+          biData: autoBi,
           diagnoses: diagnoses || []
         }),
         // BI fields
-        scheduledDemand: biData?.scheduledDemand || false,
-        immediateDemand: biData?.immediateDemand || false,
-        orientationOnly: biData?.orientationOnly || false,
-        urgencyWithObs: biData?.urgencyWithObs || false,
-        continuedCare: biData?.continuedCare || false,
-        prescriptionRenewal: biData?.prescriptionRenewal || false,
-        examEvaluation: biData?.examEvaluation || false,
-        homeVisit: biData?.homeVisit || false,
-        mentalHealth: biData?.mentalHealth || false,
-        alcoholUser: biData?.alcoholUser || false,
-        drugUser: biData?.drugUser || false,
-        hypertension: biData?.hypertension || false,
-        diabetes: biData?.diabetes || false,
-        leprosy: biData?.leprosy || false,
-        tuberculosis: biData?.tuberculosis || false,
-        prenatal: biData?.prenatal || false,
-        postpartum: biData?.postpartum || false,
-        stdAids: biData?.stdAids || false,
-        preventive: biData?.preventive || false,
-        childCare: biData?.childCare || false,
-        laboratory: biData?.laboratory || false,
-        radiology: biData?.radiology || false,
-        ultrasound: biData?.ultrasound || false,
-        obstetricUltrasound: biData?.obstetricUltrasound || false,
-        mammography: biData?.mammography || false,
-        ecg: biData?.ecg || false,
-        pathology: biData?.pathology || false,
+        scheduledDemand: autoBi.scheduledDemand,
+        immediateDemand: autoBi.immediateDemand,
+        orientationOnly: autoBi.orientationOnly,
+        urgencyWithObs: autoBi.urgencyWithObs,
+        continuedCare: autoBi.continuedCare,
+        prescriptionRenewal: autoBi.prescriptionRenewal,
+        examEvaluation: autoBi.examEvaluation,
+        homeVisit: autoBi.homeVisit,
+        mentalHealth: autoBi.mentalHealth,
+        alcoholUser: autoBi.alcoholUser,
+        drugUser: autoBi.drugUser,
+        hypertension: autoBi.hypertension,
+        diabetes: autoBi.diabetes,
+        leprosy: autoBi.leprosy,
+        tuberculosis: autoBi.tuberculosis,
+        prenatal: autoBi.prenatal,
+        postpartum: autoBi.postpartum,
+        stdAids: autoBi.stdAids,
+        preventive: autoBi.preventive,
+        childCare: autoBi.childCare,
+        laboratory: autoBi.laboratory,
+        radiology: autoBi.radiology,
+        ultrasound: autoBi.ultrasound,
+        obstetricUltrasound: autoBi.obstetricUltrasound,
+        mammography: autoBi.mammography,
+        ecg: autoBi.ecg,
+        pathology: autoBi.pathology,
         updatedAt: new Date()
       }
     })

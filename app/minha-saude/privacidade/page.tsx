@@ -42,7 +42,9 @@ import {
   Calendar,
   Activity,
   Loader2,
-  Info
+  Info,
+  Ban,
+  XCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -94,6 +96,39 @@ interface DeletionResponse {
   }
 }
 
+interface TreatmentOpposition {
+  id: string
+  treatmentType: string
+  reason: string
+  status: string
+  createdAt: string
+  analyzedAt?: string | null
+  rejectionReason?: string | null
+  treatmentInfo?: {
+    title: string
+    description: string
+    essential: boolean
+  }
+}
+
+interface TermAcceptance {
+  id: string
+  termo: string
+  slug: string
+  versao: string
+  dataAceite: string
+  ip: string
+  conteudo: string
+}
+
+interface AvailableTreatment {
+  type: string
+  title: string
+  description: string
+  essential: boolean
+  hasOpposition: boolean
+}
+
 export default function PrivacidadePage() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState('exportar')
@@ -119,6 +154,18 @@ export default function PrivacidadePage() {
   })
   const [deleteError, setDeleteError] = useState('')
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+
+  // Opposition states
+  const [oppositions, setOppositions] = useState<TreatmentOpposition[]>([])
+  const [availableTreatments, setAvailableTreatments] = useState<AvailableTreatment[]>([])
+  const [oppositionDialogOpen, setOppositionDialogOpen] = useState(false)
+  const [selectedTreatment, setSelectedTreatment] = useState<AvailableTreatment | null>(null)
+  const [oppositionReason, setOppositionReason] = useState('')
+  const [oppositionSubmitting, setOppositionSubmitting] = useState(false)
+
+  // Terms history states
+  const [termsHistory, setTermsHistory] = useState<TermAcceptance[]>([])
+  const [termsStats, setTermsStats] = useState({ totalTermosAceitos: 0, ultimoAceite: null as string | null })
 
   // Fetch access history
   const fetchAccessHistory = async () => {
@@ -154,11 +201,52 @@ export default function PrivacidadePage() {
     }
   }
 
+  // Fetch treatment oppositions
+  const fetchOppositions = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/me/treatment-opposition')
+      if (res.ok) {
+        const data = await res.json()
+        setOppositions(data.oppositions || [])
+        setAvailableTreatments(data.availableTreatments || [])
+      }
+    } catch (error) {
+      console.error('Erro ao buscar oposições:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch terms history
+  const fetchTermsHistory = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/me/terms-history')
+      if (res.ok) {
+        const data = await res.json()
+        setTermsHistory(data.aceites || [])
+        setTermsStats({
+          totalTermosAceitos: data.estatisticas?.totalTermosAceitos || 0,
+          ultimoAceite: data.estatisticas?.ultimoAceite || null
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao buscar histórico de termos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'acessos') {
       fetchAccessHistory()
     } else if (activeTab === 'excluir') {
       fetchDeletionRequests()
+    } else if (activeTab === 'oposicao') {
+      fetchOppositions()
+    } else if (activeTab === 'termos') {
+      fetchTermsHistory()
     }
   }, [activeTab])
 
@@ -243,6 +331,49 @@ export default function PrivacidadePage() {
     }
   }
 
+  // Request treatment opposition
+  const handleOppositionRequest = async () => {
+    if (!selectedTreatment) return
+    
+    if (!oppositionReason || oppositionReason.length < 10) {
+      alert('Por favor, informe o motivo (mínimo 10 caracteres)')
+      return
+    }
+
+    setOppositionSubmitting(true)
+    try {
+      const res = await fetch('/api/me/treatment-opposition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          treatmentType: selectedTreatment.type,
+          reason: oppositionReason
+        })
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok) {
+        setOppositionDialogOpen(false)
+        setSelectedTreatment(null)
+        setOppositionReason('')
+        setSuccessDialog({
+          open: true,
+          title: 'Solicitação Enviada',
+          message: data.message || 'Sua oposição ao tratamento foi registrada e será analisada.'
+        })
+        fetchOppositions()
+      } else {
+        alert(data.error || 'Erro ao enviar solicitação')
+      }
+    } catch (error) {
+      console.error('Erro ao solicitar oposição:', error)
+      alert('Erro ao processar solicitação')
+    } finally {
+      setOppositionSubmitting(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -251,8 +382,12 @@ export default function PrivacidadePage() {
         return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><Activity className="w-3 h-3 mr-1" /> Em Análise</Badge>
       case 'COMPLETED':
         return <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3 mr-1" /> Concluído</Badge>
+      case 'APPROVED':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3 mr-1" /> Aprovada</Badge>
       case 'REJECTED':
-        return <Badge variant="destructive"><AlertTriangle className="w-3 h-3 mr-1" /> Negado</Badge>
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Rejeitada</Badge>
+      case 'PARTIAL':
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800"><AlertTriangle className="w-3 h-3 mr-1" /> Parcial</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -298,18 +433,26 @@ export default function PrivacidadePage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="exportar" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
-              Exportar
+              <span className="hidden sm:inline">Exportar</span>
             </TabsTrigger>
             <TabsTrigger value="acessos" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              Acessos
+              <span className="hidden sm:inline">Acessos</span>
+            </TabsTrigger>
+            <TabsTrigger value="termos" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Termos</span>
+            </TabsTrigger>
+            <TabsTrigger value="oposicao" className="flex items-center gap-2">
+              <Ban className="h-4 w-4" />
+              <span className="hidden sm:inline">Oposição</span>
             </TabsTrigger>
             <TabsTrigger value="excluir" className="flex items-center gap-2">
               <Trash2 className="h-4 w-4" />
-              Excluir
+              <span className="hidden sm:inline">Excluir</span>
             </TabsTrigger>
           </TabsList>
 
@@ -432,6 +575,204 @@ export default function PrivacidadePage() {
                     <Eye className="h-12 w-12 mx-auto mb-2 opacity-20" />
                     <p>Nenhum acesso registrado recentemente</p>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab: Termos */}
+          <TabsContent value="termos" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  Histórico de Termos Aceitos
+                </CardTitle>
+                <CardDescription>
+                  Veja todos os termos de uso e políticas que você aceitou
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-purple-600">{termsStats.totalTermosAceitos}</div>
+                    <div className="text-sm text-muted-foreground">Termos Aceitos</div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
+                    <div className="text-lg font-bold text-green-600">
+                      {termsStats.ultimoAceite 
+                        ? format(new Date(termsStats.ultimoAceite), "dd/MM/yy", { locale: ptBR })
+                        : '-'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Último Aceite</div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                {loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : termsHistory.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Termo</TableHead>
+                        <TableHead>Versão</TableHead>
+                        <TableHead>Data do Aceite</TableHead>
+                        <TableHead>IP</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {termsHistory.map((term) => (
+                        <TableRow key={term.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium text-sm">{term.termo}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">v{term.versao}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {format(new Date(term.dataAceite), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {term.ip}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                    <p>Nenhum termo aceito encontrado</p>
+                  </div>
+                )}
+
+                <Alert className="mt-4">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Conforme a LGPD (Art. 18, I), você tem o direito de acessar todos os seus dados, 
+                    incluindo o histórico de consentimentos fornecidos.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab: Oposição */}
+          <TabsContent value="oposicao" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ban className="h-5 w-5 text-orange-600" />
+                  Oposição ao Tratamento de Dados
+                </CardTitle>
+                <CardDescription>
+                  Você pode se opor a tratamentos específicos dos seus dados pessoais (LGPD Art. 18, §2º)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>O que é oposição ao tratamento?</AlertTitle>
+                  <AlertDescription>
+                    A oposição permite que você <strong>suspenda tratamentos específicos</strong> dos seus dados que não são essenciais 
+                    para a prestação do serviço de saúde. Isso é diferente de revogar um consentimento - 
+                    aqui você está se opondo a tratamentos que a clínica pode fazer com base em outras bases legais.
+                  </AlertDescription>
+                </Alert>
+
+                {loading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Lista de tratamentos disponíveis */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-muted-foreground">Tratamentos de dados:</h4>
+                      {availableTreatments.map((treatment) => (
+                        <div 
+                          key={treatment.type} 
+                          className={`p-4 rounded-lg border ${
+                            treatment.hasOpposition 
+                              ? 'bg-green-50 border-green-200 dark:bg-green-950' 
+                              : 'bg-gray-50 dark:bg-gray-800'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-medium">{treatment.title}</h5>
+                                {treatment.hasOpposition && (
+                                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" /> Oposição Ativa
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">{treatment.description}</p>
+                            </div>
+                            {!treatment.hasOpposition && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedTreatment(treatment)
+                                  setOppositionDialogOpen(true)
+                                }}
+                              >
+                                <Ban className="w-3 h-3 mr-1" />
+                                Opor-se
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Histórico de oposições */}
+                    {oppositions.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="font-medium mb-3">Histórico de Oposições</h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tratamento</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Data</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {oppositions.map((op) => (
+                              <TableRow key={op.id}>
+                                <TableCell>
+                                  <span className="font-medium">{op.treatmentInfo?.title || op.treatmentType}</span>
+                                  {op.rejectionReason && (
+                                    <p className="text-xs text-red-600 mt-1">
+                                      Motivo: {op.rejectionReason}
+                                    </p>
+                                  )}
+                                </TableCell>
+                                <TableCell>{getStatusBadge(op.status)}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {format(new Date(op.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -678,6 +1019,79 @@ export default function PrivacidadePage() {
           <DialogFooter>
             <Button onClick={() => setSuccessDialog(prev => ({ ...prev, open: false }))}>
               Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Opposition Dialog */}
+      <Dialog open={oppositionDialogOpen} onOpenChange={setOppositionDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <Ban className="h-5 w-5" />
+              Opor-se ao Tratamento
+            </DialogTitle>
+            <DialogDescription>
+              {selectedTreatment && (
+                <span className="font-medium">{selectedTreatment.title}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedTreatment && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {selectedTreatment.description}
+                </AlertDescription>
+              </Alert>
+            )}
+            <div>
+              <Label htmlFor="oppositionReason">Motivo da Oposição *</Label>
+              <Textarea
+                id="oppositionReason"
+                value={oppositionReason}
+                onChange={(e) => setOppositionReason(e.target.value)}
+                placeholder="Explique por que você deseja se opor a este tratamento..."
+                rows={4}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Mínimo 10 caracteres</p>
+            </div>
+            <Alert variant="default" className="bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm text-amber-700">
+                Sua oposição será analisada e, se procedente, o tratamento será suspenso.
+                Em casos excepcionais, a oposição pode ser negada com base legal documentada.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setOppositionDialogOpen(false)
+              setSelectedTreatment(null)
+              setOppositionReason('')
+            }}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="default"
+              className="bg-orange-600 hover:bg-orange-700"
+              onClick={handleOppositionRequest}
+              disabled={oppositionSubmitting || oppositionReason.length < 10}
+            >
+              {oppositionSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Confirmar Oposição
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

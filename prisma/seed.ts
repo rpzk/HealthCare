@@ -1,4 +1,4 @@
-import { PrismaClient, Gender, ConsultationType, ConsultationStatus, RecordType, Severity, Role } from '@prisma/client'
+import { PrismaClient, Gender, ConsultationType, ConsultationStatus, RecordType, Severity, Role, RiskLevel } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
@@ -44,12 +44,57 @@ async function main() {
       crmNumber: 'CRM-ADM-001',
       phone: '(11) 99999-9999',
       password: await bcrypt.hash('admin123', 12)
-      // ACS fields will be populated in Phase 2
+    },
+  })
+
+  // Médico para testes E2E (jornada do profissional)
+  const doctorUser = await prisma.user.upsert({
+    where: { email: 'doctor@healthcare.com' },
+    update: {},
+    create: {
+      email: 'doctor@healthcare.com',
+      name: 'Dr. João Silva',
+      role: Role.DOCTOR,
+      speciality: 'Clínico Geral',
+      crmNumber: 'CRM-SP 123456',
+      licenseState: 'SP',
+      phone: '(11) 98888-8888',
+      password: await bcrypt.hash('doctor123', 12),
+    },
+  })
+
+  // Paciente + User paciente para testes E2E (jornada do paciente)
+  const birthDate = new Date('1985-06-15')
+  const patientRecord = await prisma.patient.upsert({
+    where: { email: 'patient@healthcare.com' },
+    update: {},
+    create: {
+      name: 'Maria Paciente',
+      email: 'patient@healthcare.com',
+      birthDate,
+      gender: Gender.FEMALE,
+      phone: '(11) 97777-7777',
+      address: 'Rua Teste, 100',
+      riskLevel: RiskLevel.BAIXO,
+    },
+  })
+  const patientUser = await prisma.user.upsert({
+    where: { email: 'patient@healthcare.com' },
+    update: {},
+    create: {
+      email: 'patient@healthcare.com',
+      name: 'Maria Paciente',
+      role: Role.PATIENT,
+      phone: '(11) 97777-7777',
+      password: await bcrypt.hash('patient123', 12),
+      patientId: patientRecord.id,
     },
   })
 
   console.log('Seed concluído com sucesso!')
-  console.log(`Usuário admin criado: ${adminUser.email}`)
+  console.log(`Usuário admin: ${adminUser.email}`)
+  console.log(`Usuário médico (E2E): ${doctorUser.email}`)
+  console.log(`Usuário paciente (E2E): ${patientUser.email}`)
 }
 
 main()

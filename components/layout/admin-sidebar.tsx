@@ -14,6 +14,7 @@ import {
   DollarSign,
   Settings,
   Shield,
+  ShieldAlert,
   Mail,
   Calendar,
   Brain,
@@ -29,7 +30,10 @@ import {
   PieChart,
   Server,
   Key,
-  FlaskConical
+  FlaskConical,
+  ScrollText,
+  Ban,
+  Cloud
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -166,6 +170,35 @@ const adminMenuItems: MenuItem[] = [
     href: '/admin/digital-signatures',
     submenu: [
       { title: 'Certificados & Assinaturas', href: '/admin/digital-signatures' },
+    ]
+  },
+  {
+    title: 'LGPD & Prontuários',
+    icon: ScrollText,
+    href: '/admin/medical-record-requests',
+    badge: 'LGPD',
+    submenu: [
+      { title: 'Solicitações de Cópia', href: '/admin/medical-record-requests' },
+      { title: 'Oposições ao Tratamento', href: '/admin/treatment-oppositions' },
+      { title: 'Logs de Auditoria', href: '/admin/audit' },
+    ]
+  },
+  {
+    title: 'Incidentes de Segurança',
+    icon: ShieldAlert,
+    href: '/admin/security-incidents',
+    badge: 'Art.48',
+    description: 'Gestão de incidentes LGPD'
+  },
+  {
+    title: 'Integrações SUS',
+    icon: Cloud,
+    href: '/admin/rnds',
+    badge: 'RNDS',
+    description: 'Interoperabilidade com SUS',
+    submenu: [
+      { title: 'RNDS', href: '/admin/rnds' },
+      { title: 'e-SUS AB', href: '/admin/esus' },
     ]
   },
   {

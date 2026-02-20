@@ -8,7 +8,6 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { ActionBar } from '@/components/navigation/action-bar'
 import { ConfirmationDialog } from '@/components/dialogs/confirmation-dialog'
 import { useToast } from '@/hooks/use-toast'
-import { useAutoPrint } from '@/hooks/use-auto-print'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -91,13 +90,6 @@ export default function ReferralDetailPage() {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const [password, setPassword] = useState('')
   const [signing, setSigning] = useState(false)
-
-  // Auto-print when ?print=1 is in URL
-  const canPrintNow = !loading && !!referral && (isSigned || !requireSignBeforePrint)
-  useAutoPrint({
-    isReady: !loading && !!referral,
-    canPrint: canPrintNow
-  })
 
   useEffect(() => {
     const fetchReferral = async () => {

@@ -126,15 +126,19 @@ export {
   // Assinatura
   signPdfWithPAdES,
   signPdfWithPAdESFromBuffer,
+  signPdfWithPAdESAndOptionalTimestamp,
   
-  // Validação de certificado
+  // Validação de certificado / cadeia
   validateCertificate as validateDigitalCertificate,
   extractCertificateInfo,
+  getCertificateChainCount,
   
   // Verificação
   isPdfSigned,
   getSignatureInfo,
 } from './pades-signer'
+
+export { appendDocTimeStampToPdf } from './doc-timestamp'
 
 // ============================================
 // GERAÇÃO DE PDF

@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthCare - Apresentação de Segurança e Compliance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .slide { min-height: 100vh; display: none; }
+        .slide.active { display: flex; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%); }
+        .card { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .progress-bar { transition: width 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.5s ease forwards; }
+        .check-icon { color: #22c55e; }
+        .shield-icon { color: #3b82f6; }
+        @media print {
+            .slide { display: flex !important; page-break-after: always; }
+            .nav-controls { display: none !important; }
+        }
+    </style>
+</head>
+<body class="gradient-bg text-white">
+    <!-- Navigation -->
+    <div class="nav-controls fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-4 bg-black/50 backdrop-blur px-6 py-3 rounded-full">
+        <button onclick="prevSlide()" class="hover:text-blue-400 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <span class="text-sm"><span id="current">1</span> / <span id="total">12</span></span>
+        <button onclick="nextSlide()" class="hover:text-blue-400 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+    </div>
+    
+    <!-- Progress Bar -->
+    <div class="fixed top-0 left-0 w-full h-1 bg-white/10 z-50">
+        <div id="progress" class="progress-bar h-full bg-blue-500" style="width: 8.33%"></div>
+    </div>
+
+    <!-- SLIDE 1: Capa -->
+    <section class="slide active flex-col justify-center items-center p-8">
+        <div class="animate-in text-center max-w-4xl">
+            <div class="mb-8">
+                <svg class="w-24 h-24 mx-auto text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/>
+                </svg>
+            </div>
+            <h1 class="text-6xl font-bold mb-4">HealthCare</h1>
+            <p class="text-2xl text-blue-300 mb-8">Sistema de Prontuário Eletrônico do Paciente</p>
+            <div class="flex justify-center gap-6 text-sm text-gray-400">
+                <span class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    LGPD Conforme
+                </span>
+                <span class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    SBIS/CFM NGS1
+                </span>
+                <span class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    ICP-Brasil
+                </span>
+                <span class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    HL7 FHIR R4
+                </span>
+            </div>
+            <p class="mt-12 text-gray-500">Fevereiro 2026 | Apresentação Técnica</p>
+        </div>
+    </section>
+
+    <!-- SLIDE 2: Visão Geral -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <h2 class="text-4xl font-bold mb-2">Visão Geral da Arquitetura</h2>
+            <p class="text-gray-400 mb-8">Stack tecnológico moderno e seguro</p>
+            
+            <div class="grid grid-cols-3 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-blue-400">Frontend</h3>
+                    <ul class="space-y-2 text-gray-300">
+                        <li>• Next.js 14 (App Router)</li>
+                        <li>• React 18 + TypeScript</li>
+                        <li>• TailwindCSS + shadcn/ui</li>
+                        <li>• PWA (Progressive Web App)</li>
+                    </ul>
+                </div>
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-green-400">Backend</h3>
+                    <ul class="space-y-2 text-gray-300">
+                        <li>• API Routes (REST)</li>
+                        <li>• Prisma ORM</li>
+                        <li>• PostgreSQL 15</li>
+                        <li>• Redis + BullMQ</li>
+                    </ul>
+                </div>
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-purple-400">Serviços</h3>
+                    <ul class="space-y-2 text-gray-300">
+                        <li>• Ollama (IA Local)</li>
+                        <li>• Gotenberg (PDF)</li>
+                        <li>• Whisper (STT)</li>
+                        <li>• Coturn (WebRTC)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-8 card rounded-xl p-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                        <span class="text-xl">Docker Compose</span>
+                    </div>
+                    <div class="flex gap-4">
+                        <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">7 containers</span>
+                        <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">All healthy</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 3: Conformidade LGPD -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-green-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">LGPD</h2>
+                    <p class="text-gray-400">Lei Geral de Proteção de Dados</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="text-5xl font-bold text-green-400">~100%</span>
+                    <p class="text-gray-400 text-right">Conforme</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-300">Criptografia de Dados</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>AES-256-GCM para dados sensíveis</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>CPF criptografado + hash indexado</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Rotação de chaves automática</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>bcrypt (12 rounds) para senhas</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-300">Direitos do Titular (Art. 18)</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Portabilidade self-service (JSON)</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Solicitação de exclusão com DPO</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Histórico de acessos visível</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Histórico de termos aceitos</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Oposição ao tratamento</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-300">Anonimização para IA</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>LGPDAnonymizer automático</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Remove CPF, nome, telefone, CNS</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>IA local (Ollama) sem cloud</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-300">Documentação Legal</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>RIPD (Relatório de Impacto)</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Política de Privacidade</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span>Termos de Consentimento</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 4: Autenticação / MFA -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">Autenticação Multi-Fator</h2>
+                    <p class="text-gray-400">WebAuthn / Passkeys + RBAC</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+                        </svg>
+                        WebAuthn / Passkeys
+                    </h3>
+                    <p class="text-gray-400 mb-4">Autenticação biométrica FIDO2 sem senhas</p>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Face ID / Touch ID
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Windows Hello
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Chaves de segurança USB
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Múltiplos dispositivos por usuário
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        RBAC (Role-Based Access Control)
+                    </h3>
+                    <p class="text-gray-400 mb-4">Controle granular de permissões</p>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <span class="px-2 py-1 bg-red-500/20 text-red-400 rounded">ADMIN</span>
+                        <span class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">DOCTOR</span>
+                        <span class="px-2 py-1 bg-green-500/20 text-green-400 rounded">NURSE</span>
+                        <span class="px-2 py-1 bg-purple-500/20 text-purple-400 rounded">PATIENT</span>
+                        <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">RECEPTIONIST</span>
+                        <span class="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded">MANAGER</span>
+                    </div>
+                </div>
+                
+                <div class="card rounded-xl p-6 col-span-2">
+                    <h3 class="text-xl font-semibold mb-4">Proteções de Segurança</h3>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="text-center p-4 bg-white/5 rounded-lg">
+                            <div class="text-3xl font-bold text-red-400">5</div>
+                            <div class="text-sm text-gray-400">Tentativas até bloqueio</div>
+                        </div>
+                        <div class="text-center p-4 bg-white/5 rounded-lg">
+                            <div class="text-3xl font-bold text-blue-400">300</div>
+                            <div class="text-sm text-gray-400">req/min (rate limit)</div>
+                        </div>
+                        <div class="text-center p-4 bg-white/5 rounded-lg">
+                            <div class="text-3xl font-bold text-green-400">24h</div>
+                            <div class="text-sm text-gray-400">Expiração JWT</div>
+                        </div>
+                        <div class="text-center p-4 bg-white/5 rounded-lg">
+                            <div class="text-3xl font-bold text-purple-400">TLS</div>
+                            <div class="text-sm text-gray-400">1.3 Forçado</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 5: SBIS/CFM -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">SBIS / CFM NGS1</h2>
+                    <p class="text-gray-400">Certificação para Sistemas de Registro Eletrônico em Saúde</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="text-5xl font-bold text-yellow-400">91.9%</span>
+                    <p class="text-gray-400 text-right">57/62 requisitos</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="card rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400">14/15</div>
+                    <div class="text-sm text-gray-400">Segurança</div>
+                    <div class="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-green-500 rounded-full" style="width: 93%"></div>
+                    </div>
+                </div>
+                <div class="card rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400">12/13</div>
+                    <div class="text-sm text-gray-400">Funcional</div>
+                    <div class="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-green-500 rounded-full" style="width: 92%"></div>
+                    </div>
+                </div>
+                <div class="card rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400">10/10</div>
+                    <div class="text-sm text-gray-400">Legal</div>
+                    <div class="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-green-500 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-green-400">Resoluções Atendidas</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            CFM 1.821/2007 (Prontuário Eletrônico)
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            CFM 2.218/2018 (S-RES)
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            CFM 2.299/2021 (Assinatura Digital)
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Portaria SVS/MS 344/98 (Controlados)
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-blue-400">Funcionalidades PEP</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Prontuário com versionamento
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Prescrição digital com CID-10
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Atestados com QR Code
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Guarda de dados 20 anos
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 6: FHIR -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">HL7 FHIR R4</h2>
+                    <p class="text-gray-400">Fast Healthcare Interoperability Resources</p>
+                </div>
+            </div>
+            
+            <div class="card rounded-xl p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Fluxo de Interoperabilidade</h3>
+                <div class="flex items-center justify-between text-center">
+                    <div class="flex-1 p-4">
+                        <div class="w-16 h-16 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center mb-2">
+                            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        </div>
+                        <div class="text-sm">Laboratório</div>
+                    </div>
+                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    <div class="flex-1 p-4">
+                        <div class="w-16 h-16 mx-auto bg-orange-500/20 rounded-full flex items-center justify-center mb-2">
+                            <span class="text-2xl font-bold text-orange-400">🔥</span>
+                        </div>
+                        <div class="text-sm">FHIR Bundle</div>
+                    </div>
+                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    <div class="flex-1 p-4">
+                        <div class="w-16 h-16 mx-auto bg-green-500/20 rounded-full flex items-center justify-center mb-2">
+                            <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        </div>
+                        <div class="text-sm">HealthCare</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">Resources Suportados</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <span class="px-3 py-2 bg-white/5 rounded">Patient</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">Practitioner</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">DiagnosticReport</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">Observation</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">ServiceRequest</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">Specimen</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">Organization</span>
+                        <span class="px-3 py-2 bg-white/5 rounded">Encounter</span>
+                    </div>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">Sistemas de Codificação</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between items-center">
+                            <span>LOINC</span>
+                            <span class="text-green-400">Exames laboratoriais</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>SNOMED-CT</span>
+                            <span class="text-green-400">Terminologia clínica</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>TUSS / CBHPM</span>
+                            <span class="text-green-400">Procedimentos Brasil</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>CPF / CNS / CNES</span>
+                            <span class="text-green-400">Identificadores BR</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 card rounded-xl p-4 flex items-center justify-between">
+                <span class="text-gray-400">Integrações Governamentais:</span>
+                <div class="flex gap-4">
+                    <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded">RNDS</span>
+                    <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded">e-SUS APS</span>
+                    <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded">CID-10/11</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 7: Certificado Digital -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">Certificado Digital ICP-Brasil</h2>
+                    <p class="text-gray-400">Assinatura PAdES válida no ITI</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-cyan-400">Tipos de Certificado</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                <span class="text-xl font-bold text-blue-400">A1</span>
+                            </div>
+                            <div>
+                                <div class="font-medium">Certificado A1 (Software)</div>
+                                <div class="text-sm text-gray-400">Arquivo .pfx/.p12 - Upload direto</div>
+                            </div>
+                            <svg class="w-6 h-6 text-green-500 ml-auto" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        </div>
+                        <div class="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
+                            <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                <span class="text-xl font-bold text-purple-400">A3</span>
+                            </div>
+                            <div>
+                                <div class="font-medium">Certificado A3 (Token/Smartcard)</div>
+                                <div class="text-sm text-gray-400">Hardware USB - Integração nativa</div>
+                            </div>
+                            <svg class="w-6 h-6 text-green-500 ml-auto" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-green-400">Padrão PAdES (PDF)</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span><strong>PAdES-B</strong> - Assinatura básica</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span><strong>PAdES-T</strong> - Com carimbo de tempo</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span><strong>TSA RFC 3161</strong> - Timestamp Authority</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            <span><strong>OCSP</strong> - Verificação de revogação</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-4">Fluxo de Assinatura Digital</h3>
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 text-center p-4">
+                        <div class="w-14 h-14 mx-auto bg-blue-500/20 rounded-xl flex items-center justify-center mb-2">
+                            <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div class="text-sm">Documento</div>
+                    </div>
+                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    <div class="flex-1 text-center p-4">
+                        <div class="w-14 h-14 mx-auto bg-cyan-500/20 rounded-xl flex items-center justify-center mb-2">
+                            <svg class="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                        </div>
+                        <div class="text-sm">Certificado A1/A3</div>
+                    </div>
+                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    <div class="flex-1 text-center p-4">
+                        <div class="w-14 h-14 mx-auto bg-yellow-500/20 rounded-xl flex items-center justify-center mb-2">
+                            <svg class="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div class="text-sm">Timestamp (TSA)</div>
+                    </div>
+                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    <div class="flex-1 text-center p-4">
+                        <div class="w-14 h-14 mx-auto bg-green-500/20 rounded-xl flex items-center justify-center mb-2">
+                            <svg class="w-7 h-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div class="text-sm">PDF Assinado</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-center">
+                <span class="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 rounded-full">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    Validação: validar.iti.gov.br
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 8: Auditoria -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">Sistema de Auditoria</h2>
+                    <p class="text-gray-400">Rastreabilidade completa e detecção de anomalias</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-6 mb-6">
+                <div class="card rounded-xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Rastreamento Total</h3>
+                    <p class="text-sm text-gray-400">Quem, quando, o quê, de onde</p>
+                </div>
+                
+                <div class="card rounded-xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto bg-red-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Alertas Automáticos</h3>
+                    <p class="text-sm text-gray-400">Detecção de comportamento suspeito</p>
+                </div>
+                
+                <div class="card rounded-xl p-6 text-center">
+                    <div class="w-16 h-16 mx-auto bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Imutabilidade</h3>
+                    <p class="text-sm text-gray-400">Logs não podem ser deletados</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">Eventos Auditados</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <span class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">LOGIN</span>
+                        <span class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">LOGOUT</span>
+                        <span class="px-2 py-1 bg-green-500/20 text-green-400 rounded">CREATE_RECORD</span>
+                        <span class="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">UPDATE_RECORD</span>
+                        <span class="px-2 py-1 bg-purple-500/20 text-purple-400 rounded">VIEW_PATIENT</span>
+                        <span class="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded">PRESCRIPTION</span>
+                        <span class="px-2 py-1 bg-red-500/20 text-red-400 rounded">EXPORT_DATA</span>
+                        <span class="px-2 py-1 bg-orange-500/20 text-orange-400 rounded">SIGN_DOC</span>
+                    </div>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-4">Alertas de Segurança</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2 text-red-400">
+                            <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                            Login falhado &gt; 3x em 5 min
+                        </li>
+                        <li class="flex items-center gap-2 text-yellow-400">
+                            <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                            Exportação em massa
+                        </li>
+                        <li class="flex items-center gap-2 text-orange-400">
+                            <span class="w-2 h-2 bg-orange-500 rounded-full"></span>
+                            Acesso fora de horário
+                        </li>
+                        <li class="flex items-center gap-2 text-purple-400">
+                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
+                            &gt;50 ações em 5 min
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-6 card rounded-xl p-4 flex items-center justify-between">
+                <span>Retenção de Logs:</span>
+                <div class="flex gap-4">
+                    <span class="px-3 py-1 bg-white/10 rounded">Prontuários: <strong class="text-green-400">20 anos</strong></span>
+                    <span class="px-3 py-1 bg-white/10 rounded">Auditoria: <strong class="text-blue-400">5 anos</strong></span>
+                    <span class="px-3 py-1 bg-white/10 rounded">Operacional: <strong class="text-yellow-400">90 dias</strong></span>
+                </div>
+            </div>
+            
+            <div class="mt-4 card rounded-xl p-4 bg-green-500/10 border border-green-500/30">
+                <span class="text-green-400 font-semibold">📊 API /api/audit-logs</span>
+                <span class="text-gray-400 ml-2">— Filtros por ação, recurso, usuário e período. Estatísticas 24h em tempo real.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 9: IA e Privacidade -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-pink-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">Inteligência Artificial</h2>
+                    <p class="text-gray-400">IA Local com Privacidade Total</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div class="card rounded-xl p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                            <span class="text-2xl">🦙</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold">Ollama (Local)</h3>
+                            <p class="text-sm text-gray-400">LLaMA 3 - Self-hosted</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-2 text-green-400">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Dados nunca saem do servidor
+                        </li>
+                        <li class="flex items-center gap-2 text-green-400">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Zero custo de API
+                        </li>
+                        <li class="flex items-center gap-2 text-green-400">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            LGPD nativo
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Casos de Uso da IA</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <span class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center text-lg">💊</span>
+                            <span>Sugestão de tratamento</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center text-lg">⚠️</span>
+                            <span>Verificação de interações</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center text-lg">📝</span>
+                            <span>Resumo de prontuário</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center text-lg">🎙️</span>
+                            <span>Transcrição de consultas</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card rounded-xl p-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 border-green-500/30">
+                <h3 class="text-xl font-semibold mb-4 text-green-400">Garantias de Privacidade</h3>
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div class="text-3xl mb-2">🏠</div>
+                        <div class="font-medium">100% Local</div>
+                        <div class="text-sm text-gray-400">Processamento on-premise</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl mb-2">🔒</div>
+                        <div class="font-medium">Anonimização</div>
+                        <div class="text-sm text-gray-400">Se usar cloud (opcional)</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl mb-2">👨‍⚕️</div>
+                        <div class="font-medium">Revisão Humana</div>
+                        <div class="text-sm text-gray-400">Médico sempre valida</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 10: Backup e DR -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-16 h-16 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-4xl font-bold">Backup e Disaster Recovery</h2>
+                    <p class="text-gray-400">Estratégia 3-2-1 com RTO/RPO definidos</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-6 mb-6">
+                <div class="card rounded-xl p-6 text-center border-2 border-emerald-500/30">
+                    <div class="text-5xl font-bold text-emerald-400 mb-2">3</div>
+                    <div class="text-lg font-medium">Cópias</div>
+                    <div class="text-sm text-gray-400 mt-2">Produção + Local + Offsite</div>
+                </div>
+                <div class="card rounded-xl p-6 text-center border-2 border-blue-500/30">
+                    <div class="text-5xl font-bold text-blue-400 mb-2">2</div>
+                    <div class="text-lg font-medium">Mídias</div>
+                    <div class="text-sm text-gray-400 mt-2">Disco local + Cloud (S3)</div>
+                </div>
+                <div class="card rounded-xl p-6 text-center border-2 border-purple-500/30">
+                    <div class="text-5xl font-bold text-purple-400 mb-2">1</div>
+                    <div class="text-lg font-medium">Offsite</div>
+                    <div class="text-sm text-gray-400 mt-2">AWS S3 / Google Cloud</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Rotinas de Backup</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span>PostgreSQL Full</span>
+                            <span class="text-green-400">Diário 03:00</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span>WAL Archiving</span>
+                            <span class="text-blue-400">Contínuo</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span>Upload S3</span>
+                            <span class="text-purple-400">Após backup</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span>Rotação Local</span>
+                            <span class="text-yellow-400">30 dias</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Objetivos de Recuperação</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-gray-400">RTO (Recovery Time)</span>
+                                <span class="text-green-400 font-bold">15 min - 2h</span>
+                            </div>
+                            <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-gray-400">RPO (Recovery Point)</span>
+                                <span class="text-blue-400 font-bold">&lt; 24h</span>
+                            </div>
+                            <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full" style="width: 95%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 11: Demo Flow -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-5xl w-full">
+            <h2 class="text-4xl font-bold mb-2 text-center">Demonstração ao Vivo</h2>
+            <p class="text-gray-400 text-center mb-8">Roteiro sugerido para a apresentação</p>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold">1</div>
+                        <div>
+                            <div class="font-medium">Login com Passkey</div>
+                            <div class="text-sm text-gray-400">Demonstrar WebAuthn biométrico</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center font-bold">2</div>
+                        <div>
+                            <div class="font-medium">Criar Prescrição</div>
+                            <div class="text-sm text-gray-400">Mostrar formulário CFM completo</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center font-bold">3</div>
+                        <div>
+                            <div class="font-medium">Assinar Digitalmente</div>
+                            <div class="text-sm text-gray-400">Usar certificado A1 instalado</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center font-bold">4</div>
+                        <div>
+                            <div class="font-medium">Validar no ITI</div>
+                            <div class="text-sm text-gray-400">validar.iti.gov.br com PDF gerado</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center font-bold">5</div>
+                        <div>
+                            <div class="font-medium">Dashboard Prontuários</div>
+                            <div class="text-sm text-gray-400">/medical-records/dashboard</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center font-bold">6</div>
+                        <div>
+                            <div class="font-medium">Painel LGPD (5 abas)</div>
+                            <div class="text-sm text-gray-400">/minha-saude/privacidade</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center font-bold">7</div>
+                        <div>
+                            <div class="font-medium">Assistente IA</div>
+                            <div class="text-sm text-gray-400">Sugestão de tratamento (local)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card rounded-xl p-4 flex items-center gap-4">
+                        <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center font-bold">8</div>
+                        <div>
+                            <div class="font-medium">Logs de Auditoria</div>
+                            <div class="text-sm text-gray-400">/admin/audit (API real)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 card rounded-xl p-4 bg-blue-500/10 border-blue-500/30 text-center">
+                <p class="text-blue-300">💡 Dica: Mantenha o terminal aberto com <code class="bg-black/30 px-2 py-1 rounded">docker compose ps</code> para mostrar infraestrutura</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 12: Encerramento -->
+    <section class="slide flex-col justify-center items-center p-8">
+        <div class="animate-in max-w-4xl w-full text-center">
+            <div class="mb-8">
+                <svg class="w-20 h-20 mx-auto text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+            </div>
+            
+            <h2 class="text-5xl font-bold mb-6">HealthCare</h2>
+            <p class="text-xl text-gray-300 mb-8">Prontuário Eletrônico Seguro e Compliant</p>
+            
+            <div class="grid grid-cols-4 gap-4 mb-12">
+                <div class="card rounded-xl p-4">
+                    <div class="text-2xl font-bold text-green-400">~100%</div>
+                    <div class="text-sm text-gray-400">LGPD</div>
+                </div>
+                <div class="card rounded-xl p-4">
+                    <div class="text-2xl font-bold text-yellow-400">91.9%</div>
+                    <div class="text-sm text-gray-400">SBIS/CFM</div>
+                </div>
+                <div class="card rounded-xl p-4">
+                    <div class="text-2xl font-bold text-blue-400">FHIR R4</div>
+                    <div class="text-sm text-gray-400">HL7</div>
+                </div>
+                <div class="card rounded-xl p-4">
+                    <div class="text-2xl font-bold text-cyan-400">ICP-BR</div>
+                    <div class="text-sm text-gray-400">PAdES</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-center gap-6 text-gray-400">
+                <span>Next.js 14</span>
+                <span>•</span>
+                <span>PostgreSQL</span>
+                <span>•</span>
+                <span>Docker</span>
+                <span>•</span>
+                <span>Ollama AI</span>
+            </div>
+            
+            <div class="mt-12 text-gray-500">
+                <p>Perguntas?</p>
+            </div>
+            
+            <div class="mt-8 text-xs text-gray-600">
+                <p>Última atualização: 20 de Fevereiro de 2026</p>
+                <p class="mt-1">Sistema validado com build de produção • Todos os endpoints testados</p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        
+        document.getElementById('total').textContent = total;
+        
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + total) % total;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('current').textContent = currentSlide + 1;
+            document.getElementById('progress').style.width = ((currentSlide + 1) / total * 100) + '%';
+        }
+        
+        function nextSlide() { showSlide(currentSlide + 1); }
+        function prevSlide() { showSlide(currentSlide - 1); }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+            if (e.key === 'Home') showSlide(0);
+            if (e.key === 'End') showSlide(total - 1);
+        });
+        
+        // Touch support
+        let touchStartX = 0;
+        document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+        document.addEventListener('touchend', e => {
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) diff > 0 ? nextSlide() : prevSlide();
+        });
+    </script>
+</body>
+</html>

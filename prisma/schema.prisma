@@ -25,10 +25,7 @@ model User {
   updatedAt              DateTime               @updatedAt
   password               String?
   aiInteractions         AIInteraction[]
-  evaluationsAsEvaluator CapabilityEvaluation[] @relation("EvaluatorUser")
-  evaluationsAsSubject   CapabilityEvaluation[]
   consultations          Consultation[]
-  doctorSchedules        DoctorSchedule[]
   examRequests           ExamRequest[]
   medicalRecords         MedicalRecord[]
   notifications          Notification[]
@@ -36,32 +33,18 @@ model User {
   prescriptions          Prescription[]
   referrals              Referral[]
   scheduleExceptions     ScheduleException[]
-  jobRoles               UserJobRole[]
   person                 Person?
   termAcceptances        TermAcceptance[]
   dataDeletionRequests   DataDeletionRequest[]
   protocols              Protocol[] // Protocolos criados pelo médico
-  stratumAssessments     StratumAssessment[]    @relation("UserStratumAssessments")
-  morStratumValidations  StratumAssessment[]    @relation("StratumAssessmentMoR")
-  strengthAssessments    StrengthAssessment[]   @relation("UserStrengthAssessments")
-  developmentPlans       DevelopmentPlan[]      @relation("UserDevelopmentPlans")
 
   // Passkeys / WebAuthn credentials
-  webauthnCredentials WebAuthnCredential[]
 
   // HR Management relations
-  leaveRequests         LeaveRequest[]   @relation("UserLeaveRequests")
-  approvedLeaveRequests LeaveRequest[]   @relation("ApprovedLeaveRequests")
-  createdSchedules      WorkSchedule[]   @relation("CreatedSchedules")
-  scheduleEntries       ScheduleEntry[]  @relation("ScheduleEntries")
-  timeBank              TimeBank[]
-  vacationBalance       VacationBalance?
 
   // Convites de pacientes enviados
-  patientInvites PatientInvite[] @relation("PatientInviteInvitedBy")
 
   // Convites onde este usuário foi escolhido como médico responsável
-  assignedPatientInvites PatientInvite[] @relation("PatientInviteAssignedDoctor")
 
   // Fila de espera (médicos)
   waitingLists WaitingList[]
@@ -81,7 +64,6 @@ model User {
 
   // Telemedicina - Gravações como médico
   doctorRecordings      TelemedicineRecording[] @relation("DoctorRecordings")
-  recordingAccessTokens RecordingAccessToken[]
 
   // Atestados médicos emitidos
   medicalCertificates MedicalCertificate[] @relation("DoctorCertificates")
@@ -100,28 +82,19 @@ model User {
   assignedAreaId String?
   assignedArea   Area?   @relation("AssignedArea", fields: [assignedAreaId], references: [id], onDelete: SetNull)
 
-  acsHistory ACSHistory[] @relation("ACSHistoryEntries")
-
-  // SUS Reports
-  dailyProductionReports DailyProductionReport[] @relation("DailyProductionReportProfessional")
-
-  // Vaccination Management
-  vaccinationsApplied Vaccination[] @relation("VaccinationProfessional")
-
   // Referrals as destination doctor
   destinationReferrals Referral[] @relation("ReferralDestinationDoctor")
 
   // Password Reset Tokens
   passwordResetTokens PasswordResetToken[]
 
+  // WebAuthn / Passkey credentials
+  webAuthnCredentials WebAuthnCredential[] @relation("UserWebAuthnCredentials")
+
   // Schedule Management (New)
   professionalSchedules       ProfessionalSchedule[]    @relation("ProfessionalSchedules")
   requestedSchedules          ProfessionalSchedule[]    @relation("ScheduleRequester")
   approvedSchedules           ProfessionalSchedule[]    @relation("ScheduleApprover")
-  scheduleChangeRequests      ScheduleChangeRequest[]   @relation("ProfessionalChangeRequests")
-  requestedChanges            ScheduleChangeRequest[]   @relation("ChangeRequestRequester")
-  reviewedChanges             ScheduleChangeRequest[]   @relation("ChangeRequestReviewer")
-  createdTemplates            ScheduleTemplate[]        @relation("TemplateCreator")
 
   // Documento Templates
   createdDocumentTemplates    DocumentTemplate[]        @relation("TemplateCreatedBy")
@@ -132,29 +105,27 @@ model User {
   manager       User?   @relation("UserManager", fields: [managerUserId], references: [id], onDelete: SetNull)
   directReports User[]  @relation("UserManager")
 
+  // CFM Compliance - Retenção e Criptografia
+  reviewedRetentionPolicies DataRetentionPolicy[]   @relation("RetentionPolicyReviewer")
+  acknowledgedRetentionAlerts RetentionAlert[]      @relation("RetentionAlertAcknowledger")
+  keyRotations              EncryptionKeyVersion[]  @relation("KeyRotator")
+
+  // Multi-tenancy
+  tenants UserTenant[]
+
+  // Medical Record Versioning & Signatures
+  medicalRecordVersions   MedicalRecordVersion[]   @relation("MedicalRecordVersions")
+  medicalRecordSignatures MedicalRecordSignature[] @relation("MedicalRecordSignatures")
+  sharedMedicalRecords    MedicalRecordShare[]     @relation("SharedMedicalRecords")
+  grantedMedicalRecordShares MedicalRecordShare[]  @relation("GrantedMedicalRecordShares")
+
+  // Exams
+  exams Exam[] @relation("DoctorExams")
+
   @@index([acsAssignedMicroAreaId])
   @@index([assignedAreaId])
   @@index([managerUserId])
   @@map("users")
-}
-
-model WebAuthnCredential {
-  id                      String    @id @default(cuid())
-  userId                  String
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  credentialId            String    @unique
-  publicKey               String
-  counter                 Int       @default(0)
-  deviceType              String?
-  backedUp                Boolean   @default(false)
-  transports              String?
-  authenticatorAttachment String?
-  nickname                String?
-  createdAt               DateTime  @default(now())
-  lastUsedAt              DateTime?
-
-  @@index([userId])
-  @@map("webauthn_credentials")
 }
 
 model PasswordResetToken {
@@ -171,6 +142,23 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+// WebAuthn / Passkey credentials
+model WebAuthnCredential {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation("UserWebAuthnCredentials", fields: [userId], references: [id], onDelete: Cascade)
+  credentialId  String    @unique // base64url encoded
+  publicKey     String    // base64url encoded
+  counter       Int       @default(0)
+  transports    String?   // comma-separated list: "usb,nfc,ble,internal"
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime?
+  name          String?   // User-friendly name for the device
+
+  @@index([userId])
+  @@map("webauthn_credentials")
 }
 
 // Tabela para papéis atribuídos a um usuário
@@ -214,45 +202,13 @@ model Person {
 
   // Roles
   patient      Patient?
-  professional Professional?
 
   // Address
-  addresses PersonAddress[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("people")
-}
-
-model PersonAddress {
-  id        String  @id @default(cuid())
-  personId  String
-  addressId String
-  type      String  @default("RESIDENTIAL") // RESIDENTIAL, COMMERCIAL
-  isPrimary Boolean @default(false)
-  person    Person  @relation(fields: [personId], references: [id])
-  address   Address @relation(fields: [addressId], references: [id])
-
-  @@unique([personId, addressId])
-  @@map("person_addresses")
-}
-
-model Professional {
-  id       String @id @default(cuid())
-  personId String @unique
-  person   Person @relation(fields: [personId], references: [id])
-
-  registryNumber String? // CNS/CNES
-  councilNumber  String? // CRM, COREN
-  councilType    String? // CRM, COREN, CRP, etc.
-  councilState   String?
-  cbo            String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("professionals")
 }
 
 model Branding {
@@ -374,19 +330,6 @@ model GeneratedDocument {
   @@map("generated_documents")
 }
 
-model SystemModule {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  name        String
-  description String?
-  isEnabled   Boolean  @default(false)
-  features    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("system_modules")
-}
-
 model Patient {
   id                    String                 @id @default(cuid())
   name                  String
@@ -409,8 +352,6 @@ model Patient {
   latitude              Float?
   longitude             Float?
   cpfHash               String?                @unique
-  householdId           String?
-  isHeadOfHousehold     Boolean                @default(false)
   userAccount           User?                  @relation("UserPatient")
   addresses             Address[]
   attachments           Attachment[]
@@ -418,31 +359,22 @@ model Patient {
   diagnoses             Diagnosis[]
   ExamRequest           ExamRequest[]
   examResults           ExamResult[]
-  financialTransactions FinancialTransaction[]
   documents             MedicalDocument[]
   medicalRecords        MedicalRecord[]
-  household             Household?             @relation(fields: [householdId], references: [id])
   User                  User?                  @relation(fields: [userId], references: [id])
   personId              String?                @unique
   person                Person?                @relation(fields: [personId], references: [id])
   prescriptions         Prescription[]
   referrals             Referral[]
   vitalSigns            VitalSigns[]
-  strengthAssessments   StrengthAssessment[]   @relation("PatientStrengthAssessments")
-  developmentPlans      DevelopmentPlan[]      @relation("PatientDevelopmentPlans")
   pdfExports            PatientPdfExport[]     @relation("PatientPdfExports")
 
   // Dispositivos de saúde conectados
-  connectedDevices   ConnectedDevice[]
-  deviceReadings     DeviceReading[]
-  readingThresholds  ReadingThreshold[]
-  deviceSyncSessions DeviceSyncSession[]
 
   // Consentimentos de biometria (LGPD)
   biometricConsents    PatientBiometricConsent[]
-  consentAuditLogs     ConsentAuditLog[]
   dataDeletionRequests DataDeletionRequest[]
-  patientInvite        PatientInvite?
+  treatmentOppositions TreatmentOpposition[]
 
   // Questionários integrativos recebidos
   questionnaires PatientQuestionnaire[]
@@ -451,7 +383,6 @@ model Patient {
   careTeam PatientCareTeam[]
 
   // Convênios médicos do paciente
-  insurances PatientInsurance[]
 
   // Fila de espera
   waitingLists WaitingList[]
@@ -469,25 +400,15 @@ model Patient {
   npsResponses NpsResponse[]
 
   // Wellness Dashboard - Patient Experience
-  moodLogs                 PatientMoodLog[]         @relation("PatientMoodLogs")
-  aptitudes                PatientAptitude[]        @relation("PatientAptitudes")
-  badges                   PatientBadge[]           @relation("PatientBadges")
-  wellnessDevelopmentPlans PatientDevelopmentPlan[] @relation("PatientWellnessDevelopmentPlans")
-  healthEvents             PatientHealthEvent[]     @relation("PatientHealthEvents")
-  wellnessScores           PatientWellnessScore[]   @relation("PatientWellnessScores")
-  journals                 PatientJournal[]         @relation("PatientJournals")
 
   // ============================================
   // SSF INTEGRATION - New Relations
   // ============================================
-  // Vaccination
-  vaccinations Vaccination[]
-
-  // Pregnancy
-  pregnancies Pregnancy[]
 
   // Gynecological History
-  gynecologicalHistory GynecologicalHistory[]
+
+  // Lab Exams
+  exams Exam[]
   // ============================================
 
   // PSF/Família Integration
@@ -511,46 +432,6 @@ model Patient {
   @@index([preferredAddressId])
   @@index([socialVulnerability])
   @@map("patients")
-}
-
-model Household {
-  id           String   @id @default(cuid())
-  name         String
-  address      String
-  number       String?
-  complement   String?
-  neighborhood String?
-  city         String?
-  state        String?
-  zipCode      String?
-  microArea    String? // Keep for backward compatibility
-  familyType   String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Geographic hierarchy (new)
-  microAreaId  String?
-  microAreaObj MicroArea? @relation(fields: [microAreaId], references: [id], onDelete: SetNull)
-
-  areaId String?
-  area   Area?   @relation(fields: [areaId], references: [id], onDelete: SetNull)
-
-  // Social indicators
-  monthlyIncome      Float?
-  economicClass      String? // A, B, C, D, E
-  numberOfRooms      Int?
-  hasWater           Boolean? @default(false)
-  hasElectricity     Boolean? @default(false)
-  hasSewage          Boolean? @default(false)
-  hasGarbage         Boolean? @default(false)
-  vulnerabilityScore Float? // 0-100 scale
-
-  members Patient[]
-
-  @@index([microAreaId])
-  @@index([areaId])
-  @@index([vulnerabilityScore])
-  @@map("households")
 }
 
 model Referral {
@@ -625,16 +506,45 @@ model MedicalRecord {
   deletedAt      DateTime?
   priority       String       @default("NORMAL")
   version        Int          @default(1)
+  
+  // ============================================
+  // CFM 2.218/2018 - Nível de Segurança e Criptografia
+  // ============================================
+  securityLevel       SecurityLevel @default(NGS1)
+  requiresSignature   Boolean       @default(false) // NGS2 exige assinatura ICP-Brasil
+  signedDocumentId    String?       // Referência ao documento assinado
+  
+  // Campos criptografados (AES-256-GCM) - dados sensíveis
+  encryptedDiagnosis  String?       @db.Text // Diagnóstico criptografado
+  encryptedTreatment  String?       @db.Text // Tratamento criptografado
+  encryptedNotes      String?       @db.Text // Notas criptografadas
+  
+  // Versão da chave de criptografia usada
+  encryptionKeyVersion String?      @default("v1")
+  
+  // Política de retenção - CFM 1.821/2007
+  retentionExpiresAt  DateTime?     // Quando pode ser descartado (20+ anos)
+
+  // Tags e status para operações em lote
+  tags            String[]          @default([])
+  status          String            @default("ACTIVE") // ACTIVE, DRAFT, SIGNED, ARCHIVED
+  
   aiAnalysis     AIAnalysis[]
   attachments    Attachment[]
   doctor         User         @relation(fields: [doctorId], references: [id])
   patient        Patient      @relation(fields: [patientId], references: [id])
+
+  // Versioning & Signatures
+  versions       MedicalRecordVersion[]
+  signatures     MedicalRecordSignature[]
+  shares         MedicalRecordShare[]
 
   @@index([patientId])
   @@index([doctorId])
   @@index([recordType])
   @@index([createdAt])
   @@index([deletedAt])
+  @@index([status])
   @@map("medical_records")
 }
 
@@ -707,7 +617,6 @@ model Consultation {
   patient              Patient               @relation(fields: [patientId], references: [id])
   diagnoses            Diagnosis[]
   examRequests         ExamRequest[]
-  financialTransaction FinancialTransaction?
   prescriptions        Prescription[]
   vitalSigns           VitalSigns[]
 
@@ -727,43 +636,21 @@ model Consultation {
   npsResponse NpsResponse?
 
   // Assinaturas (imagem) vinculadas à teleconsulta
-  teleconsultationSignatures TeleconsultationSignature[]
 
   // ============================================
   // SSF INTEGRATION - New Relations
   // ============================================
   // Prenatal consultation
-  prenatalConsultation PreNatalConsultation?
 
   // Gynecological history
-  gynecologicalHistory GynecologicalHistory[]
 
   // Referrals originated from this consultation
   originReferrals Referral[] @relation("OriginReferral")
   // ============================================
 
   // Recursos reservados para esta consulta (sala, equipamentos)
-  resourceBookings ResourceBooking[]
 
   @@map("consultations")
-}
-
-model TeleconsultationSignature {
-  id             String   @id @default(cuid())
-  consultationId String
-  signerId       String
-  signerRole     String
-  mimeType       String
-  filePath       String
-  fileSize       Int
-  sha256         String?
-  createdAt      DateTime @default(now())
-
-  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
-
-  @@index([consultationId])
-  @@index([signerId])
-  @@map("teleconsultation_signatures")
 }
 
 model Prescription {
@@ -782,12 +669,68 @@ model Prescription {
   doctorId         String
   consultationId   String?
   digitalSignature String?
+  
+  // ============================================
+  // CAMPOS CFM/ANVISA 2026 - Prescrições Controladas
+  // ============================================
+  
+  // Tipo de receituário (determina layout, validade, numeração)
+  prescriptionType PrescriptionType   @default(SIMPLE)
+  
+  // Numeração obrigatória para receitas controladas (fornecida pela Vigilância Sanitária)
+  // Formato: A-123456789-SP, B-987654321-RJ, etc
+  controlNumber    String?            @unique
+  
+  // UF da receita (estado onde foi emitida)
+  uf               String?            @db.VarChar(2)
+  
+  // Data de validade (calculada conforme tipo de receita)
+  expiresAt        DateTime?
+  
+  // Identificação completa do comprador (obrigatória para controladas)
+  buyerName        String?
+  buyerDocument    String?            // CPF ou RG
+  buyerAddress     String?
+  buyerPhone       String?
+  
+  // Dispensação (preenchido pela farmácia)
+  dispensedAt      DateTime?
+  pharmacyName     String?
+  pharmacyCnpj     String?
+  pharmacistName   String?
+  pharmacistCrf    String?
+  
+  // Via da receita (1ª VIA = farmácia, 2ª VIA = paciente)
+  viaNumber        Int?               @default(1)
+  
+  // Justificativa (para receitas A e B)
+  justification    String?            @db.Text
+  
+  // Flags de controle
+  requiresSecondCopy Boolean          @default(false) // Antibióticos, controlados
+  hasRestrictedQuantity Boolean       @default(false) // Lista A (máx 5 ampolas)
+  
+  // ============================================
+  
   consultation     Consultation?      @relation(fields: [consultationId], references: [id])
   doctor           User               @relation(fields: [doctorId], references: [id])
   patient          Patient            @relation(fields: [patientId], references: [id])
   items            PrescriptionItem[]
 
+  @@index([prescriptionType])
+  @@index([controlNumber])
+  @@index([expiresAt])
   @@map("prescriptions")
+}
+
+enum PrescriptionType {
+  SIMPLE          // Receita simples (branca, 1 via)
+  ANTIMICROBIAL   // Antibiótico (branca, 2 vias, validade 10 dias)
+  CONTROLLED_A    // Notificação A (amarela, 2 vias, entorpecentes)
+  CONTROLLED_B    // Notificação B (azul, 2 vias, psicotrópicos)
+  CONTROLLED_C1   // Receita C1 (branca, 2 vias, outras controladas)
+  CONTROLLED_C4   // Receita C4 (branca, 2 vias, antiretrovirais - validade 6 meses)
+  CONTROLLED_C5   // Receita C5 (branca, 2 vias, anabolizantes)
 }
 
 model ExamRequest {
@@ -947,43 +890,21 @@ model Address {
   microAreaId String?
 
   // New geographic hierarchy (all optional for backward compatibility)
-  countryId       String?
-  stateId         String?
-  cityId          String?
-  zoneId          String?
-  districtId      String?
-  subprefectureId String?
-  neighborhoodId  String? // Different from string field above
   areaId          String?
 
   // Relations - old
   patient            Patient?        @relation(fields: [patientId], references: [id])
   microArea          MicroArea?      @relation(fields: [microAreaId], references: [id])
-  residents          PersonAddress[]
   Place              Place[]
   patientsPreferring Patient[]       @relation("PreferredAddress")
 
   // Relations - new geographic
-  country         Country?       @relation(fields: [countryId], references: [code], onDelete: SetNull)
-  stateObj        State?         @relation(fields: [stateId], references: [id], onDelete: SetNull)
-  cityObj         City?          @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  zone            Zone?          @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  district        District?      @relation(fields: [districtId], references: [id], onDelete: SetNull)
-  subprefecture   Subprefecture? @relation(fields: [subprefectureId], references: [id], onDelete: SetNull)
-  neighborhoodObj Neighborhood?  @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
   area            Area?          @relation(fields: [areaId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([microAreaId])
-  @@index([countryId])
-  @@index([stateId])
-  @@index([cityId])
-  @@index([zoneId])
-  @@index([districtId])
-  @@index([neighborhoodId])
   @@index([areaId])
   @@index([latitude, longitude])
-  @@index([cityId, zoneId, districtId])
   @@map("addresses")
 }
 
@@ -1027,11 +948,8 @@ model MicroArea {
 
   // ACS assignments
   acsUsers   User[]       @relation("ACSMicroArea")
-  acsHistory ACSHistory[] @relation("ACSHistory")
-  households Household[]
 
   addresses Address[]
-  revisions MicroAreaRevision[]
   places    Place[]
 
   @@index([areaId])
@@ -1039,20 +957,6 @@ model MicroArea {
   @@index([minLat, maxLat])
   @@index([minLng, maxLng])
   @@map("micro_areas")
-}
-
-model MicroAreaRevision {
-  id            String    @id @default(cuid())
-  microAreaId   String
-  previousGeo   String?
-  newGeo        String?
-  changedByUser String?
-  reason        String?
-  createdAt     DateTime  @default(now())
-  microArea     MicroArea @relation(fields: [microAreaId], references: [id])
-
-  @@index([microAreaId, createdAt])
-  @@map("micro_area_revisions")
 }
 
 model CodeSystem {
@@ -1089,11 +993,9 @@ model MedicalCode {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   primaryIn         Diagnosis[]              @relation("PrimaryCode")
-  secondaryIn       DiagnosisSecondaryCode[]
   parent            MedicalCode?             @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
   children          MedicalCode[]            @relation("MedicalCodeHierarchy")
   system            CodeSystem               @relation(fields: [systemId], references: [id])
-  protocolDiagnoses ProtocolDiagnosis[]
 
   @@unique([systemId, code])
   @@index([code])
@@ -1119,25 +1021,10 @@ model Diagnosis {
   patient        Patient                  @relation(fields: [patientId], references: [id])
   primaryCode    MedicalCode              @relation("PrimaryCode", fields: [primaryCodeId], references: [id])
   revisions      DiagnosisRevision[]
-  secondaryCodes DiagnosisSecondaryCode[]
 
   @@index([patientId])
   @@index([consultationId])
   @@map("diagnoses")
-}
-
-model DiagnosisSecondaryCode {
-  id          String      @id @default(cuid())
-  diagnosisId String
-  codeId      String
-  order       Int         @default(0)
-  createdAt   DateTime    @default(now())
-  code        MedicalCode @relation(fields: [codeId], references: [id])
-  diagnosis   Diagnosis   @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
-
-  @@unique([diagnosisId, codeId])
-  @@index([codeId])
-  @@map("diagnosis_secondary_codes")
 }
 
 model DiagnosisRevision {
@@ -1221,18 +1108,6 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-model RateLimitLog {
-  id        String    @id @default(cuid())
-  userId    String
-  operation String
-  timestamp DateTime  @default(now())
-  expiresAt DateTime?
-
-  @@index([userId, operation, timestamp])
-  @@index([expiresAt])
-  @@map("rate_limit_logs")
-}
-
 model ExternalSourceUpdate {
   id            String             @id @default(cuid())
   sourceType    ExternalSourceType
@@ -1279,70 +1154,10 @@ model Occupation {
   active      Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  roles       JobRole[]
   group       CBOGroup? @relation(fields: [groupId], references: [id])
 
   @@index([groupId])
   @@map("occupations")
-}
-
-model JobRole {
-  id                 String                 @id @default(cuid())
-  title              String
-  occupationId       String?
-  requiredMinStratum StratumLevel
-  requiredMaxStratum StratumLevel?
-  description        String?
-  tasks              String?
-  capabilitiesJson   String?
-  active             Boolean                @default(true)
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  evaluations        CapabilityEvaluation[]
-  stratumAssessments StratumAssessment[]
-  occupation         Occupation?            @relation(fields: [occupationId], references: [id])
-  userAssignments    UserJobRole[]
-  stratumProfile     JobStratumProfile?
-
-  @@index([occupationId])
-  @@map("job_roles")
-}
-
-model UserJobRole {
-  id         String   @id @default(cuid())
-  userId     String
-  jobRoleId  String
-  assignedAt DateTime @default(now())
-  active     Boolean  @default(true)
-  jobRole    JobRole  @relation(fields: [jobRoleId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
-
-  @@unique([userId, jobRoleId])
-  @@index([jobRoleId])
-  @@map("user_job_roles")
-}
-
-model CapabilityEvaluation {
-  id               String        @id @default(cuid())
-  subjectUserId    String
-  evaluatorUserId  String
-  jobRoleId        String?
-  stratumAssessed  StratumLevel
-  potentialStratum StratumLevel?
-  timeSpanMonths   Int?
-  evidence         String?
-  gaps             String?
-  recommendations  String?
-  createdAt        DateTime      @default(now())
-  capabilityScores String?
-  evaluatorUser    User          @relation("EvaluatorUser", fields: [evaluatorUserId], references: [id])
-  jobRole          JobRole?      @relation(fields: [jobRoleId], references: [id])
-  subjectUser      User          @relation(fields: [subjectUserId], references: [id])
-
-  @@index([subjectUserId, createdAt])
-  @@index([evaluatorUserId, createdAt])
-  @@index([jobRoleId])
-  @@map("capability_evaluations")
 }
 
 // ========================================
@@ -1350,419 +1165,15 @@ model CapabilityEvaluation {
 // ========================================
 
 // Questionário de avaliação de Time Span
-model StratumAssessment {
-  id                String                      @id @default(cuid())
-  userId            String
-  jobRoleId         String?
-  assessmentType    AssessmentType              @default(SELF)
-  status            AssessmentStatus            @default(IN_PROGRESS)
-  calculatedStratum StratumLevel?
-  timeSpanMonths    Int? // Horizonte temporal calculado em meses
-  confidenceScore   Float? // 0-1, confiança no resultado
-  startedAt         DateTime                    @default(now())
-  completedAt       DateTime?
-  expiresAt         DateTime? // Assessments expiram após 1 ano
-  notes             String?
-
-  // Validação MoR (Manager-Once-Removed) para role-assessments
-  morUserId      String?
-  morValidatedAt DateTime?
-  morEvidence    String?
-
-  user              User                        @relation("UserStratumAssessments", fields: [userId], references: [id])
-  jobRole           JobRole?                    @relation(fields: [jobRoleId], references: [id])
-  morUser           User?                       @relation("StratumAssessmentMoR", fields: [morUserId], references: [id])
-  responses         StratumAssessmentResponse[]
-
-  @@index([userId, status])
-  @@index([jobRoleId, status])
-  @@index([morUserId, morValidatedAt])
-  @@index([completedAt])
-  @@map("stratum_assessments")
-}
-
-// Respostas do questionário
-model StratumAssessmentResponse {
-  id            String            @id @default(cuid())
-  assessmentId  String
-  questionId    String
-  answer        String // JSON com a resposta
-  timeSpanValue Int? // Valor de time span desta resposta em meses
-  score         Float? // Score normalizado 0-1
-  answeredAt    DateTime          @default(now())
-  assessment    StratumAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  question      StratumQuestion   @relation(fields: [questionId], references: [id])
-
-  @@unique([assessmentId, questionId])
-  @@index([assessmentId])
-  @@map("stratum_assessment_responses")
-}
-
 // Banco de questões para avaliação
-model StratumQuestion {
-  id             String                      @id @default(cuid())
-  category       QuestionCategory
-  questionText   String
-  questionType   QuestionType                @default(SCENARIO)
-  options        String // JSON array de opções
-  stratumMapping String // JSON mapeando opções para estratos
-  weight         Float                       @default(1.0)
-  order          Int                         @default(0)
-  active         Boolean                     @default(true)
-  createdAt      DateTime                    @default(now())
-  updatedAt      DateTime                    @updatedAt
-  responses      StratumAssessmentResponse[]
-
-  @@index([category, active])
-  @@map("stratum_questions")
-}
-
 // Perfil de cargo com requisitos de estrato detalhados
-model JobStratumProfile {
-  id                  String        @id @default(cuid())
-  jobRoleId           String        @unique
-  minStratum          StratumLevel
-  optimalStratum      StratumLevel
-  maxStratum          StratumLevel?
-  timeSpanMinMonths   Int // Horizonte mínimo necessário
-  timeSpanMaxMonths   Int? // Horizonte máximo (para não sub-utilizar)
-  complexityFactors   String? // JSON com fatores de complexidade
-  keyResponsibilities String? // JSON com responsabilidades-chave
-  decisionTypes       String? // JSON com tipos de decisões
-  cboCode             String? // Código CBO relacionado
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  jobRole             JobRole       @relation(fields: [jobRoleId], references: [id])
-
-  @@map("job_stratum_profiles")
-}
-
-enum AssessmentType {
-  SELF // Auto-avaliação
-  MANAGER // Avaliação pelo gestor
-  PEER // Avaliação por par
-  EXTERNAL // Avaliação externa/consultor
-}
-
-enum AssessmentStatus {
-  IN_PROGRESS
-  COMPLETED
-  EXPIRED
-  CANCELLED
-}
-
-enum QuestionCategory {
-  TIME_HORIZON // Horizonte temporal de planejamento
-  COMPLEXITY // Complexidade de problemas
-  ABSTRACTION // Nível de abstração
-  UNCERTAINTY // Tolerância à ambiguidade
-  DECISION_MAKING // Tomada de decisão
-  LEADERSHIP // Estilo de liderança
-}
-
-enum QuestionType {
-  SCENARIO // Cenário situacional
-  SCALE // Escala likert
-  RANKING // Ordenação de prioridades
-  OPEN // Resposta aberta (para análise)
-}
-
 // ========================================
 // CHARACTER STRENGTHS & GEMS SYSTEM
 // ========================================
 
 // Forças de Caráter (baseado no VIA Survey)
-model CharacterStrength {
-  id          String  @id @default(cuid())
-  code        String  @unique // ex: "CREATIVITY", "CURIOSITY"
-  name        String // Nome em português
-  virtue      Virtue // Virtude associada
-  description String
-  examples    String? // JSON com exemplos de aplicação
-  healthTips  String? // JSON com dicas de saúde relacionadas
-  order       Int     @default(0)
-  active      Boolean @default(true)
-
-  assessmentResults StrengthAssessmentResult[]
-
-  @@map("character_strengths")
-}
-
-// Assessment de Forças de Caráter
-model StrengthAssessment {
-  id             String                       @id @default(cuid())
-  userId         String?
-  patientId      String?
-  assessmentType AssessmentType               @default(SELF)
-  status         AssessmentStatus             @default(IN_PROGRESS)
-  startedAt      DateTime                     @default(now())
-  completedAt    DateTime?
-  notes          String?
-  user           User?                        @relation("UserStrengthAssessments", fields: [userId], references: [id])
-  patient        Patient?                     @relation("PatientStrengthAssessments", fields: [patientId], references: [id])
-  results        StrengthAssessmentResult[]
-  responses      StrengthAssessmentResponse[]
-
-  @@index([userId, status])
-  @@index([patientId, status])
-  @@map("strength_assessments")
-}
-
-// Respostas do questionário de forças
-model StrengthAssessmentResponse {
-  id           String             @id @default(cuid())
-  assessmentId String
-  questionId   String
-  answer       String // JSON
-  score        Float?
-  answeredAt   DateTime           @default(now())
-  assessment   StrengthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  question     StrengthQuestion   @relation(fields: [questionId], references: [id])
-
-  @@unique([assessmentId, questionId])
-  @@map("strength_assessment_responses")
-}
-
 // Questões para avaliação de forças
-model StrengthQuestion {
-  id             String                       @id @default(cuid())
-  strengthCode   String // Código da força avaliada
-  questionText   String
-  questionType   QuestionType                 @default(SCALE)
-  options        String // JSON
-  targetAudience TargetAudience               @default(BOTH)
-  order          Int                          @default(0)
-  active         Boolean                      @default(true)
-  responses      StrengthAssessmentResponse[]
-
-  @@index([strengthCode, active])
-  @@map("strength_questions")
-}
-
-// Resultado consolidado por força
-model StrengthAssessmentResult {
-  id           String             @id @default(cuid())
-  assessmentId String
-  strengthId   String
-  score        Float // 0-5
-  rank         Int? // Posição no ranking (1 = mais forte)
-  isTopFive    Boolean            @default(false)
-  isGem        Boolean            @default(false) // Gema bruta identificada
-  assessment   StrengthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  strength     CharacterStrength  @relation(fields: [strengthId], references: [id])
-
-  @@unique([assessmentId, strengthId])
-  @@map("strength_assessment_results")
-}
-
 // Plano de Desenvolvimento Pessoal
-model DevelopmentPlan {
-  id               String                 @id @default(cuid())
-  userId           String?
-  patientId        String?
-  title            String
-  futureVision     String? // Visão de futuro do indivíduo
-  currentStratum   StratumLevel?
-  targetStratum    StratumLevel?
-  primaryStrengths String? // JSON com forças principais a alavancar
-  developmentAreas String? // JSON com áreas de desenvolvimento
-  status           PlanStatus             @default(ACTIVE)
-  startDate        DateTime               @default(now())
-  targetDate       DateTime?
-  completedAt      DateTime?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  user             User?                  @relation("UserDevelopmentPlans", fields: [userId], references: [id])
-  patient          Patient?               @relation("PatientDevelopmentPlans", fields: [patientId], references: [id])
-  goals            DevelopmentGoal[]
-  milestones       DevelopmentMilestone[]
-
-  @@index([userId, status])
-  @@index([patientId, status])
-  @@map("development_plans")
-}
-
-// Metas do Plano de Desenvolvimento
-model DevelopmentGoal {
-  id           String          @id @default(cuid())
-  planId       String
-  title        String
-  description  String?
-  category     GoalCategory
-  strengthCode String? // Força de caráter relacionada
-  targetDate   DateTime?
-  status       GoalStatus      @default(NOT_STARTED)
-  progress     Int             @default(0) // 0-100
-  completedAt  DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  plan         DevelopmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  actions      GoalAction[]
-
-  @@index([planId, status])
-  @@map("development_goals")
-}
-
-// Ações para alcançar metas
-model GoalAction {
-  id          String          @id @default(cuid())
-  goalId      String
-  title       String
-  description String?
-  frequency   ActionFrequency @default(DAILY)
-  dueDate     DateTime?
-  completed   Boolean         @default(false)
-  completedAt DateTime?
-  createdAt   DateTime        @default(now())
-  goal        DevelopmentGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
-
-  @@index([goalId, completed])
-  @@map("goal_actions")
-}
-
-// Marcos de progresso
-model DevelopmentMilestone {
-  id          String          @id @default(cuid())
-  planId      String
-  title       String
-  description String?
-  targetDate  DateTime?
-  achieved    Boolean         @default(false)
-  achievedAt  DateTime?
-  celebration String? // Mensagem de celebração
-  createdAt   DateTime        @default(now())
-  plan        DevelopmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-
-  @@index([planId, achieved])
-  @@map("development_milestones")
-}
-
-enum Virtue {
-  WISDOM // Sabedoria
-  COURAGE // Coragem
-  HUMANITY // Humanidade
-  JUSTICE // Justiça
-  TEMPERANCE // Temperança
-  TRANSCENDENCE // Transcendência
-}
-
-enum TargetAudience {
-  STAFF // Apenas colaboradores
-  PATIENT // Apenas pacientes
-  BOTH // Ambos
-}
-
-enum PlanStatus {
-  DRAFT
-  ACTIVE
-  PAUSED
-  COMPLETED
-  CANCELLED
-}
-
-enum GoalCategory {
-  HEALTH // Saúde física
-  MENTAL // Saúde mental
-  CAREER // Carreira/profissional
-  RELATIONSHIPS // Relacionamentos
-  PERSONAL // Desenvolvimento pessoal
-  SPIRITUAL // Espiritual/propósito
-}
-
-enum GoalStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum ActionFrequency {
-  DAILY
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-  ONCE
-}
-
-model FinancialTransaction {
-  id             String            @id @default(cuid())
-  type           TransactionType
-  amount         Decimal           @db.Decimal(10, 2)
-  description    String
-  category       String
-  status         TransactionStatus @default(PENDING)
-  dueDate        DateTime
-  paidDate       DateTime?
-  paymentMethod  String?
-  patientId      String?
-  consultationId String?           @unique
-  insuranceId    String? // Link to insurance/convenio
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  consultation   Consultation?     @relation(fields: [consultationId], references: [id])
-  patient        Patient?          @relation(fields: [patientId], references: [id])
-  insurance      HealthInsurance?  @relation(fields: [insuranceId], references: [id])
-
-  @@map("financial_transactions")
-}
-
-model HealthInsurance {
-  id                 String                 @id @default(cuid())
-  name               String // Nome do convênio (ex: Unimed, SulAmérica)
-  type               InsuranceType          @default(PRIVATE)
-  code               String?                @unique // Código ANS
-  contactPhone       String?
-  contactEmail       String?
-  billingAddress     String?
-  isActive           Boolean                @default(true)
-  coveragePercentage Int                    @default(100) // % coberto
-  copayAmount        Decimal?               @db.Decimal(10, 2) // Valor da coparticipação
-  notes              String?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  patients           PatientInsurance[]
-  transactions       FinancialTransaction[]
-
-  @@map("health_insurances")
-}
-
-model PatientInsurance {
-  id          String          @id @default(cuid())
-  patientId   String
-  insuranceId String
-  cardNumber  String? // Número da carteirinha
-  validUntil  DateTime? // Validade
-  plan        String? // Tipo de plano
-  isActive    Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  patient     Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  insurance   HealthInsurance @relation(fields: [insuranceId], references: [id])
-
-  @@unique([patientId, insuranceId])
-  @@map("patient_insurances")
-}
-
-model DoctorSchedule {
-  id                    String   @id @default(cuid())
-  doctorId              String
-  dayOfWeek             Int
-  startTime             String
-  endTime               String
-  slotDuration          Int      @default(30)
-  // Patient booking settings
-  allowPatientBooking   Boolean  @default(false)
-  maxBookingDaysAhead   Int      @default(30)    // Quantos dias antes permite agendar
-  minBookingHoursAhead  Int      @default(24)    // Quantas horas antes permite agendar
-  autoConfirmBooking    Boolean  @default(false) // Confirma automaticamente ou requer aprovação
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  doctor                User     @relation(fields: [doctorId], references: [id])
-
-  @@unique([doctorId, dayOfWeek])
-  @@map("doctor_schedules")
-}
-
 model ScheduleException {
   id          String   @id @default(cuid())
   doctorId    String
@@ -1801,6 +1212,7 @@ model Notification {
   user      User      @relation(fields: [userId], references: [id])
 
   @@index([userId, read])
+  @@index([userId, createdAt])
   @@map("notifications")
 }
 
@@ -1910,20 +1322,6 @@ enum Role {
   PATIENT
 }
 
-model RegistrationInvite {
-  id        String       @id @default(cuid())
-  email     String
-  role      Role
-  token     String       @unique
-  expiresAt DateTime
-  status    InviteStatus @default(PENDING)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("registration_invites")
-}
-
 enum InviteStatus {
   PENDING
   USED
@@ -2016,6 +1414,147 @@ enum Severity {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// ============================================
+// CFM Resolução 2.218/2018 - Níveis de Garantia de Segurança
+// NGS1: Prontuários com assinatura simples (backup, integridade)
+// NGS2: Prontuários com assinatura digital ICP-Brasil (validade jurídica plena)
+// ============================================
+enum SecurityLevel {
+  NGS1 // Nível de Garantia de Segurança 1 - Assinatura simples
+  NGS2 // Nível de Garantia de Segurança 2 - ICP-Brasil obrigatório
+}
+
+// ============================================
+// Política de Retenção de Dados - CFM Resolução 1.821/2007
+// Prontuários médicos devem ser mantidos por no mínimo 20 anos
+// após último atendimento, ou até paciente completar 21 anos
+// ============================================
+model DataRetentionPolicy {
+  id String @id @default(cuid())
+
+  // Tipo de documento
+  documentType      RetentionDocumentType
+  retentionYears    Int                   @default(20) // Mínimo CFM: 20 anos
+  
+  // Configurações de alerta
+  alertThresholdDays Int @default(365) // Alertar 1 ano antes de expirar
+  
+  // Status de revisão
+  lastReviewDate    DateTime?
+  nextReviewDate    DateTime?
+  reviewedById      String?
+  reviewedBy        User?               @relation("RetentionPolicyReviewer", fields: [reviewedById], references: [id])
+  
+  // Descrição e justificativa legal
+  legalBasis        String              @default("CFM Resolução 1.821/2007")
+  description       String?             @db.Text
+  
+  // Metadados
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([documentType])
+  @@map("data_retention_policies")
+}
+
+enum RetentionDocumentType {
+  MEDICAL_RECORD      // Prontuário - 20 anos CFM
+  PRESCRIPTION        // Prescrição - 5 anos
+  EXAM_RESULT         // Exame - 20 anos
+  MEDICAL_CERTIFICATE // Atestado - 20 anos
+  CONSENT_FORM        // TCLE - 5 anos após término
+  REFERRAL            // Encaminhamento - 20 anos
+  TELECONSULTATION    // Teleconsulta - 20 anos
+  AUDIT_LOG           // Logs de auditoria - 5 anos LGPD
+  FINANCIAL           // Financeiro - 5 anos fiscal
+}
+
+// ============================================
+// Alertas de Retenção - Documentos próximos de expirar
+// ============================================
+model RetentionAlert {
+  id String @id @default(cuid())
+
+  // Documento referenciado
+  documentType  RetentionDocumentType
+  documentId    String
+  patientId     String?
+  
+  // Datas
+  documentDate  DateTime // Data do documento original
+  expirationDate DateTime // Data de expiração calculada
+  
+  // Status
+  status        RetentionAlertStatus @default(PENDING)
+  acknowledgedAt DateTime?
+  acknowledgedById String?
+  acknowledgedBy   User?            @relation("RetentionAlertAcknowledger", fields: [acknowledgedById], references: [id])
+  
+  // Ação tomada
+  actionTaken   String?             @db.Text
+  
+  // Metadados
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([documentType, status])
+  @@index([expirationDate])
+  @@index([patientId])
+  @@map("retention_alerts")
+}
+
+enum RetentionAlertStatus {
+  PENDING       // Aguardando revisão
+  ACKNOWLEDGED  // Reconhecido
+  EXTENDED      // Prazo estendido
+  ARCHIVED      // Arquivado conforme política
+  DELETED       // Deletado após período legal
+}
+
+// ============================================
+// Rotação de Chaves de Criptografia
+// ============================================
+model EncryptionKeyVersion {
+  id String @id @default(cuid())
+
+  // Identificador da chave
+  keyIdentifier String   @unique // Formato: "key_v1", "key_v2", etc.
+  version       Int
+  
+  // Status
+  status        KeyStatus @default(ACTIVE)
+  
+  // Hash da chave para verificação (não armazena a chave!)
+  keyHash       String    // SHA-256 do prefixo da chave para verificação
+  algorithm     String    @default("aes-256-gcm")
+  
+  // Datas
+  activatedAt   DateTime  @default(now())
+  rotatedAt     DateTime? // Quando foi rotacionada
+  expiresAt     DateTime? // Data de expiração planejada
+  
+  // Metadados de rotação
+  rotatedById   String?
+  rotatedBy     User?     @relation("KeyRotator", fields: [rotatedById], references: [id])
+  rotationReason String?
+  
+  // Auditoria
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@index([version])
+  @@map("encryption_key_versions")
+}
+
+enum KeyStatus {
+  ACTIVE      // Chave em uso para criptografia
+  DECRYPT_ONLY // Apenas para descriptografar dados antigos
+  EXPIRED     // Expirada, não usar
+  REVOKED     // Revogada por segurança
 }
 
 enum ConsultationType {
@@ -2141,453 +1680,24 @@ model SystemSetting {
 // ==================== HR MANAGEMENT ====================
 
 // Tipos de ausência
-enum LeaveType {
-  VACATION // Férias
-  SICK_LEAVE // Licença médica
-  MATERNITY // Licença maternidade
-  PATERNITY // Licença paternidade
-  BEREAVEMENT // Luto
-  PERSONAL // Particular
-  TRAINING // Treinamento/Capacitação
-  COMPENSATORY // Folga compensatória
-  OTHER // Outro
-}
-
 // Status da solicitação de ausência
-enum LeaveStatus {
-  PENDING // Aguardando aprovação
-  APPROVED // Aprovado
-  REJECTED // Rejeitado
-  CANCELLED // Cancelado
-  IN_PROGRESS // Em andamento
-  COMPLETED // Finalizado
-}
-
 // Solicitação de férias/folgas/licenças
-model LeaveRequest {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation("UserLeaveRequests", fields: [userId], references: [id])
-
-  type      LeaveType
-  startDate DateTime
-  endDate   DateTime
-  reason    String?
-
-  status LeaveStatus @default(PENDING)
-
-  // Aprovação
-  approvedBy    String?
-  approver      User?     @relation("ApprovedLeaveRequests", fields: [approvedBy], references: [id])
-  approvedAt    DateTime?
-  rejectionNote String?
-
-  // Metadados
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("leave_requests")
-}
-
 // Tipo de turno
-enum ShiftType {
-  MORNING // Manhã (6h-12h)
-  AFTERNOON // Tarde (12h-18h)
-  EVENING // Noite (18h-24h)
-  NIGHT // Madrugada (0h-6h)
-  FULL_DAY // Dia inteiro
-  ON_CALL // Plantão/Sobreaviso
-  CUSTOM // Personalizado
-}
-
 // Escala de trabalho
-model WorkSchedule {
-  id          String  @id @default(cuid())
-  name        String // Ex: "Escala Médicos Janeiro 2025"
-  description String?
-
-  startDate DateTime // Período da escala
-  endDate   DateTime
-
-  isActive  Boolean @default(true)
-  createdBy String
-  creator   User    @relation("CreatedSchedules", fields: [createdBy], references: [id])
-
-  entries ScheduleEntry[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("work_schedules")
-}
-
 // Entrada na escala (profissional + turno + data)
-model ScheduleEntry {
-  id         String       @id @default(cuid())
-  scheduleId String
-  schedule   WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation("ScheduleEntries", fields: [userId], references: [id])
-
-  date      DateTime // Data específica
-  shiftType ShiftType
-  startTime String? // Horário personalizado (formato HH:mm)
-  endTime   String?
-
-  notes       String?
-  isConfirmed Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([scheduleId, userId, date])
-  @@map("schedule_entries")
-}
-
-// Banco de horas
-model TimeBank {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  date        DateTime // Data da movimentação
-  minutes     Int // Positivo = crédito, Negativo = débito
-  description String
-
-  // Referência opcional a entrada de escala
-  scheduleEntryId String?
-
-  createdAt DateTime @default(now())
-
-  @@map("time_bank")
-}
-
-// Saldo de férias
-model VacationBalance {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
-
-  totalDays   Int @default(30) // Total de dias de férias por período
-  usedDays    Int @default(0) // Dias já utilizados
-  pendingDays Int @default(0) // Dias em solicitações pendentes
-
-  referenceYear Int // Ano de referência (período aquisitivo)
-  expiresAt     DateTime? // Data limite para uso
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("vacation_balances")
-}
-
 // ==================== INVENTORY MANAGEMENT ====================
 
 // Unidade de medida
-enum MeasureUnit {
-  UNIT // Unidade
-  BOX // Caixa
-  PACK // Pacote
-  BOTTLE // Frasco
-  AMPULE // Ampola
-  TUBE // Tubo
-  BAG // Bolsa
-  KIT // Kit
-  LITER // Litro
-  ML // Mililitro
-  GRAM // Grama
-  KG // Quilograma
-  METER // Metro
-  CM // Centímetro
-  ROLL // Rolo
-  PAIR // Par
-}
-
-// Categoria de produto
-model ProductCategory {
-  id          String            @id @default(cuid())
-  name        String            @unique
-  description String?
-  parentId    String?
-  parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    ProductCategory[] @relation("CategoryHierarchy")
-  products    Product[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("product_categories")
-}
-
 // Produto/Material
-model Product {
-  id          String  @id @default(cuid())
-  code        String  @unique // Código interno
-  barcode     String? @unique // Código de barras
-  name        String
-  description String?
-
-  categoryId String?
-  category   ProductCategory? @relation(fields: [categoryId], references: [id])
-
-  unit         MeasureUnit @default(UNIT)
-  minStock     Int         @default(0) // Estoque mínimo
-  maxStock     Int? // Estoque máximo
-  reorderPoint Int? // Ponto de reposição
-
-  isActive     Boolean @default(true)
-  isControlled Boolean @default(false) // Medicamento controlado
-  requiresLot  Boolean @default(false) // Requer controle de lote
-
-  // Pricing
-  costPrice Float? // Preço de custo
-  sellPrice Float? // Preço de venda (se aplicável)
-
-  // Inventory relation
-  inventory Inventory[]
-  movements InventoryMovement[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("products")
-}
-
 // Tipo de movimentação
-enum MovementType {
-  ENTRY // Entrada
-  EXIT // Saída
-  ADJUSTMENT_IN // Ajuste entrada
-  ADJUSTMENT_OUT // Ajuste saída
-  TRANSFER_IN // Transferência entrada
-  TRANSFER_OUT // Transferência saída
-  LOSS // Perda/Avaria
-  RETURN // Devolução
-  CONSUMPTION // Consumo (uso em atendimento)
-}
-
 // Localização/Almoxarifado
-model StorageLocation {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  description String?
-  isActive    Boolean @default(true)
-
-  inventory     Inventory[]
-  movementsFrom InventoryMovement[] @relation("MovementFrom")
-  movementsTo   InventoryMovement[] @relation("MovementTo")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("storage_locations")
-}
-
 // Estoque (quantidade por localização)
-model Inventory {
-  id        String  @id @default(cuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-
-  locationId String
-  location   StorageLocation @relation(fields: [locationId], references: [id])
-
-  quantity    Int @default(0)
-  reservedQty Int @default(0) // Quantidade reservada
-
-  // Lote (se aplicável)
-  lotNumber      String?
-  expirationDate DateTime?
-
-  lastCountDate DateTime? // Última contagem física
-  lastCountQty  Int?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([productId, locationId, lotNumber])
-  @@map("inventory")
-}
-
 // Movimentação de estoque
-model InventoryMovement {
-  id        String  @id @default(cuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-
-  type     MovementType
-  quantity Int
-
-  // Localização origem (para saídas/transferências)
-  fromLocationId String?
-  fromLocation   StorageLocation? @relation("MovementFrom", fields: [fromLocationId], references: [id])
-
-  // Localização destino (para entradas/transferências)
-  toLocationId String?
-  toLocation   StorageLocation? @relation("MovementTo", fields: [toLocationId], references: [id])
-
-  // Lote
-  lotNumber      String?
-  expirationDate DateTime?
-
-  // Referência
-  referenceType String? // 'consultation', 'purchase', 'transfer', etc.
-  referenceId   String?
-
-  // Custo
-  unitCost  Float?
-  totalCost Float?
-
-  notes String?
-
-  // Usuário que registrou
-  userId String
-
-  createdAt DateTime @default(now())
-
-  @@map("inventory_movements")
-}
-
 // =====================================================
 // RECURSOS FÍSICOS (Salas, Equipamentos)
 // =====================================================
 
-enum ResourceType {
-  ROOM
-  EQUIPMENT
-}
-
-enum ResourceStatus {
-  AVAILABLE
-  IN_USE
-  MAINTENANCE
-  INACTIVE
-}
-
-model Resource {
-  id          String         @id @default(cuid())
-  name        String
-  description String?
-  type        ResourceType
-  category    String // consultorio, triagem, procedimento, diagnostico, etc.
-  location    String? // Onde está localizado
-  status      ResourceStatus @default(AVAILABLE)
-  
-  // Para salas
-  capacity    Int? // Capacidade de pessoas
-  floor       String? // Andar
-  
-  // Para equipamentos
-  model       String? // Modelo do equipamento
-  serialNumber String? // Número de série
-  manufacturer String? // Fabricante
-  purchaseDate DateTime? // Data de compra
-  warrantyExpiry DateTime? // Validade da garantia
-  lastMaintenanceDate DateTime? // Última manutenção
-  nextMaintenanceDate DateTime? // Próxima manutenção prevista
-
-  // Configurações
-  isBookable  Boolean @default(true) // Pode ser reservado
-  bookingDuration Int? // Duração padrão de reserva em minutos
-  
-  // Audit
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  createdBy String?
-
-  // Relações
-  bookings  ResourceBooking[]
-  maintenances ResourceMaintenance[]
-
-  @@index([type, status])
-  @@index([category])
-  @@map("resources")
-}
-
-model ResourceBooking {
-  id          String   @id @default(cuid())
-  resourceId  String
-  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  
-  userId      String // Quem reservou
-  patientId   String? // Para qual paciente (se aplicável)
-  consultationId String? // Vinculado a uma consulta
-  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
-  
-  startTime   DateTime
-  endTime     DateTime
-  
-  status      String @default("CONFIRMED") // CONFIRMED, CANCELLED, COMPLETED
-  notes       String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([resourceId, startTime])
-  @@index([userId])
-  @@index([consultationId])
-  @@map("resource_bookings")
-}
-
-model ResourceMaintenance {
-  id          String   @id @default(cuid())
-  resourceId  String
-  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  
-  type        String // PREVENTIVA, CORRETIVA, CALIBRACAO
-  description String
-  
-  scheduledDate DateTime
-  completedDate DateTime?
-  
-  cost        Float?
-  vendor      String? // Empresa que fez a manutenção
-  
-  status      String @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
-  notes       String?
-  
-  createdBy   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([resourceId])
-  @@index([status, scheduledDate])
-  @@map("resource_maintenances")
-}
-
 // Fornecedor
-model Supplier {
-  id        String  @id @default(cuid())
-  name      String
-  tradeName String? // Nome fantasia
-  document  String? @unique // CNPJ
-
-  // Contato
-  email   String?
-  phone   String?
-  website String?
-
-  // Endereço
-  address String?
-  city    String?
-  state   String?
-  zipCode String?
-
-  // Dados bancários
-  bankInfo String?
-
-  notes    String?
-  isActive Boolean @default(true)
-
-  purchaseOrders PurchaseOrder[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("suppliers")
-}
-
 // Status de pedido de compra
 enum PurchaseOrderStatus {
   DRAFT // Rascunho
@@ -2597,62 +1707,6 @@ enum PurchaseOrderStatus {
   PARTIAL // Recebido parcialmente
   RECEIVED // Recebido
   CANCELLED // Cancelado
-}
-
-// Pedido de compra
-model PurchaseOrder {
-  id          String @id @default(cuid())
-  orderNumber String @unique
-
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id])
-
-  status PurchaseOrderStatus @default(DRAFT)
-
-  // Datas
-  orderDate    DateTime?
-  expectedDate DateTime?
-  receivedDate DateTime?
-
-  // Valores
-  subtotal Float @default(0)
-  discount Float @default(0)
-  shipping Float @default(0)
-  total    Float @default(0)
-
-  notes String?
-
-  // Usuários
-  createdBy  String
-  approvedBy String?
-
-  items PurchaseOrderItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("purchase_orders")
-}
-
-// Item do pedido de compra
-model PurchaseOrderItem {
-  id      String        @id @default(cuid())
-  orderId String
-  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  productId String
-
-  quantity    Int
-  receivedQty Int   @default(0)
-  unitPrice   Float
-  totalPrice  Float
-
-  lotNumber      String?
-  expirationDate DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@map("purchase_order_items")
 }
 
 // =====================================================
@@ -2666,7 +1720,7 @@ model Medication {
   tradeName String? // Nome comercial / fantasia
 
   // Classificação da receita
-  prescriptionType PrescriptionType @default(SYMPTOMATIC)
+  prescriptionType PrescriptionType @default(SIMPLE)
 
   // Disponibilidade nas farmácias
   basicPharmacy      Boolean @default(false) // Farmácia da Unidade
@@ -2715,20 +1769,10 @@ model Medication {
   updatedAt DateTime @updatedAt
 
   prescriptionItems     PrescriptionItem[]
-  protocolPrescriptions ProtocolPrescription[]
 
   @@index([name])
   @@index([susCode])
   @@map("medications")
-}
-
-enum PrescriptionType {
-  SYMPTOMATIC // Sintomático
-  CONTINUOUS // Contínuo
-  CONTROLLED // Controlado
-  BLUE_B // Tipo B - Azul
-  YELLOW_A // Tipo A - Amarelo
-  PHYTOTHERAPIC // Fitoterápico
 }
 
 model PrescriptionItem {
@@ -2739,15 +1783,42 @@ model PrescriptionItem {
   // Se não usar medicação do catálogo
   customName String?
 
-  dosage       String
-  frequency    String
-  duration     String
-  quantity     Int?
-  instructions String?
-
+  // ============================================
+  // CAMPOS OBRIGATÓRIOS CFM/ANVISA
+  // ============================================
+  
+  // Nome do medicamento (DCB ou genérico)
+  medicationName String
+  
+  // Concentração/dosagem (ex: 500mg, 10mg/mL)
+  concentration  String
+  
+  // Forma farmacêutica (comprimido, cápsula, solução, etc)
+  pharmaceuticalForm String?
+  
+  // Quantidade numérica
+  quantity       Int
+  
+  // Quantidade por extenso (OBRIGATÓRIA para controladas)
+  // Ex: "trinta comprimidos"
+  quantityInWords String?
+  
+  // Posologia detalhada
+  dosage         String
+  frequency      String
+  duration       String
+  instructions   String?
+  
+  // Via de administração (oral, tópica, intravenosa, etc)
+  administrationRoute String? @default("oral")
+  
+  // Uso (interno/externo)
+  usageType      String? @default("internal") // internal, external
+  
+  // ============================================
+  
   prescription      Prescription       @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
   medication        Medication?        @relation(fields: [medicationId], references: [id])
-  medicationTakings MedicationTaking[] // Histórico de tomadas
 
   createdAt DateTime @default(now())
 
@@ -2847,7 +1918,6 @@ model ExamCatalog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  protocolExams  ProtocolExam[]
   examComboItems ExamComboItem[] // Combos que incluem este exame
 
   @@index([name])
@@ -2947,10 +2017,6 @@ model Protocol {
   usageCount Int     @default(0) // Quantas vezes foi usado
 
   // Items do protocolo
-  prescriptions ProtocolPrescription[]
-  exams         ProtocolExam[]
-  referrals     ProtocolReferral[]
-  diagnoses     ProtocolDiagnosis[]
 
   // Metadados
   tags      String[] // Tags para busca
@@ -2963,92 +2029,6 @@ model Protocol {
   @@index([category])
   @@index([name])
   @@map("protocols")
-}
-
-model ProtocolPrescription {
-  id         String   @id @default(cuid())
-  protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-
-  // Medicação do catálogo (opcional)
-  medicationId String?
-  medication   Medication? @relation(fields: [medicationId], references: [id])
-
-  // Dados da prescrição
-  medicationName String // Nome (pode ser diferente do catálogo)
-  dosage         String // Dosagem
-  frequency      String // Frequência
-  duration       String // Duração
-  instructions   String? // Orientações
-  quantity       Float? // Quantidade
-  route          String? // Via de administração
-
-  // Ordem no protocolo
-  sortOrder Int @default(0)
-
-  @@index([protocolId])
-  @@map("protocol_prescriptions")
-}
-
-model ProtocolExam {
-  id         String   @id @default(cuid())
-  protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-
-  // Exame do catálogo (opcional)
-  examCatalogId String?
-  examCatalog   ExamCatalog? @relation(fields: [examCatalogId], references: [id])
-
-  // Dados do exame
-  examName    String // Nome do exame
-  description String? // Indicação/descrição
-  priority    Urgency @default(ROUTINE)
-  notes       String? // Observações
-
-  // Ordem no protocolo
-  sortOrder Int @default(0)
-
-  @@index([protocolId])
-  @@map("protocol_exams")
-}
-
-model ProtocolReferral {
-  id         String   @id @default(cuid())
-  protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-
-  // Dados do encaminhamento
-  specialty   String // Especialidade
-  description String // Motivo/indicação
-  priority    Urgency @default(ROUTINE)
-  notes       String? // Observações
-
-  // Ordem no protocolo
-  sortOrder Int @default(0)
-
-  @@index([protocolId])
-  @@map("protocol_referrals")
-}
-
-model ProtocolDiagnosis {
-  id         String   @id @default(cuid())
-  protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-
-  // CID do catálogo
-  medicalCodeId String?
-  medicalCode   MedicalCode? @relation(fields: [medicalCodeId], references: [id])
-
-  // Dados do diagnóstico
-  cidCode     String // Código CID
-  description String // Descrição
-  isPrimary   Boolean @default(false) // Diagnóstico principal
-
-  // Ordem no protocolo
-  sortOrder Int @default(0)
-
-  @@index([protocolId])
-  @@map("protocol_diagnoses")
 }
 
 enum ProtocolCategory {
@@ -3070,291 +2050,17 @@ enum ProtocolCategory {
 // ============================================
 
 // Tipo de dispositivo de saúde
-enum HealthDeviceType {
-  BLOOD_PRESSURE // Medidor de pressão
-  GLUCOMETER // Glicosímetro
-  PULSE_OXIMETER // Oxímetro de pulso
-  THERMOMETER // Termômetro
-  SCALE // Balança
-  HEART_RATE // Monitor cardíaco
-  ECG // Eletrocardiograma
-  STETHOSCOPE // Estetoscópio digital
-  OTOSCOPE // Otoscópio digital
-  DERMATOSCOPE // Dermatoscópio
-  SPIROMETER // Espirômetro
-  SLEEP_TRACKER // Monitor de sono
-  ACTIVITY_TRACKER // Monitor de atividade
-  CGM // Monitor contínuo de glicose
-  SMARTWATCH // Relógio inteligente
-  FITNESS_BAND // Pulseira fitness
-  OTHER // Outro
-}
-
 // Fonte de dados do dispositivo
-enum DeviceDataSource {
-  APPLE_HEALTHKIT // Apple HealthKit (iOS)
-  GOOGLE_FIT // Google Fit (Android)
-  HEALTH_CONNECT // Health Connect (Android 14+)
-  DIRECT_BLUETOOTH // Conexão Bluetooth direta
-  DIRECT_WIFI // Conexão WiFi direta
-  MANUAL_ENTRY // Entrada manual
-  API_INTEGRATION // Integração via API do fabricante
-  FHIR // Padrão FHIR
-  OPEN_MHEALTH // Padrão Open mHealth
-}
-
 // Status de conexão do dispositivo
-enum DeviceConnectionStatus {
-  CONNECTED // Conectado e sincronizando
-  DISCONNECTED // Desconectado
-  PAIRING // Em processo de pareamento
-  ERROR // Erro de conexão
-  NEEDS_AUTH // Precisa reautorização
-}
-
-// Dispositivo de saúde conectado
-model ConnectedDevice {
-  id        String  @id @default(cuid())
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  // Identificação do dispositivo
-  deviceType      HealthDeviceType
-  deviceName      String // Nome do dispositivo (ex: "Apple Watch Series 9")
-  manufacturer    String? // Fabricante (ex: "Apple", "Omron")
-  model           String? // Modelo específico
-  serialNumber    String? // Número de série
-  firmwareVersion String? // Versão do firmware
-
-  // Conexão
-  dataSource       DeviceDataSource
-  connectionStatus DeviceConnectionStatus @default(DISCONNECTED)
-  lastSyncAt       DateTime? // Última sincronização
-  syncFrequency    Int? // Frequência de sync em minutos
-
-  // Autenticação (para APIs de fabricantes)
-  accessToken    String? // Token de acesso (criptografado)
-  refreshToken   String? // Token de refresh (criptografado)
-  tokenExpiresAt DateTime? // Expiração do token
-
-  // Configurações
-  isActive         Boolean @default(true)
-  autoSync         Boolean @default(true)
-  notifyOnAbnormal Boolean @default(true) // Alertar valores anormais
-
-  // Metadados
-  metadata  Json? // Dados extras específicos do dispositivo
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relações
-  readings DeviceReading[]
-
-  @@unique([patientId, serialNumber])
-  @@index([patientId])
-  @@index([deviceType])
-  @@map("connected_devices")
-}
-
 // Leitura/medição de um dispositivo
-model DeviceReading {
-  id        String           @id @default(cuid())
-  deviceId  String?
-  device    ConnectedDevice? @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  patientId String
-  patient   Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  // Tipo de medição
-  readingType ReadingType
-
-  // Valores (usando campos genéricos para flexibilidade)
-  primaryValue   Float // Valor principal (ex: glicose, SpO2, peso)
-  secondaryValue Float? // Valor secundário (ex: pressão diastólica)
-  tertiaryValue  Float? // Valor terciário (se necessário)
-  unit           String // Unidade (ex: "mg/dL", "mmHg", "kg")
-
-  // Contexto da medição
-  measuredAt DateTime // Quando a medição foi feita
-  syncedAt   DateTime @default(now()) // Quando foi sincronizado
-
-  // Metadados da medição
-  context  ReadingContext? // Contexto (jejum, pós-refeição, etc)
-  notes    String? // Observações
-  isManual Boolean         @default(false) // Entrada manual vs automática
-
-  // Qualidade/confiabilidade
-  confidence    Float? // Score de confiança (0-1)
-  isValid       Boolean @default(true)
-  invalidReason String? // Motivo se inválido
-
-  // Alertas
-  isAbnormal     Boolean        @default(false)
-  alertSeverity  AlertSeverity? // Severidade se anormal
-  alertTriggered Boolean        @default(false)
-
-  // Dados brutos do dispositivo
-  rawData Json? // Dados originais do dispositivo
-
-  createdAt DateTime @default(now())
-
-  @@index([patientId, readingType])
-  @@index([deviceId, measuredAt])
-  @@index([measuredAt])
-  @@index([isAbnormal])
-  @@map("device_readings")
-}
-
 // Tipo de leitura/medição
-enum ReadingType {
-  // Cardiovascular
-  BLOOD_PRESSURE_SYSTOLIC // Pressão sistólica
-  BLOOD_PRESSURE_DIASTOLIC // Pressão diastólica
-  BLOOD_PRESSURE // Pressão (combinado)
-  HEART_RATE // Frequência cardíaca
-  HEART_RATE_VARIABILITY // Variabilidade cardíaca
-  ECG_RHYTHM // Ritmo ECG
-
-  // Respiratório
-  OXYGEN_SATURATION // SpO2
-  RESPIRATORY_RATE // Frequência respiratória
-  PEAK_FLOW // Pico de fluxo
-  FEV1 // Volume expiratório forçado
-
-  // Metabólico
-  BLOOD_GLUCOSE // Glicemia
-  BLOOD_GLUCOSE_FASTING // Glicemia em jejum
-  BLOOD_GLUCOSE_POSTMEAL // Glicemia pós-prandial
-  KETONES // Cetonas
-
-  // Composição corporal
-  WEIGHT // Peso
-  BMI // IMC
-  BODY_FAT // % gordura corporal
-  MUSCLE_MASS // Massa muscular
-  BONE_MASS // Massa óssea
-  WATER_PERCENTAGE // % água corporal
-  VISCERAL_FAT // Gordura visceral
-
-  // Temperatura
-  BODY_TEMPERATURE // Temperatura corporal
-  SKIN_TEMPERATURE // Temperatura da pele
-
-  // Sono
-  SLEEP_DURATION // Duração do sono
-  SLEEP_DEEP // Sono profundo
-  SLEEP_REM // Sono REM
-  SLEEP_LIGHT // Sono leve
-  SLEEP_AWAKE // Tempo acordado
-  SLEEP_SCORE // Score de qualidade
-
-  // Atividade física
-  STEPS // Passos
-  DISTANCE // Distância
-  CALORIES_BURNED // Calorias queimadas
-  ACTIVE_MINUTES // Minutos ativos
-  FLOORS_CLIMBED // Andares subidos
-  EXERCISE_DURATION // Duração exercício
-
-  // Estresse/Mental
-  STRESS_LEVEL // Nível de estresse
-  MINDFULNESS_MINUTES // Minutos de mindfulness
-
-  // Áudio/Exame
-  HEART_SOUND // Som cardíaco (estetoscópio)
-  LUNG_SOUND // Som pulmonar
-  EAR_IMAGE // Imagem do ouvido (otoscópio)
-  SKIN_IMAGE // Imagem da pele (dermatoscópio)
-
-  // Outros
-  HYDRATION // Hidratação
-  MENSTRUAL_CYCLE // Ciclo menstrual
-  MEDICATION_TAKEN // Medicação tomada
-  OTHER // Outro
-}
-
 // Contexto da medição
-enum ReadingContext {
-  FASTING // Em jejum
-  BEFORE_MEAL // Antes da refeição
-  AFTER_MEAL // Depois da refeição
-  BEFORE_EXERCISE // Antes do exercício
-  AFTER_EXERCISE // Depois do exercício
-  RESTING // Em repouso
-  ACTIVE // Em atividade
-  SLEEPING // Dormindo
-  WAKING // Ao acordar
-  BEDTIME // Ao deitar
-  STRESSED // Estressado
-  RELAXED // Relaxado
-  ILL // Doente
-  MEDICATED // Após medicação
-}
-
 // Severidade de alerta
 enum AlertSeverity {
   LOW // Atenção
   MEDIUM // Moderado
   HIGH // Alto
   CRITICAL // Crítico
-}
-
-// Limites de referência para alertas
-model ReadingThreshold {
-  id        String   @id @default(cuid())
-  patientId String? // Se null, é padrão global
-  patient   Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  readingType ReadingType
-
-  // Limites
-  criticalLow  Float? // Abaixo = crítico
-  warningLow   Float? // Abaixo = atenção
-  normalMin    Float? // Início da faixa normal
-  normalMax    Float? // Fim da faixa normal
-  warningHigh  Float? // Acima = atenção
-  criticalHigh Float? // Acima = crítico
-
-  // Aplicabilidade
-  context ReadingContext? // Contexto específico (ex: jejum para glicose)
-  ageMin  Int? // Idade mínima
-  ageMax  Int? // Idade máxima
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([patientId, readingType, context])
-  @@index([readingType])
-  @@map("reading_thresholds")
-}
-
-// Sessão de sincronização
-model DeviceSyncSession {
-  id        String  @id @default(cuid())
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  dataSource  DeviceDataSource
-  startedAt   DateTime         @default(now())
-  completedAt DateTime?
-
-  // Estatísticas
-  readingsImported Int @default(0)
-  readingsSkipped  Int @default(0)
-  errors           Int @default(0)
-
-  status       SyncStatus @default(IN_PROGRESS)
-  errorMessage String?
-
-  @@index([patientId])
-  @@map("device_sync_sessions")
-}
-
-enum SyncStatus {
-  IN_PROGRESS
-  COMPLETED
-  FAILED
-  PARTIAL
 }
 
 // ============================================
@@ -3381,57 +2087,6 @@ enum BiometricDataType {
   OTHER // Outros
 }
 
-// Convite para paciente com opções de consentimento
-model PatientInvite {
-  id String @id @default(cuid())
-
-  // Dados do convite
-  email       String
-  phone       String? // Para envio via WhatsApp
-  patientName String // Nome do paciente
-  token       String       @unique
-  expiresAt   DateTime
-  status      InviteStatus @default(PENDING)
-
-  // Quem enviou
-  invitedById String
-  invitedBy   User   @relation("PatientInviteInvitedBy", fields: [invitedById], references: [id])
-
-  // Médico responsável (opcional) para vincular automaticamente ao aceitar
-  assignedDoctorId String?
-  assignedDoctor   User?  @relation("PatientInviteAssignedDoctor", fields: [assignedDoctorId], references: [id])
-
-  // Dados pré-preenchidos (opcional)
-  birthDate DateTime?
-  cpf       String?
-  allergies           String? // Alergias conhecidas
-  gender              Gender? // Gênero do paciente
-  emergencyContact    String? // Nome + telefone de contato emergência
-
-  // Mensagem personalizada
-  customMessage String?
-
-  // Consentimento aceito
-  consentAcceptedAt DateTime?
-  consentIpAddress  String? // IP do aceite (auditoria)
-  consentUserAgent  String? // Navegador usado (auditoria)
-
-  // Relação com consentimentos
-  biometricConsents PatientBiometricConsent[]
-
-  // Paciente criado (após aceite)
-  patientId String?  @unique
-  patient   Patient? @relation(fields: [patientId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([email])
-  @@index([assignedDoctorId])
-  @@index([token])
-  @@map("patient_invites")
-}
-
 // Consentimento individual para cada tipo de dado biométrico
 model PatientBiometricConsent {
   id String @id @default(cuid())
@@ -3440,7 +2095,6 @@ model PatientBiometricConsent {
   patientId String?
   patient   Patient?       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   inviteId  String?
-  invite    PatientInvite? @relation(fields: [inviteId], references: [id], onDelete: Cascade)
 
   // Tipo de dado
   dataType BiometricDataType
@@ -3467,29 +2121,6 @@ model PatientBiometricConsent {
   @@index([patientId])
   @@index([inviteId])
   @@map("patient_biometric_consents")
-}
-
-// Histórico de alterações de consentimento (auditoria LGPD)
-model ConsentAuditLog {
-  id String @id @default(cuid())
-
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  dataType      BiometricDataType
-  action        ConsentAction // GRANTED, REVOKED, MODIFIED
-  previousValue Boolean?
-  newValue      Boolean
-
-  // Auditoria
-  ipAddress String?
-  userAgent String?
-  reason    String? // Motivo da alteração (opcional)
-
-  createdAt DateTime @default(now())
-
-  @@index([patientId])
-  @@map("consent_audit_logs")
 }
 
 enum ConsentAction {
@@ -3547,6 +2178,154 @@ enum DeletionRequestStatus {
 }
 
 // ==========================================
+// LGPD - INCIDENTES DE SEGURANÇA (Art. 48)
+// ==========================================
+
+model SecurityIncident {
+  id String @id @default(cuid())
+
+  // Classificação do incidente
+  title           String
+  description     String   @db.Text
+  severity        IncidentSeverity
+  incidentType    IncidentType
+  status          IncidentStatus   @default(DETECTED)
+
+  // Dados afetados
+  affectedDataTypes   String[]  // ["CPF", "email", "medical_records", etc.]
+  estimatedAffected   Int?      // Número estimado de titulares afetados
+  confirmedAffected   Int?      // Número confirmado após investigação
+
+  // Timeline
+  detectedAt       DateTime  @default(now())
+  occurredAt       DateTime? // Quando o incidente realmente ocorreu
+  containedAt      DateTime? // Quando foi contido
+  resolvedAt       DateTime?
+
+  // Notificações LGPD Art. 48
+  anpdNotifiedAt          DateTime?
+  anpdNotificationNumber  String?   // Número do protocolo ANPD
+  titularsNotifiedAt      DateTime?
+  titularsNotificationMethod String? // email, app, sms, etc.
+
+  // Causa e remediação
+  rootCause       String?   @db.Text
+  actionsTaken    String?   @db.Text
+  preventiveMeasures String? @db.Text
+
+  // Responsável pela gestão
+  reportedById    String?
+  assignedToId    String?
+  
+  // Evidências e documentos
+  evidences       Json?     // URLs de logs, screenshots, etc.
+
+  // Auditoria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Logs de atividade
+
+  @@index([status])
+  @@index([severity])
+  @@index([detectedAt])
+  @@index([anpdNotifiedAt])
+  @@map("security_incidents")
+}
+
+enum IncidentSeverity {
+  LOW       // Baixo risco
+  MEDIUM    // Risco moderado
+  HIGH      // Alto risco - dados sensíveis
+  CRITICAL  // Crítico - vazamento confirmado de dados sensíveis
+}
+
+enum IncidentType {
+  DATA_BREACH         // Vazamento de dados
+  UNAUTHORIZED_ACCESS // Acesso não autorizado
+  MALWARE             // Malware/ransomware
+  PHISHING            // Phishing
+  SYSTEM_FAILURE      // Falha de sistema
+  HUMAN_ERROR         // Erro humano
+  PHYSICAL_SECURITY   // Segurança física
+  THIRD_PARTY         // Incidente em terceiro
+  OTHER               // Outro
+}
+
+enum IncidentStatus {
+  DETECTED      // Detectado
+  INVESTIGATING // Em investigação
+  CONTAINED     // Contido
+  ERADICATED    // Erradicado
+  RECOVERED     // Recuperado
+  CLOSED        // Encerrado
+  POST_INCIDENT // Em análise pós-incidente
+}
+
+// ==========================================
+// LGPD - OPOSIÇÃO AO TRATAMENTO (Art. 18, §2º)
+// ==========================================
+
+model TreatmentOpposition {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Tipo de tratamento oposto
+  treatmentType     OppositionTreatmentType
+  treatmentDetails  String?   @db.Text  // Detalhes específicos
+
+  // Motivo da oposição
+  reason            String    @db.Text
+  
+  // Status
+  status            OppositionStatus @default(PENDING)
+  
+  // Análise
+  analysisNotes     String?   @db.Text
+  legalBasis        String?   // Base legal para aceitar/rejeitar
+  analyzedById      String?
+  analyzedAt        DateTime?
+
+  // Se rejeitada, justificativa legal obrigatória
+  rejectionReason   String?   @db.Text
+
+  // Efeitos aplicados
+  effectsApplied    Json?     // Quais tratamentos foram suspensos
+
+  // Auditoria
+  ipAddress         String?
+  userAgent         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+  @@index([treatmentType])
+  @@map("treatment_oppositions")
+}
+
+enum OppositionTreatmentType {
+  MARKETING           // Comunicações de marketing
+  AI_ANALYSIS         // Análise por IA
+  DATA_SHARING        // Compartilhamento com terceiros
+  PROFILING           // Perfilamento/decisões automatizadas
+  RESEARCH            // Uso em pesquisas
+  BIOMETRIC           // Coleta de dados biométricos
+  TELEMEDICINE_RECORD // Gravação de teleconsultas
+  ALL                 // Todos os tratamentos não essenciais
+}
+
+enum OppositionStatus {
+  PENDING    // Aguardando análise
+  APPROVED   // Oposição aceita - tratamento suspenso
+  REJECTED   // Oposição rejeitada (com base legal)
+  PARTIAL    // Parcialmente aceita
+}
+
+// ==========================================
 // QUESTIONÁRIOS INTEGRATIVOS
 // ==========================================
 
@@ -3593,7 +2372,6 @@ model QuestionnaireTemplate {
   therapeuticSystem TherapeuticSystem @default(GENERAL)
 
   // Organização
-  categories IntakeCategory[]
 
   // Configurações
   estimatedMinutes   Int     @default(15)
@@ -3626,33 +2404,11 @@ model QuestionnaireTemplate {
   @@map("questionnaire_templates")
 }
 
-// Categoria/Seção dentro do questionário
-model IntakeCategory {
-  id String @id @default(cuid())
-
-  templateId String
-  template   QuestionnaireTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-
-  name        String // "Características Físicas"
-  description String? // Breve explicação
-  order       Int     @default(0)
-  iconEmoji   String? // 🏃 para seção física
-
-  questions IntakeQuestion[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([templateId])
-  @@map("intake_categories")
-}
-
 // Pergunta individual
 model IntakeQuestion {
   id String @id @default(cuid())
 
   categoryId String
-  category   IntakeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   // Conteúdo
   text     String // "Como é sua digestão habitualmente?"
@@ -3671,10 +2427,8 @@ model IntakeQuestion {
   scaleMaxLabel String? // "Muito rápida"
 
   // Opções de resposta
-  options IntakeQuestionOption[]
 
   // Respostas dos pacientes
-  answers PatientAnswer[]
 
   // Mapeamento para análise (ex: dosha, temperamento)
   analysisMapping Json? // { "vata": 0, "pitta": 2, "kapha": 1 }
@@ -3687,32 +2441,6 @@ model IntakeQuestion {
 
   @@index([categoryId])
   @@map("intake_questions")
-}
-
-// Opção de resposta (para choice questions)
-model IntakeQuestionOption {
-  id String @id @default(cuid())
-
-  questionId String
-  question   IntakeQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  text        String // "Rápida e irregular"
-  description String? // Explicação adicional
-  imageUrl    String? // Imagem/ícone
-  emoji       String? // 🔥
-  order       Int     @default(0)
-
-  // Pontuação para análise
-  scoreValue Json? // { "vata": 2, "pitta": 0, "kapha": 0 }
-
-  // Respostas que selecionaram esta opção
-  selectedIn PatientAnswer[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([questionId])
-  @@map("intake_question_options")
 }
 
 // Questionário enviado para um paciente específico
@@ -3748,7 +2476,6 @@ model PatientQuestionnaire {
   progressPercent Int     @default(0)
 
   // Respostas
-  answers PatientAnswer[]
 
   // Análise IA
   aiAnalysis   Json? // Resultado da análise automática
@@ -3768,40 +2495,6 @@ model PatientQuestionnaire {
   @@index([templateId])
   @@index([accessToken])
   @@map("patient_questionnaires")
-}
-
-// Resposta individual do paciente
-model PatientAnswer {
-  id String @id @default(cuid())
-
-  questionnaireId String
-  questionnaire   PatientQuestionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-
-  questionId String
-  question   IntakeQuestion @relation(fields: [questionId], references: [id])
-
-  // Resposta (dependendo do tipo)
-  textValue    String? // Para TEXT
-  numericValue Float? // Para SCALE
-  booleanValue Boolean? // Para YES_NO
-
-  // Para SINGLE/MULTIPLE_CHOICE
-  selectedOptionId String?
-  selectedOption   IntakeQuestionOption? @relation(fields: [selectedOptionId], references: [id])
-
-  // Para MULTIPLE_CHOICE (múltiplas seleções)
-  selectedOptionIds String[] // Array de IDs
-
-  // Para BODY_MAP
-  bodyMapData Json? // { "region": "head", "x": 50, "y": 30, "note": "dor" }
-
-  // Metadados
-  answeredAt       DateTime @default(now())
-  timeSpentSeconds Int? // Tempo gasto na pergunta
-
-  @@unique([questionnaireId, questionId])
-  @@index([questionnaireId])
-  @@map("patient_answers")
 }
 
 // =====================================
@@ -3955,33 +2648,12 @@ model TelemedicineRecording {
   updatedAt DateTime @updatedAt
 
   // Relações
-  accessTokens RecordingAccessToken[]
 
   @@index([consultationId])
   @@index([doctorId])
   @@index([patientId])
   @@index([status])
   @@index([createdAt])
-}
-
-model RecordingAccessToken {
-  id String @id @default(cuid())
-
-  recordingId String
-  recording   TelemedicineRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  token     String   @unique
-  expiresAt DateTime
-
-  createdAt DateTime @default(now())
-
-  @@index([recordingId])
-  @@index([userId])
-  @@index([token])
-  @@index([expiresAt])
 }
 
 // =====================================
@@ -4209,6 +2881,7 @@ model DigitalCertificate {
 
   // Relações
   signedDocuments SignedDocument[]
+  medicalRecordSignatures MedicalRecordSignature[]
 
   @@index([userId])
   @@index([notAfter])
@@ -4281,48 +2954,6 @@ enum SignedDocumentType {
 }
 
 // Alerta de auditoria (anomalias, tentativas de acesso, etc.)
-model AuditAlert {
-  id String @id @default(cuid())
-
-  // Tipo de alerta
-  alertType AuditAlertType
-  severity  AlertSeverity  @default(MEDIUM)
-
-  // Detalhes
-  title       String
-  description String @db.Text
-
-  // Origem
-  userId       String?
-  ipAddress    String?
-  resourceType String?
-  resourceId   String?
-
-  // Evidências
-  auditLogIds String[] // Array de IDs de AuditLog relacionados
-  metadata    Json? // Dados adicionais
-
-  // Status
-  status          AlertStatus @default(OPEN)
-  assignedTo      String? // Admin/Manager responsável
-  resolvedBy      String?
-  resolvedAt      DateTime?
-  resolutionNotes String?     @db.Text
-
-  // Notificação
-  notifiedAt  DateTime?
-  notifiedVia String? // email, slack, sms
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([alertType])
-  @@index([severity])
-  @@index([status])
-  @@index([userId])
-  @@index([createdAt])
-}
-
 enum AuditAlertType {
   FAILED_LOGIN_ATTEMPTS // Múltiplas tentativas de login falhadas
   UNAUTHORIZED_ACCESS // Acesso a recurso sem permissão
@@ -4334,6 +2965,7 @@ enum AuditAlertType {
   GDPR_DATA_DELETION // Solicitação LGPD de exclusão
   FAILED_AUDIT_VALIDATION // Inconsistências em auditoria
   CRITICAL_ERROR // Erro crítico do sistema
+  SECURITY_INCIDENT // Incidente de segurança LGPD Art. 48
 }
 
 enum AlertStatus {
@@ -4347,133 +2979,6 @@ enum AlertStatus {
 // ============================================================================
 // WELLNESS DASHBOARD - Patient Experience Models
 // ============================================================================
-
-model PatientMoodLog {
-  id        String   @id @default(cuid())
-  patientId String
-  mood      Int      @db.SmallInt // 1-5 (😢😐🙂😊🤗)
-  energy    Int      @db.SmallInt // 1-5
-  stress    Int      @db.SmallInt // 1-5
-  sleep     Int      @db.SmallInt // 1-5
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  patient Patient @relation("PatientMoodLogs", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, createdAt])
-  @@map("patient_mood_logs")
-}
-
-model PatientAptitude {
-  id           String   @id @default(cuid())
-  patientId    String
-  name         String // "Coração Estável", "Ativo e Dedicado"
-  description  String   @db.Text
-  icon         String // "heart", "flame", "target"
-  category     String // "health", "behavior", "emotional"
-  score        Float    @default(0) // 0-100
-  discoveredAt DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  patient Patient @relation("PatientAptitudes", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, category])
-  @@index([patientId, score])
-  @@map("patient_aptitudes")
-}
-
-model PatientBadge {
-  id          String      @id @default(cuid())
-  patientId   String
-  name        String // "Iniciante", "Comprometido", "Épico"
-  rarity      BadgeRarity @default(COMMON)
-  icon        String // "sprout", "star", "trophy"
-  description String?     @db.Text
-  progress    Float       @default(0) // 0-100
-  unlockedAt  DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  patient Patient @relation("PatientBadges", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, rarity])
-  @@index([patientId, unlockedAt])
-  @@map("patient_badges")
-}
-
-model PatientDevelopmentPlan {
-  id           String             @id @default(cuid())
-  patientId    String
-  title        String // "Seu plano de 90 dias"
-  description  String             @db.Text
-  startDate    DateTime
-  targetDate   DateTime
-  phases       Json // Array de fases com metas
-  currentPhase Int                @default(1)
-  progress     Float              @default(0) // 0-100
-  status       WellnessPlanStatus @default(ACTIVE)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-
-  patient Patient @relation("PatientWellnessDevelopmentPlans", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, status])
-  @@index([patientId, targetDate])
-  @@map("patient_development_plans")
-}
-
-model PatientHealthEvent {
-  id             String    @id @default(cuid())
-  patientId      String
-  title          String
-  description    String    @db.Text
-  type           EventType // "medication", "consultation", "exam", "vital", "milestone"
-  eventDate      DateTime
-  impact         String? // "PA melhorou 12%", "Nova aptitude descoberta"
-  causalite      String?   @db.Text // Linkage: "Desde medicação ajustada..."
-  vitalsSnapshot Json? // Snapshot de dados na hora do evento
-  metadata       Json? // Dados adicionais
-  createdAt      DateTime  @default(now())
-
-  patient Patient @relation("PatientHealthEvents", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, eventDate])
-  @@index([patientId, type])
-  @@map("patient_health_events")
-}
-
-model PatientWellnessScore {
-  id                 String   @id @default(cuid())
-  patientId          String
-  score              Float // 0-100
-  moodComponent      Float // % do score vindo do mood
-  adherenceComponent Float // % do score vindo da adesão
-  vitalComponent     Float // % do score vindo dos vitais
-  emotionalComponent Float // % do score vindo do emocional
-  calculatedAt       DateTime @default(now())
-
-  patient Patient @relation("PatientWellnessScores", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, calculatedAt])
-  @@map("patient_wellness_scores")
-}
-
-model PatientJournal {
-  id           String   @id @default(cuid())
-  patientId    String
-  weekStarting DateTime // Data do início da semana
-  reflection   String   @db.Text
-  insights     String?  @db.Text
-  goals        Json? // Array de metas para próxima semana
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  patient Patient @relation("PatientJournals", fields: [patientId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, weekStarting])
-  @@map("patient_journals")
-}
 
 // Enums para Wellness Dashboard
 
@@ -4507,212 +3012,25 @@ enum EventType {
 // Hierarquia: Country → State → City → Zone → District → Subprefecture → Neighborhood → Area → MicroArea
 // ============================================
 
-model Country {
-  id        String    @id @default(cuid())
-  code      String    @unique // ISO 3166-1 alpha-2 (BR)
-  name      String    @unique
-  states    State[]
-  addresses Address[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("countries")
-}
-
-model State {
-  id     String  @id @default(cuid())
-  code   String  @unique // UF code (SP, RJ, MG, etc)
-  name   String  @unique
-  region String? // Região (Sul, Sudeste, Nordeste, etc)
-
-  countryId String  @default("br") // FK to Country (always Brazil for now)
-  country   Country @relation(fields: [countryId], references: [code], onDelete: Cascade)
-
-  cities    City[]
-  addresses Address[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([countryId])
-  @@map("states")
-}
-
-model City {
-  id       String @id @default(cuid())
-  ibgeCode String @unique // IBGE 7-digit code
-  name     String
-
-  stateId String
-  state   State  @relation(fields: [stateId], references: [id], onDelete: Cascade)
-
-  zones       Zone[]
-  addresses   Address[]
-  healthUnits HealthUnit[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([stateId, name])
-  @@index([stateId])
-  @@index([ibgeCode])
-  @@map("cities")
-}
-
-model Zone {
-  id   String  @id @default(cuid())
-  code String? // Optional external code
-  name String
-
-  cityId String
-  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
-
-  districts District[]
-  addresses Address[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([cityId, name])
-  @@index([cityId])
-  @@map("zones")
-}
-
-model District {
-  id   String  @id @default(cuid())
-  code String?
-  name String
-
-  zoneId String
-  zone   Zone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
-
-  subprefectures Subprefecture[]
-  addresses      Address[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([zoneId, name])
-  @@index([zoneId])
-  @@map("districts")
-}
-
-model Subprefecture {
-  id   String  @id @default(cuid())
-  code String?
-  name String
-
-  districtId String
-  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
-
-  neighborhoods Neighborhood[]
-  addresses     Address[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([districtId, name])
-  @@index([districtId])
-  @@map("subprefectures")
-}
-
-model Neighborhood {
-  id   String  @id @default(cuid())
-  code String?
-  name String
-
-  subprefectureId String
-  subprefecture   Subprefecture @relation(fields: [subprefectureId], references: [id], onDelete: Cascade)
-
-  areas     Area[]
-  addresses Address[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([subprefectureId, name])
-  @@index([subprefectureId])
-  @@map("neighborhoods")
-}
-
 model Area {
   id          String  @id @default(cuid())
   code        String?
   name        String
   description String?
 
-  neighborhoodId String
-  neighborhood   Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
-
   microAreas MicroArea[]
   addresses  Address[]
   acsUsers   User[]       @relation("AssignedArea")
-  acsHistory ACSHistory[]
-  households Household[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([neighborhoodId, name])
-  @@index([neighborhoodId])
   @@map("areas")
-}
-
-// ACS (Agente Comunitário de Saúde) Management
-model ACSHistory {
-  id String @id @default(cuid())
-
-  userId String
-  user   User   @relation("ACSHistoryEntries", fields: [userId], references: [id], onDelete: Cascade)
-
-  microAreaId String?
-  microArea   MicroArea? @relation("ACSHistory", fields: [microAreaId], references: [id], onDelete: SetNull)
-
-  areaId String?
-  area   Area?   @relation(fields: [areaId], references: [id], onDelete: SetNull)
-
-  assignedAt       DateTime  @default(now())
-  unassignedAt     DateTime?
-  assignmentReason String?
-  assignedByUserId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([userId, assignedAt])
-  @@index([microAreaId])
-  @@index([areaId])
-  @@map("acs_history")
 }
 
 // ============================================
 // END GEOGRAPHIC HIERARCHY MODELS
 // ============================================
-
-model MedicationTaking {
-  id String @id @default(cuid())
-
-  // Relacionamento com item de prescrição
-  prescriptionItemId String
-  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
-
-  // Dados da tomada
-  takenAt DateTime // Quando foi tomado
-  dosage  String // Dosagem confirmada
-  missed  Boolean  @default(false) // Se foi perdido/esquecido
-  notes   String? // Notas do paciente
-
-  // Controle
-  recordedBy String // ID do usuário que registrou
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([prescriptionItemId])
-  @@index([takenAt])
-  @@map("medication_takings")
-}
 
 // ============================================
 // HEALTH UNIT / ESTABELECIMENTO DE SAÚDE
@@ -4730,8 +3048,6 @@ model HealthUnit {
 
   // Endereço
   address String?
-  cityId  String?
-  city    City?   @relation(fields: [cityId], references: [id])
 
   // Localização
   latitude  Float?
@@ -4747,20 +3063,9 @@ model HealthUnit {
   staffCount Int     @default(0)
   beds       Int? // Para hospitais
 
-  // Relatórios
-  dailyReports           DailyProductionReport[]
-  monthlyReports         MonthlyProductionReport[]
-  stratifiedReports      StratifiedProductionReport[]
-  healthSituationReports HealthSituationReport[]
-  pregnancyReports       PregnancyReport[]
-  pediatricReports       PediatricHealthReport[]
-  epidemiologyReports    EpidemiologyReport[]
-
   // ============================================
   // SSF INTEGRATION - New Relations
   // ============================================
-  // Vaccination
-  vaccinations Vaccination[] @relation("VaccinationHealthUnit")
 
   // Referrals
   destinationReferrals Referral[] @relation("ReferralDestinationUnit")
@@ -4771,677 +3076,8 @@ model HealthUnit {
   updatedAt DateTime @updatedAt
 
   @@index([cnesCode])
-  @@index([cityId])
   @@index([isActive])
   @@map("health_units")
-}
-
-// ============================================
-// SUS/SIAB PRODUCTION REPORTS
-// ============================================
-
-// Produção Diária (SIAB-AD)
-model DailyProductionReport {
-  id String @id @default(cuid())
-
-  // Período
-  reportDate DateTime // Data do relatório
-  month      Int
-  year       Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Profissional
-  professionalId String?
-  professional   User?   @relation("DailyProductionReportProfessional", fields: [professionalId], references: [id])
-
-  // Consultas por tipo
-  clinicConsultations    Int @default(0)
-  preNatalConsultations  Int @default(0)
-  pediatricConsultations Int @default(0)
-  urgencyConsultations   Int @default(0)
-  homeVisits             Int @default(0)
-  groupActivities        Int @default(0)
-
-  // Total
-  totalConsultations Int @default(0)
-
-  // Equipe
-  acsActive       Int @default(0)
-  acsVisits       Int @default(0)
-  familiesVisited Int @default(0)
-
-  // Qualidade
-  flagged Boolean @default(false)
-  notes   String?
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, reportDate, professionalId])
-  @@index([healthUnitId])
-  @@index([reportDate])
-  @@index([month, year])
-  @@index([professionalId])
-  @@map("daily_production_reports")
-}
-
-// Produção Mensal (SIAB-PM)
-model MonthlyProductionReport {
-  id String @id @default(cuid())
-
-  // Período
-  month Int
-  year  Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Agregação geral
-  totalConsultations Int @default(0)
-  totalPatients      Int @default(0)
-  newPatients        Int @default(0)
-  totalFamilies      Int @default(0)
-  populationCovered  Int @default(0)
-
-  // Consultas por tipo
-  clinicConsultations    Int @default(0)
-  preNatalConsultations  Int @default(0)
-  pediatricConsultations Int @default(0)
-  urgencyConsultations   Int @default(0)
-
-  // Por faixa etária
-  consultationsUnder1 Int @default(0)
-  consultations1to4   Int @default(0)
-  consultations5to9   Int @default(0)
-  consultations10to14 Int @default(0)
-  consultations15to19 Int @default(0)
-  consultations20to49 Int @default(0)
-  consultations50to59 Int @default(0)
-  consultations60plus Int @default(0)
-
-  // Equipe
-  acsCount        Int @default(0)
-  familiesVisited Int @default(0)
-  homeVisits      Int @default(0)
-
-  // Indicadores
-  coveragePercentage  Float @default(0)
-  vaccinationCoverage Float @default(0)
-  preNatalCoverage    Float @default(0)
-  pediatricCoverage   Float @default(0)
-
-  // Referências
-  referralsIssued          Int @default(0)
-  counterReferralsReceived Int @default(0)
-
-  // Status
-  validated   Boolean   @default(false)
-  submittedAt DateTime?
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, month, year])
-  @@index([healthUnitId])
-  @@index([month, year])
-  @@index([validated])
-  @@map("monthly_production_reports")
-}
-
-// Produção Estratificada (SIAB-PE)
-model StratifiedProductionReport {
-  id String @id @default(cuid())
-
-  // Período
-  month Int
-  year  Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Dimensões de estratificação
-  ageGroup String // "under1", "1to4", "5to9", etc
-  gender   String? // "M", "F", "O"
-  type     String // "clinic", "prenatal", "pediatric", "urgency"
-
-  // Dados estratificados
-  consultationCount Int @default(0)
-  patientCount      Int @default(0)
-  newPatients       Int @default(0)
-
-  // Indicadores específicos
-  vaccinated    Int @default(0)
-  referrals     Int @default(0)
-  complications Int @default(0)
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, month, year, ageGroup, gender, type])
-  @@index([healthUnitId])
-  @@index([month, year])
-  @@index([ageGroup])
-  @@index([type])
-  @@map("stratified_production_reports")
-}
-
-// Relatório de Situação de Saúde (SIAB-SS)
-model HealthSituationReport {
-  id String @id @default(cuid())
-
-  // Período
-  month Int
-  year  Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Doenças/Condições (Agregadas)
-  diabeticCases         Int @default(0)
-  hypertensiveCases     Int @default(0)
-  tuberculosisCases     Int @default(0)
-  leprousCases          Int @default(0)
-  hivCases              Int @default(0)
-  syphilisCases         Int @default(0)
-  pregnantWomen         Int @default(0)
-  malnourishedChildren  Int @default(0)
-  domesticViolenceCases Int @default(0)
-  substanceAbuseCases   Int @default(0)
-
-  // Indicadores
-  followedDiabetics    Int @default(0)
-  followedHypertensive Int @default(0)
-  followedTuberculosis Int @default(0)
-
-  // Status de saúde crítico
-  criticalRiskCases  Int @default(0)
-  medicalEmergencies Int @default(0)
-  hospitalizations   Int @default(0)
-  deaths             Int @default(0)
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, month, year])
-  @@index([healthUnitId])
-  @@index([month, year])
-  @@map("health_situation_reports")
-}
-
-// Relatório de Gestantes (SIAB-AG)
-model PregnancyReport {
-  id String @id @default(cuid())
-
-  // Período
-  month Int
-  year  Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Gestantes
-  enrolledPregnancies Int @default(0)
-  activeFollowUps     Int @default(0)
-
-  // Acompanhamento
-  preNatalConsultations Int @default(0)
-  bloodPressureChecks   Int @default(0)
-  urineTests            Int @default(0)
-  bloodTests            Int @default(0)
-
-  // Imunização
-  tetanusCoverage   Int @default(0)
-  influenzaCoverage Int @default(0)
-
-  // Complicações
-  gestationalDiabetes Int @default(0)
-  preeclampsia        Int @default(0)
-  highRiskCases       Int @default(0)
-  referrals           Int @default(0)
-
-  // Desfecho
-  livebirths     Int @default(0)
-  stillbirths    Int @default(0)
-  maternalDeaths Int @default(0)
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, month, year])
-  @@index([healthUnitId])
-  @@index([month, year])
-  @@map("pregnancy_reports")
-}
-
-// Relatório de Crianças (SIAB-AC)
-model PediatricHealthReport {
-  id String @id @default(cuid())
-
-  // Período
-  month Int
-  year  Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Crianças
-  childrenUnder1  Int @default(0)
-  childrenUnder5  Int @default(0)
-  activeFollowUps Int @default(0)
-
-  // Acompanhamento
-  healthConsultations    Int @default(0)
-  growthAssessments      Int @default(0)
-  developmentAssessments Int @default(0)
-
-  // Imunização
-  vaccinationCoverage Float @default(0)
-  completeCalendar    Int   @default(0)
-  incompleteCalendar  Int   @default(0)
-
-  // Nutrição
-  breastfeedingRate  Float @default(0)
-  malnourished       Int   @default(0)
-  severeMalnourished Int   @default(0)
-
-  // Triagem
-  neonatalTriaging      Int @default(0)
-  developmentDeviations Int @default(0)
-
-  // Desfecho
-  preventableDeaths Int @default(0)
-  accidents         Int @default(0)
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, month, year])
-  @@index([healthUnitId])
-  @@index([month, year])
-  @@map("pediatric_health_reports")
-}
-
-// Relatório de Vigilância Epidemiológica (SIAB-VE)
-model EpidemiologyReport {
-  id String @id @default(cuid())
-
-  // Período
-  week  Int
-  month Int
-  year  Int
-
-  // Unidade
-  healthUnitId String
-  healthUnit   HealthUnit @relation(fields: [healthUnitId], references: [id])
-
-  // Doença notificável
-  diseaseCode String // Código SINAN
-  diseaseName String
-
-  // Casos
-  suspectedCases Int @default(0)
-  probableCases  Int @default(0)
-  confirmedCases Int @default(0)
-
-  // Desfecho
-  recovered Int @default(0)
-  deaths    Int @default(0)
-  abandoned Int @default(0)
-
-  // Status de notificação
-  notified   Boolean   @default(false)
-  notifiedAt DateTime?
-
-  // Auditoria
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([healthUnitId, month, year, diseaseCode])
-  @@index([healthUnitId])
-  @@index([week, year])
-  @@index([diseaseCode])
-  @@index([notified])
-  @@map("epidemiology_reports")
-}
-
-// ============================================
-// END SUS/SIAB PRODUCTION REPORTS
-// ============================================
-
-// ============================================
-// VACCINATION CALENDAR (Calendário Vacinal)
-// ============================================
-
-model Vaccine {
-  id String @id @default(cuid())
-
-  // Identificação
-  name         String // Nome da vacina
-  code         String? @unique // Código PNI
-  manufacturer String?
-
-  // Doenças cobertas
-  diseasesCovered String[] // Array de doenças (Poliomielite, Sarampo, etc.)
-
-  // Administração
-  dosesRequired      Int // Número de doses necessárias
-  intervalDays       Int? // Intervalo em dias entre doses
-  boosterRequired    Boolean @default(false)
-  boosterAfterMonths Int? // Reforço após X meses
-
-  // Faixas etárias recomendadas
-  ageGroups    String[] // ["0-2m", "2-4m", "6m", "12m", "15m", etc.]
-  minAgeMonths Int? // Idade mínima em meses
-  maxAgeMonths Int? // Idade máxima em meses (null = sem limite)
-
-  // Informações adicionais
-  description       String?
-  contraindications String?
-  sideEffects       String?
-
-  // Status
-  active      Boolean @default(true)
-  pniIncluded Boolean @default(true) // Se está no PNI
-
-  // Relacionamentos
-  vaccinations    Vaccination[]
-  scheduleEntries VaccineScheduleEntry[]
-
-  // Auditoria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([code])
-  @@index([active])
-  @@index([pniIncluded])
-  @@map("vaccines")
-}
-
-model Vaccination {
-  id String @id @default(cuid())
-
-  // Relacionamentos principais
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  vaccineId String
-  vaccine   Vaccine @relation(fields: [vaccineId], references: [id])
-
-  // Dados da aplicação
-  applicationDate DateTime @default(now())
-  doseNumber      Int // Qual dose (1ª, 2ª, 3ª, reforço)
-
-  // Lote e validade
-  lot        String?
-  expiryDate DateTime?
-
-  // Local de aplicação
-  healthUnitId String?
-  healthUnit   HealthUnit? @relation("VaccinationHealthUnit", fields: [healthUnitId], references: [id])
-
-  // Profissional que aplicou
-  professionalId String?
-  professional   User?   @relation("VaccinationProfessional", fields: [professionalId], references: [id])
-
-  // Reação adversa
-  adverseReaction Boolean @default(false)
-  reactionDetails String?
-
-  // Status
-  status String @default("APPLIED") // APPLIED, SCHEDULED, MISSED, CONTRAINDICATED
-
-  // Observações
-  notes String?
-
-  // Auditoria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([patientId])
-  @@index([vaccineId])
-  @@index([applicationDate])
-  @@index([healthUnitId])
-  @@index([status])
-  @@map("vaccinations")
-}
-
-model VaccineScheduleEntry {
-  id String @id @default(cuid())
-
-  // Vacina
-  vaccineId String
-  vaccine   Vaccine @relation(fields: [vaccineId], references: [id], onDelete: Cascade)
-
-  // Idade recomendada
-  ageMonths Int // Idade em meses (0, 2, 4, 6, 12, 15, etc.)
-  ageLabel  String // Label legível ("Ao nascer", "2 meses", etc.)
-
-  // Dose
-  doseNumber Int
-  doseType   String // INITIAL, BOOSTER, REINFORCEMENT
-
-  // Detalhes
-  description String?
-  isOptional  Boolean @default(false)
-  priority    Int     @default(1) // 1=alta, 2=média, 3=baixa
-
-  // Auditoria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([vaccineId, ageMonths, doseNumber])
-  @@index([vaccineId])
-  @@index([ageMonths])
-  @@map("vaccine_schedule_entries")
-}
-
-// ============================================
-// END VACCINATION CALENDAR
-// ============================================
-
-// ============================================
-// PRENATAL CONSULTATION (Consulta Pré-Natal)
-// ============================================
-
-model PreNatalConsultation {
-  id String @id @default(cuid())
-
-  // Relacionamentos
-  consultationId String       @unique
-  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
-
-  pregnancyId String?
-  pregnancy   Pregnancy? @relation(fields: [pregnancyId], references: [id])
-
-  // Trimestre
-  trimester      Int // 1, 2, 3
-  gestationalAge Int? // Idade gestacional em semanas
-
-  // Medidas obstétricas
-  uterineHeight  Int? // Altura uterina em cm
-  fetalHeartRate Int? // Batimento cardíaco fetal (bpm)
-  fetalMovements Boolean? // Movimentos fetais presentes
-
-  // Testes laboratoriais
-  syphilisTest      Boolean @default(false)
-  vdrlTest          Boolean @default(false)
-  urineTest         Boolean @default(false)
-  glucoseTest       Boolean @default(false)
-  hemoglobinTest    Boolean @default(false)
-  hematocritTest    Boolean @default(false)
-  hivTest           Boolean @default(false)
-  hepatitisBTest    Boolean @default(false)
-  toxoplasmosisTest Boolean @default(false)
-
-  // Resultados dos testes (opcional)
-  testResults Json?
-
-  // Vacinação
-  tetanusDose1     Boolean @default(false)
-  tetanusDose2     Boolean @default(false)
-  tetanusBooster   Boolean @default(false)
-  tetanusImmune    Boolean @default(false)
-  influenzaVaccine Boolean @default(false)
-
-  // Classificação de risco
-  riskLevel   String? // LOW_RISK, HIGH_RISK
-  riskFactors String[] @default([])
-
-  // Complicações
-  gestationalDiabetes Boolean @default(false)
-  preeclampsia        Boolean @default(false)
-  hemorrhage          Boolean @default(false)
-  prematureLabor      Boolean @default(false)
-
-  // Orientações
-  nutritionalGuidance Boolean @default(false)
-  physicalActivity    Boolean @default(false)
-  breastfeedingPrep   Boolean @default(false)
-
-  // Próxima consulta
-  nextConsultDate DateTime?
-
-  // Observações
-  notes String?
-
-  // Auditoria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([pregnancyId])
-  @@index([consultationId])
-  @@index([trimester])
-  @@index([riskLevel])
-  @@map("prenatal_consultations")
-}
-
-model Pregnancy {
-  id String @id @default(cuid())
-
-  // Paciente
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  // Dados da gestação
-  estimatedDueDate    DateTime // Data provável do parto
-  lastMenstrualPeriod DateTime? // DUM
-  gestationalAge      Int? // Idade gestacional em semanas
-
-  // Status
-  status String @default("ACTIVE") // ACTIVE, COMPLETED, INTERRUPTED
-
-  // Histórico obstétrico
-  gravidity Int? // Número de gestações (incluindo atual)
-  parity    Int? // Número de partos
-  abortions Int? // Número de abortos
-  cesareans Int? // Número de cesáreas
-
-  // Desfecho
-  deliveryDate     DateTime?
-  deliveryType     String? // VAGINAL, CESAREAN, FORCEPS
-  deliveryLocation String? // HOSPITAL, HOME, OTHER
-
-  // Recém-nascido
-  birthWeight    Float? // Peso ao nascer (gramas)
-  birthLength    Float? // Comprimento (cm)
-  apgarScore1min Int? // Apgar 1 minuto
-  apgarScore5min Int? // Apgar 5 minutos
-
-  outcome String? // LIVE_BIRTH, STILLBIRTH
-
-  // Puerpério
-  postpartumVisit Boolean @default(false)
-  complications   String?
-
-  // Relacionamentos
-  prenatalConsultations PreNatalConsultation[]
-
-  // Auditoria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([patientId])
-  @@index([status])
-  @@index([estimatedDueDate])
-  @@map("pregnancies")
-}
-
-// ============================================
-// END PRENATAL CONSULTATION
-// ============================================
-
-// ============================================
-// ANTHROPOMETRIC MEASUREMENTS (Medidas Antropométricas)
-// ============================================
-
-// Expandir VitalSigns para incluir antropometria
-// (será feito via alteração do modelo existente)
-
-// ============================================
-// GYNECOLOGICAL HISTORY (História Ginecológica)
-// ============================================
-
-model GynecologicalHistory {
-  id String @id @default(cuid())
-
-  // Paciente
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  // Consulta relacionada (opcional)
-  consultationId String?
-  consultation   Consultation? @relation(fields: [consultationId], references: [id])
-
-  // Data do evento
-  eventDate DateTime
-
-  // Tipo de evento
-  eventType String // MENARCHE, SEXARCHE, CONTRACEPTION, MENOPAUSE, PREGNANCY, ABORTION
-
-  // Idade no evento
-  ageAtEvent Int?
-
-  // Detalhes específicos
-  contraceptionMethod    String? // Para CONTRACEPTION
-  contraceptionStartDate DateTime?
-  contraceptionEndDate   DateTime?
-
-  // Descrição
-  description String?
-
-  // Observações médicas
-  clinicalNotes String?
-
-  // Auditoria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([patientId])
-  @@index([consultationId])
-  @@index([eventType])
-  @@index([eventDate])
-  @@map("gynecological_history")
 }
 
 // ==========================================
@@ -5490,56 +3126,6 @@ model ProfessionalSchedule {
   @@index([professionalId, dayOfWeek])
   @@index([status])
   @@map("professional_schedules")
-}
-
-// Solicitações de mudanças de agenda (workflow de aprovação)
-model ScheduleChangeRequest {
-  id                String                    @id @default(cuid())
-  professionalId    String
-  requestType       ScheduleRequestType       // ADD_HOURS, REMOVE_HOURS, BLOCK_DATES, etc.
-  
-  // Dados da solicitação
-  requestData       Json                      // Flexível para diferentes tipos de solicitação
-  reason            String?                   // Motivo da solicitação
-  
-  // Aprovação
-  status            ScheduleApprovalStatus    @default(PENDING)
-  requestedBy       String
-  reviewedBy        String?
-  reviewedAt        DateTime?
-  reviewNotes       String?                   // Notas do aprovador
-  
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-
-  professional      User                      @relation("ProfessionalChangeRequests", fields: [professionalId], references: [id], onDelete: Cascade)
-  requester         User                      @relation("ChangeRequestRequester", fields: [requestedBy], references: [id])
-  reviewer          User?                     @relation("ChangeRequestReviewer", fields: [reviewedBy], references: [id])
-
-  @@index([professionalId])
-  @@index([status])
-  @@index([requestType])
-  @@map("schedule_change_requests")
-}
-
-// Templates de horários (reutilizáveis)
-model ScheduleTemplate {
-  id          String   @id @default(cuid())
-  name        String   // "Plantão 7-19", "Manhã Padrão", etc.
-  description String?
-  startTime   String   // "07:00"
-  endTime     String   // "19:00"
-  color       String?  // Para UI
-  isGlobal    Boolean  @default(true) // Template global ou específico de usuário
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  creator     User?    @relation("TemplateCreator", fields: [createdBy], references: [id])
-
-  @@index([isGlobal])
-  @@index([createdBy])
-  @@map("schedule_templates")
 }
 
 enum ScheduleServiceType {
@@ -5596,7 +3182,6 @@ model PatientPdfExport {
   completedAt  DateTime?
   expiresAt    DateTime?                 // Para limpeza automática
   
-  logs         PatientPdfExportLog[]
   
   @@index([patientId])
   @@index([status])
@@ -5604,18 +3189,188 @@ model PatientPdfExport {
   @@map("patient_pdf_exports")
 }
 
-model PatientPdfExportLog {
-  id          String   @id @default(cuid())
-  exportId    String
-  export      PatientPdfExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
+// ============================================================================
+// INTEGRAÇÕES EXTERNAS - RNDS / e-SUS / TISS
+// ============================================================================
+
+// Submissões à RNDS (Rede Nacional de Dados em Saúde)
+// Submissões ao e-SUS (AB/SISAB)
+model ESUSSubmission {
+  id               String   @id @default(cuid())
   
-  // Progress step
-  step        String   // transcribing, generating, signing, uploading, etc.
-  percentage  Int?
-  message     String?
+  // Tipo de ficha
+  fichaType        String   // CDS_ATENDIMENTO, CDS_PROCEDIMENTO, CDS_VISITA, etc.
   
-  createdAt   DateTime @default(now())
+  // Referência local
+  localResourceId  String
   
-  @@index([exportId])
-  @@map("patient_pdf_export_logs")
+  // Resposta do e-SUS
+  protocolo        String?  // Protocolo de recebimento
+  status           String   // SENT, RECEIVED, PROCESSED, ERROR
+  error            String?  @db.Text
+  
+  // Lote de envio
+  batchId          String?
+  
+  // Timestamps
+  submittedAt      DateTime @default(now())
+  processedAt      DateTime?
+  
+  @@index([fichaType, status])
+  @@index([localResourceId])
+  @@index([batchId])
+  @@map("esus_submissions")
+}
+
+// =====================================================
+// MULTI-TENANCY MODELS
+// =====================================================
+
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  domain       String?  @unique
+  logoUrl      String?
+  primaryColor String?
+  plan         String   @default("free") // free, basic, professional, enterprise
+  status       String   @default("active") // active, suspended, pending, cancelled
+  settings     Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users UserTenant[]
+
+  @@index([status])
+  @@map("tenants")
+}
+
+model UserTenant {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      String   @default("member") // owner, admin, member
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+  @@map("user_tenants")
+}
+
+// =====================================================
+// MEDICAL RECORD VERSIONING & SIGNATURES
+// =====================================================
+
+model MedicalRecordVersion {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  version         Int
+  title           String
+  description     String?
+  content         String?  @db.Text
+  recordType      String
+  priority        String?  @default("NORMAL")
+  diagnosis       String?
+  treatment       String?
+  notes           String?  @db.Text
+  changedBy       String
+  changedAt       DateTime @default(now())
+  changeType      String   @default("updated") // created, updated, restored, deleted
+  changesSummary  String?
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  changedByUser User          @relation("MedicalRecordVersions", fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([medicalRecordId])
+  @@index([medicalRecordId, version])
+  @@index([changedAt])
+  @@map("medical_record_versions")
+}
+
+model MedicalRecordSignature {
+  id               String   @id @default(cuid())
+  medicalRecordId  String
+  signerId         String
+  signatureType    String   @default("digital") // digital, icp_brasil, biometric
+  certificateId    String?
+  signatureData    String?  @db.Text
+  signatureHash    String?
+  signedAt         DateTime @default(now())
+  isValid          Boolean  @default(true)
+  validationErrors String?
+  icpBrasilVerified Boolean? @default(false)
+  certificateInfo  Json?
+
+  medicalRecord MedicalRecord       @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  signer        User                @relation("MedicalRecordSignatures", fields: [signerId], references: [id], onDelete: Restrict)
+  certificate   DigitalCertificate? @relation(fields: [certificateId], references: [id], onDelete: SetNull)
+
+  @@index([medicalRecordId])
+  @@index([signerId])
+  @@index([signedAt])
+  @@map("medical_record_signatures")
+}
+
+model MedicalRecordShare {
+  id              String    @id @default(cuid())
+  medicalRecordId String
+  userId          String
+  permission      String    @default("read") // read, write, admin
+  grantedBy       String
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  user          User          @relation("SharedMedicalRecords", fields: [userId], references: [id], onDelete: Cascade)
+  granter       User          @relation("GrantedMedicalRecordShares", fields: [grantedBy], references: [id], onDelete: SetNull)
+
+  @@index([medicalRecordId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("medical_record_shares")
+}
+
+// =====================================================
+// EXAM MODEL (for HL7/FHIR integration)
+// =====================================================
+
+model Exam {
+  id              String    @id @default(cuid())
+  patientId       String
+  doctorId        String?
+  examType        String
+  examCode        String?
+  description     String?
+  status          String    @default("PENDING") // PENDING, SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+  priority        String?   @default("NORMAL")
+  requestedAt     DateTime  @default(now())
+  scheduledAt     DateTime?
+  performedAt     DateTime?
+  resultAt        DateTime?
+  result          String?   @db.Text
+  resultValues    Json?
+  referenceValues Json?
+  interpretation  String?   @db.Text
+  labName         String?
+  labCode         String?
+  fhirResourceId  String?
+  hl7MessageId    String?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  User?   @relation("DoctorExams", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+  @@index([examType])
+  @@index([fhirResourceId])
+  @@map("exams")
 }

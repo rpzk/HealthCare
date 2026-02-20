@@ -248,6 +248,8 @@ export const updateProfileSchema = z.object({
   phone: z.string().max(20).optional(),
   specialty: z.string().max(100).optional(),
   bio: z.string().max(1000).optional(),
+  crmNumber: z.string().max(50).optional(),
+  licenseState: z.string().max(2).optional(),
 })
 
 // =============================================================================

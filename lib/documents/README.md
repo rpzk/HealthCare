@@ -368,6 +368,18 @@ for (const old of oldPrescriptions) {
 - Verifique o timestamp da assinatura
 - Confirme que o algoritmo é SHA256withRSA
 
+## 📐 Layout da prescrição (padrão CFM)
+
+O layout do PDF de prescrição segue o padrão CFM e foi alinhado ao modelo da **Memed** (receita digital de referência no mercado):
+
+- **Cabeçalho:** Nome do médico (maiúsculas), CRM/UF - Médico, RQE (se houver), texto de validação (validar.iti.gov.br), endereço/contato.
+- **Superinscrição:** Nome, CPF, data de nascimento (e idade), endereço do paciente.
+- **Uso:** USO INTERNO ou USO EXTERNO em destaque.
+- **Inscrição/Subinscrição/Adscrição:** Para cada medicamento — nome (DCB), concentração e forma em bullet, posologia em frase clara (“Tomar X por via Y Z.”), quantidade (“Enviar N unidades.”; por extenso se controlado).
+- **Fechamento:** Local e data, linha de assinatura, nome do médico, CRM, texto “Assinado digitalmente” com data/hora, QR Code para validação.
+
+Referência de layout: `docs/0f77fa4e-bc44-4832-b76a-a92f9acf1c26.pdf` (exemplo Memed).
+
 ## 📖 Referências
 
 - [CFM - Resolução 2.299/2021](https://sistemas.cfm.org.br/normas/)

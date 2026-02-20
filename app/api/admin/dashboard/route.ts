@@ -81,7 +81,6 @@ export async function GET(request: NextRequest) {
       cancelledConsultations,
       noShowConsultations,
       topProfessionals,
-      pendingInvites,
       lowStockItems,
       systemHealth
     ] = await Promise.all([
@@ -180,14 +179,6 @@ export async function GET(request: NextRequest) {
         take: 5
       }),
       
-      // Convites pendentes
-      prisma.registrationInvite.count({
-        where: { 
-          status: 'PENDING',
-          expiresAt: { gt: now }
-        }
-      }),
-      
       // Itens com estoque baixo - usando raw query para comparar quantity com minStock do produto
       prisma.$queryRaw<[{count: bigint}]>`
         SELECT COUNT(*) as count 
@@ -201,7 +192,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Buscar dados dos top profissionais
-    const professionalIds = topProfessionals.map(p => p.doctorId)
+    const professionalIds = topProfessionals.map((p: { doctorId: string }) => p.doctorId)
     const professionals = professionalIds.length > 0 
       ? await prisma.user.findMany({
           where: { id: { in: professionalIds } },
@@ -209,7 +200,7 @@ export async function GET(request: NextRequest) {
         })
       : []
 
-    const professionalMap = new Map(professionals.map(p => [p.id, p]))
+    const professionalMap = new Map(professionals.map((p: { id: string; name: string | null; speciality: string | null; role: string }) => [p.id, p]))
 
     // Calcular métricas
     const totalConsultationsThisPeriod = consultationsThisPeriod
@@ -247,14 +238,6 @@ export async function GET(request: NextRequest) {
         message: `${lowStockItems} ${lowStockItems === 1 ? 'item' : 'itens'} com estoque baixo`
       })
     }
-    
-    if (pendingInvites > 0) {
-      alerts.push({
-        id: 'pending-invites',
-        type: 'info',
-        message: `${pendingInvites} ${pendingInvites === 1 ? 'convite pendente' : 'convites pendentes'}`
-      })
-    }
 
     if (typeof noShowRate === 'number' && noShowRate > 10) {
       alerts.push({
@@ -283,7 +266,7 @@ export async function GET(request: NextRequest) {
           noShowRate,
           systemHealth
         },
-        topProfessionals: topProfessionals.map(p => ({
+        topProfessionals: topProfessionals.map((p: { doctorId: string; _count: { id: number } }) => ({
           id: p.doctorId,
           name: professionalMap.get(p.doctorId)?.name ?? null,
           role: professionalMap.get(p.doctorId)?.speciality ?? professionalMap.get(p.doctorId)?.role ?? null,
