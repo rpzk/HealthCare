@@ -24,7 +24,6 @@ export default function ApresentacaoInfraPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [current, setCurrent] = useState(0)
-  const [isPrinting, setIsPrinting] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -50,7 +49,6 @@ export default function ApresentacaoInfraPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isPrinting) return
       if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault()
         goNext()
@@ -61,19 +59,7 @@ export default function ApresentacaoInfraPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goNext, goPrev, isPrinting])
-
-  // Durante impressão, renderiza todos os slides em sequência
-  useEffect(() => {
-    const handleBeforePrint = () => setIsPrinting(true)
-    const handleAfterPrint = () => setIsPrinting(false)
-    window.addEventListener('beforeprint', handleBeforePrint)
-    window.addEventListener('afterprint', handleAfterPrint)
-    return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint)
-      window.removeEventListener('afterprint', handleAfterPrint)
-    }
-  }, [])
+  }, [goNext, goPrev])
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -95,19 +81,19 @@ export default function ApresentacaoInfraPage() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Versão normal: apenas o slide atual */}
-      {!isPrinting && <SlideComponent />}
+      {/* Versão normal (tela): apenas o slide atual */}
+      <div className="screen-only print:hidden">
+        <SlideComponent />
+      </div>
 
       {/* Versão de impressão: todos os slides empilhados, uma página por slide */}
-      {isPrinting && (
-        <div className="print-container">
-          {SLIDES.map((Slide, index) => (
-            <div key={index} className="print-slide">
-              <Slide />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="hidden print:block print-container">
+        {SLIDES.map((Slide, index) => (
+          <div key={index} className="print-slide">
+            <Slide />
+          </div>
+        ))}
+      </div>
 
       {/* Navegação */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50 print:hidden">
