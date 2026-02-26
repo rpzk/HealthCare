@@ -48,6 +48,11 @@ export async function convertHtmlToPdf(
     form.append('files', fs.createReadStream(htmlPath), { filename: 'index.html' })
     tempFiles.push(htmlPath)
 
+    // Para documentos mais pesados (ex.: apresentações longas), aumentamos o tempo
+    // máximo que o Chromium no Gotenberg pode esperar antes de considerar timeout.
+    // Valor em segundos.
+    form.append('waitTimeout', '120')
+
     if (marginPt != null) {
       // 50pt ≈ 1.76cm; Gotenberg espera número em cm (sem unidade)
       const cm = (marginPt * 0.352778) / 10
@@ -68,7 +73,8 @@ export async function convertHtmlToPdf(
         responseType: 'arraybuffer',
         maxContentLength: 20 * 1024 * 1024,
         maxBodyLength: 20 * 1024 * 1024,
-        timeout: 60000,
+        // Tempo máximo de espera da requisição HTTP ao Gotenberg (ms)
+        timeout: 180000,
       }
     )
     return Buffer.from(gotenbergResp.data)
