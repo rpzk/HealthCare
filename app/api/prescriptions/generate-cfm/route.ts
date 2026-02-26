@@ -556,6 +556,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { resolveCertificatePath } = await import('@/lib/certificate-path')
+    const certPath = await resolveCertificatePath(userCertificate.pfxFilePath)
+    if (!certPath) {
+      return NextResponse.json(
+        {
+          error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.',
+          code: 'CERTIFICATE_FILE_NOT_FOUND',
+        },
+        { status: 404 }
+      )
+    }
+
     // ========== GERAR PRESCRIÇÃO ==========
 
     const prescriptionId = `RX-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`
@@ -604,7 +616,7 @@ export async function POST(request: NextRequest) {
     const pdf = await signPdfWithGotenberg({
       html: htmlContent,
       filename: `prescricao-${prescriptionId}.pdf`,
-      certPath: userCertificate.pfxFilePath,
+      certPath,
       certPassword: body.userCertificatePassword,
     })
 

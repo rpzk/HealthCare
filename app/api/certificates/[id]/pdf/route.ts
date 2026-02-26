@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateCertificatePdf } from '@/lib/pdf-generator';
-import { getBranding } from '@/lib/branding-service';
+import { getClinicDataForDocuments } from '@/lib/branding-service';
 import { getCurrentUser } from '@/lib/with-auth';
 import { logger } from '@/lib/logger'
 import { decrypt } from '@/lib/crypto'
@@ -61,7 +61,11 @@ export async function GET(
   const isSigned = !!cert.signature || !!cert.digitalSignature;
   const pdfValidationUrl = isSigned ? qrCodeData : undefined;
 
-  const branding = await getBranding();
+  const clinicData = await getClinicDataForDocuments();
+  const addrParts = [clinicData.clinicAddress, clinicData.clinicCity, clinicData.clinicState].filter(Boolean);
+  const clinicAddress = addrParts.length
+    ? addrParts.join(', ') + (clinicData.clinicZipCode ? ` - CEP ${clinicData.clinicZipCode}` : '')
+    : undefined;
 
   const formatCpf = (cpf?: string | null) => {
     if (!cpf) return undefined
@@ -81,12 +85,12 @@ export async function GET(
 
   const buffer = await generateCertificatePdf({
     clinic: {
-      name: branding?.clinicName || process.env.CLINIC_NAME || 'Clínica',
-      address: undefined,
-      phone: undefined,
-      logoUrl: branding?.logoUrl || undefined,
-      headerUrl: branding?.headerUrl || undefined,
-      footerText: branding?.footerText || undefined,
+      name: clinicData.clinicName || process.env.CLINIC_NAME || 'Clínica',
+      address: clinicAddress || undefined,
+      phone: clinicData.clinicPhone || undefined,
+      logoUrl: clinicData.logoUrl || undefined,
+      headerUrl: clinicData.headerUrl || undefined,
+      footerText: clinicData.footerText || undefined,
     },
     certificate: {
       number: cert.sequenceNumber.toString().padStart(3, '0'),

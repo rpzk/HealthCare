@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import fs from 'fs/promises'
+import { getCertificateAbsolutePath } from '@/lib/certificate-path'
 
 export const runtime = 'nodejs'
 
@@ -104,7 +105,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    let pfxPath: string | null = cert.pfxFilePath
+    const pfxPath = getCertificateAbsolutePath(cert.pfxFilePath)
     if (pfxPath) {
       try {
         await fs.unlink(pfxPath)

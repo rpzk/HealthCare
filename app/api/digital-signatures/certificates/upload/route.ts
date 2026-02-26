@@ -153,10 +153,13 @@ export async function POST(request: NextRequest) {
           .update(pfxPassword)
           .digest('hex')
 
+        // Path relativo para funcionar em dev e Docker (lib/certificate-path.ts resolve)
+        const pfxPathToStore = `certificates/${filename}`
+
         await prisma.digitalCertificate.update({
           where: { id: created.id },
           data: {
-            pfxFilePath: filePath,
+            pfxFilePath: pfxPathToStore,
             pfxPasswordHash: passwordHash,
           },
         })

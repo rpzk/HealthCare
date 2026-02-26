@@ -4,6 +4,7 @@
  */
 
 import prisma from '@/lib/prisma'
+import { getClinicDataForDocuments } from '@/lib/branding-service'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { logger } from '@/lib/logger'
@@ -98,14 +99,21 @@ export async function fetchMedicalRecordForExport(
     throw new Error(`Prontuário ${recordId} não encontrado`)
   }
 
-  // Buscar informações da clínica (se disponível)
-  let clinic = null
+  // Buscar informações da clínica (Branding + SystemSettings)
+  let clinic: MedicalRecordExportData['clinic'] = null
   try {
-    const settings = await prisma.systemSetting.findFirst({
-      where: { key: 'clinic_info' }
-    })
-    if (settings?.value) {
-      clinic = JSON.parse(settings.value as string)
+    const clinicData = await getClinicDataForDocuments()
+    if (clinicData.clinicName || clinicData.logoUrl || clinicData.clinicAddress) {
+      const addrParts = [clinicData.clinicAddress, clinicData.clinicCity, clinicData.clinicState].filter(Boolean)
+      const address = addrParts.length
+        ? addrParts.join(', ') + (clinicData.clinicZipCode ? ` - CEP ${clinicData.clinicZipCode}` : '')
+        : null
+      clinic = {
+        name: clinicData.clinicName || 'Clínica',
+        address,
+        phone: clinicData.clinicPhone || null,
+        logoUrl: clinicData.logoUrl || null,
+      }
     }
   } catch {
     // Ignorar se não houver configuração de clínica
@@ -750,10 +758,11 @@ export async function exportMedicalRecordToPdf(
   try {
     const formData = new FormData()
     formData.append('files', new Blob([html], { type: 'text/html' }), 'index.html')
-    formData.append('marginTop', '10mm')
-    formData.append('marginBottom', '10mm')
-    formData.append('marginLeft', '10mm')
-    formData.append('marginRight', '10mm')
+    // Gotenberg espera número em cm (sem unidade)
+    formData.append('marginTop', '1')
+    formData.append('marginBottom', '1')
+    formData.append('marginLeft', '1')
+    formData.append('marginRight', '1')
     formData.append('printBackground', 'true')
 
     const response = await fetch(`${gotenbergUrl}/forms/chromium/convert/html`, {

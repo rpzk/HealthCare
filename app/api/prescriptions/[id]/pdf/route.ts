@@ -14,16 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { generatePrescriptionPdf } from '@/lib/documents/pdf-generator'
-import type { 
-  PrescriptionDocument, 
-  MedicationItem,
-  DoctorInfo,
-  PatientInfo,
-  PharmaceuticalForm,
-  AdministrationRoute
-} from '@/lib/documents/types'
-import { decrypt } from '@/lib/crypto'
+import { generatePrescriptionPdfBuffer } from '@/lib/prescription-pdf-helpers'
 import { verifyPrescriptionShareToken } from '@/lib/prescription-share-token'
 import fs from 'fs/promises'
 import path from 'path'
@@ -156,109 +147,14 @@ export async function GET(
       }
     }
 
-    // Gerar PDF on-demand (sem assinatura digital)
-    // Buscar settings da clínica
-    const clinicSettings = await prisma.systemSetting.findMany({
-      where: { key: { in: ['clinic_name', 'clinic_address', 'clinic_phone', 'clinic_cnpj'] } }
-    })
-    
-    const settingsMap: Record<string, string> = {}
-    for (const s of clinicSettings) {
-      settingsMap[s.key] = s.value
-    }
-
-    // Descriptografar CPFs (médico e paciente) para exibição em documentos
-    let doctorCpf: string | undefined
-    try {
-      const raw = prescription.doctor.person?.cpf || null
-      doctorCpf = (raw && decrypt(raw)) || undefined
-    } catch {
-      doctorCpf = undefined
-    }
-    let patientCpf: string
-    try {
-      const raw = prescription.patient.cpf || null
-      patientCpf = (raw && decrypt(raw)) || raw || 'Não informado'
-    } catch {
-      patientCpf = prescription.patient.cpf || 'Não informado'
-    }
-
-    // Montar dados do médico (conforme DoctorInfo)
-    const doctorInfo: DoctorInfo = {
-      name: prescription.doctor.name,
-      crm: prescription.doctor.crmNumber || prescription.doctor.licenseNumber || '',
-      crmState: prescription.doctor.licenseState || 'SP',
-      address: settingsMap['clinic_address'] || 'Endereço não cadastrado',
-      specialty: prescription.doctor.speciality || undefined,
-      email: prescription.doctor.email || undefined,
-      clinicName: settingsMap['clinic_name'] || undefined,
-      clinicCnpj: settingsMap['clinic_cnpj'] || undefined,
-      phone: settingsMap['clinic_phone'] || undefined,
-      cpf: doctorCpf,
-    }
-
-    // Montar dados do paciente (conforme PatientInfo)
-    const patientInfo: PatientInfo = {
-      name: prescription.patient.name,
-      documentNumber: patientCpf,
-      documentType: 'CPF',
-      birthDate: prescription.patient.birthDate || undefined,
-      phone: prescription.patient.phone || undefined,
-    }
-
-    // Montar medicamentos (conforme MedicationItem)
-    const medications: MedicationItem[] = prescription.items.map(item => ({
-      genericName: item.medication?.name || item.customName || prescription.medication || 'Medicamento',
-      concentration: item.dosage || '---',
-      pharmaceuticalForm: 'comprimido' as PharmaceuticalForm,
-      quantity: item.quantity || 1,
-      quantityUnit: 'unidade(s)',
-      dosage: item.dosage || prescription.dosage || '---',
-      route: 'oral' as AdministrationRoute,
-      frequency: item.frequency || prescription.frequency || '---',
-      duration: item.duration || prescription.duration || '---',
-      instructions: item.instructions || prescription.instructions || undefined
-    }))
-
-    // Fallback se não há items
-    if (medications.length === 0 && prescription.medication) {
-      medications.push({
-        genericName: prescription.medication,
-        concentration: '---',
-        pharmaceuticalForm: 'comprimido',
-        quantity: 1,
-        quantityUnit: 'unidade(s)',
-        dosage: prescription.dosage || '---',
-        route: 'oral',
-        frequency: prescription.frequency || '---',
-        duration: prescription.duration || '---',
-        instructions: prescription.instructions || undefined
-      })
-    }
-
-    // Montar documento para geração (conforme PrescriptionDocument)
-    const prescriptionDoc: PrescriptionDocument = {
-      type: 'PRESCRIPTION',
-      prescriptionId: prescriptionId,
-      doctor: doctorInfo,
-      patient: patientInfo,
-      medications,
-      usageType: 'INTERNAL',
-      issuedAt: prescription.createdAt,
-      notes: prescription.instructions || undefined
-    }
-
-    // URL de verificação (sem assinatura, só visual)
+    // Gerar PDF on-demand (sem assinatura digital) via Gotenberg
     const baseUrl = request.headers.get('x-forwarded-host')
       ? `https://${request.headers.get('x-forwarded-host')}`
       : request.headers.get('host')
         ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('host')}`
         : ''
-    
-    const verificationUrl = `${baseUrl}/validar/${prescriptionId}`
 
-    // Gerar PDF
-    const pdfBuffer = await generatePrescriptionPdf(prescriptionDoc, verificationUrl)
+    const pdfBuffer = await generatePrescriptionPdfBuffer(prescription, baseUrl)
 
     logger.info('PDF de prescrição gerado on-demand', { prescriptionId, signed: false })
 

@@ -171,10 +171,16 @@ export function LinkPatientDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
-            Vincular Cadastro de Paciente
+            Vincular Usuário ao Portal do Paciente
           </DialogTitle>
-          <DialogDescription>
-            Vincule este usuário a um cadastro de paciente para que ele possa acessar a área 'Minha Saúde'.
+          <DialogDescription className="space-y-1">
+            <span className="block">Associe este usuário a um cadastro de paciente para que ele acesse a área &quot;Minha Saúde&quot;.</span>
+            <span className="block text-xs text-muted-foreground mt-2">
+              ⚠️ Diferente de &quot;Equipe de Atendimento&quot;: isso não adiciona profissionais. Use Pacientes → [Paciente] → Equipe.
+            </span>
+            <span className="block text-xs text-amber-600 dark:text-amber-500 mt-1">
+              Se o usuário foi convidado como paciente, o vínculo pode já ter sido criado automaticamente. Verifique na página do usuário se aparece &quot;Já vinculado&quot; antes de criar novo cadastro.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -192,9 +198,9 @@ export function LinkPatientDialog({
               )}
             >
               <UserPlus className="mb-3 h-6 w-6" />
-              <span className="text-sm font-medium">Criar Novo</span>
+              <span className="text-sm font-medium">Criar Novo Cadastro</span>
               <span className="text-xs text-muted-foreground text-center mt-1">
-                Criar cadastro de paciente
+                Usuário ainda não tem cadastro como paciente
               </span>
             </button>
             <button
@@ -210,7 +216,7 @@ export function LinkPatientDialog({
               <Link2 className="mb-3 h-6 w-6" />
               <span className="text-sm font-medium">Vincular Existente</span>
               <span className="text-xs text-muted-foreground text-center mt-1">
-                Buscar paciente cadastrado
+                Paciente já cadastrado (evita duplicar)
               </span>
             </button>
           </div>

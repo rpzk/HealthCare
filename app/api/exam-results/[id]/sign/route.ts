@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
+import { resolveCertificatePath } from '@/lib/certificate-path'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
@@ -46,6 +47,14 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       )
     }
 
+    const certPath = await resolveCertificatePath(userCertificate.pfxFilePath)
+    if (!certPath) {
+      return NextResponse.json(
+        { error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' },
+        { status: 404 }
+      )
+    }
+
     const body = (await request.json().catch(() => ({}))) as any
     const password: string | undefined = body?.password
     if (!password) {
@@ -56,7 +65,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     try {
       signatureResult = await signWithA1Certificate(
         contentToSign,
-        userCertificate.pfxFilePath,
+        certPath,
         password
       )
     } catch (sigError: any) {

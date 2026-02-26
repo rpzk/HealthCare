@@ -126,6 +126,9 @@ export async function POST(request: NextRequest) {
     const filePath = path.join(uploadsDir, fileName)
     await writeFile(filePath, buffer)
 
+    // Path relativo para funcionar em dev e Docker (lib/certificate-path.ts resolve)
+    const pfxPathToStore = `certificates/${fileName}`
+
     // Hash da senha (para validação futura)
     const passwordHash = crypto
       .createHash('sha256')
@@ -163,7 +166,7 @@ export async function POST(request: NextRequest) {
           notAfter: certificateInfo.notAfter,
           certificatePem: certificateInfo.certPem,
           publicKeyPem: certificateInfo.publicKeyPem,
-          pfxFilePath: filePath,
+          pfxFilePath: pfxPathToStore,
           pfxPasswordHash: passwordHash,
           isHardwareToken: false,
           isActive: true,
@@ -184,7 +187,7 @@ export async function POST(request: NextRequest) {
           notAfter: certificateInfo.notAfter,
           certificatePem: certificateInfo.certPem,
           publicKeyPem: certificateInfo.publicKeyPem,
-          pfxFilePath: filePath,
+          pfxFilePath: pfxPathToStore,
           pfxPasswordHash: passwordHash,
           isHardwareToken: false,
           isActive: true,

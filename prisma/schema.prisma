@@ -724,13 +724,16 @@ model Prescription {
 }
 
 enum PrescriptionType {
-  SIMPLE          // Receita simples (branca, 1 via)
-  ANTIMICROBIAL   // Antibiótico (branca, 2 vias, validade 10 dias)
-  CONTROLLED_A    // Notificação A (amarela, 2 vias, entorpecentes)
-  CONTROLLED_B    // Notificação B (azul, 2 vias, psicotrópicos)
-  CONTROLLED_C1   // Receita C1 (branca, 2 vias, outras controladas)
-  CONTROLLED_C4   // Receita C4 (branca, 2 vias, antiretrovirais - validade 6 meses)
-  CONTROLLED_C5   // Receita C5 (branca, 2 vias, anabolizantes)
+  SIMPLE            // Receita simples (branca, 1 via)
+  ANTIMICROBIAL     // Antibiótico (branca, 2 vias, validade 10 dias)
+  CONTROLLED_A      // Notificação A (amarela, 2 vias, entorpecentes)
+  CONTROLLED_B      // Notificação B (azul, 2 vias, psicotrópicos)
+  CONTROLLED_B2     // Notificação B2 (azul, 2 vias, anorexígenos)
+  CONTROLLED_C1     // Receita C1 (branca, 2 vias, outras controladas)
+  CONTROLLED_C2     // Receita C2 - Retinoides (formulário específico)
+  CONTROLLED_C4     // Receita C4 (branca, 2 vias, antiretrovirais - validade 6 meses)
+  CONTROLLED_C5     // Receita C5 (branca, 2 vias, anabolizantes)
+  CONTROLLED_TALIDOMIDA  // Receita Talidomida (formulário específico)
 }
 
 model ExamRequest {
@@ -2016,7 +2019,8 @@ model Protocol {
   isActive   Boolean @default(true)
   usageCount Int     @default(0) // Quantas vezes foi usado
 
-  // Items do protocolo
+  // Items do protocolo (prescrições, exames, encaminhamentos, diagnósticos)
+  items Json? // { prescriptions: [], exams: [], referrals: [], diagnoses: [] }
 
   // Metadados
   tags      String[] // Tags para busca

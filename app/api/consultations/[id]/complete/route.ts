@@ -108,16 +108,22 @@ export const PATCH = withDoctorAuth(async (request: NextRequest, { params, user 
         if (seen.has(key)) continue
         seen.add(key)
 
+        const safeMedication = String(rx.medication ?? '').trim()
+        const safeDosage = String(rx.dosage ?? '').trim()
+        const safeFrequency = String(rx.frequency ?? '').trim()
+        const safeDuration = String(rx.duration ?? '').trim()
+        const safeInstructions = rx.instructions != null ? String(rx.instructions).trim() : ''
+
         await prisma.prescription.create({
           data: {
             patientId: consultation.patientId,
             doctorId: user.id,
             consultationId: params.id,
-            medication: rx.medication,
-            dosage: rx.dosage || '',
-            frequency: rx.frequency || '',
-            duration: rx.duration || '',
-            instructions: rx.instructions || '',
+            medication: safeMedication,
+            dosage: safeDosage,
+            frequency: safeFrequency,
+            duration: safeDuration,
+            instructions: safeInstructions,
             status: 'ACTIVE'
           }
         })

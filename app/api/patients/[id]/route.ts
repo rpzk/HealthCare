@@ -95,20 +95,27 @@ export const GET = withRbac('patient.read', async (req, { params, user }) => {
       { patientId: params.id, patientName: patient.name, editMode: isEditMode }
     )
     
-    // Admin sempre vê dados completos sem mascaramento
-    // Paciente vendo próprio perfil também vê tudo
-    // Modo de edição também retorna tudo
-    // Caso contrário, aplicar mascaramento LGPD
-    const isAdmin = user.role === 'ADMIN'
+    // LGPD: Admin vê dados PSEUDONIMIZADOS (gestão sem acesso a PII completo)
+    // Paciente vendo próprio perfil vê tudo
+    // Modo de edição (por profissional de saúde) retorna tudo para edição
+    const isAdmin = user.role === 'ADMIN' || user.role === 'OWNER'
+    const isManager = user.role === 'MANAGER'
     // O usuário do paciente é `userAccount` (relacionado via `User.patientId`).
     const isSelf = (patient as any)?.userAccount?.id === user.id
+    const clinicalRoles = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'HEALTH_AGENT']
+    const isClinicalForEdit = isEditMode && clinicalRoles.includes(user.role)
     
-    if (isEditMode || isAdmin || isSelf) {
+    if (isSelf) {
       return NextResponse.json(patient)
     }
+    if (isEditMode && isClinicalForEdit) {
+      return NextResponse.json(patient)
+    }
+    if (isAdmin || isManager) {
+      return NextResponse.json(applyPatientMasking(patient, { isAdmin: true }))
+    }
     
-    // Para outros casos, aplicar masking apropriado
-    const clinicalRoles = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'HEALTH_AGENT']
+    // Para outros casos (ex: RECEPTIONIST, profissionais na equipe), aplicar masking
     const exposeClinical = clinicalRoles.includes(user.role)
     
     return NextResponse.json(applyPatientMasking(patient, { exposeClinical }))
@@ -244,12 +251,14 @@ export const PUT = withRbac('patient.write', async (req, { params, user }) => {
       }
     )
     
-    // Admin sempre recebe dados completos sem masking
-    const isAdmin = user.role === 'ADMIN'
+    // LGPD: Admin recebe dados pseudonimizados; clínicos recebem completo
+    const isAdmin = user.role === 'ADMIN' || user.role === 'OWNER'
+    const clinicalRoles = ['DOCTOR', 'NURSE', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST', 'HEALTH_AGENT']
+    const isClinical = clinicalRoles.includes(user.role)
     
     // Headers para evitar cache após atualização
     return NextResponse.json(
-      isAdmin ? patient : applyPatientMasking(patient),
+      isAdmin ? applyPatientMasking(patient, { isAdmin: true }) : applyPatientMasking(patient, { exposeClinical: isClinical }),
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
