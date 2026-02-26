@@ -20,6 +20,7 @@ interface CIDSuggestion {
   crossAsterisk: string
   label: string
   badges: string[]
+  system?: 'CID10' | 'CIAP2'
 }
 
 interface CIDAutocompleteProps {
@@ -27,6 +28,7 @@ interface CIDAutocompleteProps {
   onChange: (value: string) => void
   onSelect: (cid: CIDSuggestion) => void
   patientSex?: 'M' | 'F'
+  system?: 'CID10' | 'CIAP2'
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -37,6 +39,7 @@ export function CIDAutocomplete({
   onChange,
   onSelect,
   patientSex,
+  system = 'CID10',
   placeholder = 'Digite código ou descrição do CID...',
   disabled = false,
   className
@@ -55,14 +58,49 @@ export function CIDAutocomplete({
 
     setIsLoading(true)
     try {
-      const params = new URLSearchParams({ q: query })
-      if (patientSex) params.set('patientSex', patientSex)
+      if (system === 'CID10') {
+        const params = new URLSearchParams({ q: query })
+        if (patientSex) params.set('patientSex', patientSex)
 
-      const res = await fetch(`/api/coding/autocomplete?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setSuggestions(data)
-        setHighlightIndex(0)
+        const res = await fetch(`/api/coding/autocomplete?${params}`)
+        if (res.ok) {
+          const data = await res.json()
+          setSuggestions(data)
+          setHighlightIndex(0)
+        }
+      } else {
+        const params = new URLSearchParams({
+          query,
+          system,
+          limit: '15',
+        })
+        const res = await fetch(`/api/coding/search?${params.toString()}`)
+        if (res.ok) {
+          const data = await res.json()
+          const results = (data.results || []) as Array<{
+            id: string
+            code: string
+            display: string
+            description?: string
+            shortDescription?: string
+          }>
+          const mapped: CIDSuggestion[] = results.map((r) => ({
+            id: r.id,
+            code: r.code,
+            display: r.display,
+            description: r.description || r.display,
+            shortDescription: r.shortDescription || r.display,
+            chapter: '',
+            isCategory: false,
+            sexRestriction: '',
+            crossAsterisk: '',
+            label: `${r.code} - ${r.display}`,
+            badges: [],
+            system,
+          }))
+          setSuggestions(mapped)
+          setHighlightIndex(0)
+        }
       }
     } catch (error) {
       logger.error('Erro ao buscar CID:', error)

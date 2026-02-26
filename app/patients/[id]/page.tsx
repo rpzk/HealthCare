@@ -1,5 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -7,6 +9,7 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { HydrationGuard } from '@/components/hydration-guard'
 import { PatientDetailsContent } from '@/components/patients/patient-details-content'
 import { decrypt, hashCPF } from '@/lib/crypto'
+import { applyPatientMasking } from '@/lib/masking'
 
 export const metadata: Metadata = {
   title: 'Detalhes do Paciente - Sistema de Prontuário Eletrônico',
@@ -63,11 +66,19 @@ export default async function PatientDetailsPage({ params }: PageProps) {
     }
   }
 
-  const patientView = {
+  let patientView: Record<string, unknown> = {
     ...patient,
     cpf: decryptedCpf,
     bloodType: mergedBloodType || null,
     allergies: mergedAllergies || null,
+  }
+
+  // LGPD: Admin/Manager vê dados pseudonimizados
+  const session = await getServerSession(authOptions)
+  const role = (session?.user as { role?: string })?.role
+  const isAdmin = role === 'ADMIN' || role === 'OWNER' || role === 'MANAGER'
+  if (isAdmin) {
+    patientView = applyPatientMasking(patientView as never, { isAdmin: true }) as Record<string, unknown>
   }
 
   return (

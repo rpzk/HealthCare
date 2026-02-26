@@ -25,9 +25,12 @@ export type PrescriptionType =
   | 'ANTIMICROBIAL'   // Antibiótico (branca, 2 vias, 10 dias)
   | 'CONTROLLED_A'    // Notificação A (amarela, 2 vias, entorpecentes)
   | 'CONTROLLED_B'    // Notificação B (azul, 2 vias, psicotrópicos)
+  | 'CONTROLLED_B2'   // Notificação B2 (azul, 2 vias, anorexígenos)
   | 'CONTROLLED_C1'   // Receita C1 (branca, 2 vias, outras controladas)
+  | 'CONTROLLED_C2'   // Retinoides (formulário específico)
   | 'CONTROLLED_C4'   // Receita C4 (branca, 2 vias, antiretrovirais)
   | 'CONTROLLED_C5'   // Receita C5 (branca, 2 vias, anabolizantes)
+  | 'CONTROLLED_TALIDOMIDA'  // Talidomida (formulário específico)
 
 // ============================================
 // CONFIGURAÇÕES POR TIPO DE RECEITA
@@ -97,6 +100,18 @@ const PRESCRIPTION_CONFIGS: Record<PrescriptionType, PrescriptionConfig> = {
     requiresDispenserInfo: true,
     requiresViaLabel: true,
   },
+  CONTROLLED_B2: {
+    title: 'NOTIFICAÇÃO DE RECEITA B2 (AZUL)',
+    color: '#DBEAFE',
+    requiresTwoVias: true,
+    validity: 30,
+    requiresControlNumber: true,
+    requiresQuantityInWords: true,
+    requiresJustification: true,
+    requiresBuyerInfo: true,
+    requiresDispenserInfo: true,
+    requiresViaLabel: true,
+  },
   CONTROLLED_C1: {
     title: 'RECEITUÁRIO DE CONTROLE ESPECIAL - LISTA C1',
     color: '#FFFFFF',
@@ -123,6 +138,30 @@ const PRESCRIPTION_CONFIGS: Record<PrescriptionType, PrescriptionConfig> = {
   },
   CONTROLLED_C5: {
     title: 'RECEITUÁRIO DE CONTROLE ESPECIAL - LISTA C5 (ANABOLIZANTES)',
+    color: '#FFFFFF',
+    requiresTwoVias: true,
+    validity: 30,
+    requiresControlNumber: true,
+    requiresQuantityInWords: true,
+    requiresJustification: false,
+    requiresBuyerInfo: true,
+    requiresDispenserInfo: true,
+    requiresViaLabel: true,
+  },
+  CONTROLLED_C2: {
+    title: 'NOTIFICAÇÃO DE RECEITA - RETINOIDES',
+    color: '#FFFFFF',
+    requiresTwoVias: true,
+    validity: 30,
+    requiresControlNumber: true,
+    requiresQuantityInWords: true,
+    requiresJustification: false,
+    requiresBuyerInfo: true,
+    requiresDispenserInfo: true,
+    requiresViaLabel: true,
+  },
+  CONTROLLED_TALIDOMIDA: {
+    title: 'NOTIFICAÇÃO DE RECEITA - TALIDOMIDA',
     color: '#FFFFFF',
     requiresTwoVias: true,
     validity: 30,

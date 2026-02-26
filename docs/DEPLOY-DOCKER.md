@@ -51,6 +51,7 @@ docker compose -f docker-compose.prod.yml exec app bash
 ## Volumes
 
 - **uploads_data** → `/app/uploads` (arquivos e certificados)
+- Se certificados foram enviados em desenvolvimento local e falham em produção com "Arquivo do certificado não encontrado", reenvie o certificado em **Configurações > Certificados Digitais** no ambiente de produção. Novos uploads gravam path relativo e funcionam em qualquer ambiente.
 - **postgres_data** → dados do PostgreSQL
 - Backups (ex.: `/home/umbrel/backups/healthcare`) mapeado em `docker-compose.prod.yml` para `/app/backups`
 

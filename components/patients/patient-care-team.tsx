@@ -362,8 +362,11 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
               <Users className="h-5 w-5" />
               Equipe de Atendimento
             </CardTitle>
-            <CardDescription>
-              Profissionais autorizados a acessar dados de {patientName}
+            <CardDescription className="space-y-1">
+              <span>Profissionais autorizados a acessar dados de {patientName}</span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Para vincular um usuário ao portal do paciente (Minha Saúde), use Admin → Usuários → [Usuário] → Vincular Paciente.
+              </span>
             </CardDescription>
           </div>
           
@@ -495,9 +498,9 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Adicionar à Equipe</DialogTitle>
+                    <DialogTitle>Adicionar Profissional à Equipe</DialogTitle>
                     <DialogDescription>
-                      Adicione um profissional de saúde à equipe de atendimento deste paciente.
+                      Passo 1: Busque o profissional. Passo 2: Escolha o nível de acesso. O profissional poderá ver e atender este paciente.
                     </DialogDescription>
                   </DialogHeader>
                   

@@ -3,18 +3,29 @@ import { NextResponse } from 'next/server'
 import { withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { decrypt } from '@/lib/crypto'
-import { signPdfWithGotenberg, convertHtmlToPdf } from '@/lib/pdf-signing-service'
+import { signPdfWithPAdES } from '@/lib/documents/pades-signer'
+import { generateConsultationPrescriptionPdfBuffer } from '@/lib/prescription-pdf-helpers'
 
 export const runtime = 'nodejs'
 
-// Helper para montar HTML da prescrição
-async function buildPrescriptionHtml(consultationId: string) {
-  const consultation = await prisma.consultation.findUnique({
+/** Busca consulta com prescrições para PDF (mesmo pipeline da página de prescrições) */
+async function fetchConsultationForPdf(consultationId: string) {
+  return prisma.consultation.findUnique({
     where: { id: consultationId },
     include: {
-      patient: { select: { id: true, name: true, cpf: true } },
-      doctor: { select: { id: true, name: true, crmNumber: true, licenseNumber: true, licenseType: true, licenseState: true } },
+      patient: { select: { id: true, name: true, cpf: true, birthDate: true, phone: true } },
+      doctor: {
+        select: {
+          id: true,
+          name: true,
+          crmNumber: true,
+          licenseNumber: true,
+          licenseState: true,
+          speciality: true,
+          email: true,
+          person: { select: { cpf: true } },
+        },
+      },
       prescriptions: {
         where: { consultationId },
         orderBy: { createdAt: 'asc' },
@@ -28,64 +39,36 @@ async function buildPrescriptionHtml(consultationId: string) {
       },
     },
   })
-  
-  if (!consultation) return null
-
-  let html = `<html><head><meta charset='utf-8'><title>Prescrição Médica</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    h1 { text-align: center; color: #333; }
-    .info { margin-bottom: 20px; }
-    ol { margin-top: 20px; }
-    li { margin-bottom: 10px; }
-    .footer { margin-top: 40px; font-size: 12px; color: #666; }
-  </style>
-  </head><body>`
-  html += `<h1>PRESCRIÇÃO MÉDICA</h1>`
-  html += `<div class="info"><p><b>Médico:</b> ${consultation.doctor?.name || '—'}<br/>`
-  if (consultation.doctor?.crmNumber) html += `CRM: ${consultation.doctor.crmNumber}<br/>`
-  if (consultation.doctor?.licenseNumber) html += `${consultation.doctor.licenseType || 'Registro'}: ${consultation.doctor.licenseNumber}${consultation.doctor.licenseState ? '-' + consultation.doctor.licenseState : ''}<br/>`
-  html += `</p></div>`
-  html += `<div class="info"><p><b>Paciente:</b> ${consultation.patient?.name || '—'}`
-  if (consultation.patient?.cpf) {
-    try {
-      html += ` | CPF: ${decrypt(consultation.patient.cpf)}`
-    } catch {
-      // CPF pode não estar criptografado
-    }
-  }
-  html += `</p></div>`
-  html += `<ol>`
-  for (const p of consultation.prescriptions as any[]) {
-    if (Array.isArray(p.items) && p.items.length > 0) {
-      for (const it of p.items) {
-        html += `<li><b>${it?.medication?.name || it?.customName || p.medication || 'Sem nome'}</b> - ${it?.dosage || p.dosage || ''} - ${it?.frequency || p.frequency || ''} - ${it?.duration || p.duration || ''} - ${it?.instructions || p.instructions || ''}</li>`
-      }
-    } else {
-      html += `<li><b>${p.medication || 'Sem nome'}</b> - ${p.dosage || ''} - ${p.frequency || ''} - ${p.duration || ''} - ${p.instructions || ''}</li>`
-    }
-  }
-  html += `</ol>`
-  html += `<p class="footer">Consulta: ${consultation.id} - ${consultation.actualDate ? new Date(consultation.actualDate).toLocaleString('pt-BR') : ''}</p>`
-  html += `</body></html>`
-
-  return { html, consultation }
 }
 
-// GET: Gera PDF sem assinatura digital (para usuários sem certificado)
-export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>, user: any }) => {
+// GET: Gera PDF sem assinatura (mesmo layout CFM da página de prescrições)
+export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>; user: any }) => {
   try {
     const consultationId = params.id
-    const result = await buildPrescriptionHtml(consultationId)
-    
-    if (!result) {
-      return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
+    const baseUrl =
+      process.env.NEXTAUTH_URL ||
+      process.env.APP_BASE_URL ||
+      (req.headers.get('x-forwarded-host')
+        ? `https://${req.headers.get('x-forwarded-host')}`
+        : req.headers.get('host')
+          ? `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}`
+          : '')
+
+    const consultation = await fetchConsultationForPdf(consultationId)
+    if (!consultation) {
+      return NextResponse.json(
+        { error: 'Consulta não encontrada.' },
+        { status: 404 }
+      )
+    }
+    if (consultation.prescriptions.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhuma prescrição encontrada. Salve a consulta e gere os documentos antes de imprimir.' },
+        { status: 404 }
+      )
     }
 
-    const { html } = result
-
-    // Gera PDF sem assinatura via Gotenberg
-    const pdf = await convertHtmlToPdf(html)
+    const pdf = await generateConsultationPrescriptionPdfBuffer(consultation, baseUrl, consultationId)
 
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,
@@ -98,14 +81,18 @@ export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { p
   } catch (error) {
     logger.error({ error, consultationId: params?.id, userId: user?.id }, 'Erro ao gerar PDF de prescrições da consulta')
     return NextResponse.json(
-      { error: 'Erro interno do servidor', timestamp: new Date().toISOString(), success: false },
+      {
+        error: error instanceof Error ? error.message : 'Erro ao gerar PDF',
+        timestamp: new Date().toISOString(),
+        success: false,
+      },
       { status: 500 }
     )
   }
 }) as AuthenticatedApiHandler
 
-// POST: Recebe { password } no body para assinar com certificado A1
-export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>, user: any }) => {
+// POST: Gera e assina PDF com PAdES (mesmo pipeline da página de prescrições)
+export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>; user: any }) => {
   try {
     const consultationId = params.id
     const { password } = await req.json()
@@ -113,7 +100,6 @@ export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { 
       return NextResponse.json({ error: 'Senha do certificado obrigatória' }, { status: 400 })
     }
 
-    // Busca certificado ativo do médico
     const cert = await prisma.digitalCertificate.findFirst({
       where: { userId: user.id, isActive: true, certificateType: 'A1', revokedAt: null },
       orderBy: { createdAt: 'desc' },
@@ -122,34 +108,49 @@ export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { 
       return NextResponse.json({ error: 'Certificado digital A1 não encontrado para este usuário' }, { status: 404 })
     }
 
-    // Valida senha (hash)
-    const crypto = await import('crypto')
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
-    if (cert.pfxPasswordHash !== passwordHash) {
-      return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
+    const { resolveCertificatePath } = await import('@/lib/certificate-path')
+    const certPath = await resolveCertificatePath(cert.pfxFilePath)
+    if (!certPath) {
+      return NextResponse.json({ error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' }, { status: 404 })
     }
 
-    // Monta HTML usando helper
-    const result = await buildPrescriptionHtml(consultationId)
-    if (!result) {
-      return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
-    }
-
-    const { html } = result
-
-    // Assina via Gotenberg com certificado do usuário
-    const pdf = await signPdfWithGotenberg({
-      html,
-      filename: `prescricoes-${consultationId}.pdf`,
-      certPath: cert.pfxFilePath,
-      certPassword: password,
-    })
-
-    // Gera verificationUrl
     const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_BASE_URL || ''
+    const consultation = await fetchConsultationForPdf(consultationId)
+    if (!consultation) {
+      return NextResponse.json(
+        { error: 'Consulta não encontrada ou sem prescrições salvas.' },
+        { status: 404 }
+      )
+    }
+    if (consultation.prescriptions.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhuma prescrição encontrada. Salve a consulta e gere os documentos antes de assinar.' },
+        { status: 404 }
+      )
+    }
+
+    // 1. Gera PDF (mesmo layout CFM da página de prescrições)
+    const pdfBuffer = await generateConsultationPrescriptionPdfBuffer(consultation, baseUrl, consultationId)
+
+    // 2. Assina com PAdES (mesmo fluxo de /api/prescriptions/[id]/sign)
+    const signResult = await signPdfWithPAdES(
+      pdfBuffer,
+      certPath,
+      password,
+      {
+        reason: 'Prescrição médica assinada digitalmente',
+        location: 'Brasil',
+        name: user.name || 'Médico',
+      }
+    )
+
+    if (!signResult?.signedPdf) {
+      return NextResponse.json({ error: 'Falha ao assinar o documento' }, { status: 500 })
+    }
+
     const verificationUrl = `${baseUrl}/api/consultations/${consultationId}/documents/prescriptions/pdf/verify`
 
-    return new NextResponse(new Uint8Array(pdf), {
+    return new NextResponse(new Uint8Array(signResult.signedPdf), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -158,10 +159,14 @@ export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { 
         'Cache-Control': 'no-store',
       },
     })
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error({ error, consultationId: params?.id, userId: user?.id }, 'Erro ao assinar PDF de prescrições da consulta')
+    const msg = error instanceof Error ? error.message : 'Erro ao assinar PDF'
+    if (typeof msg === 'string' && msg.toLowerCase().includes('password')) {
+      return NextResponse.json({ error: 'Senha do certificado incorreta' }, { status: 401 })
+    }
     return NextResponse.json(
-      { error: 'Erro interno do servidor', timestamp: new Date().toISOString(), success: false },
+      { error: msg, timestamp: new Date().toISOString(), success: false },
       { status: 500 }
     )
   }

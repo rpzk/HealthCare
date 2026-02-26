@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Loader2, Settings, Building2, CreditCard, Mail, MessageSquare, 
-  HardDrive, Video, ChevronRight, CheckCircle2, XCircle, Lock } from 'lucide-react'
+  HardDrive, Video, ChevronRight, CheckCircle2, XCircle, Lock, Image } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ConfigStatus {
@@ -18,9 +18,19 @@ interface ConfigStatus {
 
 const CONFIG_SECTIONS = [
   {
+    id: 'branding',
+    title: 'Identidade Visual',
+    description: 'Logo, endereço e dados exibidos em prescrições e documentos',
+    href: '/admin/branding',
+    icon: Image,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 dark:bg-amber-950',
+    priority: 0,
+  },
+  {
     id: 'clinic',
     title: 'Dados da Clínica',
-    description: 'Nome, CNPJ, endereço e informações de contato',
+    description: 'CNPJ, razão social e dados jurídicos',
     href: '/admin/settings/clinic',
     icon: Building2,
     color: 'text-blue-600',
@@ -98,6 +108,7 @@ export default function SettingsHubPage() {
       if (data.success) {
         // Calcular status por categoria
         const categoryMap: Record<string, string[]> = {
+          branding: [], // Status via /api/branding (não em SystemSettings)
           clinic: ['CLINIC_NAME', 'CLINIC_CNPJ', 'CLINIC_ADDRESS', 'CLINIC_PHONE'],
           payments: ['PAYMENT_PIX_ENABLED', 'PAYMENT_PIX_KEY', 'PAYMENT_REDOTPAY_ENABLED'],
           email: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'],

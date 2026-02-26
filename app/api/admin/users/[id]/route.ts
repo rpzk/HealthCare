@@ -55,6 +55,10 @@ export async function GET(
         phone: true,
         speciality: true,
         licenseNumber: true,
+        patientId: true,
+        patient: {
+          select: { id: true, name: true }
+        },
         assignedRoles: {
           select: {
             role: true,

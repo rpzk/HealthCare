@@ -1,0 +1,5 @@
+export { Slide1Capa } from './Slide1Capa'
+export { Slide2Compliance } from './Slide2Compliance'
+export { Slide3Arquitetura } from './Slide3Arquitetura'
+export { Slide4Custos } from './Slide4Custos'
+export { Slide5Resumo } from './Slide5Resumo'

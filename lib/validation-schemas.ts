@@ -53,7 +53,8 @@ export const prescriptionSchema = z.object({
     dosage: z.string().min(1, 'Dosagem é obrigatória'),
     frequency: z.string().min(1, 'Frequência é obrigatória'),
     duration: z.string().min(1, 'Duração é obrigatória'),
-    instructions: z.string().optional()
+    instructions: z.string().optional(),
+    medicationId: z.string().optional()
   })).min(1, 'Pelo menos um medicamento é obrigatório'),
   observations: z.string().max(1000, 'Observações muito longas').optional()
 })

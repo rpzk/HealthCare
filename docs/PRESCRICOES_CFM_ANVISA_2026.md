@@ -5,6 +5,17 @@
 ### Portaria SVS/MS nº 344/98
 Regulamenta medicamentos sujeitos a controle especial.
 
+### RDC Anvisa nº 1.000/2025 (vigente 13/02/2026)
+Estabelece requisitos de controle para receituários eletrônicos: Notificações de Receita (A, B, B2), Receitas de Controle Especial e Receitas sujeitas à retenção (antimicrobianos, agonistas GLP-1, etc.).
+
+**Principais exigências:**
+- Integração obrigatória ao **SNCR** (Sistema Nacional de Controle de Receituários) via API
+- Numeração individual fornecida pelo SNCR em cada receituário
+- Assinatura eletrônica **qualificada** (ICP-Brasil) para Notificações e Controle Especial
+- Assinatura **avançada ou qualificada** para Receitas sujeitas à retenção
+- Receituários eletrônicos **não exigem duas vias** (Art. 10)
+- SNCR disponível até 1º de junho de 2026; receitas sem numeração SNCR aceitas por até 30 dias após início do sistema
+
 ### Novos Modelos ANVISA (13/02/2026)
 A partir de 13/02/2026, novos modelos de receituários entraram em vigor com campos mais detalhados.
 
@@ -142,20 +153,49 @@ A partir de 13/02/2026, novos modelos de receituários entraram em vigor com cam
 
 ## Prescrição Eletrônica (2026)
 
-### Requisitos Técnicos
-1. **Assinatura Digital Qualificada** (ICP-Brasil nível 2)
-2. **QR Code** com link para verificação
-3. **Metadados obrigatórios**:
+### Requisitos Técnicos (CFM + RDC 1.000/2025)
+1. **Assinatura Digital Qualificada** (ICP-Brasil) – obrigatória para controlados
+2. **Integração ao SNCR** – requisitar numeração via API (obrigatório quando disponível)
+3. **QR Code** com link para verificação
+4. **Metadados obrigatórios**:
    - Hash SHA-256 do documento
    - Timestamp da assinatura
    - Certificado do signatário
-4. **URL de verificação** pública (ex: validar.iti.gov.br)
+5. **URL de verificação** pública (ex: validar.iti.gov.br)
+
+### SNCR – Sistema Nacional de Controle de Receituários
+- Instituído pela RDC 873/2024; requisitos detalhados na RDC 1.000/2025
+- **Disponibilidade:** até 1º de junho de 2026
+- **Uso:** numeração obrigatória para receituários eletrônicos de controlados
+- Requisitos técnicos da API publicados no portal da Anvisa
+- Prescritor deve requisitar numeração com assinatura eletrônica qualificada
 
 ### Plataforma CFM
 - prescricaoeletronica.cfm.org.br
 - Gratuita para médicos
 - Integração com CFF (Conselho Federal de Farmácia)
 - Validade nacional
+
+---
+
+## Status de Conformidade – HealthCare (RDC 1.000/2025)
+
+| Requisito | Status | Observação |
+|-----------|--------|------------|
+| Assinatura qualificada (ICP-Brasil) | ✅ | PAdES implementado |
+| Estrutura CFM/Portaria 344 | ✅ | Cabeçalho, prescritor, paciente, medicamentos |
+| Quantidade por extenso (controlados) | ✅ | Automático |
+| QR Code de verificação | ✅ | Link para validação |
+| Duas vias (eletrônico) | ✅ | Não exigidas pela RDC |
+| Integração SNCR | ❌ Pendente | SNCR ainda não disponível |
+| Numeração SNCR | ❌ Pendente | Usa numeração interna; migrar quando SNCR disponível |
+| Modelos oficiais Anvisa | ✅ Implementado | Templates em `public/prescription-templates/`; overlay sobre PNGs dos modelos |
+
+### Próximos Passos
+1. Acompanhar portal da Anvisa para requisitos técnicos da API SNCR
+2. Implementar integração SNCR quando API e documentação forem divulgadas
+3. Substituir numeração interna pela numeração SNCR
+4. Validar layout contra modelos oficiais da Anvisa
 
 ## Exemplos de Prescrição Correta
 
@@ -227,9 +267,10 @@ CRM-SP 123456
    - Formato: LETRA-NÚMERO-UF (ex: B-123456789-SP)
    - Sequencial e única
 
-2. **Duas vias obrigatórias**:
+2. **Duas vias** (receituário em papel):
    - 1ª VIA: Retida pela farmácia (enviada à Vigilância Sanitária)
    - 2ª VIA: Orientação ao paciente
+   - **Eletrônico (RDC 1.000/2025 Art. 10):** Não exige duas vias
 
 3. **Quantidade por extenso**:
    - OBRIGATÓRIA para medicamentos controlados
@@ -252,8 +293,11 @@ CRM-SP 123456
 
 ## Referências
 
-- Portaria SVS/MS nº 344/98
-- Resolução RDC Anvisa (atualização fevereiro 2026)
+- Portaria SVS/MS nº 344/98 (medicamentos controlados)
+- **RDC Anvisa nº 1.000/2025** – Requisitos para receituários eletrônicos (vigente 13/02/2026)
+- RDC Anvisa nº 873/2024 – Sistema Nacional de Controle de Receituários (SNCR)
+- RDC Anvisa nº 471/2021 – Receitas sujeitas à retenção
 - Resolução CFM nº 1.821/2007 (Prontuário Médico)
 - Manual de Orientações Básicas para Prescrição Médica (CFM)
 - Lei nº 13.787/2018 (Prescrição Eletrônica)
+- Lei nº 14.063/2020 (Assinaturas eletrônicas)

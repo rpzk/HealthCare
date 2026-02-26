@@ -124,6 +124,17 @@ const adminMenuItems: MenuItem[] = [
     ]
   },
   {
+    title: 'Dados Mestres',
+    icon: Database,
+    href: '/admin/master-data',
+    submenu: [
+      { title: 'Hub Catálogos', href: '/admin/master-data' },
+      { title: 'Medicamentos', href: '/admin/medications' },
+      { title: 'CID / CBO', href: '/admin/coding' },
+      { title: 'Ocupações', href: '/admin/occupations' },
+    ]
+  },
+  {
     title: 'Configurações Clínicas',
     icon: FlaskConical,
     href: '/admin/exam-combos',
@@ -211,7 +222,7 @@ const adminMenuItems: MenuItem[] = [
       { title: 'Termos & Privacidade', href: '/admin/terms' },
       { title: 'Integrações', href: '/settings/integrations' },
       { title: 'Backup & Dados', href: '/admin/backup' },
-      { title: 'Infraestrutura & Custos', href: '/api/docs/presentation-infra', badge: '🔒' },
+      { title: 'Infraestrutura & Custos', href: '/apresentacao-infra', badge: '🔒' },
       { title: 'Reset de Banco', href: '/admin/database-reset' },
     ]
   },

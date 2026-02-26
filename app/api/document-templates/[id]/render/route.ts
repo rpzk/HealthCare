@@ -11,7 +11,7 @@ import {
   TemplateDataContext,
   validateContext,
 } from '@/lib/document-templates/renderer'
-import { getBranding } from '@/lib/branding-service'
+import { getClinicDataForDocuments } from '@/lib/branding-service'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
@@ -50,8 +50,8 @@ export async function POST(
       )
     }
 
-    // Obter dados de clínica
-    const branding = await getBranding()
+    // Obter dados de clínica (Branding + fallback SystemSettings)
+    const clinicData = await getClinicDataForDocuments()
 
     // Obter dados do médico
     const doctor = await prisma.user.findUnique({
@@ -78,15 +78,15 @@ export async function POST(
 
     const context: TemplateDataContext = {
       clinic: {
-        name: branding?.clinicName ?? undefined,
-        address: branding?.clinicAddress ?? undefined,
-        city: branding?.clinicCity ?? undefined,
-        state: branding?.clinicState ?? undefined,
-        zipCode: branding?.clinicZipCode ?? undefined,
-        phone: branding?.clinicPhone ?? undefined,
-        logoUrl: branding?.logoUrl ?? undefined,
-        headerUrl: branding?.headerUrl ?? undefined,
-        footerText: branding?.footerText ?? undefined,
+        name: clinicData.clinicName ?? undefined,
+        address: clinicData.clinicAddress ?? undefined,
+        city: clinicData.clinicCity ?? undefined,
+        state: clinicData.clinicState ?? undefined,
+        zipCode: clinicData.clinicZipCode ?? undefined,
+        phone: clinicData.clinicPhone ?? undefined,
+        logoUrl: clinicData.logoUrl ?? undefined,
+        headerUrl: clinicData.headerUrl ?? undefined,
+        footerText: clinicData.footerText ?? undefined,
       },
       doctor: {
         name: doctor.name,

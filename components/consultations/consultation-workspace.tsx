@@ -105,6 +105,7 @@ import { MedicationAutocomplete } from './medication-autocomplete'
 import { CIDAutocomplete } from './cid-autocomplete'
 import { ExamAutocomplete } from './exam-autocomplete'
 import { ProtocolSelector } from './protocol-selector'
+import { ProtocolCreator } from './protocol-creator'
 import { AISuggestions } from './ai-suggestions'
 import { defaultBIData } from './consultation-bi-checkboxes'
 import { PatientHistoryPanel } from './patient-history-panel'
@@ -249,11 +250,12 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([])
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [biData, setBIData] = useState(defaultBIData)
-
+  
   // Estados dos autocompletes
   const [medSearch, setMedSearch] = useState('')
   const [examSearch, setExamSearch] = useState('')
   const [cidSearch, setCidSearch] = useState('')
+  const [diagnosisSystem, setDiagnosisSystem] = useState<'CID10' | 'CIAP2'>('CID10')
 
   // Gravação de áudio
   const [recording, setRecording] = useState(false)
@@ -717,12 +719,14 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       if (consultationData.notes) {
         try {
           const savedData = JSON.parse(consultationData.notes)
-          if (savedData.soap) {
+          // Suportar estrutura aninhada { soap, vitals } ou objeto SOAP direto
+          const soapSrc = savedData.soap || (savedData.subjective !== undefined ? savedData : null)
+          if (soapSrc) {
             setSoap({
-              subjective: savedData.soap.subjective || '',
-              objective: savedData.soap.objective || '',
-              assessment: savedData.soap.assessment || '',
-              plan: savedData.soap.plan || ''
+              subjective: soapSrc.subjective || '',
+              objective: soapSrc.objective || '',
+              assessment: soapSrc.assessment || '',
+              plan: soapSrc.plan || ''
             })
           }
           if (savedData.vitals) {
@@ -1159,6 +1163,7 @@ interface Medication {
     prescriptions?: Array<{ medicationName?: string; dosage?: string; frequency?: string; duration?: string; instructions?: string }>
     exams?: Array<{ examName?: string; description?: string; priority?: string }>
     referrals?: Array<{ specialty?: string; description?: string; priority?: string }>
+    diagnoses?: Array<{ cidCode?: string; description?: string }>
   }) => {
     if (protocol.prescriptions) {
       const list = protocol.prescriptions || []
@@ -1190,6 +1195,21 @@ interface Medication {
         priority: (ref.priority === 'HIGH' ? 'HIGH' : 'NORMAL') as 'NORMAL' | 'HIGH'
       })) as unknown as Referral[]
       setReferrals(prev => [...prev, ...normalizedRefs])
+    }
+    if (protocol.diagnoses && protocol.diagnoses.length > 0) {
+      setDiagnoses((prev) => {
+        const toAdd = protocol.diagnoses!
+          .map((d) => ({ code: d.cidCode || '', description: d.description || '' }))
+          .filter((d) => d.code && !prev.some((x) => x.code === d.code))
+        const base = prev.length === 0 ? 0 : prev.length
+        return [
+          ...prev,
+          ...toAdd.map((d, i) => ({
+            ...d,
+            type: (base === 0 && i === 0 ? 'PRINCIPAL' : 'SECONDARY') as 'PRINCIPAL' | 'SECONDARY'
+          }))
+        ]
+      })
     }
   }
 
@@ -1332,14 +1352,11 @@ interface Medication {
       })
       if (!saveRes.ok) throw new Error('Erro ao salvar dados')
       
-      // Depois finalizar a consulta mudando status
+      // Marcar como finalizada (sem enviar notes: o /complete já salvou tudo)
       const finalizeRes = await fetch(`/api/consultations/${consultationId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'complete',
-          notes: JSON.stringify(soap)
-        })
+        body: JSON.stringify({ action: 'complete' })
       })
       
       if (!finalizeRes.ok) {
@@ -1595,6 +1612,27 @@ interface Medication {
                  recording ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
               </Button>
               <ProtocolSelector onApply={handleProtocolApply} />
+              <ProtocolCreator
+                prescriptions={prescriptions.map(rx => ({
+                  medication: rx.medication,
+                  dosage: rx.dosage,
+                  frequency: rx.frequency,
+                  duration: rx.duration,
+                  instructions: rx.instructions ?? ''
+                }))}
+                exams={exams.map(ex => ({
+                  examType: ex.examType,
+                  description: ex.description,
+                  priority: ex.priority,
+                  notes: ex.notes
+                }))}
+                referrals={referrals.map(ref => ({
+                  specialty: ref.specialty,
+                  description: ref.description,
+                  priority: ref.priority
+                }))}
+                diagnoses={diagnoses.map(d => ({ code: d.code, description: d.description }))}
+              />
               <AISuggestions 
                 soap={soap}
                 patientAge={consultation?.patient?.age}
@@ -1727,15 +1765,30 @@ interface Medication {
             </CardContent>
           </Card>
 
-          {/* CID-10 */}
+          {/* Diagnósticos (CID-10 / CIAP-2) */}
           <Card className={validationErrors.some(e => e.includes('Diagnóstico')) ? 'border-destructive' : ''}>
             <CardHeader className="py-2 px-3">
               <CardTitle className="text-xs flex items-center gap-2">
-                <FileText className="h-3 w-3" /> CID-10 ({diagnoses.length})
+                <FileText className="h-3 w-3" /> Diagnósticos ({diagnoses.length})
                 <span className="text-destructive" title="Campo obrigatório para finalizar">*</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="py-2 px-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-muted-foreground">Sistema</span>
+                <Select
+                  value={diagnosisSystem}
+                  onValueChange={(v) => setDiagnosisSystem(v as 'CID10' | 'CIAP2')}
+                >
+                  <SelectTrigger className="h-7 w-28 text-[11px]">
+                    <SelectValue placeholder="Sistema" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CID10">CID-10</SelectItem>
+                    <SelectItem value="CIAP2">CIAP-2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex flex-wrap gap-1 mb-2">
                 {diagnoses.map((d) => (
                   <Badge key={d.id} variant="secondary" className="text-xs">
@@ -1747,8 +1800,9 @@ interface Medication {
               <CIDAutocomplete 
                 value={cidSearch} 
                 onChange={setCidSearch} 
-                onSelect={handleCIDSelect} 
-                placeholder="Buscar CID..." 
+                onSelect={handleCIDSelect}
+                system={diagnosisSystem}
+                placeholder={diagnosisSystem === 'CIAP2' ? 'Buscar CIAP-2...' : 'Buscar CID...'} 
               />
             </CardContent>
           </Card>

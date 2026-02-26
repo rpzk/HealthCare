@@ -204,13 +204,9 @@ export const PATCH = withDoctorAuth(async (request: NextRequest, { params, user 
         break
 
       case 'complete':
-        if (!notes) {
-          return NextResponse.json(
-            { error: 'Notas são obrigatórias para finalizar a consulta' },
-            { status: 400 }
-          )
-        }
-        result = await ConsultationService.completeConsultation(params.id, notes)
+        // Notas opcionais: o endpoint /complete já salvou SOAP, vitals etc.
+        // Passar notes aqui sobrescreveria o objeto completo com apenas o SOAP.
+        result = await ConsultationService.completeConsultation(params.id, notes || undefined)
         break
 
       case 'cancel':

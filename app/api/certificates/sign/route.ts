@@ -75,6 +75,11 @@ export async function POST(request: NextRequest) {
       if (!cert || !cert.pfxFilePath) {
         return NextResponse.json({ error: 'Certificado digital A1 não encontrado para este usuário' }, { status: 404 })
       }
+      const { resolveCertificatePath } = await import('@/lib/certificate-path')
+      const certPath = await resolveCertificatePath(cert.pfxFilePath)
+      if (!certPath) {
+        return NextResponse.json({ error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' }, { status: 404 })
+      }
       // Valida senha (hash)
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
       if (cert.pfxPasswordHash !== passwordHash) {
@@ -85,7 +90,7 @@ export async function POST(request: NextRequest) {
       const pdf = await signPdfWithGotenberg({
         html,
         filename: `atestado-${certificate.id}.pdf`,
-        certPath: cert.pfxFilePath,
+        certPath,
         certPassword: password,
       })
       // Calcula hash do conteúdo assinado

@@ -243,6 +243,9 @@ export class PrescriptionsServiceDb {
             create: data.medications.map((m: MedicationItem & { medicationId?: string }) => ({
               medicationId: m.medicationId || null,
               customName: !m.medicationId ? m.name : null,
+              medicationName: m.name,
+              concentration: m.dosage || '---',
+              quantity: 1,
               dosage: m.dosage,
               frequency: m.frequency,
               duration: m.duration,

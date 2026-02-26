@@ -184,7 +184,10 @@ export default function NewPrescriptionForm() {
         body: JSON.stringify({ password }),
         credentials: 'include',
       })
-      if (!res.ok) throw new Error('Falha ao assinar prescrição')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string })?.error || (err as { message?: string })?.message || 'Falha ao assinar prescrição')
+      }
       setShowPasswordDialog(false)
       setCertPassword('')
       setPendingPrescriptionId(null)
@@ -222,7 +225,10 @@ export default function NewPrescriptionForm() {
           notes 
         })
       })
-      if (!res.ok) throw new Error('Falha ao criar prescrição')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string })?.error || (err as { message?: string })?.message || 'Falha ao criar prescrição')
+      }
       const created = await res.json()
       // Checa se usuário tem certificado digital
       const hasCert = await checkUserCertificate()

@@ -413,15 +413,20 @@ export class ConsultationService {
       Math.round((completedAt.getTime() - startedAt.getTime()) / 60000)
     )
 
+    // Atualiza apenas status e metadados; não sobrescreve notes
+    // (o endpoint /complete já salvou SOAP, vitals e diagnósticos)
+    const data: Record<string, unknown> = {
+      status: 'COMPLETED',
+      actualDate: consultation.actualDate || startedAt,
+      completedAt,
+      duration: durationMinutes,
+    }
+    if (notes !== undefined) {
+      data.notes = notes
+    }
     return await prisma.consultation.update({
       where: { id },
-      data: {
-        status: 'COMPLETED',
-        actualDate: consultation.actualDate || startedAt,
-        completedAt,
-        duration: durationMinutes,
-        notes: notes || consultation.notes
-      }
+      data
     })
   }
 

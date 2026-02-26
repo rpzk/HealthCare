@@ -71,8 +71,9 @@ export const POST = withAuth(async (request, { user }) => {
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
     logger.error('Erro ao criar prescrição (outer catch)', error as Error)
+    const msg = (error as Error)?.message || 'Erro interno do servidor'
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: msg },
       { status: 500 }
     )
   }

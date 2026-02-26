@@ -31,6 +31,22 @@ export async function GET() {
     diagnostics.ok = false
   }
 
+  // Gotenberg check (obrigatório para prescrições - sem fallback)
+  try {
+    const gotenbergUrl = process.env.GOTENBERG_URL || 'http://gotenberg:3000'
+    const res = await fetch(`${gotenbergUrl}/health`, { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) {
+      diagnostics.checks.gotenberg = { status: 'down', error: `HTTP ${res.status}` }
+      diagnostics.ok = false
+    } else {
+      diagnostics.checks.gotenberg = { status: 'up' }
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    diagnostics.checks.gotenberg = { status: 'down', error: msg }
+    diagnostics.ok = false
+  }
+
   // Redis check
   try {
     const rl = createRedisRateLimiter()

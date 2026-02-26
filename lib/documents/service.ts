@@ -31,17 +31,19 @@ import {
   numberToWords,
 } from './validator'
 import {
-  generatePrescriptionPdf,
   generateCertificatePdf,
   generateReferralPdf,
   generateExamRequestPdf,
 } from './pdf-generator'
+import { generatePrescriptionPdfViaGotenberg } from './prescription-pdf-gotenberg'
+import { classifyPrescriptionType, calculateExpirationDate } from './prescription-classifier'
 import {
   signPdfWithPAdES,
   extractCertificateInfo,
   isPdfSigned,
 } from './pades-signer'
 import { getCertificatePassword } from '@/lib/certificate-session'
+import { resolveCertificatePath } from '@/lib/certificate-path'
 import { decryptField } from '@/lib/encryption'
 import crypto from 'crypto'
 import path from 'path'
@@ -259,6 +261,12 @@ async function getDoctorCertificate(doctorId: string, password?: string): Promis
   if (!cert?.pfxFilePath) {
     return null
   }
+
+  const resolvedPath = await resolveCertificatePath(cert.pfxFilePath)
+  if (!resolvedPath) {
+    logger.warn('Arquivo do certificado não encontrado', { certificateId: cert.id })
+    return null
+  }
   
   // 1. Se senha fornecida explicitamente, validar e usar
   if (password) {
@@ -273,7 +281,7 @@ async function getDoctorCertificate(doctorId: string, password?: string): Promis
     }
     
     return {
-      pfxFilePath: cert.pfxFilePath,
+      pfxFilePath: resolvedPath,
       passphrase: password,
       certificateId: cert.id,
     }
@@ -285,7 +293,7 @@ async function getDoctorCertificate(doctorId: string, password?: string): Promis
   if (sessionPassword) {
     logger.info('Usando sessão de certificado ativa')
     return {
-      pfxFilePath: cert.pfxFilePath,
+      pfxFilePath: resolvedPath,
       passphrase: sessionPassword,
       certificateId: cert.id,
     }
@@ -374,9 +382,16 @@ export async function createPrescription(
       }
     }
     
-    // Gerar PDF
+    // Gerar PDF via Gotenberg (único pipeline)
     const verificationUrl = getVerificationUrl(prescriptionId, 'PRESCRIPTION')
-    const pdfBuffer = await generatePrescriptionPdf(prescription, verificationUrl)
+    const medicationNames = medications.map(m => m.genericName)
+    const prismaPrescriptionType = classifyPrescriptionType(medicationNames)
+    const expiresAt = calculateExpirationDate(prismaPrescriptionType, now)
+    const pdfBuffer = await generatePrescriptionPdfViaGotenberg(prescription, {
+      prescriptionType: prismaPrescriptionType,
+      verificationUrl,
+      expiresAt,
+    })
     
     // Verificar se tem certificado para assinar
     let signedPdf = pdfBuffer

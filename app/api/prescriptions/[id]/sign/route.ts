@@ -7,6 +7,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { signPdfWithPAdES } from '@/lib/documents/pades-signer'
 import { generatePrescriptionPdfBuffer } from '@/lib/prescription-pdf-helpers'
+import { resolveCertificatePath } from '@/lib/certificate-path'
 
 /**
  * POST /api/prescriptions/[id]/sign
@@ -64,6 +65,14 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       )
     }
 
+    const certPath = await resolveCertificatePath(userCertificate.pfxFilePath)
+    if (!certPath) {
+      return NextResponse.json(
+        { error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' },
+        { status: 404 }
+      )
+    }
+
     const baseUrl = request.headers.get('x-forwarded-host')
       ? `https://${request.headers.get('x-forwarded-host')}`
       : request.headers.get('host')
@@ -76,8 +85,9 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       pdfBuffer = await generatePrescriptionPdfBuffer(prescription, baseUrl)
     } catch (genErr: any) {
       logger.error({ err: genErr, prescriptionId: id }, 'Erro ao gerar PDF para assinatura')
+      const genMsg = genErr?.message || ''
       return NextResponse.json(
-        { error: 'Falha ao gerar o PDF da prescrição. Tente novamente.' },
+        { error: genMsg.includes('Gotenberg') || genMsg.includes('ECONNREFUSED') ? 'Serviço de PDF indisponível. Tente novamente em instantes.' : (genMsg || 'Falha ao gerar o PDF da prescrição.') },
         { status: 500 }
       )
     }
@@ -87,7 +97,7 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     try {
       signResult = await signPdfWithPAdES(
         pdfBuffer,
-        userCertificate.pfxFilePath,
+        certPath,
         password,
         {
           reason: 'Prescrição médica assinada digitalmente',
@@ -109,8 +119,8 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       if (sigErr?.message?.toLowerCase().includes('arquivo') || sigErr?.message?.toLowerCase().includes('corrompido')) {
         return NextResponse.json({ error: 'Certificado corrompido ou arquivo inválido' }, { status: 400 })
       }
-      if (sigErr?.message?.toLowerCase().includes('not found')) {
-        return NextResponse.json({ error: 'Arquivo do certificado não encontrado' }, { status: 404 })
+      if (sigErr?.message?.toLowerCase().includes('not found') || (sigErr as { code?: string })?.code === 'ENOENT') {
+        return NextResponse.json({ error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' }, { status: 404 })
       }
       return NextResponse.json(
         { error: sigErr?.message || 'Falha ao assinar documento. Verifique seu certificado e senha.' },
@@ -167,8 +177,9 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     })
   } catch (error) {
     logger.error('Erro ao assinar prescrição:', error)
+    const msg = (error as Error)?.message || 'Erro interno ao assinar documento'
     return NextResponse.json(
-      { error: 'Erro interno ao assinar documento' },
+      { error: msg },
       { status: 500 }
     )
   }

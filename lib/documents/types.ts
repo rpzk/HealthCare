@@ -53,6 +53,7 @@ export interface DoctorInfo {
   clinicName?: string    // Nome da clínica/hospital
   clinicCnpj?: string    // CNPJ da clínica
   city?: string          // Cidade
+  logoUrl?: string       // Logo da clínica (exibido no cabeçalho dos documentos)
 }
 
 // ============================================

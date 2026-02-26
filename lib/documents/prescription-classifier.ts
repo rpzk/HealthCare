@@ -57,6 +57,15 @@ const LISTA_C5_KEYWORDS = [
   'metenolona', 'trembolona', 'boldenona', 'metandrostenolona'
 ]
 
+// Lista C2 - Retinoides (formulário específico)
+const LISTA_C2_RETINOIDES_KEYWORDS = [
+  'isotretinoína', 'isotretinoina', 'acitretina', 'tretinoína', 'tretinoina',
+  'adapaleno', 'tazaroteno', 'bexaroteno', 'alitretinoína', 'alitretinoina'
+]
+
+// Talidomida (formulário específico)
+const TALIDOMIDA_KEYWORDS = ['talidomida']
+
 // Antibióticos (antimicrobianos)
 const ANTIBIOTICS_KEYWORDS = [
   // Penicilinas
@@ -89,9 +98,12 @@ export function classifyMedication(medicationName: string): PrescriptionType {
     return 'CONTROLLED_A'
   }
   
-  // Lista B (Psicotrópicos) - Azul
-  if (LISTA_B1_KEYWORDS.some(keyword => lowerName.includes(keyword)) ||
-      LISTA_B2_KEYWORDS.some(keyword => lowerName.includes(keyword))) {
+  // Lista B2 (Anorexígenos) - formulário B2
+  if (LISTA_B2_KEYWORDS.some(keyword => lowerName.includes(keyword))) {
+    return 'CONTROLLED_B2'
+  }
+  // Lista B1 (Psicotrópicos) - Azul
+  if (LISTA_B1_KEYWORDS.some(keyword => lowerName.includes(keyword))) {
     return 'CONTROLLED_B'
   }
   
@@ -103,6 +115,16 @@ export function classifyMedication(medicationName: string): PrescriptionType {
   // Lista C5 (Anabolizantes)
   if (LISTA_C5_KEYWORDS.some(keyword => lowerName.includes(keyword))) {
     return 'CONTROLLED_C5'
+  }
+
+  // Talidomida (formulário específico)
+  if (TALIDOMIDA_KEYWORDS.some(keyword => lowerName.includes(keyword))) {
+    return 'CONTROLLED_TALIDOMIDA'
+  }
+
+  // Lista C2 (Retinoides)
+  if (LISTA_C2_RETINOIDES_KEYWORDS.some(keyword => lowerName.includes(keyword))) {
+    return 'CONTROLLED_C2'
   }
   
   // Lista C1 (Outras controladas)
@@ -129,8 +151,11 @@ export function classifyPrescriptionType(medications: string[]): PrescriptionTyp
   const priority: PrescriptionType[] = [
     'CONTROLLED_A',
     'CONTROLLED_B',
+    'CONTROLLED_B2',
     'CONTROLLED_C5',
     'CONTROLLED_C4',
+    'CONTROLLED_C2',
+    'CONTROLLED_TALIDOMIDA',
     'CONTROLLED_C1',
     'ANTIMICROBIAL',
     'SIMPLE',
@@ -167,8 +192,11 @@ export function calculateExpirationDate(
     
     case 'CONTROLLED_A':
     case 'CONTROLLED_B':
+    case 'CONTROLLED_B2':
     case 'CONTROLLED_C1':
+    case 'CONTROLLED_C2':
     case 'CONTROLLED_C5':
+    case 'CONTROLLED_TALIDOMIDA':
       // Receitas controladas: 30 dias
       expirationDate.setDate(expirationDate.getDate() + 30)
       break
@@ -190,9 +218,12 @@ export function requiresQuantityInWords(prescriptionType: PrescriptionType): boo
   return [
     'CONTROLLED_A',
     'CONTROLLED_B',
+    'CONTROLLED_B2',
     'CONTROLLED_C1',
+    'CONTROLLED_C2',
     'CONTROLLED_C4',
     'CONTROLLED_C5',
+    'CONTROLLED_TALIDOMIDA',
   ].includes(prescriptionType)
 }
 
@@ -210,9 +241,12 @@ export function requiresControlNumber(prescriptionType: PrescriptionType): boole
   return [
     'CONTROLLED_A',
     'CONTROLLED_B',
+    'CONTROLLED_B2',
     'CONTROLLED_C1',
+    'CONTROLLED_C2',
     'CONTROLLED_C4',
     'CONTROLLED_C5',
+    'CONTROLLED_TALIDOMIDA',
   ].includes(prescriptionType)
 }
 
@@ -223,6 +257,7 @@ export function requiresJustification(prescriptionType: PrescriptionType): boole
   return [
     'CONTROLLED_A',
     'CONTROLLED_B',
+    'CONTROLLED_B2',
   ].includes(prescriptionType)
 }
 
@@ -233,9 +268,12 @@ export function requiresBuyerInfo(prescriptionType: PrescriptionType): boolean {
   return [
     'CONTROLLED_A',
     'CONTROLLED_B',
+    'CONTROLLED_B2',
     'CONTROLLED_C1',
+    'CONTROLLED_C2',
     'CONTROLLED_C4',
     'CONTROLLED_C5',
+    'CONTROLLED_TALIDOMIDA',
   ].includes(prescriptionType)
 }
 
@@ -257,6 +295,7 @@ export function getPrescriptionColor(prescriptionType: PrescriptionType): string
     case 'CONTROLLED_A':
       return '#FEF3C7' // Amarelo claro
     case 'CONTROLLED_B':
+    case 'CONTROLLED_B2':
       return '#DBEAFE' // Azul claro
     default:
       return '#FFFFFF' // Branco
@@ -276,8 +315,14 @@ export function getPrescriptionTitle(prescriptionType: PrescriptionType): string
       return 'NOTIFICAÇÃO DE RECEITA A (AMARELA)'
     case 'CONTROLLED_B':
       return 'NOTIFICAÇÃO DE RECEITA B (AZUL)'
+    case 'CONTROLLED_B2':
+      return 'NOTIFICAÇÃO DE RECEITA B2 (AZUL)'
     case 'CONTROLLED_C1':
       return 'RECEITUÁRIO DE CONTROLE ESPECIAL - LISTA C1'
+    case 'CONTROLLED_C2':
+      return 'NOTIFICAÇÃO DE RECEITA - RETINOIDES'
+    case 'CONTROLLED_TALIDOMIDA':
+      return 'NOTIFICAÇÃO DE RECEITA - TALIDOMIDA'
     case 'CONTROLLED_C4':
       return 'RECEITUÁRIO DE CONTROLE ESPECIAL - LISTA C4 (ANTIRETROVIRAIS)'
     case 'CONTROLLED_C5':

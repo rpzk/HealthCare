@@ -90,6 +90,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { resolveCertificatePath } = await import('@/lib/certificate-path')
+    const certPath = await resolveCertificatePath(userCertificate.pfxFilePath)
+    if (!certPath) {
+      return NextResponse.json(
+        { error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' },
+        { status: 404 }
+      )
+    }
+
     // A senha do certificado é solicitada no momento da assinatura (segurança)
     // Por enquanto, vamos aceitar a senha via body
     const pfxPassword = body.password
@@ -135,7 +144,7 @@ export async function POST(request: NextRequest) {
     // Assinar com certificado A1 do usuário (sem TSA/validação de cadeia)
     const signatureResult = await signWithA1Certificate(
       documentData,
-      userCertificate.pfxFilePath,
+      certPath,
       pfxPassword
     )
 

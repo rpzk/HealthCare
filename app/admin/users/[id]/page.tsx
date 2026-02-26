@@ -74,6 +74,8 @@ interface UserDetails {
   phone?: string
   speciality?: string
   licenseNumber?: string
+  patientId?: string | null
+  patient?: { id: string; name: string } | null
   assignedRoles?: { role: string; assignedAt: string }[]
 }
 
@@ -494,19 +496,35 @@ export default function UserDetailsPage() {
                   </div>
                 </Button>
 
-                {/* Mostrar botão de vincular paciente se o usuário tem papel PATIENT */}
+                {/* Paciente: mostrar "Já vinculado" ou "Vincular Paciente" */}
                 {(user.role === 'PATIENT' || user.assignedRoles?.some(r => r.role === 'PATIENT')) && (
-                  <Button 
-                    variant="outline" 
-                    className="justify-start h-auto p-4 border-cyan-200 hover:bg-cyan-50 dark:border-cyan-900 dark:hover:bg-cyan-950"
-                    onClick={() => setLinkPatientOpen(true)}
-                  >
-                    <UserPlus className="h-5 w-5 mr-3 text-cyan-600" />
-                    <div className="text-left">
-                      <p className="font-medium text-cyan-700 dark:text-cyan-400">Vincular Paciente</p>
-                      <p className="text-sm text-muted-foreground">Criar ou vincular cadastro de paciente</p>
-                    </div>
-                  </Button>
+                  user.patientId && user.patient ? (
+                    <Button 
+                      variant="outline" 
+                      className="justify-start h-auto p-4 border-green-200 hover:bg-green-50 dark:border-green-900 dark:hover:bg-green-950"
+                      onClick={() => router.push(`/patients/${user.patient!.id}`)}
+                    >
+                      <Link2 className="h-5 w-5 mr-3 text-green-600" />
+                      <div className="text-left">
+                        <p className="font-medium text-green-700 dark:text-green-400">Já vinculado ao cadastro</p>
+                        <p className="text-sm text-muted-foreground">
+                          Ver {user.patient.name} em Pacientes
+                        </p>
+                      </div>
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      className="justify-start h-auto p-4 border-cyan-200 hover:bg-cyan-50 dark:border-cyan-900 dark:hover:bg-cyan-950"
+                      onClick={() => setLinkPatientOpen(true)}
+                    >
+                      <UserPlus className="h-5 w-5 mr-3 text-cyan-600" />
+                      <div className="text-left">
+                        <p className="font-medium text-cyan-700 dark:text-cyan-400">Vincular Paciente</p>
+                        <p className="text-sm text-muted-foreground">Criar ou vincular cadastro de paciente</p>
+                      </div>
+                    </Button>
+                  )
                 )}
 
                 <Button 

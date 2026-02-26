@@ -153,6 +153,12 @@ export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { 
       return NextResponse.json({ error: 'Certificado digital A1 não encontrado para este usuário' }, { status: 404 })
     }
 
+    const { resolveCertificatePath } = await import('@/lib/certificate-path')
+    const certPath = await resolveCertificatePath(cert.pfxFilePath)
+    if (!certPath) {
+      return NextResponse.json({ error: 'Arquivo do certificado não encontrado. Reenvie o certificado em Configurações > Certificados Digitais.' }, { status: 404 })
+    }
+
     // Valida senha (hash)
     const crypto = await import('crypto')
     const passwordHash = crypto.createHash('sha256').update(password).digest('hex')
@@ -178,7 +184,7 @@ export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { 
     const pdf = await signPdfWithGotenberg({
       html,
       filename: `encaminhamentos-${consultationId}.pdf`,
-      certPath: cert.pfxFilePath,
+      certPath,
       certPassword: password,
     })
 
