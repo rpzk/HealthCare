@@ -112,6 +112,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Apresentação de infra: usar PDF pré-gerado se existir, evitando depender do Gotenberg.
+    if (type === 'infra') {
+      const pdfPaths = [
+        join(process.cwd(), 'public', 'apresentacao-infra.pdf'),
+        join('/app/public', 'apresentacao-infra.pdf'),
+      ]
+      for (const pdfPath of pdfPaths) {
+        if (existsSync(pdfPath)) {
+          const buffer = readFileSync(pdfPath)
+          return new NextResponse(buffer, {
+            headers: {
+              'Content-Type': 'application/pdf',
+              'Content-Disposition': `inline; filename="${presentation.filename}"`,
+              'Cache-Control': 'private, no-cache, max-age=0',
+            },
+          })
+        }
+      }
+      // Se por algum motivo o PDF não existir, cai de volta para o fluxo normal com Gotenberg.
+    }
+
     const pdfBuffer = await convertHtmlToPdf(htmlContent, {
       customCss: presentation.pdfCss,
       marginPt: 0,
