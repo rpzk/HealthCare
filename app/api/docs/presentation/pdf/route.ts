@@ -12,23 +12,55 @@ const PRESENTATIONS = {
     file: 'APRESENTACAO_TI.html',
     filename: 'HealthCare-Apresentacao-TI.pdf',
     auth: false,
-    /** CSS para converter slide-at-a-time em páginas sequenciais */
+    /** CSS para converter slide-at-a-time em páginas sequenciais, modo paisagem e sem margens */
     pdfCss: `
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+
       body { overflow: visible !important; }
       .slides-container { overflow: visible !important; height: auto !important; }
       .slide { display: flex !important; flex-direction: column; justify-content: center; align-items: center; page-break-after: always; min-height: 100vh !important; }
       .slide:last-child { page-break-after: auto; }
       #progress-bar, #slide-counter, #nav-hint { display: none !important; }
+
+      body::after {
+        content: '© 2026 RP HealthTech Solutions. Documento Confidencial. Todos os direitos reservados. Proibida a cópia ou distribuição sem autorização.';
+        position: fixed;
+        bottom: 0.5cm;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 10px;
+        color: #64748b;
+      }
     `,
   },
   infra: {
     file: 'APRESENTACAO_INFRAESTRUTURA.html',
     filename: 'HealthCare-Apresentacao-Infraestrutura.pdf',
     auth: true,
-    /** Apenas garante quebra de página entre slides */
+    /** Modo paisagem, sem margens e quebra de página entre seções */
     pdfCss: `
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+
       .slide { page-break-after: always; }
       .slide:last-child { page-break-after: auto; }
+
+      body::after {
+        content: '© 2026 RP HealthTech Solutions. Documento Confidencial. Todos os direitos reservados. Proibida a cópia ou distribuição sem autorização.';
+        position: fixed;
+        bottom: 0.5cm;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 10px;
+        color: #64748b;
+      }
     `,
   },
 } as const
