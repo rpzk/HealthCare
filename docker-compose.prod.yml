@@ -37,6 +37,9 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3000" # Expose Gotenberg's API on host port 3001
+    environment:
+      # Aumenta o timeout padrão da API para conversões HTML->PDF mais pesadas (ex: apresentação de infraestrutura)
+      API_TIMEOUT: 120s
     networks:
       - healthcare-network
     healthcheck:
