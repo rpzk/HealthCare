@@ -383,6 +383,7 @@ export async function generatePrescriptionPdf(
   prescription: PrescriptionDocument,
   verificationUrl: string
 ): Promise<Buffer> {
+  // eslint-disable-next-line no-async-promise-executor -- QR code generation requires await
   return new Promise(async (resolve, reject) => {
     try {
       const chunks: Buffer[] = []
