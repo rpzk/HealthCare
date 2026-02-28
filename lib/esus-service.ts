@@ -256,7 +256,7 @@ class ESUSServiceClass {
       for (const prescription of consultation.prescriptions) {
         for (const item of prescription.items) {
           // Usar código SUS se disponível (susCode)
-          const isContinuous = item.medication?.prescriptionType === 'CONTINUOUS'
+          const isContinuous = item.medication?.prescriptionType === 'SIMPLE'
           medicamentos.push({
             codigoCatmat: item.medication?.susCode || undefined,
             dose: item.dosage,

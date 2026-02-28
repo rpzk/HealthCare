@@ -63,17 +63,19 @@ export async function getClinicDataForDocuments(): Promise<ClinicDataForDocument
   })
   const settingsMap: Record<string, string> = {}
   for (const s of settings) settingsMap[s.key] = s.value || ''
+  const toStrUndef = (v: string | null | undefined): string | undefined =>
+    (v != null && v !== '') ? v : undefined
 
   return {
     clinicName: branding?.clinicName || settingsMap['CLINIC_TRADE_NAME'] || settingsMap['CLINIC_NAME'],
-    clinicCnpj: settingsMap['CLINIC_CNPJ'],
-    clinicAddress: branding?.clinicAddress || settingsMap['CLINIC_ADDRESS'],
-    clinicCity: branding?.clinicCity || settingsMap['CLINIC_CITY'],
-    clinicState: branding?.clinicState || settingsMap['CLINIC_STATE'],
-    clinicZipCode: branding?.clinicZipCode || settingsMap['CLINIC_CEP'],
-    clinicPhone: branding?.clinicPhone || settingsMap['CLINIC_PHONE'],
-    logoUrl: branding?.logoUrl,
-    headerUrl: branding?.headerUrl,
-    footerText: branding?.footerText,
+    clinicCnpj: settingsMap['CLINIC_CNPJ'] ?? undefined,
+    clinicAddress: toStrUndef(branding?.clinicAddress || settingsMap['CLINIC_ADDRESS']),
+    clinicCity: toStrUndef(branding?.clinicCity || settingsMap['CLINIC_CITY']),
+    clinicState: toStrUndef(branding?.clinicState || settingsMap['CLINIC_STATE']),
+    clinicZipCode: toStrUndef(branding?.clinicZipCode || settingsMap['CLINIC_CEP']),
+    clinicPhone: toStrUndef(branding?.clinicPhone || settingsMap['CLINIC_PHONE']),
+    logoUrl: toStrUndef(branding?.logoUrl),
+    headerUrl: toStrUndef(branding?.headerUrl),
+    footerText: toStrUndef(branding?.footerText),
   }
 }

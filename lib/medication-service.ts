@@ -310,11 +310,11 @@ export class MedicationService {
     }
 
     // Avisos sobre tipo de receita (usando os enums do schema)
-    if (medication.prescriptionType === 'CONTROLLED') {
+    if (medication.prescriptionType?.startsWith('CONTROLLED_')) {
       warnings.push('Medicamento controlado - requer receita especial')
-    } else if (medication.prescriptionType === 'YELLOW_A') {
+    } else if (medication.prescriptionType === 'CONTROLLED_A') {
       warnings.push('Medicamento de receita amarela (A) - controle especial')
-    } else if (medication.prescriptionType === 'BLUE_B') {
+    } else if (medication.prescriptionType === 'CONTROLLED_B' || medication.prescriptionType === 'CONTROLLED_B2') {
       warnings.push('Medicamento de receita azul (B) - psicotrópico')
     }
 

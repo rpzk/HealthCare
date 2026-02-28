@@ -234,7 +234,7 @@ async function renderPrescriptionPage(
         ${doctor.clinicName ? `<p class="clinic-name">${escapeHtml(doctor.clinicName)}</p>` : ''}
         <h1>${escapeHtml(doctor.name)}</h1>
         <p class="doctor-meta">CRM ${escapeHtml(doctor.crmState)} ${escapeHtml(doctor.crm)}${doctor.specialty ? ` · ${escapeHtml(doctor.specialty)}` : ''}</p>
-        <p class="doctor-contact">${[doctor.address, doctor.phone].filter(Boolean).map(escapeHtml).join(' · ')}</p>
+        <p class="doctor-contact">${[doctor.address, doctor.phone].filter((s): s is string => Boolean(s)).map(escapeHtml).join(' · ')}</p>
         <hr class="header-separator" />
       </header>
 
@@ -274,7 +274,7 @@ export async function generatePrescriptionHtml(
 
   const simple: MedicationItem[] = []
   const antimicrobials: MedicationItem[] = []
-  const controlledByType: Record<PrescriptionType, MedicationItem[]> = {}
+  const controlledByType: Partial<Record<PrescriptionType, MedicationItem[]>> = {}
 
   for (const med of doc.medications) {
     const medType = classifyMedication(med.name || med.genericName)
@@ -284,7 +284,7 @@ export async function generatePrescriptionHtml(
       simple.push(med)
     } else {
       if (!controlledByType[medType]) controlledByType[medType] = []
-      controlledByType[medType].push(med)
+      controlledByType[medType]!.push(med)
     }
   }
 

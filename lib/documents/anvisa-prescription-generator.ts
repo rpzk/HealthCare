@@ -56,7 +56,7 @@ function formatCPF(cpf: string): string {
 async function generateQRCode(data: string): Promise<Buffer> {
   return await QRCode.toBuffer(data, {
     errorCorrectionLevel: 'H',
-    type: 'png',
+    type: 'image/png',
     margin: 1,
     width: 70,
   })
@@ -73,7 +73,7 @@ function getTemplatePath(templateName: string): string {
 
 function formatMedication(med: MedicationItem, quantityInWords: boolean): string {
   const parts: string[] = []
-  parts.push(med.name)
+  parts.push(med.name ?? med.genericName ?? '')
   if (med.concentration) parts.push(med.concentration)
   if (med.pharmaceuticalForm) parts.push(`- ${med.pharmaceuticalForm}`)
   const qty = med.quantity ?? 1
@@ -83,7 +83,7 @@ function formatMedication(med: MedicationItem, quantityInWords: boolean): string
   } else {
     parts.push(`Quantidade: ${qty} ${unit}`)
   }
-  parts.push(`Posologia: ${med.dosage}`)
+  parts.push(`Posologia: ${med.dosage ?? ''}`)
   if (med.frequency) parts.push(med.frequency)
   if (med.duration) parts.push(med.duration)
   if (med.instructions) parts.push(med.instructions)
@@ -363,36 +363,29 @@ export async function generateAnvisaPrescriptionPdf(
     verificationUrl?: string
   }
 ): Promise<Buffer> {
+  const stripOptions = {
+    ...options,
+    prescriptionType: options.prescriptionType as 'CONTROLLED_A' | 'CONTROLLED_B' | 'CONTROLLED_B2' | 'CONTROLLED_C2' | 'CONTROLLED_TALIDOMIDA',
+  }
+  const especialOptions = {
+    ...options,
+    prescriptionType: options.prescriptionType as 'CONTROLLED_C1' | 'CONTROLLED_C4' | 'CONTROLLED_C5',
+  }
   switch (options.prescriptionType) {
     case 'CONTROLLED_A':
-      return generateStripPrescription(prescription, {
-        ...options,
-        templateName: 'receita-a',
-      })
+      return generateStripPrescription(prescription, { ...stripOptions, templateName: 'receita-a' })
     case 'CONTROLLED_B':
-      return generateStripPrescription(prescription, {
-        ...options,
-        templateName: 'receita-b',
-      })
+      return generateStripPrescription(prescription, { ...stripOptions, templateName: 'receita-b' })
     case 'CONTROLLED_B2':
-      return generateStripPrescription(prescription, {
-        ...options,
-        templateName: 'receita-b2',
-      })
+      return generateStripPrescription(prescription, { ...stripOptions, templateName: 'receita-b2' })
     case 'CONTROLLED_C2':
-      return generateStripPrescription(prescription, {
-        ...options,
-        templateName: 'receita-retinoides',
-      })
+      return generateStripPrescription(prescription, { ...stripOptions, templateName: 'receita-retinoides' })
     case 'CONTROLLED_TALIDOMIDA':
-      return generateStripPrescription(prescription, {
-        ...options,
-        templateName: 'receita-talidomida',
-      })
+      return generateStripPrescription(prescription, { ...stripOptions, templateName: 'receita-talidomida' })
     case 'CONTROLLED_C1':
     case 'CONTROLLED_C4':
     case 'CONTROLLED_C5':
-      return generateControleEspecialPrescription(prescription, options)
+      return generateControleEspecialPrescription(prescription, especialOptions)
     default:
       throw new Error(`Tipo de prescrição sem template ANVISA: ${options.prescriptionType}`)
   }
