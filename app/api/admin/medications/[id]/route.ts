@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { withAdminAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
+import { withAdminAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import type { PrescriptionType } from '@prisma/client'
@@ -27,9 +27,9 @@ const updateSchema = z.object({
   hospitalPharmacy: z.boolean().optional(),
 })
 
-export const PATCH = withAdminAuth(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = withAdminAuth(async (req: NextRequest, { params }) => {
   try {
-    const { id } = await params
+    const id = params.id
     const body = await req.json()
     const parsed = updateSchema.safeParse(body)
     if (!parsed.success) {
@@ -52,11 +52,11 @@ export const PATCH = withAdminAuth(async (req: NextRequest, { params }: { params
     logger.error({ err: e }, 'Erro ao atualizar medicamento')
     return NextResponse.json({ error: 'Erro ao atualizar' }, { status: 500 })
   }
-}) as AuthenticatedApiHandler
+})
 
-export const DELETE = withAdminAuth(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withAdminAuth(async (_req: NextRequest, { params }) => {
   try {
-    const { id } = await params
+    const id = params.id
     await prisma.medication.update({
       where: { id },
       data: { active: false },
@@ -70,4 +70,4 @@ export const DELETE = withAdminAuth(async (_req: NextRequest, { params }: { para
     logger.error({ err: e }, 'Erro ao desativar medicamento')
     return NextResponse.json({ error: 'Erro ao desativar' }, { status: 500 })
   }
-}) as AuthenticatedApiHandler
+})

@@ -13,12 +13,9 @@ type ProtocolItems = {
 }
 
 // POST - Aplicar protocolo (retorna itens e incrementa uso)
-export const POST = withAuth(async (
-  req: NextRequest,
-  { user, params }: { user: { id: string }; params: Promise<{ id: string }> }
-) => {
+export const POST = withAuth(async (req: NextRequest, { user, params }) => {
   try {
-    const { id } = await params
+    const id = params.id
 
     const protocol = await prisma.protocol.findFirst({
       where: {

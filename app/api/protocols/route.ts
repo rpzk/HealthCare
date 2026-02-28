@@ -78,7 +78,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
 
     // Normalizar items (sempre arrays para o frontend)
     const normalized = protocols.map((p) => {
-      const items = (p.items as ProtocolItems | null) || {}
+      const items = ((p.items as ProtocolItems | null) || {}) as ProtocolItems
       return {
         id: p.id,
         name: p.name,

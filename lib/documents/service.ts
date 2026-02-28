@@ -457,6 +457,8 @@ export async function createPrescription(
       await prisma.prescriptionItem.create({
         data: {
           prescriptionId,
+          medicationName: med.genericName || 'Medicamento',
+          concentration: med.concentration || '',
           customName: `${med.genericName}${med.brandName ? ` (${med.brandName})` : ''} - ${med.concentration} ${med.pharmaceuticalForm}`,
           quantity: med.quantity,
           dosage: med.dosage,

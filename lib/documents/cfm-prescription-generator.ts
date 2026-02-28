@@ -230,7 +230,7 @@ function formatCPF(cpf: string): string {
 async function generateQRCode(data: string): Promise<Buffer> {
   return await QRCode.toBuffer(data, {
     errorCorrectionLevel: 'H',
-    type: 'png',
+    type: 'image/png',
     margin: 1,
     width: 80,
   })

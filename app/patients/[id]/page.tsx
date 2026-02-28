@@ -88,17 +88,17 @@ export default async function PatientDetailsPage({ params }: PageProps) {
         <Sidebar />
         <main className="flex-1 ml-64 p-6">
           <PageHeader
-            title={patientView.name}
-            description={`CPF: ${patientView.cpf || 'Não informado'} • ${patientView.email || 'Email não informado'}`}
+            title={String(patientView.name ?? '')}
+            description={`CPF: ${String(patientView.cpf ?? 'Não informado')} • ${String(patientView.email ?? 'Email não informado')}`}
             breadcrumbs={[
               { label: 'Pacientes', href: '/patients' },
-              { label: patientView.name }
+              { label: String(patientView.name ?? '') }
             ]}
             showBackButton={true}
             showHomeButton={true}
           />
           <HydrationGuard fallback={<div className="text-sm text-gray-500">Carregando...</div>}>
-            <PatientDetailsContent patient={patientView} />
+            <PatientDetailsContent patient={patientView as import('@prisma/client').Patient} />
           </HydrationGuard>
         </main>
       </div>

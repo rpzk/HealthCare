@@ -9,10 +9,13 @@ export interface AuthenticatedUser {
   role: string
   speciality?: string
   crmNumber?: string
+  patientId?: string
 }
 
-// Using Record<string, string> for params - Next.js dynamic route params
-// In practice, these are always strings for single dynamic segments like [id]
+// Next.js 15: params pode ser Promise<Record<string, string>>
+// Next.js 14: params é Record<string, string>
+export type ParamsInput = Record<string, string> | Promise<Record<string, string>>
+
 export interface AuthenticatedApiHandler {
   (request: NextRequest, context: { 
     params: Record<string, string>,
@@ -45,7 +48,7 @@ export function withAuth(
   handler: AuthenticatedApiHandler,
   options: { requireRole?: string[] } = {}
 ) {
-  return async (request: NextRequest, context: { params?: Record<string, string> } = {}) => {
+  return async (request: NextRequest, context: { params?: ParamsInput } = {}) => {
     try {
       // Executar middleware de autenticação
       const authResult = await authMiddleware(request, options)
@@ -55,9 +58,15 @@ export function withAuth(
         return authResult.response!
       }
 
+      // Next.js 15: params pode ser Promise
+      const rawParams = context.params
+      const params = rawParams
+        ? await (typeof (rawParams as Promise<unknown>).then === 'function' ? (rawParams as Promise<Record<string, string>>) : Promise.resolve(rawParams as Record<string, string>))
+        : {}
+
       // Chamar handler original com usuário autenticado
       return await handler(request, {
-        params: context.params || {},
+        params: params || {},
         user: authResult.user!
       })
 

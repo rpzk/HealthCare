@@ -1,0 +1,6 @@
+declare module '@signpdf/signpdf'
+declare module '@signpdf/signer-p12'
+declare module '@signpdf/utils'
+declare module '@signpdf/placeholder-plain'
+declare module 'pdf-lib'
+declare module '@playwright/test'

@@ -103,20 +103,20 @@ function mapPrescriptionType(v: any): PrescriptionType | undefined {
   if (!v && v !== 0) return undefined
   const s = String(v).trim().toUpperCase()
   const map: Record<string, PrescriptionType> = {
-    SYMPTOMATIC: PrescriptionType.SYMPTOMATIC,
-    CONTINUOUS: PrescriptionType.CONTINUOUS,
-    CONTROLLED: PrescriptionType.CONTROLLED,
-    BLUE_B: PrescriptionType.BLUE_B,
-    YELLOW_A: PrescriptionType.YELLOW_A,
-    PHYTOTHERAPIC: PrescriptionType.PHYTOTHERAPIC,
+    SYMPTOMATIC: PrescriptionType.SIMPLE,
+    CONTINUOUS: PrescriptionType.SIMPLE,
+    CONTROLLED: PrescriptionType.CONTROLLED_A,
+    BLUE_B: PrescriptionType.CONTROLLED_B,
+    YELLOW_A: PrescriptionType.CONTROLLED_A,
+    PHYTOTHERAPIC: PrescriptionType.SIMPLE,
     // aliases comuns
-    SIMPLES: PrescriptionType.SYMPTOMATIC,
-    SIMPLE: PrescriptionType.SYMPTOMATIC,
-    CONTINUA: PrescriptionType.CONTINUOUS,
-    AMARELA: PrescriptionType.YELLOW_A,
-    A: PrescriptionType.YELLOW_A,
-    AZUL: PrescriptionType.BLUE_B,
-    B: PrescriptionType.BLUE_B,
+    SIMPLES: PrescriptionType.SIMPLE,
+    SIMPLE: PrescriptionType.SIMPLE,
+    CONTINUA: PrescriptionType.SIMPLE,
+    AMARELA: PrescriptionType.CONTROLLED_A,
+    A: PrescriptionType.CONTROLLED_A,
+    AZUL: PrescriptionType.CONTROLLED_B,
+    B: PrescriptionType.CONTROLLED_B,
   }
   return map[s]
 }
@@ -154,7 +154,7 @@ function buildMedicationData(r: Row): Prisma.MedicationCreateInput {
     name: String(name).trim(),
     synonym: (get('synonym', 'sinonimo') as string) || null,
     tradeName: (get('tradename', 'fantasia', 'nome fantasia', 'marca', 'brand') as string) || null,
-    prescriptionType: mapPrescriptionType(get('prescriptiontype', 'tipo', 'tipo de receita', 'prescription_type')) || PrescriptionType.SYMPTOMATIC,
+    prescriptionType: mapPrescriptionType(get('prescriptiontype', 'tipo', 'tipo de receita', 'prescription_type')) || PrescriptionType.SIMPLE,
 
     basicPharmacy: toBool(get('basicpharmacy', 'basica', 'farmacia basica', 'basic_unit')) ?? false,
     municipalPharmacy: toBool(get('municipalpharmacy', 'municipal')) ?? false,

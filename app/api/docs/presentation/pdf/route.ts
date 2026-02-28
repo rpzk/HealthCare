@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
       marginPt: 0,
     })
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="${presentation.filename}"`,
