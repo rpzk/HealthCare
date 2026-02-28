@@ -1,0 +1,90 @@
+# Deploy para Azure (VM com Docker) - TEMPLATE
+# Ative quando o cliente fornecer as credenciais Azure.
+#
+# Pré-requisito: VM no Azure configurada conforme docs/DEPLOY_AZURE.md
+# (Docker, Docker Compose, repositório clonado em /home/azureuser/HealthCare)
+#
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   AZURE_SSH_HOST     - IP público da VM Azure
+#   AZURE_SSH_USER     - Usuário SSH (ex: azureuser)
+#   AZURE_SSH_KEY      - Chave privada SSH
+#   AZURE_DEPLOY_PATH  - (opcional) Path do projeto, default: /home/azureuser/HealthCare
+#
+# Para ativar: crie a secret AZURE_DEPLOY_ENABLED=true
+# Para usar branch específico: altere 'main' no trigger
+
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    if: ${{ vars.AZURE_DEPLOY_ENABLED == 'true' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+          NEXTAUTH_SECRET: test-secret-for-build
+          NEXTAUTH_URL: http://localhost:3000
+
+  deploy:
+    name: Deploy to Azure VM
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (vars.AZURE_DEPLOY_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_SSH_HOST }}
+          username: ${{ secrets.AZURE_SSH_USER }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          port: ${{ secrets.AZURE_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /home/azureuser/HealthCare
+
+            echo "📥 Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "🐳 Building and starting containers..."
+            docker compose -f docker-compose.prod.yml build app --no-cache
+            docker compose -f docker-compose.prod.yml up -d app
+
+            echo "📦 Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy || true
+
+            echo "✅ Deploy concluído!"
+            docker compose -f docker-compose.prod.yml ps
