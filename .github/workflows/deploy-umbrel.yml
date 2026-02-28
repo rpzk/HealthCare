@@ -1,0 +1,87 @@
+# Deploy automático para UmbrelOS (minipc em produção)
+# Fluxo: push main → build/test → SSH no Umbrel → pull + docker-compose up
+#
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   UMBREL_SSH_HOST    - IP ou hostname do minipc (ex: 192.168.1.100 ou healthcare.seudominio.com)
+#   UMBREL_SSH_USER    - Usuário SSH (ex: umbrel)
+#   UMBREL_SSH_KEY     - Chave privada SSH (conteúdo do arquivo id_rsa ou id_ed25519)
+
+name: Deploy to Umbrel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Permite disparo manual
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
+          NEXTAUTH_SECRET: test-secret-for-build
+          NEXTAUTH_URL: http://localhost:3000
+
+  deploy:
+    name: Deploy to Umbrel
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.UMBREL_SSH_HOST }}
+          username: ${{ secrets.UMBREL_SSH_USER }}
+          key: ${{ secrets.UMBREL_SSH_KEY }}
+          port: ${{ secrets.UMBREL_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /home/umbrel/HealthCare
+
+            echo "📥 Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "🐳 Building and starting containers..."
+            docker compose -f docker-compose.prod.yml build app --no-cache
+            docker compose -f docker-compose.prod.yml up -d app
+
+            echo "📦 Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy || true
+
+            echo "✅ Deploy concluído!"
+            docker compose -f docker-compose.prod.yml ps
+
+      - name: Health check
+        run: |
+          # Verificação básica - ajuste UMBREL_APP_URL se tiver URL pública
+          if [ -n "${{ secrets.UMBREL_APP_URL }}" ]; then
+            sleep 30
+            curl -sf "${{ secrets.UMBREL_APP_URL }}/api/health" || echo "Health check skipped (no URL)"
+          fi

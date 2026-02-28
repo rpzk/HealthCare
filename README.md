@@ -265,6 +265,15 @@ NODE_ENV=development
 
 ## ☁️ Deploy
 
+### CI/CD (Deploy Automático)
+
+Configure deploy automático via GitHub Actions:
+
+- **UmbrelOS** (minipc): push em `main` → build + test → deploy via SSH
+- **Azure** (cliente): template pronto, ativa quando credenciais forem fornecidas
+
+📘 **[Guia de Configuração CI/CD](docs/CICD_SETUP.md)**
+
 ### Deploy no Azure
 
 Para deploy completo no Azure (VM + PostgreSQL + Redis), siga o guia:
@@ -308,6 +317,7 @@ docker-compose -f docker-compose.prod.yml up -d
 |-----------|-----------|
 | [INFRAESTRUTURA_CUSTOS.md](docs/INFRAESTRUTURA_CUSTOS.md) | Análise de custos (local vs cloud) |
 | [DIAGRAMAS_ARQUITETURA.md](docs/DIAGRAMAS_ARQUITETURA.md) | Diagramas técnicos completos |
+| [CICD_SETUP.md](docs/CICD_SETUP.md) | Configuração CI/CD (Umbrel + Azure) |
 | [DEPLOY_AZURE.md](docs/DEPLOY_AZURE.md) | Guia passo a passo Azure |
 | [PRESCRICOES_CFM_ANVISA_2026.md](docs/PRESCRICOES_CFM_ANVISA_2026.md) | Normas de prescrições |
 | [SBIS_CFM_COMPLIANCE.md](docs/SBIS_CFM_COMPLIANCE.md) | Conformidade regulatória |
