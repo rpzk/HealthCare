@@ -63,10 +63,10 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.UMBREL_SSH_HOST }}
+          host: ${{ secrets.UMBREL_TAILSCALE_IP }}
           username: ${{ secrets.UMBREL_SSH_USER }}
           key: ${{ secrets.UMBREL_SSH_KEY }}
-          port: ${{ secrets.UMBREL_SSH_PORT || 22 }}
+          port: 22
           script: |
             set -e
             cd /home/umbrel/HealthCare
