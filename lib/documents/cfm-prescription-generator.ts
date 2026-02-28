@@ -257,6 +257,7 @@ export async function generateCFMPrescriptionPdf(
 ): Promise<Buffer> {
   const config = PRESCRIPTION_CONFIGS[options.prescriptionType]
   
+  // eslint-disable-next-line no-async-promise-executor -- QR code requires await
   return new Promise(async (resolve, reject) => {
     try {
       const chunks: Buffer[] = []

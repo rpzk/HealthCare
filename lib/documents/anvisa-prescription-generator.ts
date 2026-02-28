@@ -114,6 +114,7 @@ async function generateStripPrescription(
   const templatePath = getTemplatePath(options.templateName)
   const img = fs.readFileSync(templatePath)
 
+  // eslint-disable-next-line no-async-promise-executor -- QR code requires await
   return new Promise(async (resolve, reject) => {
     try {
       const chunks: Buffer[] = []
@@ -247,6 +248,7 @@ async function generateControleEspecialPrescription(
   const img1 = fs.readFileSync(templatePath)
   const img2 = fs.readFileSync(templatePath2)
 
+  // eslint-disable-next-line no-async-promise-executor -- QR code requires await
   return new Promise(async (resolve, reject) => {
     try {
       const chunks: Buffer[] = []
