@@ -217,7 +217,8 @@ const providers: NextAuthOptions['providers'] = [
               name: true,
               role: true,
               password: true,
-              isActive: true
+              isActive: true,
+              twoFactorEnabled: true
             },
             take: 5
           })
@@ -302,7 +303,8 @@ const providers: NextAuthOptions['providers'] = [
             id: matchedUser.id,
             email: matchedUser.email,
             name: matchedUser.name,
-            role: matchedUser.role
+            role: matchedUser.role,
+            twoFactorEnabled: matchedUser.twoFactorEnabled
           }
         } catch (error) {
           logger.error('Erro na autenticação:', error)
@@ -327,6 +329,11 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role
         token.id = user.id
+        // Se o usuário fez login com credenciais e tem 2FA habilitado
+        // Adicionar flag para verificar na sessão
+        if ('twoFactorEnabled' in user) {
+          token.twoFactorEnabled = (user as any).twoFactorEnabled
+        }
       }
       
       // Buscar papéis atribuídos (UserAssignedRole) se existir
@@ -362,6 +369,9 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string
         if (token.availableRoles) {
           (session.user as any).availableRoles = token.availableRoles
+        }
+        if (token.twoFactorEnabled !== undefined) {
+          (session.user as any).twoFactorEnabled = token.twoFactorEnabled
         }
       }
       return session
