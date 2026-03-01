@@ -77,3 +77,4 @@ __pycache__/
 
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
+.env-umbrel*
