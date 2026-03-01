@@ -68,10 +68,17 @@ export default function ProfilePage() {
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [passkeyError, setPasskeyError] = useState<string | null>(null)
   const [deletingPasskey, setDeletingPasskey] = useState<string | null>(null)
+  const [force2FA, setForce2FA] = useState(false)
 
   useEffect(() => {
     fetchProfile()
     fetchPasskeys()
+    
+    // Verificar se há parâmetro force2fa na URL
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('force2fa') === 'true') {
+      setForce2FA(true)
+    }
   }, [])
 
   const fetchProfile = async () => {
@@ -286,6 +293,37 @@ export default function ProfilePage() {
             }
           />
 
+          {/* Banner de Aviso 2FA Obrigatório */}
+          {force2FA && !profile.twoFactorEnabled && (profile.role === 'ADMIN' || profile.role === 'DOCTOR') && (
+            <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <Shield className="h-6 w-6 text-orange-600 dark:text-orange-400 mt-1" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-900 dark:text-orange-100 mb-2">
+                      Autenticação em Dois Fatores Obrigatória
+                    </h3>
+                    <p className="text-sm text-orange-800 dark:text-orange-200 mb-4">
+                      Para garantir a segurança do sistema e dos dados dos pacientes, 
+                      {profile.role === 'ADMIN' ? ' administradores' : ' médicos'} devem habilitar 
+                      a autenticação em dois fatores (2FA). Por favor, configure o 2FA abaixo para continuar.
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        const element = document.getElementById('two-factor-section')
+                        element?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }}
+                    >
+                      Configurar 2FA Agora
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
@@ -454,10 +492,12 @@ export default function ProfilePage() {
               </Card>
               
               {/* Two-Factor Authentication */}
-              <TwoFactorSetup 
-                isEnabled={profile?.twoFactorEnabled || false} 
-                onStatusChange={fetchProfile}
-              />
+              <div id="two-factor-section">
+                <TwoFactorSetup 
+                  isEnabled={profile?.twoFactorEnabled || false} 
+                  onStatusChange={fetchProfile}
+                />
+              </div>
             </div>
           </div>
         </main>
