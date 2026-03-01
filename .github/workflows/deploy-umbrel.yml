@@ -60,14 +60,16 @@ jobs:
           oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
           tags: tag:ci
 
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.UMBREL_SSH_KEY }}" > ~/.ssh/umbrel_key
+          chmod 600 ~/.ssh/umbrel_key
+          ssh-keyscan ${{ secrets.UMBREL_TAILSCALE_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.UMBREL_TAILSCALE_IP }}
-          username: ${{ secrets.UMBREL_SSH_USER }}
-          key: ${{ secrets.UMBREL_SSH_KEY }}
-          port: 22
-          script: |
+        run: |
+          ssh -i ~/.ssh/umbrel_key -o StrictHostKeyChecking=no ${{ secrets.UMBREL_SSH_USER }}@${{ secrets.UMBREL_TAILSCALE_IP }} << 'EOF'
             set -e
             cd /home/umbrel/HealthCare
 
@@ -84,6 +86,7 @@ jobs:
 
             echo "✅ Deploy concluído!"
             docker compose -f docker-compose.prod.yml ps
+          EOF
 
       - name: Health check
         run: |
