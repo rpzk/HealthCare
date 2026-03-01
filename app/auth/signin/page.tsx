@@ -13,9 +13,12 @@ import { startAuthentication } from '@simplewebauthn/browser'
 export default function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [showTwoFactor, setShowTwoFactor] = useState(false)
+  const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
   const router = useRouter()
 
   const getSafeRedirectPath = () => {
