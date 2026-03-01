@@ -24,6 +24,12 @@ model User {
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   password               String?
+  
+  // Two-Factor Authentication (2FA)
+  twoFactorEnabled       Boolean                @default(false)
+  twoFactorSecret        String?                // Encrypted TOTP secret
+  twoFactorBackupCodes   String?                // Encrypted JSON array of backup codes
+  twoFactorEnabledAt     DateTime?              // When 2FA was enabled
   aiInteractions         AIInteraction[]
   consultations          Consultation[]
   examRequests           ExamRequest[]
