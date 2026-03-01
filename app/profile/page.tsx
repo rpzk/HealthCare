@@ -23,7 +23,8 @@ import {
   Award,
   Activity,
   Users,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react'
 
 interface UserProfile {
@@ -66,6 +67,7 @@ export default function ProfilePage() {
   const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([])
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [passkeyError, setPasskeyError] = useState<string | null>(null)
+  const [deletingPasskey, setDeletingPasskey] = useState<string | null>(null)
 
   useEffect(() => {
     fetchProfile()
@@ -168,6 +170,33 @@ export default function ProfilePage() {
       setPasskeyError(err?.message || 'Erro ao registrar passkey')
     } finally {
       setPasskeyLoading(false)
+    }
+  }
+
+  const deletePasskey = async (id: string) => {
+    if (!confirm('Tem certeza que deseja remover esta passkey?')) {
+      return
+    }
+    
+    setDeletingPasskey(id)
+    setPasskeyError(null)
+    
+    try {
+      const response = await fetch(`/api/auth/webauthn/credentials?id=${id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erro ao remover passkey')
+      }
+      
+      await fetchPasskeys()
+    } catch (err: Error | any) {
+      console.error('Erro ao remover passkey', err)
+      setPasskeyError(err?.message || 'Erro ao remover passkey')
+    } finally {
+      setDeletingPasskey(null)
     }
   }
 
@@ -391,7 +420,7 @@ export default function ProfilePage() {
                   )}
                   {passkeys.map((pk) => (
                     <div key={pk.id} className="flex items-center justify-between border rounded-md p-3">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{pk.nickname || 'Passkey'}</p>
                         <p className="text-xs text-muted-foreground">
                           Criada em {new Date(pk.createdAt).toLocaleDateString('pt-BR')} · {pk.deviceType || 'dispositivo'}
@@ -400,9 +429,24 @@ export default function ProfilePage() {
                           <p className="text-xs text-muted-foreground">Último uso: {new Date(pk.lastUsedAt).toLocaleString('pt-BR')}</p>
                         )}
                       </div>
-                      <Badge variant={pk.backedUp ? 'default' : 'secondary'}>
-                        {pk.backedUp ? 'Backup/Habilitado' : 'Sem backup'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={pk.backedUp ? 'default' : 'secondary'}>
+                          {pk.backedUp ? 'Backup' : 'Sem backup'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deletePasskey(pk.id)}
+                          disabled={deletingPasskey === pk.id}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          {deletingPasskey === pk.id ? (
+                            <span className="animate-spin">⏳</span>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   <p className="text-xs text-muted-foreground">Recomendamos ter pelo menos 2 passkeys (celular e notebook) para evitar bloqueio.</p>
