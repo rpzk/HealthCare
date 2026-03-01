@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/navigation/page-header'
+import { TwoFactorSetup } from '@/components/auth/two-factor-setup'
 import { startRegistration } from '@simplewebauthn/browser'
 import { 
   User, 
@@ -35,6 +36,7 @@ interface UserProfile {
   role: string
   status: 'active' | 'inactive'
   joinDate: string
+  twoFactorEnabled: boolean
   stats: {
     totalPatients: number
     totalConsultations: number
@@ -406,6 +408,12 @@ export default function ProfilePage() {
                   <p className="text-xs text-muted-foreground">Recomendamos ter pelo menos 2 passkeys (celular e notebook) para evitar bloqueio.</p>
                 </CardContent>
               </Card>
+              
+              {/* Two-Factor Authentication */}
+              <TwoFactorSetup 
+                isEnabled={profile?.twoFactorEnabled || false} 
+                onStatusChange={fetchProfile}
+              />
             </div>
           </div>
         </main>

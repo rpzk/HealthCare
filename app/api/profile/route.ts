@@ -29,6 +29,7 @@ export async function GET() {
         licenseState: true,
         createdAt: true,
         isActive: true,
+        twoFactorEnabled: true,
         person: {
           select: {
             cpf: true,
@@ -69,6 +70,7 @@ export async function GET() {
       role: user.role,
       status: user.isActive ? 'active' : 'inactive',
       joinDate: user.createdAt.toISOString().split('T')[0],
+      twoFactorEnabled: user.twoFactorEnabled,
       person: user.person,
       stats: {
         totalPatients: user._count.patients,
