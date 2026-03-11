@@ -85,6 +85,7 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d app
 
             echo "📦 Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate resolve --applied 20260120110000_add_invite_sensitive_fields 2>/dev/null || true
             docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy || true
 
             echo "✅ Deploy concluído!"
