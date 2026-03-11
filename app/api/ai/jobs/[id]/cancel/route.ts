@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { Job, Queue } from 'bullmq'
 import Redis from 'ioredis'

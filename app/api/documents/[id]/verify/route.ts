@@ -4,6 +4,7 @@
  * @route GET /api/documents/[id]/verify
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyDocument, getSignedDocument } from '@/lib/documents/service'

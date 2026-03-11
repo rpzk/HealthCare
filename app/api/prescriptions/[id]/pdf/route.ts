@@ -10,6 +10,7 @@
  * @route GET /api/prescriptions/[id]/pdf
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'

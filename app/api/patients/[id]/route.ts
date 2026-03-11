@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { PatientService } from '@/lib/patient-service'
 import { withAuth, withDoctorAuth, AuthenticatedApiHandler, withRbac } from '@/lib/with-auth'

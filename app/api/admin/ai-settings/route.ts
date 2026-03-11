@@ -4,6 +4,7 @@
  * POST - Atualiza configurações
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { SystemSettingsService, SettingCategory } from '@/lib/system-settings-service'

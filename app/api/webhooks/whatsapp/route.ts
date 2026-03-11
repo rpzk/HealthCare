@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { AppointmentConfirmationService } from '@/lib/appointment-confirmation-service'
 import { logger } from '@/lib/logger'

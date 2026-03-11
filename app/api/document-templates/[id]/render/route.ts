@@ -3,6 +3,7 @@
  * POST /api/document-templates/[id]/render
  */
 
+export const dynamic = 'force-dynamic'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { DocumentTemplateService } from '@/lib/document-templates/service'

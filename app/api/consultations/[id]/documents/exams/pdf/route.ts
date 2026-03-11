@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { signPdfWithGotenberg, convertHtmlToPdf } from '@/lib/pdf-signing-service'

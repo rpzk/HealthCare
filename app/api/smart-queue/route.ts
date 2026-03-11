@@ -7,6 +7,7 @@
  * - PATCH: Chama próximo ou atualiza status
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'

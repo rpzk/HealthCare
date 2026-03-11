@@ -26,10 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ vars.AZURE_DEPLOY_ENABLED == 'true' || github.event_name == 'workflow_dispatch' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
@@ -62,7 +62,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3

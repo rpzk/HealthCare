@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { NotificationService } from '@/lib/notification-service'
 import { withAuth } from '@/lib/with-auth'

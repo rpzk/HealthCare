@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSignaturePolicy } from '@/lib/signature-policy'
 import { logger } from '@/lib/logger'

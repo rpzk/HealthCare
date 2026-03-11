@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
 import { rateLimiters } from '@/lib/rate-limiter'

@@ -6,6 +6,7 @@
  * conforme Resolução CFM nº 1.821/2007
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'

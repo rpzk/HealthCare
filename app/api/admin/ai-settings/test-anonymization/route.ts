@@ -3,6 +3,7 @@
  * POST - Recebe texto e retorna versão anonimizada com estatísticas
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { anonymizeText, hasSensitiveData } from '@/lib/lgpd-anonymizer'

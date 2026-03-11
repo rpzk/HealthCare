@@ -8,6 +8,7 @@
  * Retorna: { exams: [{ name, description, priority, reasoning }] }
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { getAIConfig, aiClient } from '@/lib/ai-client'

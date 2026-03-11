@@ -4,6 +4,7 @@
  * Expande siglas de protocolos clínicos (TARV, RIPE, etc.) em lista de medicamentos via IA.
  */
 
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { validateRequestBody } from '@/lib/with-auth'
 import { withMedicalAIAuth } from '@/lib/advanced-auth'

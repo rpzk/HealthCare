@@ -8,6 +8,7 @@
  * Retorna: { dosage, frequency, duration, instructions, activeIngredient?, prescriptionType? } ou null se IA indisponível
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIConfig, aiClient } from '@/lib/ai-client'
 import { logger } from '@/lib/logger'

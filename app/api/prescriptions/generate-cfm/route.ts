@@ -10,6 +10,7 @@
  * - Assinatura digital PAdES com certificado A1
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'

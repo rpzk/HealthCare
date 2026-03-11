@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withAuth, withDoctorAuth, validateRequestBody } from '@/lib/with-auth'
 import { AIAnalyticsService } from '@/lib/ai-analytics'

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withPatientAuth } from '@/lib/advanced-auth'
 import { validateDiagnosisCreate, validateDiagnosisUpdate } from '@/lib/validation-schemas'
