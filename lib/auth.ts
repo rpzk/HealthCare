@@ -92,7 +92,7 @@ const providers: NextAuthOptions['providers'] = [
           const prisma = await getPrisma()
           const user = await prisma.user.findFirst({
             where: { email: { equals: credentials.email, mode: 'insensitive' } },
-            select: { id: true, email: true, name: true, role: true, isActive: true }
+            select: { id: true, email: true, name: true, role: true, isActive: true, twoFactorEnabled: true }
           })
 
           if (!user || !user.isActive) {
@@ -140,6 +140,7 @@ const providers: NextAuthOptions['providers'] = [
             email: user.email,
             name: user.name,
             role: user.role,
+            twoFactorEnabled: user.twoFactorEnabled ?? false,
           }
         } catch (error) {
           logger.error('Erro na autenticação passkey:', error)
@@ -329,10 +330,21 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role
         token.id = user.id
-        // Se o usuário fez login com credenciais e tem 2FA habilitado
-        // Adicionar flag para verificar na sessão
         if ('twoFactorEnabled' in user) {
           token.twoFactorEnabled = (user as any).twoFactorEnabled
+        }
+      }
+      // Se twoFactorEnabled não está no token (ex.: login por Passkey antigo), buscar do DB
+      if (token.id && token.twoFactorEnabled === undefined) {
+        try {
+          const prisma = await getPrisma()
+          const u = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { twoFactorEnabled: true }
+          })
+          if (u) token.twoFactorEnabled = u.twoFactorEnabled ?? false
+        } catch {
+          token.twoFactorEnabled = false
         }
       }
       

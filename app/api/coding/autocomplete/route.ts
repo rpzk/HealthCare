@@ -1,12 +1,13 @@
 /**
- * API de autocomplete de CID-10
- * 
+ * API de autocomplete de CID-10 e CIAP-2
+ *
  * GET /api/coding/autocomplete
- * 
+ *
  * Parâmetros:
  * - q: termo de busca (código ou descrição)
+ * - system: CID10 | CIAP2 (padrão CID10)
  * - limit: limite de resultados (padrão 10)
- * - patientSex: sexo do paciente M/F (opcional, filtra restrições)
+ * - patientSex: sexo do paciente M/F (opcional, só CID-10)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -18,18 +19,47 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    
-    const query = searchParams.get('q')
+
+    const query = searchParams.get('q')?.trim()
+    const system = (searchParams.get('system') || 'CID10') as 'CID10' | 'CIAP2'
     const limit = parseInt(searchParams.get('limit') || '10')
     const patientSex = searchParams.get('patientSex') as 'M' | 'F' | null
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
       return NextResponse.json([])
     }
 
-    // Buscar o sistema CID-10.
-    // Observação: o nome pode variar (ex: "CID10", "CID-10 Brasil"), então priorizamos o kind.
-    const cidSystem = await prisma.codeSystem.findFirst({
+    // CIAP2: busca direta na tabela ciap2
+    if (system === 'CIAP2') {
+      const rows = await prisma.cIAP2.findMany({
+        where: {
+          active: true,
+          OR: [
+            { code: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+            { chapter: { contains: query, mode: 'insensitive' } }
+          ]
+        },
+        take: limit,
+        orderBy: { code: 'asc' }
+      })
+      return NextResponse.json(rows.map(r => ({
+        id: r.code,
+        code: r.code,
+        display: r.description,
+        description: r.description,
+        shortDescription: r.description,
+        chapter: r.chapter,
+        isCategory: false,
+        sexRestriction: r.gender,
+        crossAsterisk: null,
+        label: `${r.code} - ${r.description}`,
+        badges: r.gender ? [r.gender === 'M' ? '♂️' : r.gender === 'F' ? '♀️' : null].filter(Boolean) : []
+      })))
+    }
+
+    // Buscar o sistema CID-10 com MAIS códigos (evita usar sistema parcial/duplicado)
+    const cidSystems = await prisma.codeSystem.findMany({
       where: {
         active: true,
         OR: [
@@ -38,14 +68,20 @@ export async function GET(request: NextRequest) {
           { name: 'ICD-10' },
         ],
       },
-      orderBy: [{ updatedAt: 'desc' }],
     })
+    const withCount = await Promise.all(
+      cidSystems.map(async (s) => ({
+        system: s,
+        count: await prisma.medicalCode.count({ where: { systemId: s.id, active: true } }),
+      }))
+    )
+    const cidSystem = withCount.sort((a, b) => b.count - a.count)[0]?.system
 
     if (!cidSystem) {
       return NextResponse.json([])
     }
 
-    const isCodeSearch = /^[A-Z]\d/i.test(query)
+    const isCodeSearch = /^[A-Za-z]\d*$/i.test(query.trim())
 
     const where: any = {
       systemId: cidSystem.id,
@@ -60,19 +96,25 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const TEXT_FALLBACKS: Record<string, string[]> = {
+      consulta: ['exame geral', 'atendimento', 'check-up'],
+      retorno: ['acompanhamento', 'retorno'],
+    }
+    const qLower = query.trim().toLowerCase()
+    const altTerms = TEXT_FALLBACKS[qLower] ? [query, ...TEXT_FALLBACKS[qLower]] : [query]
+
     if (isCodeSearch) {
       // Busca por código - prioriza match por prefixo
       where.code = { startsWith: query.toUpperCase(), mode: 'insensitive' }
     } else {
-      // Busca por texto na descrição
-      where.AND.push({
-        OR: [
-          { display: { contains: query, mode: 'insensitive' } },
-          { description: { contains: query, mode: 'insensitive' } },
-          { synonyms: { contains: query, mode: 'insensitive' } },
-          { shortDescription: { contains: query, mode: 'insensitive' } },
-        ],
-      })
+      // Busca por texto na descrição (incluindo termos alternativos)
+      const textConditions = altTerms.flatMap(term => [
+        { display: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+        { synonyms: { contains: term, mode: 'insensitive' } },
+        { shortDescription: { contains: term, mode: 'insensitive' } },
+      ])
+      where.AND.push({ OR: textConditions })
     }
 
     if (where.AND.length === 0) {

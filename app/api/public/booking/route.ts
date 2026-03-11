@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'book': {
-        // Validar campos obrigatórios
-        const requiredFields = ['date', 'time', 'patientName', 'patientCpf', 'patientPhone', 'acceptedTerms']
+        // Validar campos obrigatórios (patientBirthDate para cadastro quando CPF novo)
+        const requiredFields = ['date', 'time', 'patientName', 'patientCpf', 'patientBirthDate', 'patientPhone', 'acceptedTerms']
         const missing = requiredFields.filter(f => !body[f])
         
         if (missing.length > 0) {
@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
           time: body.time,
           patientName: body.patientName,
           patientCpf: body.patientCpf,
+          patientBirthDate: body.patientBirthDate,
           patientPhone: body.patientPhone,
           patientEmail: body.patientEmail,
           reason: body.reason,

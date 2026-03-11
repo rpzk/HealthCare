@@ -39,7 +39,7 @@ export default function PatientsPage({
             showBackButton={false}
             showHomeButton={true}
           />
-          <HydrationGuard fallback={<div className="text-sm text-gray-500">Carregando pacientes...</div>}>
+          <HydrationGuard fallback={<div className="text-sm text-muted-foreground">Carregando pacientes...</div>}>
             <PatientsList />
           </HydrationGuard>
         </main>

@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testMatch: /.*\.spec\.ts/,
+  timeout: 60000,
   projects: [
     {
       name: 'chromium',

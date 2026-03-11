@@ -7,7 +7,7 @@
 
 /* Header do calendário */
 .rbc-header {
-  @apply py-2 font-medium text-sm border-b border-border bg-muted/30;
+  @apply py-2 font-medium text-sm border-b border-border/70 bg-muted/25 text-foreground;
 }
 
 .rbc-header + .rbc-header {
@@ -87,35 +87,73 @@
 
 /* View de semana/dia */
 .rbc-time-view {
-  @apply border border-border rounded-lg overflow-hidden;
+  @apply border border-border/80 rounded-lg overflow-hidden bg-card;
 }
 
 .rbc-time-header {
-  @apply border-b border-border;
+  @apply border-b border-border/70 bg-muted/25;
 }
 
 .rbc-time-header-content {
-  @apply border-l border-border;
+  @apply border-l border-border/60;
 }
 
 .rbc-time-header-gutter {
-  @apply bg-muted/30;
+  @apply bg-muted/25;
 }
 
 .rbc-time-content {
-  @apply border-t border-border;
+  @apply border-t border-border/60 bg-background;
+  /* Mantém a largura estável e evita offset header x grade */
+  scrollbar-gutter: stable;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) hsl(var(--muted) / 0.35);
 }
 
 .rbc-time-gutter {
-  @apply bg-muted/30 text-xs text-muted-foreground;
+  @apply bg-muted/25 text-xs text-muted-foreground;
+}
+
+/* Compensação quando há overflow (fix clássico de alinhamento do RBC) */
+.rbc-time-header.rbc-overflowing {
+  margin-right: 0 !important;
+  border-right: 1px solid hsl(var(--border));
+}
+
+/* Alinha melhor a área de eventos com as colunas no week/day */
+.rbc-day-slot .rbc-events-container {
+  margin-right: 0 !important;
+}
+
+/* Bloqueios como background events (mais limpos e alinhados) */
+.rbc-day-slot .rbc-background-event {
+  background-color: #e5e7eb;
+  border: 1px solid #d1d5db;
+  opacity: 0.65;
+  border-radius: 0;
+}
+
+/* Scrollbar consistente para não deslocar colunas */
+.rbc-time-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 9999px;
+}
+
+.rbc-time-content::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.35);
 }
 
 .rbc-timeslot-group {
-  @apply border-b border-border/50;
+  @apply border-b border-border/35;
 }
 
 .rbc-time-slot {
-  @apply text-center;
+  @apply text-center text-muted-foreground/70;
 }
 
 .rbc-day-slot .rbc-time-slot {
@@ -168,9 +206,51 @@
   @apply font-medium text-sm mb-2 pb-2 border-b border-border;
 }
 
-/* Toolbar - ocultada pois usamos customizada */
+/* Toolbar - ocultada pois usamos customizada (ou estilos de fallback se visível) */
 .rbc-toolbar {
   @apply hidden;
+}
+
+/* Fallback: se a toolbar do react-big-calendar aparecer, garantir contraste no dark mode */
+.dark .rbc-toolbar button {
+  @apply bg-muted/50 border-border text-foreground hover:bg-muted;
+}
+
+.dark .rbc-toolbar button.rbc-active {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Dark mode: contraste mais equilibrado na grade */
+.dark .rbc-time-header,
+.dark .rbc-time-gutter,
+.dark .rbc-time-header-gutter {
+  background-color: hsl(var(--muted) / 0.35);
+}
+
+.dark .rbc-time-content,
+.dark .rbc-day-bg {
+  background-color: hsl(var(--background));
+}
+
+.dark .rbc-day-slot .rbc-background-event {
+  background-color: #4b5563;
+  border-color: #6b7280;
+  opacity: 0.5;
+}
+
+.dark .rbc-timeslot-group {
+  border-bottom-color: hsl(var(--border) / 0.45);
+}
+
+/* Destaca o dia atual sem estourar contraste */
+.rbc-time-view .rbc-day-slot.rbc-today,
+.rbc-time-view .rbc-day-bg.rbc-today {
+  background-color: hsl(var(--primary) / 0.08);
+}
+
+.dark .rbc-time-view .rbc-day-slot.rbc-today,
+.dark .rbc-time-view .rbc-day-bg.rbc-today {
+  background-color: hsl(var(--primary) / 0.12);
 }
 
 /* Responsividade */

@@ -74,8 +74,13 @@ export async function GET(
     return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
   }
 
-  const rawCpf = cert.patient?.cpf ? decrypt(cert.patient.cpf) : null
-  const cpfFormatted = formatCpf(rawCpf || cert.patient?.cpf || null)
+  let rawCpf: string | null = null
+  try {
+    rawCpf = cert.patient?.cpf ? decrypt(cert.patient.cpf) : null
+  } catch {
+    rawCpf = cert.patient?.cpf || null
+  }
+  const cpfFormatted = formatCpf(rawCpf)
 
   const doctorRegistration = cert.doctor?.crmNumber
     ? `CRM: ${cert.doctor.crmNumber}`
@@ -141,8 +146,12 @@ export async function GET(
       'Cache-Control': 'no-store',
     },
   });
-  } catch (error) {
-    logger.error('Error generating PDF:', error)
-    return new Response(JSON.stringify({ error: 'Failed to generate PDF' }), { status: 500 })
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error)
+    logger.error({ err: error, certId: params?.id }, 'Error generating certificate PDF')
+    return new Response(
+      JSON.stringify({ error: 'Failed to generate PDF', details: process.env.NODE_ENV === 'development' ? msg : undefined }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 }

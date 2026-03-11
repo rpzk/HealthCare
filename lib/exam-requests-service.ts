@@ -8,6 +8,7 @@ export interface ExamRequestFilters {
   doctorId?: string
   status?: string
   type?: string
+  urgency?: string
   dateFrom?: Date
   dateTo?: Date
 }
@@ -58,13 +59,14 @@ export class ExamRequestsService {
     limit = 10
   ) {
     try {
-      const { search, patientId, doctorId, status, type, dateFrom, dateTo } = filters;
+      const { search, patientId, doctorId, status, type, urgency, dateFrom, dateTo } = filters;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = {};
       if (patientId) where.patientId = patientId;
       if (doctorId) where.doctorId = doctorId;
       if (status) where.status = status;
       if (type) where.examType = type;
+      if (urgency) where.urgency = urgency;
       if (dateFrom || dateTo) {
         where.requestDate = {};
         if (dateFrom) where.requestDate.gte = dateFrom;
@@ -74,7 +76,9 @@ export class ExamRequestsService {
         where.OR = [
           { description: { contains: search, mode: 'insensitive' } },
           { notes: { contains: search, mode: 'insensitive' } },
-          { examType: { contains: search, mode: 'insensitive' } }
+          { examType: { contains: search, mode: 'insensitive' } },
+          { patient: { name: { contains: search, mode: 'insensitive' } } },
+          { doctor: { name: { contains: search, mode: 'insensitive' } } }
         ];
       }
       const [total, examRequests] = await Promise.all([

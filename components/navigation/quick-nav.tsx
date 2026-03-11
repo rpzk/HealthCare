@@ -2,16 +2,15 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Home, Users, Calendar, FileText, Pill, Microscope, Settings, Shield, User } from 'lucide-react'
+import { Home, Users, Calendar, FileText, Pill, Microscope, Settings, Shield } from 'lucide-react'
 
 const quickNavItems = [
   { label: 'Dashboard', href: '/', icon: Home },
   { label: 'Pacientes', href: '/patients', icon: Users },
   { label: 'Consultas', href: '/consultations', icon: Calendar },
-  { label: 'Prontuários', href: '/records', icon: FileText },
+  { label: 'Prontuários', href: '/medical-records', icon: FileText },
   { label: 'Prescrições', href: '/prescriptions', icon: Pill },
   { label: 'Exames', href: '/exams', icon: Microscope },
-  { label: 'Perfil', href: '/profile', icon: User },
   { label: 'Configurações', href: '/settings', icon: Settings },
   { label: 'Segurança', href: '/security-monitoring', icon: Shield },
 ]

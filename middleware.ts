@@ -1,7 +1,14 @@
 // ...existing code...
 import { NextResponse, NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { checkRateLimit, RateLimitPresets } from './lib/rate-limiter-factory'
 import { logger } from './lib/logger'
+
+const ROLES_REQUIRING_2FA = [
+  'ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST',
+  'HEALTH_AGENT', 'TECHNICIAN', 'PHARMACIST', 'DENTIST', 'NUTRITIONIST', 'SOCIAL_WORKER', 'OTHER'
+]
+const PATHS_EXEMPT_FROM_2FA = ['/auth', '/settings', '/terms/accept', '/api']
 
 function normalizeIp(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -89,6 +96,13 @@ function generateNonce(): string {
 }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Rotas de auth nunca passam por rate limit, logger ou redirect — garantem login sem interferência
+  if (pathname.startsWith('/api/auth') || pathname.startsWith('/auth')) {
+    return NextResponse.next()
+  }
+
   // Logging global de todas as requisições API
   try {
     // Log básico de método, URL e headers
@@ -102,7 +116,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Skip rate limiting for static assets
-  const pathname = request.nextUrl.pathname
+  // (pathname já declarado no início)
 
   // Temporary hard block for signature-policy to contain client-side flood for specific clientKeys
   if (pathname === '/api/system/signature-policy') {
@@ -197,7 +211,59 @@ export async function middleware(request: NextRequest) {
     // Rate limit headers (API only)
     res.headers.set('X-RateLimit-Remaining', remaining.toString())
   }
-  
+
+  // Global auth redirect for page navigations (HTML), excluding public routes
+  const isPageNavigation =
+    !isApiRoute &&
+    (request.headers.get('accept') || '').includes('text/html')
+
+  if (isPageNavigation) {
+    const authed = isAuthenticatedRequest(request)
+    // 2FA obrigatório para ADMIN e DOCTOR
+    if (authed) {
+      const exempt = PATHS_EXEMPT_FROM_2FA.some((p) => pathname === p || pathname.startsWith(p + '/'))
+      if (!exempt) {
+        try {
+          const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+          const role = token?.role as string | undefined
+          const twoFactorEnabled = token?.twoFactorEnabled === true
+          if (role && ROLES_REQUIRING_2FA.includes(role) && !twoFactorEnabled) {
+            const redirectUrl = new URL('/settings', request.url)
+            redirectUrl.searchParams.set('tab', 'security')
+            redirectUrl.searchParams.set('force2fa', 'true')
+            return NextResponse.redirect(redirectUrl)
+          }
+        } catch (_e) {
+          // Ignora erro (ex.: NEXTAUTH_SECRET ausente em build)
+        }
+      }
+    }
+    if (!authed) {
+      const PUBLIC_PREFIXES = [
+        '/',               // landing / home
+        '/auth',           // login, register, reset
+        '/questionnaire',  // questionários públicos por token
+        '/invite',         // convites públicos
+        '/verify',         // verificação de documentos
+        '/certificates/validate',
+        '/api',            // qualquer API (já tratado acima)
+        '/docs',           // docs públicas
+        '/help',           // ajuda pública
+      ]
+
+      const isPublic = PUBLIC_PREFIXES.some((prefix) =>
+        pathname === prefix || pathname.startsWith(prefix + '/')
+      )
+
+      if (!isPublic) {
+        const signInUrl = new URL('/auth/signin', request.url)
+        const callback = request.nextUrl.pathname + request.nextUrl.search
+        signInUrl.searchParams.set('callbackUrl', callback)
+        return NextResponse.redirect(signInUrl)
+      }
+    }
+  }
+
   // Security headers
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')

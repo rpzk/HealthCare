@@ -18,12 +18,13 @@ export const GET = withAuth(async (request, { user: _user }) => {
       )
     }
     
-    const { page, limit, search, status, type } = queryResult.data
+    const { page, limit, search, status, type, urgency } = queryResult.data
 
     const filters = {
       search: search || undefined,
       status: status || undefined,
-      type: type || undefined
+      type: type || undefined,
+      urgency: urgency || undefined
     }
 
     const result = await ExamRequestsService.getExamRequests(filters, page, limit)

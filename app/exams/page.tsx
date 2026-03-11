@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
@@ -24,6 +25,7 @@ import {
   Eye,
   Edit,
   Download,
+  Printer,
   MoreVertical,
 } from 'lucide-react'
 
@@ -52,6 +54,7 @@ export default function ExamsPage() {
   const [exams, setExams] = useState<ExamRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 400)
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [filterUrgency, setFilterUrgency] = useState('ALL')
   const [currentPage, setCurrentPage] = useState(1)
@@ -63,7 +66,7 @@ export default function ExamsPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
-        search: searchTerm,
+        search: debouncedSearch,
         status: filterStatus,
         urgency: filterUrgency
       })
@@ -79,7 +82,7 @@ export default function ExamsPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, filterStatus, filterUrgency, searchTerm])
+  }, [currentPage, filterStatus, filterUrgency, debouncedSearch])
 
   useEffect(() => {
     fetchExams()
@@ -300,18 +303,36 @@ export default function ExamsPage() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
+                                  title="Imprimir"
+                                  className="text-muted-foreground hover:text-primary"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch(`/api/exam-requests/${exam.id}/pdf`, { credentials: 'same-origin' })
+                                      if (!res.ok) throw new Error('Erro ao gerar PDF')
+                                      const blob = await res.blob()
+                                      const url = URL.createObjectURL(blob)
+                                      const win = window.open(url, '_blank')
+                                      if (win) setTimeout(() => { try { win.print() } catch { /* PDF viewer pode não suportar */ } URL.revokeObjectURL(url) }, 800)
+                                    } catch { window.open(`/api/exam-requests/${exam.id}/pdf`, '_blank') }
+                                  }}
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
                                   title="Baixar PDF"
                                   className="text-muted-foreground hover:text-primary"
-                                  onClick={() => window.open(`/api/documents/${exam.id}/pdf`, '_blank')}
+                                  onClick={() => window.open(`/api/exam-requests/${exam.id}/pdf`, '_blank')}
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  title="Editar" 
+                                  title="Ver detalhes" 
                                   className="text-muted-foreground hover:text-primary"
-                                  onClick={() => router.push(`/exams/requests/${exam.id}/edit`)}
+                                  onClick={() => router.push(`/exams/requests/${exam.id}`)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>

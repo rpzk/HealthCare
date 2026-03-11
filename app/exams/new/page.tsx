@@ -6,7 +6,12 @@ import dynamic from 'next/dynamic'
 
 const NewExamRequestForm = dynamic(() => import('@/components/exams/new-exam-request-form'), { ssr: false })
 
-export default function NewExamPage() {
+interface NewExamPageProps {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}
+
+export default function NewExamPage({ searchParams }: NewExamPageProps) {
+  const patientId = typeof searchParams?.patientId === 'string' ? searchParams?.patientId : undefined
   return (
     <div className="min-h-screen bg-muted/40">
       <Header />
@@ -25,7 +30,7 @@ export default function NewExamPage() {
           />
 
           <div className="mt-6 p-6 border rounded-lg bg-card">
-            <NewExamRequestForm />
+            <NewExamRequestForm initialPatientId={patientId} />
           </div>
         </main>
       </div>

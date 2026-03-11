@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -73,6 +74,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 400)
   const [showLowStock, setShowLowStock] = useState(false)
   const [showNewProductModal, setShowNewProductModal] = useState(false)
   const [showMovementModal, setShowMovementModal] = useState(false)
@@ -89,7 +91,7 @@ export default function InventoryPage() {
         setDashboard(data)
       } else if (activeTab === 'products') {
         const params = new URLSearchParams()
-        if (searchTerm) params.set('search', searchTerm)
+        if (debouncedSearch) params.set('search', debouncedSearch)
         if (showLowStock) params.set('lowStock', 'true')
 
         const res = await fetch(`/api/inventory/products?${params}`)
@@ -102,7 +104,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, searchTerm, showLowStock])
+  }, [activeTab, debouncedSearch, showLowStock])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -114,14 +116,6 @@ export default function InventoryPage() {
     void loadData()
   }, [loadData, router, session, status])
 
-  useEffect(() => {
-    if (activeTab === 'products') {
-      const debounce = setTimeout(() => {
-        void loadData()
-      }, 300)
-      return () => clearTimeout(debounce)
-    }
-  }, [activeTab, loadData, searchTerm, showLowStock])
 
   if (status === 'loading' || loading) {
     return (

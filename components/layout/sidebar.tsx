@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import type { ComponentType, SVGProps } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { 
-  
   FileText, 
   Users, 
+  User,
   Stethoscope, 
   ChevronDown, 
   ChevronLeft,
@@ -18,10 +19,8 @@ import {
   Activity,
   BarChart3,
   Settings,
-  Brain,
   Building,
   ClipboardList,
-  
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -32,17 +31,26 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useSidebar } from '@/hooks/use-sidebar'
+import { useActiveRole } from '@/hooks/use-active-role'
 import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
+
+interface SubMenuItem {
+  title: string
+  href: string
+  roles?: string[]  // se definido, só mostra para esses papéis
+}
 
 interface MenuItem {
   title: string
   icon: ComponentType<SVGProps<SVGSVGElement>>
   href: string
-  submenu?: Array<{ title: string; href: string }>
+  roles?: string[]  // se definido, só mostra para esses papéis
+  submenu?: SubMenuItem[]
 }
 
 // Menu simplificado - sem itens ADMIN (esses ficam no painel admin)
-const menuItems: MenuItem[] = [
+// roles: omitir = visível para todos; definir = apenas para esses papéis
+const allMenuItems: MenuItem[] = [
   {
     title: 'Dashboard',
     icon: Home,
@@ -66,15 +74,6 @@ const menuItems: MenuItem[] = [
       { title: 'Todas', href: '/consultations' },
       { title: 'Agendar', href: '/consultations/new' },
       { title: 'Hoje', href: '/consultations/today' },
-    ]
-  },
-  {
-    title: 'Prontuários',
-    icon: FileText,
-    href: '/records',
-    submenu: [
-      { title: 'Todos', href: '/records' },
-      { title: 'Novo', href: '/records/new' },
     ]
   },
   {
@@ -106,22 +105,12 @@ const menuItems: MenuItem[] = [
     href: '/vitals',
   },
   {
-    title: 'IA Médica',
-    icon: Brain,
-    href: '/ai-medical',
-    submenu: [
-      { title: 'Análise', href: '/ai-medical?tab=symptoms' },
-      { title: 'Interações', href: '/ai-medical?tab=interactions' },
-      { title: 'Analytics', href: '/ai-analytics' },
-    ]
-  },
-  {
     title: 'Questionários',
     icon: ClipboardList,
     href: '/questionnaires',
     submenu: [
       { title: 'Listar', href: '/questionnaires' },
-      { title: 'Analytics', href: '/admin/questionnaire-analytics' },
+      { title: 'Analytics', href: '/admin/questionnaire-analytics', roles: ['DOCTOR', 'ADMIN', 'NURSE', 'THERAPIST'] },
     ]
   },
   // PSF (Saúde da Família) desativado - páginas removidas; reative quando /app/psf existir
@@ -130,20 +119,47 @@ const menuItems: MenuItem[] = [
     title: 'Relatórios',
     icon: BarChart3,
     href: '/reports',
+    roles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST'],
   },
   {
     title: 'Configurações',
     icon: Settings,
     href: '/settings',
+    submenu: [
+      { title: 'Perfil', href: '/settings?tab=profile' },
+      { title: 'Segurança e Passkey', href: '/settings?tab=security' },
+    ]
   },
 ]
+
+function canAccess(item: { roles?: string[] }, userRole: string | null, availableRoles: string[]): boolean {
+  if (!item.roles || item.roles.length === 0) return true
+  const roles = userRole ? [userRole, ...availableRoles] : availableRoles
+  return item.roles.some((r) => roles.includes(r))
+}
 
 export function Sidebar() {
   const { isCollapsed, toggleCollapsed } = useSidebar()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [showNewPatientDialog, setShowNewPatientDialog] = useState(false)
   const pathname = usePathname()
-  // no session usage in this component (kept out to avoid unnecessary renders)
+  const { data: session } = useSession()
+  const { activeRole } = useActiveRole()
+
+  const userRole = activeRole || (session?.user as { role?: string })?.role || null
+  const availableRoles = ((session?.user as { availableRoles?: string[] })?.availableRoles || []) as string[]
+
+  const menuItems = useMemo(() => {
+    return allMenuItems
+      .filter((item) => canAccess(item, userRole, availableRoles))
+      .map((item) => {
+        if (!item.submenu) return item
+        const filteredSub = item.submenu.filter((s) => canAccess(s, userRole, availableRoles))
+        if (filteredSub.length === 0) return null
+        return { ...item, submenu: filteredSub }
+      })
+      .filter((item): item is MenuItem => item !== null)
+  }, [userRole, availableRoles])
 
   // Auto-expand groups that contain the active route
   useEffect(() => {

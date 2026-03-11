@@ -131,13 +131,21 @@ export async function buildPrescriptionDocumentFromDb(
   return { doc, verificationUrl }
 }
 
+/** Opções para geração de PDF de prescrição */
+export interface GeneratePrescriptionPdfOptions {
+  /** Quando true, usa carimbo em vez de assinatura e não exibe QR code (prescrição não assinada digitalmente) */
+  useStamp?: boolean
+}
+
 /**
  * Gera o buffer do PDF da prescrição (sem assinatura).
  * Usa HTML + Gotenberg exclusivamente. Sem fallback.
+ * Quando useStamp=true (prescrição não assinada), não exibe QR code e usa texto de carimbo.
  */
 export async function generatePrescriptionPdfBuffer(
   prescription: NonNullable<PrescriptionWithRelations>,
-  baseUrl: string
+  baseUrl: string,
+  options?: GeneratePrescriptionPdfOptions
 ): Promise<Buffer> {
   try {
     const { doc, verificationUrl } = await buildPrescriptionDocumentFromDb(prescription, baseUrl)
@@ -148,10 +156,12 @@ export async function generatePrescriptionPdfBuffer(
         ? prescription.prescriptionType
         : detectedType
     const expiresAt = prescription.expiresAt || calculateExpirationDate(prescriptionType, prescription.createdAt)
+    const useStamp = options?.useStamp === true
 
     return await generatePrescriptionPdfViaGotenberg(doc, {
       prescriptionType,
-      verificationUrl,
+      verificationUrl: useStamp ? undefined : verificationUrl,
+      useStamp,
       expiresAt,
       controlNumber: prescription.controlNumber || undefined,
       uf: prescription.uf || prescription.doctor.licenseState || 'SP',
@@ -321,7 +331,8 @@ export async function buildPrescriptionDocumentFromConsultation(
 export async function generateConsultationPrescriptionPdfBuffer(
   consultation: ConsultationWithPrescriptions,
   baseUrl: string,
-  consultationId: string
+  consultationId: string,
+  options?: { useStamp?: boolean }
 ): Promise<Buffer> {
   const { doc, verificationUrl } = await buildPrescriptionDocumentFromConsultation(
     consultation,
@@ -339,9 +350,10 @@ export async function generateConsultationPrescriptionPdfBuffer(
 
   return await generatePrescriptionPdfViaGotenberg(doc, {
     prescriptionType,
-    verificationUrl,
+    verificationUrl: options?.useStamp ? undefined : verificationUrl,
     expiresAt,
     uf: consultation.doctor?.licenseState || 'SP',
     viaNumber: 1,
+    useStamp: options?.useStamp,
   })
 }

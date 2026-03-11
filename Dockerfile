@@ -54,6 +54,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/fixtures ./fixtures
 
 # Create data and uploads directories with correct permissions
 RUN mkdir -p /app/data /app/uploads /app/uploads/certificates /app/uploads/recordings /app/backups && \

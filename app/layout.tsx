@@ -9,6 +9,7 @@ import { DebugOverlay } from '@/components/debug-overlay'
 import '@/lib/server-instrumentation'
 import '@/lib/prisma-warmup'
 import { Toaster } from 'sonner'
+import { TermsGuard } from '@/components/terms-guard'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -84,7 +85,9 @@ export default function RootLayout({
           <ClientErrorLogger />
           {/* <DebugOverlay /> - Desabilitado em produção */}
           <Toaster richColors position="top-right" closeButton />
-          {children}
+          <TermsGuard>
+            {children}
+          </TermsGuard>
         </Providers>
       </body>
     </html>

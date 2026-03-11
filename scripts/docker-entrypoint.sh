@@ -18,10 +18,19 @@ fi
 echo "[entrypoint] Gerando Prisma Client (se necessário)"
 npx prisma generate || true
 
-# Seed opcional de usuários com senha (para logar no app) se habilitado
-if [[ "${SEED_AUTH:-0}" == "1" ]]; then
-  echo "[entrypoint] Executando seed de autenticação (ci-seed-auth.js)"
-  node scripts/ci-seed-auth.js || echo "[entrypoint] seed auth falhou (continuando)"
+# Seed completo de produção (fixtures, termos, medicamentos, etc.)
+if [[ "${PRODUCTION_SEED:-0}" == "1" ]]; then
+  echo "[entrypoint] Executando production seed (fixtures + dados mestres)..."
+  SEED_ARGS=""
+  [[ "${PRODUCTION_SEED_SKIP_HEAVY:-0}" == "1" ]] && SEED_ARGS="--skip-heavy"
+  npx tsx scripts/production-seed.ts $SEED_ARGS || echo "[entrypoint] production seed falhou (continuando)"
+  echo "[entrypoint] Production seed concluído."
+fi
+
+# Seed opcional de usuários (compatibilidade com SEED_AUTH legado)
+if [[ "${SEED_AUTH:-0}" == "1" && "${PRODUCTION_SEED:-0}" != "1" ]]; then
+  echo "[entrypoint] Executando seed de autenticação (db:seed)..."
+  npx tsx prisma/seed.ts || echo "[entrypoint] seed auth falhou (continuando)"
 fi
 
 PORT_TO_USE=${PORT:-3000}

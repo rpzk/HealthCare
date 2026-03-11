@@ -67,7 +67,9 @@ export function MedicalRecordDetail({
   }, [fetchRecord])
 
   const handleDelete = async () => {
+    if (!record) return
     setIsDeleting(true)
+    const patientId = record.patientId
 
     try {
       const response = await fetch(`/api/medical-records/${recordId}`, {
@@ -78,7 +80,7 @@ export function MedicalRecordDetail({
         throw new Error('Erro ao deletar prontuário')
       }
 
-      router.push('/medical-records')
+      router.push(patientId ? `/patients/${patientId}` : '/medical-records')
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erro ao deletar')
       setIsDeleting(false)
@@ -173,7 +175,7 @@ export function MedicalRecordDetail({
         <div className="container">
           <div className="error-message">{error}</div>
           <Link href="/medical-records" className="btn btn-secondary">
-            ← Voltar para Lista
+            ← Voltar para lista
           </Link>
         </div>
       ) : record ? (
@@ -312,8 +314,11 @@ export function MedicalRecordDetail({
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-            <Link href="/medical-records" className="btn btn-secondary">
-              ← Voltar para Lista
+            <Link
+              href={record.patientId ? `/patients/${record.patientId}` : '/medical-records'}
+              className="btn btn-secondary"
+            >
+              {record.patientId ? '← Voltar ao paciente' : '← Voltar para lista'}
             </Link>
           </div>
 

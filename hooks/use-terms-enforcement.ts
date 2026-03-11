@@ -20,15 +20,19 @@ export function useTermsEnforcement() {
       return
     }
 
-    // Não verificar em rotas excluídas
+    // Não verificar em rotas excluídas (auth, termos, públicas)
     const excludedPaths = [
       '/auth/',
       '/terms/',
       '/api/',
       '/privacy',
       '/help',
+      '/docs',
       '/register/',
       '/invite/',
+      '/questionnaire/',
+      '/certificates/validate',
+      '/verify/',
     ]
 
     if (excludedPaths.some((path) => pathname?.startsWith(path))) {

@@ -4,6 +4,10 @@ import { authOptions } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
+import {
+  sendAppointmentConfirmationEmail,
+  sendAppointmentCancellationEmail,
+} from '@/lib/email-service'
 
 /**
  * GET /api/appointments/pending
@@ -179,22 +183,45 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    // TODO: Enviar notificação ao paciente
     logger.info(
       `[Appointment ${action === 'approve' ? 'Approved' : 'Rejected'}] ID: ${appointmentId} by ${session.user.email}`
     )
-    logger.info(`Patient: ${updated.patient.name} (${updated.patient.email})`)
-    logger.info(`Doctor: ${updated.doctor.name}`)
-    logger.info(`Scheduled: ${updated.scheduledDate}`)
 
-    // TODO: Implementar envio de email/WhatsApp
-    // if (action === 'approve') {
-    //   await sendAppointmentConfirmationEmail(updated)
-    //   await sendWhatsAppNotification(updated.patient.phone, 'appointment_confirmed')
-    // } else {
-    //   await sendAppointmentRejectionEmail(updated, notes)
-    //   await sendWhatsAppNotification(updated.patient.phone, 'appointment_rejected')
-    // }
+    if (updated.patient.email) {
+      try {
+        const dateStr = updated.scheduledDate.toLocaleDateString('pt-BR', {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long',
+        })
+        const timeStr = updated.scheduledDate.toTimeString().slice(0, 5)
+
+        if (action === 'approve') {
+          await sendAppointmentConfirmationEmail({
+            patientEmail: updated.patient.email,
+            patientName: updated.patient.name,
+            doctorName: updated.doctor?.name || 'Profissional',
+            date: dateStr,
+            time: timeStr,
+            reason: (updated.notes || 'Consulta').split('\n')[0] || 'Consulta',
+            status: 'CONFIRMED',
+          })
+        } else {
+          await sendAppointmentCancellationEmail({
+            patientEmail: updated.patient.email,
+            patientName: updated.patient.name,
+            doctorName: updated.doctor?.name || 'Profissional',
+            date: dateStr,
+            time: timeStr,
+            reason: notes
+              ? `Sua solicitação foi recusada. Motivo: ${notes}`
+              : 'Sua solicitação de agendamento foi recusada pela equipe.',
+          })
+        }
+      } catch (emailErr) {
+        logger.warn('[Appointment PATCH] Email notification failed (non-blocking)', emailErr)
+      }
+    }
 
     return NextResponse.json({
       success: true,

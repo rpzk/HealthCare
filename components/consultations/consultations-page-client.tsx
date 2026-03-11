@@ -5,7 +5,7 @@ import { Require2FAWrapper } from '@/components/auth/require-2fa-wrapper'
 
 export function ConsultationsPageClient() {
   return (
-    <Require2FAWrapper roles={['ADMIN', 'DOCTOR']}>
+    <Require2FAWrapper>
       <>
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-2">Consultas</h1>

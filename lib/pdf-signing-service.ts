@@ -2,6 +2,7 @@ import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
 import path from 'path'
+import { convertHtmlToPdfWithFallback } from '@/lib/pdf-converter'
 
 const GOTENBERG_URL = process.env.GOTENBERG_URL || 'http://gotenberg:3000'
 
@@ -23,7 +24,8 @@ export interface ConvertHtmlToPdfOptions {
 }
 
 /**
- * Converte HTML para PDF via Gotenberg (sem assinatura digital)
+ * Converte HTML para PDF com fallback em camadas (Gotenberg → Gotenberg secundário → Puppeteer).
+ * PDFs compatíveis com assinatura PAdES.
  */
 export async function convertHtmlToPdf(
   html: string,
@@ -33,64 +35,10 @@ export async function convertHtmlToPdf(
     typeof customCssOrOptions === 'string'
       ? { customCss: customCssOrOptions }
       : customCssOrOptions ?? {}
-  const { customCss: css, marginPt } = opts
-
-  const tempFiles: string[] = []
-  try {
-    const form = new FormData()
-
-    const htmlPath = path.join('/tmp', `doc-${Date.now()}.html`)
-    let htmlContent = html
-    if (css) {
-      htmlContent = htmlContent.replace('</head>', `<style>${css}</style></head>`)
-    }
-    fs.writeFileSync(htmlPath, htmlContent)
-    form.append('files', fs.createReadStream(htmlPath), { filename: 'index.html' })
-    tempFiles.push(htmlPath)
-
-    // Para documentos mais pesados (ex.: apresentações longas), aumentamos o tempo
-    // máximo que o Chromium no Gotenberg pode esperar antes de considerar timeout.
-    // Valor em segundos.
-    form.append('waitTimeout', '120')
-
-    if (marginPt != null) {
-      // 50pt ≈ 1.76cm; Gotenberg espera número em cm (sem unidade)
-      const cm = (marginPt * 0.352778) / 10
-      const marginValue = cm.toFixed(2)
-      form.append('marginTop', marginValue)
-      form.append('marginBottom', marginValue)
-      form.append('marginLeft', marginValue)
-      form.append('marginRight', marginValue)
-    }
-
-    const gotenbergResp = await axios.post(
-      `${GOTENBERG_URL}/forms/chromium/convert/html`,
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-        },
-        responseType: 'arraybuffer',
-        maxContentLength: 20 * 1024 * 1024,
-        maxBodyLength: 20 * 1024 * 1024,
-        // Tempo máximo de espera da requisição HTTP ao Gotenberg (ms)
-        timeout: 180000,
-      }
-    )
-    return Buffer.from(gotenbergResp.data)
-  } catch (err: unknown) {
-    const axErr = err as { code?: string; response?: { status?: number; data?: unknown }; message?: string }
-    const details = axErr?.code === 'ECONNREFUSED'
-      ? 'Gotenberg não está acessível. Verifique GOTENBERG_URL e se o container está em execução.'
-      : axErr?.response?.status
-        ? `Gotenberg retornou ${axErr.response.status}`
-        : axErr?.message || String(err)
-    throw new Error(`Serviço de PDF indisponível: ${details}`)
-  } finally {
-    for (const f of tempFiles) {
-      try { fs.unlinkSync(f) } catch {}
-    }
-  }
+  return convertHtmlToPdfWithFallback(html, {
+    ...opts,
+    timeoutMs: 180000,
+  })
 }
 
 export async function signPdfWithGotenberg(options: PdfSigningOptions): Promise<Buffer> {

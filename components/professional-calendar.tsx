@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTheme } from 'next-themes'
 import { Calendar as BigCalendar, dateFnsLocalizer, View, SlotInfo } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
@@ -45,33 +46,57 @@ interface ProfessionalCalendarProps {
 
 const DnDCalendar = withDragAndDrop(BigCalendar)
 
-const eventStyleGetter = (event: CalendarEvent) => {
-  let backgroundColor = '#667eea'
-  let borderColor = '#667eea'
+function createEventStyleGetter(isDark: boolean) {
+  return (event: CalendarEvent) => {
+    const title = (event.title || '').toLowerCase()
+    const looksLikeBlockByTitle =
+      title.includes('férias') ||
+      title.includes('ferias') ||
+      title.includes('bloqueio') ||
+      title.includes('indispon')
+    const isBlocked = event.resource.type === 'blocked' || looksLikeBlockByTitle
 
-  if (event.resource.type === 'blocked') {
-    backgroundColor = '#e5e7eb'
-    borderColor = '#d1d5db'
-  } else if (event.resource.status === 'SCHEDULED') {
-    backgroundColor = '#fbbf24'
-    borderColor = '#f59e0b'
-  } else if (event.resource.status === 'IN_PROGRESS') {
-    backgroundColor = '#34d399'
-    borderColor = '#10b981'
-  } else if (event.resource.status === 'CANCELLED') {
-    backgroundColor = '#f87171'
-    borderColor = '#ef4444'
-  }
+    let backgroundColor = isDark ? '#3f4b63' : '#cbd5e1'
+    let borderColor = isDark ? '#55607a' : '#b6c2d1'
+    let color = isDark ? '#e2e8f0' : '#334155'
 
-  return {
-    style: {
-      backgroundColor,
-      borderRadius: '5px',
-      opacity: 0.8,
-      color: '#fff',
-      border: `1px solid ${borderColor}`,
-      display: 'block',
-    },
+    if (isBlocked) {
+      return {
+        style: {
+          backgroundColor: isDark ? '#3b4456' : '#d9e1ea',
+          borderRadius: '4px',
+          opacity: isDark ? 0.5 : 0.65,
+          color: isDark ? '#cbd5e1' : '#475569',
+          border: `1px solid ${isDark ? '#556176' : '#c2ccd8'}`,
+          display: 'block',
+          boxShadow: 'none',
+        },
+      }
+    }
+
+    if (event.resource.status === 'SCHEDULED') {
+      backgroundColor = isDark ? '#b69245' : '#ddb45c'
+      borderColor = isDark ? '#9f7f3b' : '#c89d45'
+      color = isDark ? '#111827' : '#1f2937'
+    } else if (event.resource.status === 'IN_PROGRESS') {
+      backgroundColor = isDark ? '#2f8a69' : '#339874'
+      borderColor = isDark ? '#2a7a5d' : '#2b8868'
+    } else if (event.resource.status === 'CANCELLED') {
+      backgroundColor = isDark ? '#ad5b62' : '#c86870'
+      borderColor = isDark ? '#9a4f56' : '#b95a62'
+    }
+
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: '6px',
+        opacity: 0.95,
+        color,
+        border: `1px solid ${borderColor}`,
+        display: 'block',
+        boxShadow: isDark ? '0 0 0 1px rgba(15,23,42,0.25)' : 'none',
+      },
+    }
   }
 }
 
@@ -96,6 +121,10 @@ export function ProfessionalCalendar({
   onEventDrop,
   onEventResize,
 }: ProfessionalCalendarProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const eventStyleGetter = useMemo(() => createEventStyleGetter(isDark), [isDark])
+
   const [view, setView] = useState<View>('week')
   const [date, setDate] = useState(new Date())
 
@@ -106,6 +135,16 @@ export function ProfessionalCalendar({
       end: new Date(event.end),
     }))
   }, [events])
+
+  const consultationEvents = useMemo(
+    () => processedEvents.filter((event) => event.resource?.type !== 'blocked'),
+    [processedEvents]
+  )
+
+  const blockedBackgroundEvents = useMemo(
+    () => processedEvents.filter((event) => event.resource?.type === 'blocked'),
+    [processedEvents]
+  )
 
   return (
     <Card className="w-full">
@@ -124,6 +163,7 @@ export function ProfessionalCalendar({
             <Button
               size="sm"
               variant={view === 'month' ? 'default' : 'outline'}
+              className={view !== 'month' ? 'bg-muted/50 border-border hover:bg-muted' : ''}
               onClick={() => setView('month')}
             >
               Mês
@@ -131,6 +171,7 @@ export function ProfessionalCalendar({
             <Button
               size="sm"
               variant={view === 'week' ? 'default' : 'outline'}
+              className={view !== 'week' ? 'bg-muted/50 border-border hover:bg-muted' : ''}
               onClick={() => setView('week')}
             >
               Semana
@@ -138,9 +179,18 @@ export function ProfessionalCalendar({
             <Button
               size="sm"
               variant={view === 'day' ? 'default' : 'outline'}
+              className={view !== 'day' ? 'bg-muted/50 border-border hover:bg-muted' : ''}
               onClick={() => setView('day')}
             >
               Dia
+            </Button>
+            <Button
+              size="sm"
+              variant={view === 'agenda' ? 'default' : 'outline'}
+              className={view !== 'agenda' ? 'bg-muted/50 border-border hover:bg-muted' : ''}
+              onClick={() => setView('agenda')}
+            >
+              Agenda
             </Button>
           </div>
         </div>
@@ -162,7 +212,10 @@ export function ProfessionalCalendar({
               <span>Cancelada</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#e5e7eb' }} />
+              <div
+                className="w-4 h-4 rounded border border-border"
+                style={{ backgroundColor: isDark ? '#4b5563' : '#e5e7eb' }}
+              />
               <span>Bloqueio</span>
             </div>
           </div>
@@ -171,7 +224,8 @@ export function ProfessionalCalendar({
           <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
             <DnDCalendar
               localizer={localizer}
-              events={processedEvents}
+              events={consultationEvents}
+              backgroundEvents={blockedBackgroundEvents}
               startAccessor={(event) => (event as CalendarEvent).start}
               endAccessor={(event) => (event as CalendarEvent).end}
               style={{ height: '100%' }}

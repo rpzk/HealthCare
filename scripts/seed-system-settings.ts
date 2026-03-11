@@ -1,176 +1,63 @@
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import * as fs from 'fs'
+import * as path from 'path'
 
-const prisma = new PrismaClient()
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) throw new Error('DATABASE_URL não configurado')
 
-const DEFAULT_SETTINGS = [
-  // STORAGE
-  {
-    key: 'STORAGE_TYPE',
-    value: 'local',
-    category: 'STORAGE',
-    encrypted: false,
-    isPublic: false,
-    description: 'Tipo de armazenamento: local, s3, ou minio',
-  },
-  {
-    key: 'LOCAL_STORAGE_PATH',
-    value: './uploads/recordings',
-    category: 'STORAGE',
-    encrypted: false,
-    isPublic: false,
-    description: 'Caminho local para armazenar gravações',
-  },
-  {
-    key: 'STORAGE_BUCKET',
-    value: 'healthcare-recordings',
-    category: 'STORAGE',
-    encrypted: false,
-    isPublic: false,
-    description: 'Nome do bucket S3/MinIO',
-  },
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
+  log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
+})
 
-  // REDIS
-  {
-    key: 'REDIS_HOST',
-    value: 'localhost',
-    category: 'REDIS',
-    encrypted: false,
-    isPublic: false,
-    description: 'Host do servidor Redis',
-  },
-  {
-    key: 'REDIS_PORT',
-    value: '6379',
-    category: 'REDIS',
-    encrypted: false,
-    isPublic: false,
-    description: 'Porta do servidor Redis',
-  },
-  {
-    key: 'REDIS_DB',
-    value: '0',
-    category: 'REDIS',
-    encrypted: false,
-    isPublic: false,
-    description: 'Número do banco de dados Redis',
-  },
+interface SystemSettingFixture {
+  key: string
+  value: string
+  category?: string
+  encrypted?: boolean
+  isPublic?: boolean
+  description?: string
+}
 
-  // WHATSAPP
-  {
-    key: 'WHATSAPP_PROVIDER',
-    value: 'evolution',
-    category: 'WHATSAPP',
-    encrypted: false,
-    isPublic: false,
-    description: 'Provedor WhatsApp: evolution, twilio, zenvia',
-  },
-
-  // EMAIL
-  {
-    key: 'SMTP_HOST',
-    value: 'smtp.gmail.com',
-    category: 'EMAIL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Host do servidor SMTP',
-  },
-  {
-    key: 'SMTP_PORT',
-    value: '587',
-    category: 'EMAIL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Porta do servidor SMTP',
-  },
-  {
-    key: 'SMTP_SECURE',
-    value: 'false',
-    category: 'EMAIL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Usar SSL/TLS (true/false)',
-  },
-  {
-    key: 'EMAIL_FROM',
-    value: 'noreply@healthcare.com',
-    category: 'EMAIL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Endereço de e-mail remetente',
-  },
-  {
-    key: 'EMAIL_FROM_NAME',
-    value: 'HealthCare System',
-    category: 'EMAIL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Nome do remetente',
-  },
-
-  // WEBRTC
-  {
-    key: 'NEXT_PUBLIC_ICE_SERVERS',
-    value: JSON.stringify([
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-    ]),
-    category: 'WEBRTC',
-    encrypted: false,
-    isPublic: true,
-    description: 'Servidores STUN/TURN para WebRTC',
-  },
-
-  // GENERAL
-  {
-    key: 'SYSTEM_NAME',
-    value: 'HealthCare Medical Records',
-    category: 'GENERAL',
-    encrypted: false,
-    isPublic: true,
-    description: 'Nome do sistema',
-  },
-  {
-    key: 'SUPPORT_EMAIL',
-    value: 'support@healthcare.com',
-    category: 'GENERAL',
-    encrypted: false,
-    isPublic: true,
-    description: 'E-mail de suporte',
-  },
-  {
-    key: 'MAX_FILE_SIZE_MB',
-    value: '500',
-    category: 'GENERAL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Tamanho máximo de arquivo em MB',
-  },
-  {
-    key: 'SESSION_TIMEOUT_MINUTES',
-    value: '30',
-    category: 'GENERAL',
-    encrypted: false,
-    isPublic: false,
-    description: 'Timeout de sessão em minutos',
-  },
-]
+function loadSettingsFromFixtures(): SystemSettingFixture[] {
+  const fixturePath = path.join(process.cwd(), 'fixtures', 'system-settings.json')
+  if (fs.existsSync(fixturePath)) {
+    const raw = fs.readFileSync(fixturePath, 'utf-8')
+    const data = JSON.parse(raw) as SystemSettingFixture[]
+    if (Array.isArray(data) && data.length > 0) {
+      return data
+    }
+  }
+  throw new Error(`fixtures/system-settings.json não encontrado ou inválido: ${fixturePath}`)
+}
 
 async function main() {
-  console.log('🌱 Seeding system settings...')
+  console.log('🌱 Seeding system settings from fixtures...')
 
-  for (const setting of DEFAULT_SETTINGS) {
+  const settings = loadSettingsFromFixtures()
+
+  for (const setting of settings) {
     const { description, ...data } = setting
+    const createData = {
+      key: data.key,
+      value: data.value,
+      category: data.category ?? 'GENERAL',
+      encrypted: data.encrypted ?? false,
+      isPublic: data.isPublic ?? false,
+    }
 
     await prisma.systemSetting.upsert({
       where: { key: data.key },
-      update: data,
-      create: data,
+      update: createData,
+      create: createData,
     })
 
-    console.log(`✅ ${data.key} (${data.category})`)
+    console.log(`✅ ${data.key} (${createData.category})`)
   }
 
-  console.log(`\n✨ Seeded ${DEFAULT_SETTINGS.length} settings successfully!`)
+  console.log(`\n✨ Seeded ${settings.length} settings successfully!`)
 }
 
 main()

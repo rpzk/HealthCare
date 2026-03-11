@@ -72,11 +72,9 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
     // BUILD WHERE CLAUSE WITH RBAC
     // ============================================
 
-    const where: any = { deletedAt: null }
-
     // RBAC: Filter records based on user role
+    const rbacFilter: any = {}
     if (user.role === 'PATIENT') {
-      // Pacientes só veem seus próprios prontuários
       const patient = await prisma.patient.findFirst({
         where: { userId: user.id },
         select: { id: true }
@@ -86,41 +84,40 @@ export const GET = withAuth(async (request: NextRequest, { user: _user }) => {
           { data: [], pagination: { page, limit, total: 0, pages: 0 } }
         )
       }
-      where.patientId = patient.id
+      rbacFilter.patientId = patient.id
     } else if (user.role === 'DOCTOR') {
-      // Médicos veem:
-      // 1. Seus próprios prontuários
-      // 2. Prontuários de pacientes atribuídos
       const assignedPatients = await prisma.patientCareTeam.findMany({
-        where: {
-          userId: user.id,
-          isActive: true
-        },
+        where: { userId: user.id, isActive: true },
         select: { patientId: true }
       })
-
       const patientIds = assignedPatients.map(p => p.patientId)
-      where.OR = [
+      rbacFilter.OR = [
         { doctorId: user.id },
         { patientId: { in: patientIds } }
       ]
     }
-    // ADMIN tem acesso a todos
 
-    // ============================================
-    // APPLY OPTIONAL FILTERS
-    // ============================================
-
-    if (validatedFilters.search) {
-      where.OR = [
-        { title: { contains: validatedFilters.search, mode: 'insensitive' } },
-        { description: { contains: validatedFilters.search, mode: 'insensitive' } },
-        { diagnosis: { contains: validatedFilters.search, mode: 'insensitive' } },
-        { treatment: { contains: validatedFilters.search, mode: 'insensitive' } },
-        { notes: { contains: validatedFilters.search, mode: 'insensitive' } },
-        { patient: { name: { contains: validatedFilters.search, mode: 'insensitive' } } }
-      ]
+    // Combinar: deletedAt + RBAC + busca (AND para não sobrescrever segurança)
+    const andConditions: any[] = [{ deletedAt: null }]
+    if (Object.keys(rbacFilter).length > 0) {
+      andConditions.push(rbacFilter)
     }
+
+    // Busca textual (aplica EM CIMA do RBAC)
+    if (validatedFilters.search && validatedFilters.search.trim()) {
+      andConditions.push({
+        OR: [
+          { title: { contains: validatedFilters.search.trim(), mode: 'insensitive' } },
+          { description: { contains: validatedFilters.search.trim(), mode: 'insensitive' } },
+          { diagnosis: { contains: validatedFilters.search.trim(), mode: 'insensitive' } },
+          { treatment: { contains: validatedFilters.search.trim(), mode: 'insensitive' } },
+          { notes: { contains: validatedFilters.search.trim(), mode: 'insensitive' } },
+          { patient: { name: { contains: validatedFilters.search.trim(), mode: 'insensitive' } } }
+        ]
+      })
+    }
+
+    const where: any = andConditions.length === 1 ? andConditions[0] : { AND: andConditions }
 
     if (validatedFilters.type && validatedFilters.type !== 'ALL') {
       where.recordType = validatedFilters.type

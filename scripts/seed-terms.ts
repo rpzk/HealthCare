@@ -1,5 +1,8 @@
+import 'dotenv/config'
 import { PrismaClient, TermAudience } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import * as path from 'path'
+import * as fs from 'fs'
 
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL
@@ -21,12 +24,32 @@ type SeedTerm = {
   slug: string
   title: string
   version: string
-  audience: TermAudience
+  audience: string
   content: string
   isActive?: boolean
 }
 
-const terms: SeedTerm[] = [
+function loadTermsFromFixtures(): SeedTerm[] {
+  const fixturePath = path.join(process.cwd(), 'fixtures', 'terms.json')
+  if (!fs.existsSync(fixturePath)) {
+    throw new Error(`Fixtures não encontrados: ${fixturePath}`)
+  }
+  const raw = fs.readFileSync(fixturePath, 'utf-8')
+  const data = JSON.parse(raw) as SeedTerm[]
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error('fixtures/terms.json está vazio ou inválido')
+  }
+  return data
+}
+
+function mapAudience(aud: string): TermAudience {
+  const u = (aud || 'ALL').toUpperCase()
+  if (u === 'PATIENT') return TermAudience.PATIENT
+  if (u === 'PROFESSIONAL') return TermAudience.PROFESSIONAL
+  return TermAudience.ALL
+}
+
+const termsFallback: SeedTerm[] = [
   {
     slug: 'terms-of-use',
     title: 'Termos de Uso',
@@ -370,11 +393,24 @@ Ao aceitar, você declara ciência de que:
 ]
 
 async function main() {
-  console.log('Seeding terms...')
+  console.log('Seeding terms from fixtures/terms.json...')
+
+  let terms: SeedTerm[]
+  try {
+    terms = loadTermsFromFixtures()
+    console.log(`Carregados ${terms.length} termos do fixture.`)
+  } catch (e) {
+    console.warn('Fallback para termos embutidos:', (e as Error).message)
+    terms = termsFallback
+  }
 
   const force = process.argv.includes('--force')
 
-  for (const term of terms) {
+  for (const raw of terms) {
+    const term = {
+      ...raw,
+      audience: mapAudience(raw.audience),
+    }
     const existing = await prisma.term.findFirst({
       where: { slug: term.slug, version: term.version },
       select: { id: true },

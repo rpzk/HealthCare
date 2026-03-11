@@ -40,15 +40,17 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-    // Header (logo or header image if available)
-    if (input.clinic.logoUrl) {
+    // Header (logo ou header - apenas caminhos locais, não URLs remotas)
+    if (input.clinic.logoUrl && !input.clinic.logoUrl.startsWith('http')) {
       try {
-        doc.image(pathFromPublic(input.clinic.logoUrl), 50, 40, { fit: [100, 50] });
+        const p = pathFromPublic(input.clinic.logoUrl)
+        if (p) doc.image(p, 50, 40, { fit: [100, 50] })
       } catch {}
     }
-    if (input.clinic.headerUrl) {
+    if (input.clinic.headerUrl && !input.clinic.headerUrl.startsWith('http')) {
       try {
-        doc.image(pathFromPublic(input.clinic.headerUrl), 200, 30, { fit: [340, 60] });
+        const p = pathFromPublic(input.clinic.headerUrl)
+        if (p) doc.image(p, 200, 30, { fit: [340, 60] })
       } catch {}
     }
     doc.moveDown(input.clinic.logoUrl || input.clinic.headerUrl ? 2 : 0);
@@ -107,10 +109,11 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     // QR Code for validation (right side)
     if (qrBuffer) {
       try {
-        doc.image(qrBuffer, 450, doc.y - 80, { width: 80, height: 80 });
-        doc.moveDown(3);
+        const qrY = Math.max(50, doc.y - 80)
+        doc.image(qrBuffer, 450, qrY, { width: 80, height: 80 })
+        doc.moveDown(3)
       } catch (e) {
-        logger.warn('Failed to render QR code in PDF:', e);
+        logger.warn('Failed to render QR code in PDF:', e)
       }
     }
     

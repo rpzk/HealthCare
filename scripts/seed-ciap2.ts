@@ -1,38 +1,71 @@
+#!/usr/bin/env tsx
+/**
+ * Seed de CIAP2 a partir de fixtures
+ * Uso: npm run db:seed:ciap2
+ */
+
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import * as fs from 'fs'
+import * as path from 'path'
 
-const prisma = new PrismaClient()
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) throw new Error('DATABASE_URL não configurado')
 
-const ciapData = [
-  { code: 'A01', description: 'Dor generalizada / múltipla', chapter: 'A' },
-  { code: 'A03', description: 'Febre', chapter: 'A' },
-  { code: 'A77', description: 'Viroses não especificadas', chapter: 'A' },
-  { code: 'D01', description: 'Dor abdominal generalizada / cólicas', chapter: 'D' },
-  { code: 'D02', description: 'Dor de estômago / epigástrica', chapter: 'D' },
-  { code: 'H01', description: 'Dor de ouvido', chapter: 'H' },
-  { code: 'K86', description: 'Hipertensão não complicada', chapter: 'K' },
-  { code: 'P01', description: 'Sensação de ansiedade / nervosismo / tensão', chapter: 'P' },
-  { code: 'P76', description: 'Perturbações depressivas', chapter: 'P' },
-  { code: 'R05', description: 'Tosse', chapter: 'R' },
-  { code: 'R74', description: 'Infecção aguda das vias aéreas superiores (IVAS)', chapter: 'R' },
-  { code: 'T90', description: 'Diabetes não insulino-dependente', chapter: 'T' },
-]
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
+  log: ['error'],
+})
+
+interface Ciap2Row {
+  code: string
+  description: string
+  chapter: string
+  gender?: string
+}
+
+function loadFixtures(): Ciap2Row[] {
+  const fixturePath = path.join(process.cwd(), 'fixtures', '01-master-data', 'ciap2', 'ciap2-complete.json')
+  if (!fs.existsSync(fixturePath)) {
+    throw new Error(`Fixture não encontrado: ${fixturePath}`)
+  }
+  const raw = fs.readFileSync(fixturePath, 'utf-8')
+  const data = JSON.parse(raw)
+  const rows = data.data ?? data
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error('fixtures/01-master-data/ciap2/ciap2-complete.json está vazio ou inválido')
+  }
+  return rows
+}
 
 async function main() {
-  console.log('🏥 Importando CIAP-2...')
+  console.log('🌱 Seeding CIAP2 from fixtures...')
 
-  for (const item of ciapData) {
-    await prisma.cIAP2.upsert({
-      where: { code: item.code },
-      update: { description: item.description, chapter: item.chapter },
-      create: {
-        code: item.code,
-        description: item.description,
-        chapter: item.chapter
-      }
-    })
+  const rows = loadFixtures()
+  let created = 0
+  let updated = 0
+
+  for (const row of rows) {
+    const existing = await prisma.cIAP2.findUnique({ where: { code: row.code } })
+    const data = {
+      description: row.description,
+      chapter: row.chapter,
+      gender: row.gender ?? null,
+      active: true,
+    }
+    if (existing) {
+      await prisma.cIAP2.update({ where: { code: row.code }, data })
+      updated++
+    } else {
+      await prisma.cIAP2.create({
+        data: { code: row.code, ...data },
+      })
+      created++
+    }
   }
 
-  console.log(`✅ ${ciapData.length} códigos CIAP-2 importados.`)
+  console.log(`✅ CIAP2: ${created} criados, ${updated} atualizados (total: ${rows.length})`)
 }
 
 main()
@@ -40,6 +73,4 @@ main()
     console.error(e)
     process.exit(1)
   })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+  .finally(() => prisma.$disconnect())

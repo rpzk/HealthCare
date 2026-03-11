@@ -14,8 +14,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { addMinutes } from 'date-fns'
+import { addMinutes, startOfDay, endOfDay } from 'date-fns'
 import { logger } from '@/lib/logger'
+
+const BLOCK_TYPE_LABELS: Record<string, string> = {
+  UNAVAILABLE: 'Indisponível',
+  VACATION: 'Férias',
+  SICK_LEAVE: 'Licença médica',
+  ON_CALL: 'Plantão',
+  MEETING: 'Reunião',
+  TRAINING: 'Treinamento',
+  MAINTENANCE: 'Manutenção',
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -107,8 +117,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Formatar eventos para o calendário
-    const events = consultations.map((consultation) => {
+    // Formatar consultas como eventos
+    const consultationEvents = consultations.map((consultation) => {
       const duration = consultation.duration || 30 // duração padrão de 30 minutos
       const startDate = new Date(consultation.scheduledDate)
       const endDate = addMinutes(startDate, duration)
@@ -118,6 +128,7 @@ export async function GET(request: NextRequest) {
         title: consultation.patient.name,
         start: startDate.toISOString(),
         end: endDate.toISOString(),
+        resourceType: 'consultation' as const,
         status: consultation.status,
         type: consultation.type,
         notes: consultation.notes,
@@ -136,6 +147,37 @@ export async function GET(request: NextRequest) {
         } : null,
       }
     })
+
+    // Buscar exceções de agenda (bloqueios, férias, etc.) do médico
+    const scheduleExceptions = await prisma.scheduleException.findMany({
+      where: {
+        doctorId,
+        date: {
+          gte: startOfDay(start),
+          lte: endOfDay(end),
+        },
+      },
+      select: { id: true, date: true, blockType: true, reason: true },
+    })
+
+    const blockedEvents = scheduleExceptions.map((ex) => {
+      const dayStart = startOfDay(new Date(ex.date))
+      const dayEnd = endOfDay(new Date(ex.date))
+      const label = BLOCK_TYPE_LABELS[ex.blockType] || ex.blockType
+      const title = ex.reason ? `${label}: ${ex.reason}` : label
+
+      return {
+        id: `block-${ex.id}`,
+        title,
+        start: dayStart.toISOString(),
+        end: dayEnd.toISOString(),
+        resourceType: 'blocked' as const,
+        blockType: ex.blockType,
+        reason: ex.reason,
+      }
+    })
+
+    const events = [...consultationEvents, ...blockedEvents]
 
     return NextResponse.json({ events })
 

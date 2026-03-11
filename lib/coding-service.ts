@@ -74,7 +74,21 @@ export interface ImportMedicalCodeInput {
 
 export const CodingService = {
   async upsertCodeSystem(input: UpsertCodeSystemInput) {
-  return (prisma as any).codeSystem.upsert({
+    const existingSameKind = await (prisma as any).codeSystem.findMany({
+      where: { kind: input.kind, active: true }
+    })
+    if (existingSameKind.length > 0) {
+      const match = existingSameKind.find((s: { version: string | null }) =>
+        (s.version || null) === (input.version || null)
+      )
+      if (!match && existingSameKind.length >= 1) {
+        logger.warn(
+          { kind: input.kind, version: input.version, existing: existingSameKind.length },
+          'Já existe sistema ativo para este kind. Evite duplicatas. Execute: npx tsx scripts/fix-duplicate-codesystems.ts'
+        )
+      }
+    }
+    return (prisma as any).codeSystem.upsert({
       where: { kind_version: { kind: input.kind, version: input.version || null } },
       update: { name: input.name, description: input.description, active: input.active ?? true },
       create: { kind: input.kind, name: input.name, version: input.version, description: input.description, active: input.active ?? true }
@@ -150,28 +164,50 @@ export const CodingService = {
       }
     }
     if (!results.length) {
-      const lo = q.toLowerCase()
-      const additionalFilters: Record<string, unknown>[] = []
-      if (opts.chapter) additionalFilters.push({ chapter: opts.chapter })
-      if (opts.sexRestriction) additionalFilters.push({ OR: [{ sexRestriction: opts.sexRestriction }, { sexRestriction: null }] })
-      if (opts.categoriesOnly) additionalFilters.push({ isCategory: true })
-      
-      results = await (prisma as any).medicalCode.findMany({
-        where: {
-          active: true,
-          AND: [
-            systemKind ? { system: { kind: systemKind } } : {},
-            ...additionalFilters,
-            { OR: [
-              { code: { contains: lo, mode: 'insensitive' } },
-              { display: { contains: lo, mode: 'insensitive' } },
-              { shortDescription: { contains: lo, mode: 'insensitive' } },
-              { searchableText: { contains: lo, mode: 'insensitive' } }
-            ] }
-          ]
-        },
-        take: limit
-      })
+      // CIAP2: dados podem estar na tabela ciap2 (seed), não em medical_codes
+      if (systemKind === 'CIAP2') {
+        const ciap2Rows = await (prisma as any).cIAP2.findMany({
+          where: {
+            active: true,
+            OR: [
+              { code: { contains: q, mode: 'insensitive' } },
+              { description: { contains: q, mode: 'insensitive' } },
+              { chapter: { contains: q, mode: 'insensitive' } }
+            ]
+          },
+          take: limit,
+          orderBy: { code: 'asc' }
+        })
+        results = ciap2Rows.map((r: { code: string; description: string }) => ({
+          id: r.code,
+          code: r.code,
+          display: r.description
+        }))
+      }
+      if (!results.length) {
+        const lo = q.toLowerCase()
+        const additionalFilters: Record<string, unknown>[] = []
+        if (opts.chapter) additionalFilters.push({ chapter: opts.chapter })
+        if (opts.sexRestriction) additionalFilters.push({ OR: [{ sexRestriction: opts.sexRestriction }, { sexRestriction: null }] })
+        if (opts.categoriesOnly) additionalFilters.push({ isCategory: true })
+
+        results = await (prisma as any).medicalCode.findMany({
+          where: {
+            active: true,
+            AND: [
+              systemKind ? { system: { kind: systemKind } } : {},
+              ...additionalFilters,
+              { OR: [
+                { code: { contains: lo, mode: 'insensitive' } },
+                { display: { contains: lo, mode: 'insensitive' } },
+                { shortDescription: { contains: lo, mode: 'insensitive' } },
+                { searchableText: { contains: lo, mode: 'insensitive' } }
+              ] }
+            ]
+          },
+          take: limit
+        })
+      }
     }
     cacheSet(cacheKey, results, 30_000)
     if (redis) {

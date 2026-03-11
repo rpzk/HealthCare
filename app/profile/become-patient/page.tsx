@@ -201,7 +201,7 @@ export default function BecomePatientPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/profile">
+          <Link href="/settings">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -437,7 +437,7 @@ export default function BecomePatientPage() {
             )}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href="/profile">Cancelar</Link>
+            <Link href="/settings">Cancelar</Link>
           </Button>
         </div>
       </form>

@@ -51,63 +51,43 @@ export function CIDAutocomplete({
   const debounceRef = useRef<NodeJS.Timeout>()
 
   const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 2) {
+    if (!query || query.trim().length < 1) {
       setSuggestions([])
       return
     }
 
     setIsLoading(true)
     try {
-      if (system === 'CID10') {
-        const params = new URLSearchParams({ q: query })
-        if (patientSex) params.set('patientSex', patientSex)
+      const params = new URLSearchParams({ q: query, system, limit: '15' })
+      if (patientSex) params.set('patientSex', patientSex)
 
-        const res = await fetch(`/api/coding/autocomplete?${params}`)
-        if (res.ok) {
-          const data = await res.json()
-          setSuggestions(data)
-          setHighlightIndex(0)
-        }
-      } else {
-        const params = new URLSearchParams({
-          query,
+      const res = await fetch(`/api/coding/autocomplete?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        const raw = Array.isArray(data) ? data : (data.results || [])
+        const mapped: CIDSuggestion[] = raw.map((r: { id?: string; code: string; display: string; description?: string; shortDescription?: string; label?: string; badges?: string[] }) => ({
+          id: r.id ?? r.code,
+          code: r.code,
+          display: r.display,
+          description: r.description ?? r.display,
+          shortDescription: r.shortDescription ?? r.display,
+          label: r.label ?? `${r.code} - ${r.display}`,
+          badges: r.badges ?? [],
+          chapter: '',
+          isCategory: false,
+          sexRestriction: '',
+          crossAsterisk: '',
           system,
-          limit: '15',
-        })
-        const res = await fetch(`/api/coding/search?${params.toString()}`)
-        if (res.ok) {
-          const data = await res.json()
-          const results = (data.results || []) as Array<{
-            id: string
-            code: string
-            display: string
-            description?: string
-            shortDescription?: string
-          }>
-          const mapped: CIDSuggestion[] = results.map((r) => ({
-            id: r.id,
-            code: r.code,
-            display: r.display,
-            description: r.description || r.display,
-            shortDescription: r.shortDescription || r.display,
-            chapter: '',
-            isCategory: false,
-            sexRestriction: '',
-            crossAsterisk: '',
-            label: `${r.code} - ${r.display}`,
-            badges: [],
-            system,
-          }))
-          setSuggestions(mapped)
-          setHighlightIndex(0)
-        }
+        }))
+        setSuggestions(mapped)
+        setHighlightIndex(0)
       }
     } catch (error) {
       logger.error('Erro ao buscar CID:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [patientSex])
+  }, [patientSex, system])
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -126,10 +106,10 @@ export function CIDAutocomplete({
   }, [value, fetchSuggestions])
 
   useEffect(() => {
-    if (!value || value.length < 2) {
+    if (!value || value.trim().length < 1) {
       setIsOpen(false)
     }
-  }, [])
+  }, [value])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) return
@@ -174,11 +154,11 @@ export function CIDAutocomplete({
             onChange={(e) => {
               const next = e.target.value
               onChange(next)
-              if (next.length >= 2) setIsOpen(true)
+              if (next.trim().length >= 1) setIsOpen(true)
               else setIsOpen(false)
             }}
             onFocus={() => {
-              if (value.length >= 2) setIsOpen(true)
+              if (value.trim().length >= 1) setIsOpen(true)
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
@@ -235,8 +215,10 @@ export function CIDAutocomplete({
                 </div>
               ))}
             </div>
-          ) : value.length >= 2 && !isLoading ? (
-            <div className="text-center text-muted-foreground">Nenhum código CID encontrado</div>
+          ) : value.trim().length >= 1 && !isLoading ? (
+            <div className="text-center text-muted-foreground py-2">
+              Nenhum código {system === 'CIAP2' ? 'CIAP-2' : 'CID'} encontrado. Verifique se o catálogo foi importado.
+            </div>
           ) : null}
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>

@@ -34,6 +34,7 @@ export interface PublicBookingRequest {
   time: string
   patientName: string
   patientCpf: string
+  patientBirthDate?: string // ISO date (YYYY-MM-DD) - obrigatório para novo paciente
   patientPhone: string
   patientEmail?: string
   reason?: string
@@ -166,13 +167,22 @@ export class PublicBookingService {
     let patient = await prisma.patient.findFirst({ where: { cpf: cpfClean } })
 
     if (!patient) {
+      const birthDateStr = request.patientBirthDate?.trim()
+      const birthDate = birthDateStr ? new Date(birthDateStr) : null
+      if (!birthDate || isNaN(birthDate.getTime()) || birthDate > new Date()) {
+        return {
+          success: false,
+          message: 'Data de nascimento é obrigatória para novo cadastro',
+          errors: ['Informe uma data de nascimento válida']
+        }
+      }
       patient = await prisma.patient.create({
         data: {
           name: request.patientName,
           cpf: cpfClean,
           phone: request.patientPhone.replace(/\D/g, ''),
           email: request.patientEmail || `${cpfClean}@temp.healthcare.local`,
-          birthDate: new Date('1990-01-01'), // Placeholder
+          birthDate,
           gender: 'OTHER'
         }
       })

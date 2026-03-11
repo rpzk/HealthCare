@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
@@ -37,7 +37,7 @@ interface ExamRequestDetail {
   id: string
   patient: { id: string; name: string }
   doctor: { id: string; name: string; speciality?: string }
-  examType: string
+  examType?: string | null
   description?: string | null
   urgency: string
   status: string
@@ -50,8 +50,9 @@ interface ExamRequestDetail {
   updatedAt: string | Date
 }
 
-export default function ExamRequestDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function ExamRequestDetailPage() {
+  const params = useParams()
+  const id = (params?.id as string) || ''
   const router = useRouter()
   const { toast } = useToast()
   
@@ -122,8 +123,9 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
   }, [id, toast])
 
   useEffect(() => {
+    if (!id) return
     void fetchExamRequest()
-  }, [fetchExamRequest])
+  }, [id, fetchExamRequest])
 
   const handleSign = async () => {
     if (!password) return
@@ -323,6 +325,28 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
     return labels[urgency as keyof typeof labels] || urgency
   }
 
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-background transition-colors duration-300">
+        <Header />
+        <div className="flex pt-20">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-6">
+            <div className="max-w-7xl mx-auto">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">ID do exame não encontrado.</p>
+                  <Button onClick={() => router.push('/exams')}>Voltar para Exames</Button>
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background transition-colors duration-300">
@@ -387,8 +411,8 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
             <ActionBar
               title={`Exame #${id}`}
               backUrl="/exams"
-              canEdit={data.status !== 'CANCELLED' && data.status !== 'COMPLETED'}
-              onEdit={() => router.push(`/exams/requests/${id}/edit`)}
+              canEdit={false}
+              onEdit={() => {}}
               canDelete={data.status === 'REQUESTED' || data.status === 'CANCELLED'}
               onDelete={() => setShowDeleteDialog(true)}
               canSign={!isSigned && (data.status === 'REQUESTED' || data.status === 'SCHEDULED')}
@@ -404,7 +428,7 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
                 {
                   label: 'Baixar PDF',
                   icon: <Download className="h-4 w-4" />,
-                  onClick: () => window.open(`/api/documents/${id}/pdf`, '_blank'),
+                  onClick: () => window.open(`/api/exam-requests/${id}/pdf`, '_blank'),
                 },
                 {
                   label: 'Compartilhar',
@@ -565,7 +589,7 @@ export default function ExamRequestDetailPage({ params }: { params: { id: string
                   <CardContent className="space-y-4">
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Tipo de Exame</Label>
-                      <p className="text-base font-semibold mt-1">{data.examType}</p>
+                      <p className="text-base font-semibold mt-1">{data.examType || data.description || 'Exame'}</p>
                     </div>
 
                     {data.description && (

@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
-import { AlertCircle, HeartPulse } from 'lucide-react'
+import { AlertCircle, Fingerprint } from 'lucide-react'
 import { startAuthentication } from '@simplewebauthn/browser'
+import { AuthCard } from '@/components/auth/auth-card'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -23,22 +23,22 @@ export default function SignIn() {
 
   const getSafeRedirectPath = () => {
     if (typeof window === 'undefined') return '/'
-
     const params = new URLSearchParams(window.location.search)
     const callbackUrl = params.get('callbackUrl') || params.get('next')
     if (!callbackUrl) return '/'
-
-    // Only allow same-origin redirects to avoid open-redirect issues.
     try {
       if (callbackUrl.startsWith('/')) return callbackUrl
       const url = new URL(callbackUrl)
       if (url.origin === window.location.origin) {
         return url.pathname + url.search + url.hash
       }
-    } catch {
-      // Ignore invalid URLs
-    }
+    } catch {}
     return '/'
+  }
+
+  const redirectAfterLogin = (target: string) => {
+    router.push(target)
+    router.refresh()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,8 +48,7 @@ export default function SignIn() {
 
     try {
       const safeEmail = email.trim()
-      
-      // Se estiver no passo de 2FA
+
       if (showTwoFactor && pendingCredentials) {
         if (!twoFactorCode.trim()) {
           setError('Digite o código de autenticação')
@@ -57,7 +56,6 @@ export default function SignIn() {
           return
         }
 
-        // Verificar código 2FA
         const verifyRes = await fetch('/api/auth/2fa/verify-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -75,7 +73,6 @@ export default function SignIn() {
           return
         }
 
-        // Login bem-sucedido após 2FA
         const result = await signIn('credentials', {
           email: pendingCredentials.email,
           password: pendingCredentials.password,
@@ -92,16 +89,13 @@ export default function SignIn() {
             const availableRoles = (session.user as any)?.availableRoles || []
             const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
             const safeTarget = !isAdmin && target.startsWith('/admin') ? '/appointments/dashboard' : target
-
-            router.push(safeTarget)
-            router.refresh()
+            redirectAfterLogin(safeTarget)
           }
         }
         setLoading(false)
         return
       }
 
-      // Primeiro passo: verificar se usuário tem 2FA habilitado
       const checkRes = await fetch('/api/auth/2fa/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +103,8 @@ export default function SignIn() {
       })
 
       if (!checkRes.ok) {
-        setError('Credenciais inválidas')
+        const isServerError = checkRes.status >= 500
+        setError(isServerError ? 'Erro no servidor. Verifique se o banco de dados está acessível.' : 'Credenciais inválidas')
         setLoading(false)
         return
       }
@@ -117,14 +112,12 @@ export default function SignIn() {
       const { twoFactorEnabled } = await checkRes.json()
 
       if (twoFactorEnabled) {
-        // Solicitar código 2FA
         setShowTwoFactor(true)
         setPendingCredentials({ email: safeEmail, password })
         setLoading(false)
         return
       }
 
-      // Login normal sem 2FA
       const result = await signIn('credentials', {
         email: safeEmail,
         password,
@@ -141,12 +134,10 @@ export default function SignIn() {
           const availableRoles = (session.user as any)?.availableRoles || []
           const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
           const safeTarget = !isAdmin && target.startsWith('/admin') ? '/appointments/dashboard' : target
-
-          router.push(safeTarget)
-          router.refresh()
+          redirectAfterLogin(safeTarget)
         }
       }
-    } catch (error) {
+    } catch {
       setError('Erro ao fazer login. Tente novamente.')
     } finally {
       setLoading(false)
@@ -188,9 +179,7 @@ export default function SignIn() {
         const availableRoles = (session.user as any)?.availableRoles || []
         const isAdmin = userRole === 'ADMIN' || availableRoles.includes('ADMIN')
         const safeTarget = !isAdmin && target.startsWith('/admin') ? '/appointments/dashboard' : target
-
-        router.push(safeTarget)
-        router.refresh()
+        redirectAfterLogin(safeTarget)
       }
     } catch (err: any) {
       console.error('Passkey login error', err)
@@ -201,78 +190,63 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md p-6 sm:p-8 space-y-6">
-        <div className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="p-3 bg-primary text-primary-foreground rounded-full">
-              <HeartPulse className="w-8 h-8" />
-            </div>
+    <AuthCard
+      title={showTwoFactor ? 'Código de Autenticação' : 'Entrar'}
+      description={showTwoFactor ? 'Digite o código do autenticador ou backup' : 'Entre com suas credenciais'}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <p className="text-sm">{error}</p>
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Sistema HealthCare</h1>
-            <p className="text-muted-foreground">Entre com suas credenciais</p>
-          </div>
-        </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive">
-              <AlertCircle className="w-4 h-4" />
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          {showTwoFactor ? (
-            <>
-              <div className="space-y-2">
-                <label htmlFor="twoFactorCode" className="text-sm font-medium">
-                  Código de Autenticação (2FA)
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  Digite o código do seu aplicativo autenticador ou um código de backup
-                </p>
-                <Input
-                  id="twoFactorCode"
-                  type="text"
-                  value={twoFactorCode}
-                  onChange={(e) => setTwoFactorCode(e.target.value)}
-                  required
-                  disabled={loading}
-                  autoFocus
-                  placeholder="000000"
-                  maxLength={8}
-                />
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full"
+        {showTwoFactor ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="twoFactorCode" className="text-sm font-medium">
+                Código (6 dígitos)
+              </label>
+              <Input
+                id="twoFactorCode"
+                type="text"
+                inputMode="numeric"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                required
                 disabled={loading}
-              >
-                {loading ? 'Verificando...' : 'Verificar Código'}
-              </Button>
+                autoFocus
+                placeholder="000000"
+                maxLength={8}
+                className="text-center text-lg tracking-widest"
+              />
+            </div>
 
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setShowTwoFactor(false)
-                  setPendingCredentials(null)
-                  setTwoFactorCode('')
-                  setError('')
-                }}
-              >
-                Voltar
-              </Button>
-            </>
-          ) : (
-            <>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Verificando...' : 'Verificar Código'}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setShowTwoFactor(false)
+                setPendingCredentials(null)
+                setTwoFactorCode('')
+                setError('')
+              }}
+            >
+              Voltar
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Email e Senha */}
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
+                <label htmlFor="email" className="text-sm font-medium">Email</label>
                 <Input
                   id="email"
                   type="email"
@@ -285,9 +259,7 @@ export default function SignIn() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Senha
-                </label>
+                <label htmlFor="password" className="text-sm font-medium">Senha</label>
                 <Input
                   id="password"
                   type="password"
@@ -307,13 +279,23 @@ export default function SignIn() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? 'Entrando...' : 'Entrar'}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Entrando...' : 'Entrar com email e senha'}
               </Button>
+            </div>
+
+            {/* Divisor */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">ou</span>
+              </div>
+            </div>
+
+            {/* Passkey */}
+            <div className="space-y-2">
               <Button
                 type="button"
                 variant="outline"
@@ -321,30 +303,25 @@ export default function SignIn() {
                 disabled={passkeyLoading}
                 onClick={handlePasskey}
               >
+                <Fingerprint className="w-4 h-4 mr-2" />
                 {passkeyLoading ? 'Autenticando...' : 'Entrar com Passkey'}
               </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Face ID, Touch ID ou chave de segurança
+              </p>
+            </div>
 
-              <div className="pt-4 text-center space-y-2">
-                <div className="text-sm text-muted-foreground">
-                  Não tem uma conta?{' '}
-                  <Link
-                    href="/auth/register"
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    Cadastre-se aqui
-                  </Link>
-                </div>
-                <Link
-                  href="/"
-                  className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline block"
-                >
-                  Voltar ao início
+            <div className="pt-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Não tem conta?{' '}
+                <Link href="/auth/register" className="text-primary hover:underline font-medium">
+                  Cadastre-se
                 </Link>
-              </div>
-            </>
-          )}
-        </form>
-      </Card>
-    </div>
+              </p>
+            </div>
+          </>
+        )}
+      </form>
+    </AuthCard>
   )
 }

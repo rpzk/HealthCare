@@ -37,9 +37,10 @@ export function FinancialDashboard() {
     try {
       const res = await fetch('/api/financial')
       const json = await res.json()
-      setData(json)
+      setData({ json, status: res.status })
     } catch (error) {
       logger.error(error)
+      setData({ json: null, status: 500 })
     } finally {
       setLoading(false)
     }
@@ -52,9 +53,14 @@ export function FinancialDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTransaction)
       })
-      
+      const json = await res.json()
+
+      if (res.status === 501) {
+        toast({ title: 'Módulo não implementado', description: json.message, variant: 'destructive' })
+        return
+      }
       if (!res.ok) throw new Error('Failed to create')
-      
+
       toast({ title: 'Sucesso', description: 'Transação registrada.' })
       setIsAddModalOpen(false)
       fetchData()
@@ -65,10 +71,51 @@ export function FinancialDashboard() {
 
   if (loading) return <div className="p-8 text-center">Carregando financeiro...</div>
 
+  // Módulo não implementado (501)
+  if (data?.status === 501) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-3xl font-bold tracking-tight">Financeiro</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-6 w-6 text-muted-foreground" />
+              Módulo não implementado
+            </CardTitle>
+            <CardContent className="pt-4">
+              <p className="text-muted-foreground">
+                {data?.json?.message || 'O módulo financeiro está planejado para uma versão futura.'}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Quando implementado, você poderá registrar receitas, despesas e acompanhar o fluxo de caixa.
+              </p>
+            </CardContent>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
+  // Erro ao carregar (500, etc)
+  if (data?.status && data.status >= 500) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-3xl font-bold tracking-tight">Financeiro</h2>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">Erro ao carregar dados. Tente novamente.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const chartData = [
-    { name: 'Receitas', value: data?.balance?.income || 0 },
-    { name: 'Despesas', value: data?.balance?.expense || 0 }
+    { name: 'Receitas', value: data?.json?.balance?.income || 0 },
+    { name: 'Despesas', value: data?.json?.balance?.expense || 0 }
   ]
+
+  const balance = data?.json?.balance
 
   return (
     <div className="space-y-6">
@@ -146,8 +193,8 @@ export function FinancialDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${data?.balance?.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              R$ {data?.balance?.balance?.toFixed(2)}
+            <div className={`text-2xl font-bold ${(balance?.total ?? balance?.balance ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              R$ {((balance?.total ?? balance?.balance) || 0).toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -158,7 +205,7 @@ export function FinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              R$ {data?.balance?.income?.toFixed(2)}
+              R$ {(balance?.income || 0).toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -169,7 +216,7 @@ export function FinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              R$ {data?.balance?.expense?.toFixed(2)}
+              R$ {(balance?.expense || 0).toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -200,7 +247,7 @@ export function FinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {data?.transactions?.slice(0, 5).map((t: any) => (
+              {data?.json?.transactions?.slice(0, 5).map((t: any) => (
                 <div key={t.id} className="flex items-center">
                   <div className={`ml-4 space-y-1 flex-1 ${t.type === 'INCOME' ? 'border-l-4 border-green-500 pl-2' : 'border-l-4 border-red-500 pl-2'}`}>
                     <p className="text-sm font-medium leading-none">{t.description}</p>

@@ -40,34 +40,34 @@
   }
 
   .dark {
-    /* Dark Mode - Deep Cosmic Night (Modern SaaS) */
-    --background: 222.2 84% 4.9%; /* Deep Navy/Black */
-    --foreground: 210 40% 98%;
+    /* Dark Mode - Suave e profissional (menos intenso, mais harmônico) */
+    --background: 224 71% 6%; /* Slate escuro suave */
+    --foreground: 213 31% 91%;
     
-    --card: 222.2 84% 4.9%; /* Same as bg, rely on border/shadow */
-    --card-foreground: 210 40% 98%;
+    --card: 224 71% 8%;
+    --card-foreground: 213 31% 91%;
     
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 224 71% 8%;
+    --popover-foreground: 213 31% 91%;
     
-    --primary: 217.2 91.2% 59.8%; /* Electric Blue */
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 213 94% 68%; /* Azul suave, menos elétrico */
+    --primary-foreground: 224 71% 6%;
     
-    --secondary: 217.2 32.6% 17.5%; /* Muted Blue-Grey */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 28% 14%;
+    --secondary-foreground: 213 31% 91%;
     
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 75%; /* Lighter for better visibility on dark bg */
+    --muted: 215 28% 14%;
+    --muted-foreground: 215 20% 65%;
     
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 215 28% 14%;
+    --accent-foreground: 213 31% 91%;
     
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 217.2 32.6% 17.5%; /* Subtle Border */
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 215 25% 18%;
+    --input: 215 25% 18%;
+    --ring: 213 94% 68%;
   }
 }
 
@@ -82,11 +82,9 @@
   }
 }
 
-/* Dark Mode Specifics - Clean Professional */
+/* Dark Mode - fundo sólido, sem gradiente (mais limpo) */
 .dark body {
   background-color: hsl(var(--background));
-  background-image: radial-gradient(circle at 50% 0%, hsla(217, 91%, 60%, 0.15), transparent 50%);
-  background-attachment: fixed;
 }
 
 /* Modern Card Styles */
@@ -103,11 +101,10 @@
   border: 1px solid hsl(var(--border));
 }
 
-/* Subtle Glass Effect for Cards in Dark Mode (Optional, but modern) */
+/* Cards no dark mode - fundo sólido sutil, bordas suaves */
 .dark .card {
-  background-color: hsla(222.2, 84%, 4.9%, 0.4);
-  backdrop-filter: blur(12px);
-  border: 1px solid hsla(217.2, 32.6%, 17.5%, 0.5);
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
 }
 
 @layer components {

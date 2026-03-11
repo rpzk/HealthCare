@@ -19,6 +19,19 @@ const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile'
 const DEFAULT_OLLAMA_URL = 'http://ollama:11434'
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:3b'
 
+/**
+ * Remove prefixos acidentais (ex: "GROQ_API_KEY=gsk_...") e espaços em branco
+ */
+function sanitizeApiKey(key: string | null): string | null {
+  if (!key) return null
+  let cleaned = key.trim()
+  // Alguém pode colar "GROQ_API_KEY=gsk_..." no campo
+  if (cleaned.includes('=') && !cleaned.startsWith('gsk_')) {
+    cleaned = cleaned.split('=').slice(1).join('=').trim()
+  }
+  return cleaned || null
+}
+
 export type AIProvider = 'groq' | 'ollama' | 'openai'
 
 export interface AIMessage {
@@ -93,7 +106,8 @@ export async function getAIConfig() {
     ])
 
     // Merge com variáveis de ambiente (env tem prioridade se DB não tiver)
-    const groqApiKey = dbGroqApiKey || process.env.GROQ_API_KEY || null
+    const rawGroqKey = dbGroqApiKey || process.env.GROQ_API_KEY || null
+    const groqApiKey = sanitizeApiKey(rawGroqKey)
     const provider = (dbProvider || process.env.AI_PROVIDER || (groqApiKey ? 'groq' : 'ollama')) as AIProvider
 
     configCache = {
@@ -111,7 +125,7 @@ export async function getAIConfig() {
     // Fallback para variáveis de ambiente se banco não disponível
     logger.warn({ error }, 'Erro ao buscar config de IA do banco, usando env')
     
-    const groqApiKey = process.env.GROQ_API_KEY || null
+    const groqApiKey = sanitizeApiKey(process.env.GROQ_API_KEY || null)
     
     configCache = {
       provider: (process.env.AI_PROVIDER || (groqApiKey ? 'groq' : 'ollama')) as AIProvider,

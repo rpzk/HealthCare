@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { signPdfWithPAdES } from '@/lib/documents/pades-signer'
 import { generateConsultationPrescriptionPdfBuffer } from '@/lib/prescription-pdf-helpers'
+import { getCertificatePassword } from '@/lib/certificate-session'
 
 export const runtime = 'nodejs'
 
@@ -68,7 +69,8 @@ export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { p
       )
     }
 
-    const pdf = await generateConsultationPrescriptionPdfBuffer(consultation, baseUrl, consultationId)
+    const useStamp = req.nextUrl.searchParams.get('stamp') === '1'
+    const pdf = await generateConsultationPrescriptionPdfBuffer(consultation, baseUrl, consultationId, { useStamp })
 
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,
@@ -95,9 +97,16 @@ export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { p
 export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>; user: any }) => {
   try {
     const consultationId = params.id
-    const { password } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    let password = body?.password
     if (!password) {
-      return NextResponse.json({ error: 'Senha do certificado obrigatória' }, { status: 400 })
+      password = await getCertificatePassword(user.id)
+    }
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Senha do certificado obrigatória ou ative a sessão de assinatura digital no menu superior' },
+        { status: 400 }
+      )
     }
 
     const cert = await prisma.digitalCertificate.findFirst({

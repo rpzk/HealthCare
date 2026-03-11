@@ -76,11 +76,14 @@ interface CalendarApiEvent {
   title: string
   start: string
   end: string
-  status: string
-  type: string
+  resourceType?: 'consultation' | 'blocked'
+  status?: string
+  type?: string
   notes?: string | null
   patient?: { id: string; name: string; phone?: string | null; email?: string | null; cpf?: string | null }
   doctor?: { id: string; name: string; email?: string | null; speciality?: string | null } | null
+  blockType?: string
+  reason?: string | null
 }
 
 interface PatientOption {
@@ -131,29 +134,29 @@ const PROFESSIONAL_ROLES = [
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   SCHEDULED: {
     label: 'Agendada',
-    color: 'bg-blue-100 text-blue-800',
+    color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200',
     icon: <Clock className="h-4 w-4" />,
   },
   IN_PROGRESS: {
     label: 'Em andamento',
-    color: 'bg-green-100 text-green-800',
+    color: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200',
     icon: <CheckCircle2 className="h-4 w-4" />,
   },
   COMPLETED: {
     label: 'Concluída',
-    color: 'bg-gray-100 text-gray-800',
+    color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
     icon: <CheckCircle2 className="h-4 w-4" />,
   },
   CANCELLED: {
     label: 'Cancelada',
-    color: 'bg-red-100 text-red-800',
+    color: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200',
     icon: <XCircle className="h-4 w-4" />,
   },
 }
 
 export default function AppointmentsDashboard() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarApiEvent[]>([])
   const [calendarLoading, setCalendarLoading] = useState(false)
@@ -190,6 +193,15 @@ export default function AppointmentsDashboard() {
   const [statusDrawerOpen, setStatusDrawerOpen] = useState(false)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null)
   const [allConsultations, setAllConsultations] = useState<Consultation[]>([])
+
+  // Se sessão demorar muito (ex: aba privada), redireciona para home
+  useEffect(() => {
+    if (sessionStatus !== 'loading') return
+    const t = setTimeout(() => {
+      if (typeof window !== 'undefined') window.location.replace('/')
+    }, 8000)
+    return () => clearTimeout(t)
+  }, [sessionStatus])
 
   const openConsultationWorkspace = useCallback(
     (consultationId: string, type?: string, opts?: { preferTele?: boolean }) => {
@@ -309,8 +321,8 @@ export default function AppointmentsDashboard() {
         setSelectedConsultation({
           id: selectedEvent.id,
           scheduledDate: selectedEvent.start,
-          status: selectedEvent.status,
-          type: selectedEvent.type,
+          status: selectedEvent.status ?? 'SCHEDULED',
+          type: selectedEvent.type ?? 'ROUTINE',
           notes: selectedEvent.notes ?? null,
           patient: {
             id: selectedEvent.patient.id,
@@ -507,8 +519,9 @@ export default function AppointmentsDashboard() {
   }
 
   const handleRescheduleDrop = async (args: { event: any; start: Date; end: Date }) => {
-    const event = args.event as { id: string; resource?: { status?: string } }
+    const event = args.event as { id: string; resource?: { type?: string; status?: string } }
     if (!event?.id) return
+    if (event.id.startsWith('block-') || event.resource?.type === 'blocked') return
     if (event.resource?.status === 'CANCELLED' || event.resource?.status === 'COMPLETED') return
 
     try {
@@ -530,8 +543,9 @@ export default function AppointmentsDashboard() {
   }
 
   const handleResizeEvent = async (args: { event: any; start: Date; end: Date }) => {
-    const event = args.event as { id: string; resource?: { status?: string } }
+    const event = args.event as { id: string; resource?: { type?: string; status?: string } }
     if (!event?.id) return
+    if (event.id.startsWith('block-') || event.resource?.type === 'blocked') return
     if (event.resource?.status === 'CANCELLED' || event.resource?.status === 'COMPLETED') return
 
     try {
@@ -601,20 +615,23 @@ export default function AppointmentsDashboard() {
     }
   }
 
-  if (!isProfessional) {
+  // Sessão inválida ou não profissional — redireciona para página inicial
+  if (sessionStatus === 'unauthenticated') {
+    if (typeof window !== 'undefined') window.location.replace('/')
+    return null
+  }
+  if (sessionStatus === 'authenticated' && !isProfessional) {
+    if (typeof window !== 'undefined') window.location.replace('/')
+    return null
+  }
+
+  // Enquanto sessão carrega, exibe loading mínimo
+  if (sessionStatus === 'loading') {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-8 flex items-center justify-center">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Apenas profissionais de saúde podem acessar este dashboard
-              </AlertDescription>
-            </Alert>
-          </main>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Carregando...</p>
         </div>
       </div>
     )
@@ -625,7 +642,7 @@ export default function AppointmentsDashboard() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden sidebar-content">
         <Header />
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-7xl mx-auto space-y-6">
@@ -664,7 +681,7 @@ export default function AppointmentsDashboard() {
                 </Card>
 
                 <Card
-                  className="border-blue-200 bg-blue-50 cursor-pointer hover:shadow-md transition"
+                  className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 cursor-pointer hover:shadow-md transition"
                   onClick={async () => {
                     await loadAllConsultations()
                     setSelectedStatusFilter('SCHEDULED')
@@ -672,17 +689,17 @@ export default function AppointmentsDashboard() {
                   }}
                 >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-800 dark:text-blue-200">
                       <Clock className="h-4 w-4" /> Agendadas
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.scheduled}</div>
+                    <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{stats.scheduled}</div>
                   </CardContent>
                 </Card>
 
                 <Card
-                  className="border-green-200 bg-green-50 cursor-pointer hover:shadow-md transition"
+                  className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 cursor-pointer hover:shadow-md transition"
                   onClick={async () => {
                     await loadAllConsultations()
                     setSelectedStatusFilter('IN_PROGRESS')
@@ -690,17 +707,17 @@ export default function AppointmentsDashboard() {
                   }}
                 >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-green-800 dark:text-green-200">
                       <CheckCircle2 className="h-4 w-4" /> Em andamento
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.inProgress}</div>
+                    <div className="text-2xl font-bold text-green-900 dark:text-green-100">{stats.inProgress}</div>
                   </CardContent>
                 </Card>
 
                 <Card
-                  className="border-gray-200 bg-gray-50 cursor-pointer hover:shadow-md transition"
+                  className="border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-muted cursor-pointer hover:shadow-md transition"
                   onClick={async () => {
                     await loadAllConsultations()
                     setSelectedStatusFilter('COMPLETED')
@@ -708,15 +725,15 @@ export default function AppointmentsDashboard() {
                   }}
                 >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium">Concluídas</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">Concluídas</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.completed}</div>
+                    <div className="text-2xl font-bold text-foreground">{stats.completed}</div>
                   </CardContent>
                 </Card>
 
                 <Card
-                  className="border-red-200 bg-red-50 cursor-pointer hover:shadow-md transition"
+                  className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50 cursor-pointer hover:shadow-md transition"
                   onClick={async () => {
                     await loadAllConsultations()
                     setSelectedStatusFilter('CANCELLED')
@@ -724,12 +741,12 @@ export default function AppointmentsDashboard() {
                   }}
                 >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-800 dark:text-red-200">
                       <XCircle className="h-4 w-4" /> Canceladas
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats.cancelled}</div>
+                    <div className="text-2xl font-bold text-red-900 dark:text-red-100">{stats.cancelled}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -743,9 +760,10 @@ export default function AppointmentsDashboard() {
                 start: new Date(e.start),
                 end: new Date(e.end),
                 resource: {
-                  type: 'consultation' as const,
+                  type: (e.resourceType === 'blocked' ? 'blocked' : 'consultation') as 'consultation' | 'blocked',
                   status: e.status,
                   patientName: e.patient?.name,
+                  reason: e.reason ?? undefined,
                 },
               }))}
               onRangeChange={(range) => {
@@ -771,6 +789,9 @@ export default function AppointmentsDashboard() {
               onSelectEvent={(event) => {
                 const found = calendarEvents.find((e) => e.id === event.id)
                 if (!found) return
+
+                // Bloqueios/exceções: apenas informativo, sem edição
+                if (found.resourceType === 'blocked') return
 
                 // Para consultas em andamento, abra direto o workspace (tele quando aplicável).
                 if (found.status === 'IN_PROGRESS') {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import Link from 'next/link'
 
 export interface MedicalRecord {
@@ -34,6 +35,7 @@ export function MedicalRecordsList({
   const [pageSize, setPageSize] = useState(10)
   const [totalRecords, setTotalRecords] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 400)
   const [filterType, setFilterType] = useState<string>('')
   const [filterPriority, setFilterPriority] = useState<string>('')
 
@@ -47,7 +49,7 @@ export function MedicalRecordsList({
       const params = new URLSearchParams({
         page: page.toString(),
         limit: pageSize.toString(),
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(filterType && { type: filterType }),
         ...(filterPriority && { priority: filterPriority }),
       })
@@ -70,7 +72,7 @@ export function MedicalRecordsList({
     } finally {
       setIsLoading(false)
     }
-  }, [filterPriority, filterType, page, pageSize, searchTerm])
+  }, [filterPriority, filterType, page, pageSize, debouncedSearch])
 
   useEffect(() => {
     void fetchRecords()

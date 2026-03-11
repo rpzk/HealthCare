@@ -36,7 +36,6 @@ export default function PrescriptionDetails({ id }: { id: string }) {
   const [signing, setSigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<PrescriptionDetail | null>(null)
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const [password, setPassword] = useState('')
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null)
   const [isSigned, setIsSigned] = useState(false)
@@ -110,6 +109,22 @@ export default function PrescriptionDetails({ id }: { id: string }) {
     load()
   }, [id])
 
+  const [cloudSessionActive, setCloudSessionActive] = useState(false)
+  const [cloudProviderName, setCloudProviderName] = useState('')
+  const [signingCloud, setSigningCloud] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/certificates/cloud')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d?.session?.active) {
+          setCloudSessionActive(true)
+          setCloudProviderName(d.session.providerName || 'Nuvem')
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const handleSign = async () => {
     if (!password) return
     setSigning(true)
@@ -118,7 +133,7 @@ export default function PrescriptionDetails({ id }: { id: string }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
-        credentials: 'include', // Garante envio do cookie de sessão/JWT
+        credentials: 'include',
       })
       
       if (!res.ok) {
@@ -127,11 +142,9 @@ export default function PrescriptionDetails({ id }: { id: string }) {
       }
 
       const result = await res.json()
-      // Update local state
       setData(prev => prev ? ({ ...prev, digitalSignature: result.signature }) : null)
       setIsSigned(true)
       if (result?.verificationUrl) setVerificationUrl(result.verificationUrl)
-      // Reload signature data
       const sigRes = await fetch(`/api/prescriptions/${id}/signature`)
       if (sigRes.ok) {
         const s = await sigRes.json()
@@ -141,13 +154,47 @@ export default function PrescriptionDetails({ id }: { id: string }) {
           certificate: s.certificate
         })
       }
-      setShowPasswordDialog(false)
       setPassword('')
       alert('Prescrição assinada com sucesso!')
     } catch (e) {
       alert((e as Error).message)
     } finally {
       setSigning(false)
+    }
+  }
+
+  const handleSignCloud = async () => {
+    setSigningCloud(true)
+    try {
+      const res = await fetch('/api/certificates/cloud/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentType: 'PRESCRIPTION', documentId: id }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || 'Erro ao assinar com certificado em nuvem')
+      }
+
+      const result = await res.json()
+      setData(prev => prev ? ({ ...prev, digitalSignature: result.signatureHash }) : null)
+      setIsSigned(true)
+      if (result?.verificationUrl) setVerificationUrl(result.verificationUrl)
+      const sigRes = await fetch(`/api/prescriptions/${id}/signature`)
+      if (sigRes.ok) {
+        const s = await sigRes.json()
+        setSignatureData({
+          signedAt: s.signedAt,
+          signatureHash: s.signatureHash,
+          certificate: s.certificate
+        })
+      }
+      alert(`Prescrição assinada com ${result.providerName || 'certificado em nuvem'}!`)
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setSigningCloud(false)
     }
   }
 
@@ -235,13 +282,34 @@ export default function PrescriptionDetails({ id }: { id: string }) {
             Baixar PDF
           </Button>
           {!data.digitalSignature && (
-            <Button 
-              onClick={() => setShowPasswordDialog(true)} 
-              disabled={signing}
-              className="bg-green-600 hover:bg-green-700 text-white gap-2"
-            >
-              {signing ? (<><Loader2 className="h-4 w-4 animate-spin" />Assinando...</>) : <>Assinar Digitalmente</>}
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {cloudSessionActive && (
+                <Button
+                  onClick={handleSignCloud}
+                  disabled={signingCloud || signing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                  title={`Assinar com certificado em nuvem (${cloudProviderName})`}
+                >
+                  {signingCloud ? (<><Loader2 className="h-4 w-4 animate-spin" />Assinando...</>) : <>☁️ Assinar ({cloudProviderName})</>}
+                </Button>
+              )}
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Senha do certificado A1"
+                disabled={signing}
+                className="max-w-[180px]"
+                onKeyDown={(e) => e.key === 'Enter' && password && !signing && handleSign()}
+              />
+              <Button
+                onClick={handleSign}
+                disabled={!password || signing}
+                className="bg-green-600 hover:bg-green-700 text-white gap-2"
+              >
+                {signing ? (<><Loader2 className="h-4 w-4 animate-spin" />Assinando...</>) : <>Assinar (A1)</>}
+              </Button>
+            </div>
           )}
           <Button
             variant="outline"
@@ -348,51 +416,6 @@ export default function PrescriptionDetails({ id }: { id: string }) {
           </CardContent>
         </Card>
       )}
-
-      {/* Modal de senha unificado para todas as ações */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmação de Assinatura</DialogTitle>
-            <DialogDescription>
-              Digite a senha do seu certificado digital para assinar e liberar as ações desejadas (imprimir, enviar, compartilhar).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div>
-              <Label htmlFor="cert-password">Senha do Certificado</Label>
-              <Input
-                id="cert-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Digite sua senha"
-                disabled={signing}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && password && !signing) handleSign()
-                }}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => { setShowPasswordDialog(false); setPassword('') }}
-                disabled={signing}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleSign}
-                disabled={!password || signing}
-              >
-                {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar e Prosseguir'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Modal: informar e-mail quando o paciente não tem e-mail cadastrado */}
       <Dialog open={showEmailDialog} onOpenChange={(open) => { setShowEmailDialog(open); if (!open) setEmailToSend('') }}>

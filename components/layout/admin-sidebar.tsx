@@ -1,42 +1,30 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { useTheme } from 'next-themes'
-import { 
+import {
   LayoutDashboard,
   Users,
   UserCog,
   Building2,
   BarChart3,
   DollarSign,
-  Settings,
   Shield,
   ShieldAlert,
-  Mail,
   Calendar,
-  Brain,
   ClipboardList,
   Activity,
   FileText,
   ChevronDown,
   Boxes,
-  Bell,
   Database,
-  Gauge,
-  TrendingUp,
-  PieChart,
   Server,
   Key,
   FlaskConical,
-  ScrollText,
-  Ban,
-  Cloud
+  ScrollText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 
 interface MenuItem {
   title: string
@@ -47,13 +35,28 @@ interface MenuItem {
   description?: string
 }
 
-// Menu administrativo focado em gestão
+// Menu administrativo — apenas rotas que existem e estão implementadas
 const adminMenuItems: MenuItem[] = [
   {
     title: 'Visão Geral',
     icon: LayoutDashboard,
     href: '/admin',
     description: 'Dashboard gerencial'
+  },
+  // Sistema e Config primeiro — o admin precisa achar rápido
+  {
+    title: 'Sistema & Config',
+    icon: Server,
+    href: '/admin/ai-settings',
+    submenu: [
+      { title: 'Configurações IA', href: '/admin/ai-settings', badge: 'Groq/Ollama' },
+      { title: 'Status do Sistema', href: '/system-monitor' },
+      { title: 'Configurações Gerais', href: '/settings' },
+      { title: 'Backup & Dados', href: '/admin/backup' },
+      { title: 'Termos & Privacidade', href: '/admin/terms' },
+      { title: 'Infraestrutura', href: '/apresentacao-infra', badge: '🔒' },
+      { title: 'Reset de Banco', href: '/admin/database-reset' },
+    ]
   },
   {
     title: 'Gestão de Usuários',
@@ -68,7 +71,7 @@ const adminMenuItems: MenuItem[] = [
   {
     title: 'Gestão de Pessoal',
     icon: UserCog,
-    href: '/hr',
+    href: '/admin/staff',
     badge: 'RH',
     submenu: [
       { title: 'Equipe', href: '/admin/staff' },
@@ -119,8 +122,7 @@ const adminMenuItems: MenuItem[] = [
     href: '/inventory',
     submenu: [
       { title: 'Inventário', href: '/inventory' },
-      { title: 'Fornecedores', href: '/inventory/suppliers' },
-      { title: 'Pedidos', href: '/inventory/orders' },
+      { title: 'Alertas', href: '/inventory/alerts' },
     ]
   },
   {
@@ -140,8 +142,6 @@ const adminMenuItems: MenuItem[] = [
     href: '/admin/exam-combos',
     submenu: [
       { title: 'Combos de Exames', href: '/admin/exam-combos' },
-      { title: 'Protocolos', href: '/admin/protocols' },
-      { title: 'Catálogo de Exames', href: '/admin/exam-catalog' },
     ]
   },
   {
@@ -155,33 +155,18 @@ const adminMenuItems: MenuItem[] = [
     ]
   },
   {
-    title: 'IA & Analytics',
-    icon: Brain,
-    href: '/ai-enterprise-analytics',
-    badge: 'AI',
-    submenu: [
-      { title: 'Dashboard IA', href: '/ai-enterprise-analytics' },
-      { title: 'Análises Médicas', href: '/ai-analytics' },
-      { title: 'Configurações IA', href: '/admin/ai-settings' },
-    ]
-  },
-  {
     title: 'Segurança',
     icon: Shield,
     href: '/security-monitoring',
     submenu: [
       { title: 'Monitoramento', href: '/security-monitoring' },
-      { title: 'Logs de Auditoria', href: '/admin/audit-logs' },
-      { title: 'Políticas de Acesso', href: '/admin/access-policies' },
+      { title: 'Logs de Auditoria', href: '/admin/audit' },
     ]
   },
   {
     title: 'Assinaturas Digitais',
     icon: Key,
     href: '/admin/digital-signatures',
-    submenu: [
-      { title: 'Certificados & Assinaturas', href: '/admin/digital-signatures' },
-    ]
   },
   {
     title: 'LGPD & Prontuários',
@@ -190,7 +175,6 @@ const adminMenuItems: MenuItem[] = [
     badge: 'LGPD',
     submenu: [
       { title: 'Solicitações de Cópia', href: '/admin/medical-record-requests' },
-      { title: 'Oposições ao Tratamento', href: '/admin/treatment-oppositions' },
       { title: 'Logs de Auditoria', href: '/admin/audit' },
     ]
   },
@@ -201,38 +185,13 @@ const adminMenuItems: MenuItem[] = [
     badge: 'Art.48',
     description: 'Gestão de incidentes LGPD'
   },
-  {
-    title: 'Integrações SUS',
-    icon: Cloud,
-    href: '/admin/rnds',
-    badge: 'RNDS',
-    description: 'Interoperabilidade com SUS',
-    submenu: [
-      { title: 'RNDS', href: '/admin/rnds' },
-      { title: 'e-SUS AB', href: '/admin/esus' },
-    ]
-  },
-  {
-    title: 'Sistema',
-    icon: Server,
-    href: '/system',
-    submenu: [
-      { title: 'Status', href: '/system-monitor' },
-      { title: 'Configurações Gerais', href: '/settings' },
-      { title: 'Termos & Privacidade', href: '/admin/terms' },
-      { title: 'Integrações', href: '/settings/integrations' },
-      { title: 'Backup & Dados', href: '/admin/backup' },
-      { title: 'Infraestrutura & Custos', href: '/apresentacao-infra', badge: '🔒' },
-      { title: 'Reset de Banco', href: '/admin/database-reset' },
-    ]
-  },
+  // Integrações SUS (e-SUS, RNDS) — removido do foco atual (clínicas particulares)
+  // Disponível para reativar em desenvolvimento futuro
 ]
 
 export function AdminSidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>(['Visão Geral'])
   const pathname = usePathname()
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
 
   // Auto-expand active groups
   useEffect(() => {
@@ -268,75 +227,65 @@ export function AdminSidebar() {
   return (
     <div
       className={cn(
-        'fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] border-r overflow-y-auto transition-colors duration-300',
-        'bg-slate-50 dark:bg-slate-900/95 border-slate-200 dark:border-slate-800'
+        'fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] flex flex-col border-r transition-colors duration-300',
+        'bg-background border-border'
       )}
     >
       {/* Header do Admin */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex-shrink-0 p-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-            <Shield className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30">
+            <Shield className="h-4 w-4 text-red-600 dark:text-red-400" />
           </div>
-          <div>
-            <h2 className="font-semibold text-sm">Painel Administrativo</h2>
-            <p className="text-xs text-muted-foreground">Gestão do Sistema</p>
+          <div className="min-w-0">
+            <h2 className="font-semibold text-xs truncate">Painel Admin</h2>
+            <p className="text-[11px] text-muted-foreground truncate">Gestão</p>
           </div>
         </div>
       </div>
 
-      {/* Menu */}
-      <nav className="p-3 space-y-1">
+      {/* Menu — scrollável, sem sobreposição com footer */}
+      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
         {adminMenuItems.map((item) => (
-          <div key={item.title}>
+          <div key={item.title} className="py-0.5">
             {item.submenu ? (
               <>
                 <button
                   onClick={() => toggleExpanded(item.title)}
                   className={cn(
-                    'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                    'w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-xs font-medium transition-colors',
                     isActive(item.href)
                       ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+                      : 'text-muted-foreground hover:bg-accent'
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {item.badge && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {item.badge}
-                      </Badge>
+                  <item.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate flex-1 text-left">{item.title}</span>
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 flex-shrink-0 transition-transform',
+                      expandedItems.includes(item.title) && 'rotate-180'
                     )}
-                    <ChevronDown 
-                      className={cn(
-                        "h-4 w-4 transition-transform duration-200",
-                        expandedItems.includes(item.title) && "rotate-180"
-                      )}
-                    />
-                  </div>
+                  />
                 </button>
-                
                 {expandedItems.includes(item.title) && (
-                  <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                  <div className="ml-4 mt-0.5 mb-1 border-l border-border pl-2 space-y-0.5">
                     {item.submenu.map((subItem) => (
                       <Link
                         key={subItem.title}
                         href={subItem.href}
                         className={cn(
-                          'flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors',
+                          'flex items-center gap-2 px-2 py-1.5 rounded text-[11px] transition-colors block truncate',
                           isActive(subItem.href)
                             ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
+                            : 'text-muted-foreground hover:bg-accent'
                         )}
                       >
-                        {subItem.title}
+                        <span className="truncate flex-1">{subItem.title}</span>
                         {subItem.badge && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          <span className="text-[9px] text-muted-foreground flex-shrink-0">
                             {subItem.badge}
-                          </Badge>
+                          </span>
                         )}
                       </Link>
                     ))}
@@ -347,20 +296,18 @@ export function AdminSidebar() {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                  'flex items-center gap-2 px-2.5 py-2 rounded-md text-xs font-medium transition-colors',
                   isActive(item.href)
                     ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+                    : 'text-muted-foreground hover:bg-accent'
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.title}</span>
-                </div>
+                <item.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate flex-1">{item.title}</span>
                 {item.badge && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  <span className="text-[9px] text-muted-foreground/80 flex-shrink-0">
                     {item.badge}
-                  </Badge>
+                  </span>
                 )}
               </Link>
             )}
@@ -368,14 +315,14 @@ export function AdminSidebar() {
         ))}
       </nav>
 
-      {/* Footer com atalho para área clínica */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+      {/* Footer — fixo no rodapé, não sobrepõe */}
+      <div className="flex-shrink-0 p-2 border-t border-border bg-muted">
         <Link
           href="/"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+          className="flex items-center gap-2 px-2.5 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent transition-colors"
         >
-          <Activity className="h-4 w-4" />
-          <span>Ir para Área Clínica</span>
+          <Activity className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="truncate">Área Clínica</span>
         </Link>
       </div>
     </div>

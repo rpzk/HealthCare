@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
         instructions: item.instructions,
         // Extrair horários da frequência (simplificado)
         times: extractTimesFromFrequency(item.frequency),
-        taken: [] // TODO: Implementar tracking de tomada de medicamentos
+        taken: [] // Tracking de tomada não implementado - retorna vazio até existir MedicationTaken
       }))
     )
 
