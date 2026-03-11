@@ -293,8 +293,8 @@ export default function SettingsPage() {
   }, [session])
 
   // Tab inicial da URL
-  const tabParam = searchParams.get('tab') || (searchParams.get('force2fa') === 'true' ? 'security' : 'profile')
-  const force2FA = searchParams.get('force2fa') === 'true'
+  const tabParam = searchParams?.get('tab') || (searchParams?.get('force2fa') === 'true' ? 'security' : 'profile')
+  const force2FA = searchParams?.get('force2fa') === 'true'
   const validTabs = ['profile', 'security', 'certificates', 'notifications', 'scheduling', 'email', 'backups', 'system']
   const activeTab = validTabs.includes(tabParam) ? tabParam : 'profile'
 

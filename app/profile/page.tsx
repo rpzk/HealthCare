@@ -12,7 +12,7 @@ export default function ProfileRedirectPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const force2fa = searchParams.get('force2fa') === 'true'
+    const force2fa = searchParams?.get('force2fa') === 'true'
     const tab = force2fa ? 'security' : 'profile'
     const params = new URLSearchParams()
     params.set('tab', tab)
