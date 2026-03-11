@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Pill, AlertTriangle, Check, Loader2, Plus } from 'lucide-react'
+import { Pill, AlertTriangle, Check, Loader2, Plus, Sparkles } from 'lucide-react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/logger'
+import { toast } from 'sonner'
 
 interface MedicationSuggestion {
   id: string
@@ -29,12 +30,23 @@ interface MedicationSuggestion {
   restrictions: string[]
 }
 
+export interface ProtocolMedicationInput {
+  name: string
+  dosage: string
+  frequency: string
+  duration: string
+  instructions?: string
+  form?: string
+}
+
 interface MedicationAutocompleteProps {
   value: string
   onChange: (value: string) => void
   onSelect: (medication: MedicationSuggestion) => void
   /** Quando o médico digita um nome e não há resultado no catálogo, permite adicionar como medicamento não cadastrado */
   onAddCustom?: (name: string) => void
+  /** Quando o médico digita uma sigla (TARV, RIPE, etc.), expande o protocolo via IA */
+  onExpandProtocol?: (medications: ProtocolMedicationInput[]) => void
   patientAge?: number
   patientSex?: 'M' | 'F'
   availabilityFilter?: 'basic' | 'popular' | 'hospital' | 'all'
@@ -48,6 +60,7 @@ export function MedicationAutocomplete({
   onChange,
   onSelect,
   onAddCustom,
+  onExpandProtocol,
   patientAge,
   patientSex,
   availabilityFilter = 'all',
@@ -58,6 +71,7 @@ export function MedicationAutocomplete({
   const [suggestions, setSuggestions] = useState<MedicationSuggestion[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isExpandingProtocol, setIsExpandingProtocol] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<NodeJS.Timeout>()
@@ -68,7 +82,14 @@ export function MedicationAutocomplete({
     !isLoading &&
     suggestions.length === 0
   )
-  const totalOptions = suggestions.length + (showAddCustom ? 1 : 0)
+  const showExpandProtocol = Boolean(
+    onExpandProtocol &&
+    value.trim().length >= 2 &&
+    !isLoading &&
+    suggestions.length === 0 &&
+    !isExpandingProtocol
+  )
+  const totalOptions = suggestions.length + (showAddCustom ? 1 : 0) + (showExpandProtocol ? 1 : 0)
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -134,7 +155,9 @@ export function MedicationAutocomplete({
         break
       case 'Enter':
         e.preventDefault()
-        if (showAddCustom && highlightIndex === suggestions.length) {
+        if (showExpandProtocol && highlightIndex === suggestions.length) {
+          handleExpandProtocol()
+        } else if (showAddCustom && highlightIndex === suggestions.length + (showExpandProtocol ? 1 : 0)) {
           handleAddCustom()
         } else if (suggestions[highlightIndex]) {
           handleSelect(suggestions[highlightIndex])
@@ -153,6 +176,51 @@ export function MedicationAutocomplete({
       onChange('')
       setIsOpen(false)
       setSuggestions([])
+    }
+  }
+
+  const handleExpandProtocol = async () => {
+    const sigla = value.trim()
+    if (!sigla || !onExpandProtocol) return
+    setIsExpandingProtocol(true)
+    try {
+      const res = await fetch('/api/ai/expand-protocol', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sigla,
+          patientAge: patientAge ?? undefined,
+          patientSex: patientSex ?? undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const msg =
+          typeof data?.error === 'string'
+            ? data.error
+            : 'Não foi possível reconhecer a sigla com segurança.'
+        throw new Error(msg)
+      }
+      const medications = data.data?.medications || []
+      const protocolName = data.data?.protocolName || sigla.toUpperCase()
+      if (medications.length === 0) {
+        const reason =
+          typeof data?.data?.description === 'string'
+            ? data.data.description
+            : 'Sigla não reconhecida com segurança.'
+        throw new Error(reason)
+      }
+      onExpandProtocol(medications)
+      onChange('')
+      setIsOpen(false)
+      setSuggestions([])
+      toast.success(`Protocolo ${protocolName}: ${medications.length} medicamento(s) adicionado(s)`)
+    } catch (err) {
+      logger.error('Erro ao expandir protocolo:', err)
+      const msg = err instanceof Error ? err.message : 'Erro ao expandir protocolo'
+      toast.error(msg)
+    } finally {
+      setIsExpandingProtocol(false)
     }
   }
 
@@ -175,6 +243,7 @@ export function MedicationAutocomplete({
   }
 
   return (
+    <>
     <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
       <PopoverPrimitive.Anchor asChild>
         <div className={cn('relative', className)}>
@@ -215,17 +284,33 @@ export function MedicationAutocomplete({
             (suggestions.length > 0 || showAddCustom ? 'p-0' : 'p-3')
           )}
         >
-          {suggestions.length > 0 || showAddCustom ? (
+          {suggestions.length > 0 || showAddCustom || showExpandProtocol ? (
             <div className="max-h-80 overflow-auto">
+              {showExpandProtocol && (
+                <div
+                  className={cn(
+                    'px-3 py-2.5 cursor-pointer border-b border-border flex items-center gap-2',
+                    highlightIndex === suggestions.length ? 'bg-accent' : 'hover:bg-muted/50 bg-primary/5'
+                  )}
+                  onClick={() => handleExpandProtocol()}
+                  onMouseEnter={() => setHighlightIndex(suggestions.length)}
+                >
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm">
+                    Expandir protocolo <strong>&quot;{value.trim().toUpperCase()}&quot;</strong> com IA
+                  </span>
+                  {isExpandingProtocol && <Loader2 className="h-4 w-4 animate-spin ml-auto" />}
+                </div>
+              )}
               {suggestions.map((med, index) => (
                 <div
                   key={med.id}
                   className={cn(
                     'px-3 py-2 cursor-pointer border-b border-border last:border-0',
-                    index === highlightIndex ? 'bg-accent' : 'hover:bg-muted/50'
+                    index + (showExpandProtocol ? 1 : 0) === highlightIndex ? 'bg-accent' : 'hover:bg-muted/50'
                   )}
                   onClick={() => handleSelect(med)}
-                  onMouseEnter={() => setHighlightIndex(index)}
+                  onMouseEnter={() => setHighlightIndex(index + (showExpandProtocol ? 1 : 0))}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -266,10 +351,10 @@ export function MedicationAutocomplete({
                 <div
                   className={cn(
                     'px-3 py-2.5 cursor-pointer border-t border-border flex items-center gap-2',
-                    highlightIndex === suggestions.length ? 'bg-accent' : 'hover:bg-muted/50 bg-muted/30'
+                    highlightIndex === suggestions.length + (showExpandProtocol ? 1 : 0) ? 'bg-accent' : 'hover:bg-muted/50 bg-muted/30'
                   )}
                   onClick={handleAddCustom}
-                  onMouseEnter={() => setHighlightIndex(suggestions.length)}
+                  onMouseEnter={() => setHighlightIndex(suggestions.length + (showExpandProtocol ? 1 : 0))}
                 >
                   <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-sm">
@@ -284,5 +369,7 @@ export function MedicationAutocomplete({
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
+
+    </>
   )
 }

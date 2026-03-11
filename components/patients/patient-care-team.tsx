@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -130,8 +130,10 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
   const [submitting, setSubmitting] = useState(false)
   
   const { toast } = useToast()
+  const toastRef = useRef(toast)
+  toastRef.current = toast
 
-  // Carregar equipe de atendimento
+  // Carregar equipe de atendimento (toast em ref para evitar loop de re-render)
   const loadCareTeam = useCallback(async () => {
     try {
       setLoading(true)
@@ -144,7 +146,7 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
     } catch (error: unknown) {
       if (error instanceof Error) logger.error('Error loading care team:', error)
       else logger.error('Error loading care team:', String(error))
-      toast({
+      toastRef.current({
         title: 'Erro',
         description: 'Não foi possível carregar a equipe de atendimento',
         variant: 'destructive'
@@ -152,7 +154,7 @@ export function PatientCareTeam({ patientId, patientName, readOnly = false }: Pa
     } finally {
       setLoading(false)
     }
-  }, [patientId, toast])
+  }, [patientId])
 
   useEffect(() => {
     void loadCareTeam()

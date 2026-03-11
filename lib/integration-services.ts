@@ -99,12 +99,12 @@ export const CartorioService = {
         signatureTimestamp: new Date() // Time of Cartório submission
       }
 
-      // Log submission attempt
+      // Log submission attempt (NOT_IMPLEMENTED - não é erro de execução)
       await prisma.integrationLog.create({
         data: {
           integrationName: 'CARTORIO',
           certificateId,
-          status: 'ERROR',
+          status: 'NOT_IMPLEMENTED',
           requestPayload: JSON.stringify(payload),
           responseData: JSON.stringify({
             message: 'Cartório submission payload prepared, but external API call is not implemented',
@@ -242,12 +242,12 @@ export const SUSService = {
         submissionTimestamp: new Date()
       }
 
-      // Log submission
+      // Log submission (NOT_IMPLEMENTED - não é erro de execução)
       await prisma.integrationLog.create({
         data: {
           integrationName: 'SUS',
           certificateId,
-          status: 'ERROR',
+          status: 'NOT_IMPLEMENTED',
           requestPayload: JSON.stringify(payload),
           responseData: JSON.stringify({
             message: 'SUS registration payload prepared, but external API call is not implemented',
@@ -416,12 +416,12 @@ export const GovernmentProtocolService = {
         requiresAuthentication: true
       }
 
-      // Log submission
+      // Log submission (NOT_IMPLEMENTED - não é erro de execução)
       await prisma.integrationLog.create({
         data: {
           integrationName: 'GOVERNMENT_PROTOCOL',
           certificateId,
-          status: 'ERROR',
+          status: 'NOT_IMPLEMENTED',
           requestPayload: JSON.stringify(payload),
           responseData: JSON.stringify({
             message: 'Government protocol payload prepared, but external API call is not implemented',

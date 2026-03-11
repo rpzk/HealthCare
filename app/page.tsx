@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth'
 import { LandingPage } from '@/components/landing/landing-page'
 import { prisma } from '@/lib/prisma'
 import { checkPendingTerms } from '@/lib/check-pending-terms'
+import { require2FAForRole } from '@/lib/require-2fa'
 import { logger } from '@/lib/logger'
 
 export const metadata: Metadata = {
@@ -32,6 +33,16 @@ export default async function HomePage() {
 
     const effectiveRole = isActiveRoleAllowed ? activeRole : sessionRole
     
+    // VERIFICAR 2FA OBRIGATÓRIO para ADMIN e DOCTOR antes de redirecionar
+    try {
+      const twoFACheck = await require2FAForRole()
+      if (twoFACheck.required && twoFACheck.redirect) {
+        redirect(twoFACheck.redirect)
+      }
+    } catch (error) {
+      logger.error('Erro ao verificar 2FA:', error)
+    }
+
     // VERIFICAR TERMOS PENDENTES antes de redirecionar
     try {
       const pendingTermIds = await checkPendingTerms(prisma, session.user.id, effectiveRole || 'DOCTOR')

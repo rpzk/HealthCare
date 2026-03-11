@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
+import { getCertificatePassword } from '@/lib/certificate-session'
 import crypto from 'crypto'
 import { logger } from '@/lib/logger'
 
@@ -99,21 +100,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // A senha do certificado é solicitada no momento da assinatura (segurança)
-    // Por enquanto, vamos aceitar a senha via body
-    const pfxPassword = body.password
-
+    // Senha: body ou sessão de certificado ativa
+    let pfxPassword = body.password
+    if (!pfxPassword) {
+      pfxPassword = await getCertificatePassword(session.user.id)
+    }
     if (!pfxPassword) {
       return NextResponse.json(
         {
-          error: 'Senha do certificado é obrigatória',
-          details: 'Forneça a senha do seu certificado A1',
+          error: 'Senha do certificado obrigatória ou ative a sessão de assinatura digital no menu superior',
         },
         { status: 400 }
       )
     }
 
-    // Validar senha
+    // Validar senha (quando fornecida via body; sessão já foi validada)
     const passwordHash = crypto
       .createHash('sha256')
       .update(pfxPassword)

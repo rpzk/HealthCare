@@ -73,14 +73,24 @@ export function CertificateSessionIndicator() {
   const [password, setPassword] = useState('')
   const [dialogMode, setDialogMode] = useState<'start' | 'unlock'>('start')
   const [submitting, setSubmitting] = useState(false)
+  const [cloudActive, setCloudActive] = useState(false)
+  const [cloudProviderName, setCloudProviderName] = useState('')
 
   // Buscar status da sessão
   const fetchSessionStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/certificate-session')
-      if (res.ok) {
-        const data = await res.json()
+      const [certRes, cloudRes] = await Promise.all([
+        fetch('/api/certificate-session'),
+        fetch('/api/certificates/cloud').catch(() => null),
+      ])
+      if (certRes.ok) {
+        const data = await certRes.json()
         setState(data)
+      }
+      if (cloudRes?.ok) {
+        const cloudData = await cloudRes.json()
+        setCloudActive(!!cloudData?.session?.active)
+        setCloudProviderName(cloudData?.session?.providerName || '')
       }
     } catch (error) {
       console.error('Erro ao buscar status da sessão:', error)
@@ -214,7 +224,7 @@ export function CertificateSessionIndicator() {
     )
   }
 
-  if (!state?.hasCertificate) {
+  if (!state?.hasCertificate && !cloudActive) {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -225,14 +235,33 @@ export function CertificateSessionIndicator() {
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Configure seu certificado A1 nas configurações</p>
+            <p>Configure seu certificado A1 ou em nuvem nas configurações</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     )
   }
 
-  const { session, certificate } = state
+  // Cloud session active (sem A1 ou como complemento)
+  if (cloudActive && (!state?.hasCertificate || !state?.session?.active)) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300">
+              <ShieldCheck className="h-4 w-4" />
+              <span className="text-sm">☁️ {cloudProviderName}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Sessão de certificado em nuvem ativa ({cloudProviderName})</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  const { session, certificate } = state || { session: { active: false, locked: false }, certificate: undefined }
 
   // Certificado expirado
   if (certificate?.isExpired) {

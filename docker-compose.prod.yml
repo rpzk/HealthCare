@@ -110,6 +110,9 @@ services:
       # ICE servers for WebRTC (format: url,username,credential;url2,username2,credential2)
       NEXT_PUBLIC_ICE: ${NEXT_PUBLIC_ICE:-turn:turn:3478,teleuser,telepass;stun:stun.l.google.com:19302,,}
       NODE_ENV: production
+      # Seed de produção na primeira inicialização (1=ativar; PRODUCTION_SEED_SKIP_HEAVY=1 para pular CID/CBO/SIGTAP e acelerar)
+      PRODUCTION_SEED: ${PRODUCTION_SEED:-1}
+      PRODUCTION_SEED_SKIP_HEAVY: ${PRODUCTION_SEED_SKIP_HEAVY:-0}
     depends_on:
       postgres:
         condition: service_healthy

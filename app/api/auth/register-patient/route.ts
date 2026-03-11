@@ -174,15 +174,22 @@ export async function POST(request: NextRequest) {
       return { user, patient }
     })
 
-    // TODO: Enviar email de confirmação
     logger.info('[Patient Registration] New patient registered', {
       userId: result.user.id,
       patientId: result.patient.id,
       email: data.email,
     })
 
-    // TODO: Implementar envio de email de boas-vindas
-    // await sendWelcomeEmail(result.user.email, result.user.name)
+    try {
+      const { EmailService } = await import('@/lib/email-service')
+      const emailSvc = EmailService.getInstance()
+      const config = await emailSvc.getConfig()
+      if (config.enabled && result.user.email) {
+        await emailSvc.sendWelcomeEmail(result.user.email, result.user.name)
+      }
+    } catch (emailErr) {
+      logger.warn('[Patient Registration] Welcome email failed (non-blocking)', emailErr)
+    }
 
     return NextResponse.json({
       success: true,

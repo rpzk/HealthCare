@@ -419,6 +419,160 @@ Responda em formato JSON estruturado com o plano completo.
       this.recordSuccess()
     }
   }
+
+  // Expansão de protocolos por sigla (TARV, RIPE, etc.)
+  async expandProtocol(
+    sigla: string,
+    options?: {
+      patientAge?: number
+      patientSex?: 'M' | 'F'
+      context?: string
+      userId?: string
+    }
+  ): Promise<ProtocolExpansionResult> {
+    const hasAI = !!process.env.GROQ_API_KEY || !!process.env.OLLAMA_URL || !!process.env.GOOGLE_AI_API_KEY
+    if (!hasAI) {
+      throw new Error('Serviço de IA não configurado. Defina GROQ_API_KEY ou OLLAMA_URL em Configurações > IA.')
+    }
+    if (options?.userId) await checkAndConsumeAIQuota(options.userId, 'protocol_expansion')
+
+    const siglaUpper = sigla.trim().toUpperCase()
+
+    const ctx = []
+    if (options?.patientAge) ctx.push(`Idade: ${options.patientAge} anos`)
+    if (options?.patientSex) ctx.push(`Sexo: ${options.patientSex === 'M' ? 'Masculino' : 'Feminino'}`)
+    if (options?.context) ctx.push(`Contexto: ${options.context}`)
+
+    const prompt = `
+Você é um especialista em protocolos clínicos brasileiros. Expanda a sigla/protocolo "${siglaUpper}" em uma lista completa de medicamentos para prescrição.
+
+${ctx.length ? `DADOS DO PACIENTE:\n${ctx.join('\n')}\n` : ''}
+
+INSTRUÇÕES:
+1. Reconheça siglas: TARV (terapia antirretroviral), RIPE (tuberculose), HAS (hipertensão), DM2 (diabetes tipo 2), entre outras.
+2. Se NÃO tiver alta confiança no significado, NÃO invente, NÃO estime e NÃO chute.
+3. Em caso de dúvida, retorne recognized=false, confidence="low", medications=[] e description explicando "sigla não reconhecida com segurança".
+4. Para nomes de medicamentos (ex: melatonina, dipirona): retorne 1 item com dosagem e posologia padrão.
+5. Para siglas de protocolo reconhecidas com segurança: retorne todos os medicamentos do esquema.
+6. TOLERÂNCIA A ERROS: Corrija erros comuns de digitação em nomes de medicamentos (ex: "lorazepan"→Lorazepam, "diazepan"→Diazepam, "amoxilina"→Amoxicilina, "omeprasol"→Omeprazol, "captopril"→Captopril, "rivotril"→Clonazepam). Se o nome é claramente uma variação de escrita de um medicamento conhecido, CORRIJA automaticamente e retorne o medicamento com o nome correto na DCB. Sempre trate a entrada como uma tentativa de prescrever um medicamento real.
+7. Responda APENAS com um objeto JSON válido, sem texto antes ou depois, sem \`\`\`json.
+
+Formato exato:
+{"protocolName":"Nome","recognized":true,"confidence":"high","description":"Opcional","medications":[{"name":"Nome","dosage":"Ex: 10mg","frequency":"Ex: 1x ao dia","duration":"Ex: 30 dias","instructions":"Opcional","form":"comprimido"}]}
+`
+
+    const started = Date.now()
+    this.ensureCircuit()
+    try {
+      const result = await startSpan('ai.protocol_expansion.request', () =>
+        this.model.generateContent(prompt)
+      )
+      const raw = result.response.text().trim()
+      let jsonStr = raw
+      const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (codeBlock) jsonStr = codeBlock[1].trim()
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        logger.warn({ raw: raw.slice(0, 500) }, 'Resposta da IA sem JSON válido')
+        return {
+          protocolName: siglaUpper,
+          recognized: false,
+          confidence: 'low',
+          description: 'A IA não retornou um formato válido para este termo.',
+          medications: [],
+        }
+      }
+      let parsed: ProtocolExpansionResult
+      try {
+        parsed = JSON.parse(jsonMatch[0]) as ProtocolExpansionResult
+      } catch {
+        logger.warn({ raw: jsonMatch[0].slice(0, 500) }, 'Falha ao parsear JSON da expansão de protocolo')
+        return {
+          protocolName: siglaUpper,
+          recognized: false,
+          confidence: 'low',
+          description: 'Não foi possível interpretar a resposta da IA com segurança.',
+          medications: [],
+        }
+      }
+      if (!Array.isArray(parsed.medications)) parsed.medications = []
+      if (!parsed.protocolName || typeof parsed.protocolName !== 'string') parsed.protocolName = siglaUpper
+
+      const normalizedMedications = parsed.medications
+        .filter((m) => m && typeof m.name === 'string')
+        .map((m) => ({
+          name: String(m.name || '').trim(),
+          dosage: String(m.dosage || '').trim(),
+          frequency: String(m.frequency || '').trim(),
+          duration: String(m.duration || '').trim(),
+          instructions: m.instructions ? String(m.instructions).trim() : undefined,
+          form: m.form ? String(m.form).trim() : undefined,
+        }))
+        .filter((m) => m.name && m.dosage && m.frequency && m.duration)
+      parsed.medications = normalizedMedications
+
+      // Compatibilidade: se a IA não trouxer flags de reconhecimento, inferir pelos dados válidos.
+      if (typeof parsed.recognized !== 'boolean') parsed.recognized = parsed.medications.length > 0
+      if (!parsed.confidence || !['high', 'medium', 'low'].includes(parsed.confidence)) {
+        parsed.confidence = parsed.recognized ? 'medium' : 'low'
+      }
+
+      if (!parsed.recognized || parsed.confidence === 'low') {
+        parsed.medications = []
+        if (!parsed.description) {
+          parsed.description = 'Sigla não reconhecida com segurança. Revise a sigla informada.'
+        }
+      }
+
+      if (parsed.recognized && parsed.medications.length === 0) {
+        parsed.recognized = false
+        parsed.confidence = 'low'
+        parsed.description =
+          parsed.description || 'Não foi possível extrair um protocolo válido com segurança.'
+      }
+      this.recordSuccess()
+      return parsed
+    } catch (error) {
+      incCounter('ai_request_total', { type: 'protocol_expansion', status: 'error' })
+      observeHistogram('ai_request_latency_ms', Date.now() - started, { type: 'protocol_expansion' })
+      this.recordFailure()
+      const msg = error instanceof Error ? error.message : ''
+      if (
+        msg.includes('não configurado') ||
+        msg.includes('GROQ_API_KEY') ||
+        msg.includes('Configure em Configurações > IA') ||
+        msg.includes('IA local indisponível') ||
+        msg.includes('circuit breaker') ||
+        msg.includes('indisponível') ||
+        msg.includes('não retornou')
+      ) {
+        throw error
+      }
+      logger.error({ err: error, sigla: siglaUpper }, 'Erro ao expandir protocolo')
+      throw new Error('Erro ao expandir protocolo. Verifique se a sigla está correta ou use "Adicionar não cadastrado".')
+    } finally {
+      const duration = Date.now() - started
+      observeHistogram('ai_request_latency_ms', duration, { type: 'protocol_expansion' })
+      incCounter('ai_request_total', { type: 'protocol_expansion', status: 'success' })
+    }
+  }
+}
+
+export interface ProtocolMedication {
+  name: string
+  dosage: string
+  frequency: string
+  duration: string
+  instructions?: string
+  form?: string
+}
+
+export interface ProtocolExpansionResult {
+  protocolName: string
+  description?: string
+  recognized: boolean
+  confidence?: 'high' | 'medium' | 'low'
+  medications: ProtocolMedication[]
 }
 
 export const medicalAI = new AdvancedMedicalAI()

@@ -1,11 +1,38 @@
 import { ensurePrismaConnected, getPrisma } from './db-client'
+import { getPatientAccessFilter } from './patient-access'
 import { logger } from '@/lib/logger'
 
 const prisma = getPrisma()
 
+const ADMIN_ROLES = ['ADMIN', 'OWNER', 'MANAGER']
+
+/** Contexto do usuário para filtrar dados do dashboard (RBAC) */
+export interface DashboardContext {
+  userId?: string
+  userRole?: string
+}
+
 export class DashboardService {
-  // Buscar estatísticas principais do dashboard
-  static async getStats() {
+  /**
+   * Retorna filtro de pacientes para o usuário (vazio = ver todos, ex: ADMIN)
+   */
+  private static getPatientFilter(ctx?: DashboardContext) {
+    if (!ctx?.userId) return {}
+    if (ctx.userRole && ADMIN_ROLES.includes(ctx.userRole.toUpperCase())) return {}
+    return getPatientAccessFilter(ctx.userId, ctx.userRole)
+  }
+
+  /**
+   * Retorna filtro de consultas para o médico (doctorId). Admin vê todas.
+   */
+  private static getConsultationFilter(ctx?: DashboardContext) {
+    if (!ctx?.userId) return {}
+    if (ctx.userRole && ADMIN_ROLES.includes(ctx.userRole.toUpperCase())) return {}
+    return { doctorId: ctx.userId }
+  }
+
+  // Buscar estatísticas principais do dashboard (filtradas por RBAC)
+  static async getStats(ctx?: DashboardContext) {
     try {
       await ensurePrismaConnected()
       const now = new Date()
@@ -16,21 +43,39 @@ export class DashboardService {
       const sevenDaysAgo = new Date(now)
       sevenDaysAgo.setDate(now.getDate() - 7)
 
+      const patientFilter = this.getPatientFilter(ctx)
+      const consultationFilter = this.getConsultationFilter(ctx)
+
       const [totalPatients, consultationsToday, updatedRecords, periodTotal, periodCompleted] = await Promise.all([
-        prisma.patient.count(),
+        prisma.patient.count({ where: patientFilter }),
         prisma.consultation.count({
           where: {
+            ...consultationFilter,
             scheduledDate: { gte: startOfDay, lte: endOfDay },
           },
         }),
-        prisma.medicalRecord.count({
-          where: { updatedAt: { gte: startOfDay } },
+        patientFilter && Object.keys(patientFilter).length > 0
+          ? prisma.medicalRecord.count({
+              where: {
+                updatedAt: { gte: startOfDay },
+                patient: { ...patientFilter },
+              },
+            })
+          : prisma.medicalRecord.count({
+              where: { updatedAt: { gte: startOfDay } },
+            }),
+        prisma.consultation.count({
+          where: {
+            ...consultationFilter,
+            updatedAt: { gte: sevenDaysAgo },
+          },
         }),
         prisma.consultation.count({
-          where: { updatedAt: { gte: sevenDaysAgo } },
-        }),
-        prisma.consultation.count({
-          where: { updatedAt: { gte: sevenDaysAgo }, status: 'COMPLETED' },
+          where: {
+            ...consultationFilter,
+            updatedAt: { gte: sevenDaysAgo },
+            status: 'COMPLETED',
+          },
         }),
       ])
 
@@ -50,13 +95,15 @@ export class DashboardService {
 
 
 
-  // Buscar próximas consultas
-  static async getUpcomingAppointments(limit = 3) {
+  // Buscar próximas consultas (filtradas por médico quando aplicável)
+  static async getUpcomingAppointments(limit = 3, ctx?: DashboardContext) {
     try {
       await ensurePrismaConnected()
       const now = new Date()
+      const consultationFilter = this.getConsultationFilter(ctx)
       const upcoming = await prisma.consultation.findMany({
         where: {
+          ...consultationFilter,
           scheduledDate: { gte: now },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           status: { in: ['SCHEDULED', 'IN_PROGRESS'] as any },
@@ -97,11 +144,13 @@ export class DashboardService {
     }
   }
 
-  // Buscar pacientes recentes
-  static async getRecentPatients(limit = 3) {
+  // Buscar pacientes recentes (filtrados por care team quando aplicável)
+  static async getRecentPatients(limit = 3, ctx?: DashboardContext) {
     try {
       await ensurePrismaConnected()
+      const patientFilter = this.getPatientFilter(ctx)
       const patients = await prisma.patient.findMany({
+        where: patientFilter,
         orderBy: { updatedAt: 'desc' },
         take: limit,
         include: {

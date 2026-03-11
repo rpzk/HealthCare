@@ -7,7 +7,6 @@ import {
   Users, 
   Calendar, 
   FileText, 
-  Brain,
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -51,21 +50,11 @@ export function FloatingActionButton() {
     {
       id: 'record',
       icon: FileText,
-      label: 'Novo Prontuário',
+      label: 'Novo Registro',
       color: 'bg-purple-500 hover:bg-purple-600',
       onClick: () => {
         setIsOpen(false)
-        router.push('/records/new')
-      }
-    },
-    {
-      id: 'ai',
-      icon: Brain,
-      label: 'IA Médica',
-      color: 'bg-indigo-500 hover:bg-indigo-600',
-      onClick: () => {
-        setIsOpen(false)
-        router.push('/ai-medical')
+        router.push('/medical-records/new')
       }
     },
   ]

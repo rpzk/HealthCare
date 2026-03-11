@@ -15,20 +15,22 @@ export const GET = withAuth(async (request, { user }) => {
   let data: any
   let actionDescription = ''
 
+  const ctx = { userId: user.id, userRole: user.role }
+
   switch (section) {
     case 'stats':
       actionDescription = 'Estatísticas gerais do dashboard'
-      data = await DashboardService.getStats()
+      data = await DashboardService.getStats(ctx)
       break
 
     case 'appointments':
       actionDescription = 'Consultas próximas'
-      data = await DashboardService.getUpcomingAppointments()
+      data = await DashboardService.getUpcomingAppointments(3, ctx)
       break
 
     case 'patients':
       actionDescription = 'Pacientes recentes'
-      data = await DashboardService.getRecentPatients()
+      data = await DashboardService.getRecentPatients(3, ctx)
       break
 
     case 'all':
@@ -36,9 +38,9 @@ export const GET = withAuth(async (request, { user }) => {
       actionDescription = 'Dashboard completo'
       try {
         const [allStats, allAppointments, allPatients] = await Promise.all([
-          DashboardService.getStats(),
-          DashboardService.getUpcomingAppointments(),
-          DashboardService.getRecentPatients()
+          DashboardService.getStats(ctx),
+          DashboardService.getUpcomingAppointments(3, ctx),
+          DashboardService.getRecentPatients(3, ctx)
         ])
 
         data = {

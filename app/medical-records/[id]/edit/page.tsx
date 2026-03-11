@@ -47,7 +47,7 @@ export default function EditMedicalRecordPage() {
   }, [fetchRecord, recordId])
 
   const handleSuccess = () => {
-    router.push(`/medical-records/${recordId}`)
+    router.push(initialData?.patientId ? `/patients/${initialData.patientId}` : `/medical-records/${recordId}`)
   }
 
   if (isLoading) {
@@ -66,7 +66,7 @@ export default function EditMedicalRecordPage() {
             {error}
           </div>
           <Link href="/medical-records" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
-            ← Voltar para Lista
+            ← Voltar para lista
           </Link>
         </div>
       </div>
@@ -76,8 +76,11 @@ export default function EditMedicalRecordPage() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '2rem 0' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '2rem' }}>
-        <Link href={`/medical-records/${recordId}`} style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
-          ← Voltar para Detalhe
+        <Link
+          href={initialData?.patientId ? `/patients/${initialData.patientId}` : `/medical-records/${recordId}`}
+          style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}
+        >
+          {initialData?.patientId ? '← Voltar ao paciente' : '← Voltar ao detalhe'}
         </Link>
       </div>
       {initialData && (

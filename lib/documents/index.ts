@@ -141,6 +141,17 @@ export {
 export { appendDocTimeStampToPdf } from './doc-timestamp'
 
 // ============================================
+// PRESCRIÇÕES ANVISA (RDC 1.000/2025)
+// ============================================
+export {
+  generateAnvisaPrescriptionHtml,
+  generateAnvisaPrescriptionPages,
+  hasAnvisaTemplate,
+  type AnvisaPrescriptionType,
+  type AnvisaPrescriptionHtmlOptions,
+} from './anvisa-prescription-html-generator'
+
+// ============================================
 // GERAÇÃO DE PDF
 // ============================================
 export {

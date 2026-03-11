@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
+import { TwoFactorSetup } from '@/components/auth/two-factor-setup'
+import { startRegistration } from '@simplewebauthn/browser'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -39,19 +42,35 @@ import {
   Database,
   PowerOff,
   Trash2,
+  Users,
+  Activity,
+  Award,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UploadA1Certificate } from '@/components/upload-a1-certificate'
+import { CloudCertificateConfig } from '@/components/cloud-certificate-config'
 import { PatientBookingConfig } from '@/components/patient-booking-config'
 import { ScheduleBlockingConfig } from '@/components/schedule-blocking-config'
 import { AdvancedScheduleBlockingConfig } from '@/components/advanced-schedule-blocking-config'
 import { ClinicScheduleConfig } from '@/components/admin/clinic-schedule-config'
 import { ScheduleRequestsManager } from '@/components/admin/schedule-requests-manager'
 import { ProfessionalScheduleRequest } from '@/components/professional-schedule-request'
+import { ScheduleSummaryCard } from '@/components/schedule-summary-card'
 import { BackupManager } from '@/components/admin/backup-manager'
+
+interface PasskeyInfo {
+  id: string
+  nickname?: string | null
+  createdAt: string
+  lastUsedAt?: string | null
+  deviceType?: string | null
+  backedUp: boolean
+}
 
 export default function SettingsPage() {
   const { data: session } = useSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -65,6 +84,20 @@ export default function SettingsPage() {
     specialty: '',
     crmNumber: '',
   })
+
+  // Perfil completo (stats, 2FA) para aba Perfil
+  const [profileFull, setProfileFull] = useState<{
+    role?: string
+    joinDate?: string
+    twoFactorEnabled?: boolean
+    stats?: { totalPatients: number; totalConsultations: number; totalPrescriptions: number; totalExams: number }
+  } | null>(null)
+
+  // Passkeys
+  const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([])
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [passkeyError, setPasskeyError] = useState<string | null>(null)
+  const [deletingPasskey, setDeletingPasskey] = useState<string | null>(null)
 
   // Senha
   const [passwordData, setPasswordData] = useState({
@@ -121,6 +154,12 @@ export default function SettingsPage() {
             ? `${data.crmNumber}/${data.licenseState}`
             : data.crmNumber || '',
         })
+        setProfileFull({
+          role: data.role,
+          joinDate: data.joinDate,
+          twoFactorEnabled: data.twoFactorEnabled,
+          stats: data.stats,
+        })
       }
     } catch (error) {
       console.error('Erro ao carregar perfil:', error)
@@ -128,6 +167,86 @@ export default function SettingsPage() {
       setLoading(false)
     }
   }, [])
+
+  const fetchPasskeys = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/webauthn/credentials')
+      if (res.ok) {
+        const data = await res.json()
+        setPasskeys(data.credentials || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar passkeys', err)
+    }
+  }, [])
+
+  const formatPasskeyError = (err: unknown): string => {
+    const e = err as Error & { name?: string }
+    let msg = e?.message ?? (typeof e === 'string' ? e : String(e ?? 'Erro desconhecido'))
+    if (!msg || msg === '[object Object]') {
+      msg = e?.name === 'NotAllowedError'
+        ? 'A operação foi cancelada ou não permitida pelo navegador.'
+        : e?.name === 'InvalidStateError'
+          ? 'Esta passkey já está cadastrada neste dispositivo.'
+          : 'Não foi possível registrar a passkey.'
+    }
+    if (msg.includes('not allowed') || msg.includes('user denied') || msg.includes('denied permission') || msg.includes('cancel')) {
+      return 'A operação foi cancelada ou bloqueada. Certifique-se de permitir a criação da passkey.'
+    }
+    return msg
+  }
+
+  const registerPasskey = async () => {
+    setPasskeyError(null)
+    setPasskeyLoading(true)
+    try {
+      const optionsRes = await fetch('/api/auth/webauthn/register/options', { method: 'POST' })
+      if (!optionsRes.ok) {
+        const data = await optionsRes.json()
+        throw new Error(data.error || 'Não foi possível iniciar o registro de passkey')
+      }
+      const options = await optionsRes.json()
+      const attestation = await startRegistration(options)
+      const verifyRes = await fetch('/api/auth/webauthn/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: attestation })
+      })
+      if (!verifyRes.ok) {
+        const data = await verifyRes.json().catch(() => ({}))
+        throw new Error(data.error || `Falha ao salvar passkey (${verifyRes.status})`)
+      }
+      await fetchPasskeys()
+      setPasskeyError(null)
+      toast.success('Passkey cadastrada com sucesso!')
+    } catch (err: Error | unknown) {
+      const msg = formatPasskeyError(err)
+      setPasskeyError(msg)
+      toast.error(msg)
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
+
+  const deletePasskey = async (id: string) => {
+    if (!confirm('Tem certeza que deseja remover esta passkey?')) return
+    setDeletingPasskey(id)
+    setPasskeyError(null)
+    try {
+      const res = await fetch(`/api/auth/webauthn/credentials?id=${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao remover passkey')
+      }
+      await fetchPasskeys()
+      toast.success('Passkey removida')
+    } catch (err: any) {
+      setPasskeyError(err?.message || 'Erro ao remover passkey')
+      toast.error(err?.message || 'Erro ao remover passkey')
+    } finally {
+      setDeletingPasskey(null)
+    }
+  }
 
   const loadCertificates = useCallback(async () => {
     try {
@@ -173,12 +292,19 @@ export default function SettingsPage() {
     }
   }, [session])
 
+  // Tab inicial da URL
+  const tabParam = searchParams.get('tab') || (searchParams.get('force2fa') === 'true' ? 'security' : 'profile')
+  const force2FA = searchParams.get('force2fa') === 'true'
+  const validTabs = ['profile', 'security', 'certificates', 'notifications', 'scheduling', 'email', 'backups', 'system']
+  const activeTab = validTabs.includes(tabParam) ? tabParam : 'profile'
+
   // Carregar dados
   useEffect(() => {
     void loadProfile()
     void loadCertificates()
+    void fetchPasskeys()
     loadNotifications()
-  }, [loadCertificates, loadNotifications, loadProfile])
+  }, [loadCertificates, loadNotifications, loadProfile, fetchPasskeys])
 
   useEffect(() => {
     void loadEmailConfig()
@@ -410,11 +536,26 @@ export default function SettingsPage() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
               <p className="text-muted-foreground mt-2">
-                Gerencie suas preferências pessoais e configurações do sistema
+                Gerencie seu perfil, segurança e preferências do sistema
               </p>
             </div>
 
-            <Tabs defaultValue="profile" className="space-y-6">
+            {/* Banner 2FA obrigatório */}
+            {force2FA && !profileFull?.twoFactorEnabled && (profileFull?.role === 'ADMIN' || profileFull?.role === 'DOCTOR') && (
+              <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+                <AlertDescription>
+                  <span className="font-medium">Autenticação em Dois Fatores Obrigatória.</span>{' '}
+                  {profileFull?.role === 'ADMIN' ? 'Administradores' : 'Médicos'} devem habilitar 2FA. Configure na aba Segurança abaixo.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => router.replace(`/settings?tab=${v}`, { scroll: false })}
+              className="space-y-6"
+            >
               <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-6'}`}>
                 <TabsTrigger value="profile">
                   <User className="mr-2 h-4 w-4" />
@@ -456,6 +597,39 @@ export default function SettingsPage() {
 
               {/* Aba Perfil */}
               <TabsContent value="profile" className="space-y-4">
+                {/* Estatísticas */}
+                {profileFull?.stats && (profileFull.role === 'ADMIN' || profileFull.role === 'DOCTOR' || profileFull.role === 'NURSE') && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <Users className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+                        <p className="text-2xl font-bold">{profileFull.stats.totalPatients}</p>
+                        <p className="text-sm text-muted-foreground">Pacientes</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <Activity className="h-8 w-8 mx-auto text-green-500 mb-2" />
+                        <p className="text-2xl font-bold">{profileFull.stats.totalConsultations}</p>
+                        <p className="text-sm text-muted-foreground">Consultas</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <FileSignature className="h-8 w-8 mx-auto text-purple-500 mb-2" />
+                        <p className="text-2xl font-bold">{profileFull.stats.totalPrescriptions}</p>
+                        <p className="text-sm text-muted-foreground">Prescrições</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <Award className="h-8 w-8 mx-auto text-orange-500 mb-2" />
+                        <p className="text-2xl font-bold">{profileFull.stats.totalExams}</p>
+                        <p className="text-sm text-muted-foreground">Exames</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
                 <Card>
                   <CardHeader>
                     <CardTitle>Informações Pessoais</CardTitle>
@@ -641,10 +815,78 @@ export default function SettingsPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* 2FA e Passkeys */}
+                <Card id="seguranca">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      Autenticação em Dois Fatores e Passkeys
+                    </CardTitle>
+                    <CardDescription>
+                      Proteja sua conta com 2FA (TOTP) e passkeys (Face ID, Touch ID, Windows Hello)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    <TwoFactorSetup
+                      isEnabled={profileFull?.twoFactorEnabled || false}
+                      onStatusChange={loadProfile}
+                      embedded
+                    />
+                    <Separator />
+                    <div>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                        <div>
+                          <h4 className="font-semibold">Passkeys</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Face ID, Touch ID, Windows Hello ou chave FIDO2
+                          </p>
+                        </div>
+                        <Button onClick={registerPasskey} disabled={passkeyLoading} variant="outline" size="sm">
+                          {passkeyLoading ? 'Registrando...' : 'Adicionar Passkey'}
+                        </Button>
+                      </div>
+                      {passkeyError && (
+                        <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-md p-2 mb-3">
+                          {passkeyError}
+                        </div>
+                      )}
+                      {passkeys.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhuma passkey cadastrada.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {passkeys.map((pk) => (
+                            <div key={pk.id} className="flex items-center justify-between border rounded-md p-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{pk.nickname || 'Passkey'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Criada em {new Date(pk.createdAt).toLocaleDateString('pt-BR')} · {pk.deviceType || 'dispositivo'}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deletePasskey(pk.id)}
+                                disabled={deletingPasskey === pk.id}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                {deletingPasskey === pk.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Recomendamos pelo menos 2 passkeys (celular e notebook) para evitar bloqueio.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Aba Certificados */}
               <TabsContent value="certificates" className="space-y-4">
+                <CloudCertificateConfig />
                 <UploadA1Certificate onSuccess={loadCertificates} />
 
                 <Card>
@@ -980,6 +1222,10 @@ export default function SettingsPage() {
 
               {/* Aba Agendamento */}
               <TabsContent value="scheduling" className="space-y-4">
+                {/* Resumo da agenda (profissionais) */}
+                <ScheduleSummaryCard />
+                <Separator className="my-6" />
+
                 {/* Admin/Secretária: Configuração da Clínica */}
                 {(session?.user?.role === 'ADMIN' || session?.user?.role === 'RECEPTIONIST') && (
                   <>

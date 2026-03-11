@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { PrismaClient, Gender, ConsultationType, ConsultationStatus, RecordType, Severity, Role, RiskLevel } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import crypto from 'crypto'
@@ -63,6 +64,51 @@ async function main() {
     },
   })
 
+  // Equipe mínima para testes multi-profissional
+  const nurseUser = await prisma.user.upsert({
+    where: { email: 'nurse@healthcare.com' },
+    update: {},
+    create: {
+      email: 'nurse@healthcare.com',
+      name: 'Enf. Maria Santos',
+      role: Role.NURSE,
+      speciality: 'Enfermagem Geral',
+      licenseNumber: 'COREN-SP 123456',
+      licenseType: 'COREN',
+      licenseState: 'SP',
+      phone: '(11) 98765-4321',
+      password: await bcrypt.hash('nurse123', 12),
+    },
+  })
+
+  const technicianUser = await prisma.user.upsert({
+    where: { email: 'technician@healthcare.com' },
+    update: {},
+    create: {
+      email: 'technician@healthcare.com',
+      name: 'Téc. Carlos Oliveira',
+      role: Role.TECHNICIAN,
+      speciality: 'Técnico de Enfermagem',
+      licenseNumber: 'COREN-SP 654321',
+      licenseType: 'COREN',
+      licenseState: 'SP',
+      phone: '(11) 98765-4322',
+      password: await bcrypt.hash('tech123', 12),
+    },
+  })
+
+  const receptionistUser = await prisma.user.upsert({
+    where: { email: 'receptionist@healthcare.com' },
+    update: {},
+    create: {
+      email: 'receptionist@healthcare.com',
+      name: 'Ana Recepção',
+      role: Role.RECEPTIONIST,
+      phone: '(11) 98765-4323',
+      password: await bcrypt.hash('recep123', 12),
+    },
+  })
+
   // Paciente + User paciente para testes E2E (jornada do paciente)
   const birthDate = new Date('1985-06-15')
   const patientRecord = await prisma.patient.upsert({
@@ -95,6 +141,7 @@ async function main() {
   console.log(`Usuário admin: ${adminUser.email}`)
   console.log(`Usuário médico (E2E): ${doctorUser.email}`)
   console.log(`Usuário paciente (E2E): ${patientUser.email}`)
+  console.log(`Equipe: ${nurseUser.email} | ${technicianUser.email} | ${receptionistUser.email}`)
 }
 
 main()

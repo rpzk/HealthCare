@@ -57,6 +57,12 @@ model User {
 
   // Questionários integrativos
   questionnaireTemplates QuestionnaireTemplate[]
+  
+  // NOVO: Múltiplos CBOs por profissional
+  occupations            UserOccupation[]
+  
+  // NOVO: Procedimentos executados como profissional
+  executedProcedures     ConsultationProcedure[]  @relation("ProcedureExecutor")
   sentQuestionnaires     PatientQuestionnaire[]  @relation("SentQuestionnaires")
 
   // Equipe de cuidado
@@ -180,6 +186,49 @@ model UserAssignedRole {
 
   @@unique([userId, role]) // Um usuário não pode ter o mesmo papel duas vezes
   @@map("user_assigned_roles")
+}
+
+// =====================================================
+// VÍNCULO PROFISSIONAL × CBO (Múltiplos CBOs)
+// =====================================================
+
+model UserOccupation {
+  id           String      @id @default(cuid())
+  userId       String
+  occupationId String      // FK para Occupation (CBO nível 5)
+  
+  // Contexto do vínculo
+  isPrimary    Boolean     @default(false) // CBO principal do profissional
+  licenseNumber String?    // Ex: CRM 123456 (se aplicável)
+  licenseState  String?    // Ex: SP
+  isActive     Boolean     @default(true)
+  
+  // Hierarquia denormalizada (performance)
+  familiaId       String?  // CBO nível 4
+  grandeGrupoCode String?  // CBO nível 1
+  familiaCode     String?  // Código da família
+  
+  // Datas
+  validFrom    DateTime?   // Início da validade
+  validUntil   DateTime?   // Fim (se temporário)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  // Relações
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occupation   Occupation  @relation(fields: [occupationId], references: [id])
+  familia      CBOFamilia? @relation(fields: [familiaId], references: [id])
+  
+  // Procedimentos executados com este CBO
+  proceduresExecuted ConsultationProcedure[]
+  
+  // Índices
+  @@unique([userId, occupationId])
+  @@index([userId, isPrimary])
+  @@index([occupationId])
+  @@index([grandeGrupoCode])
+  @@index([familiaId])
+  @@map("user_occupations")
 }
 
 model Person {
@@ -444,7 +493,14 @@ model Referral {
   id          String  @id @default(cuid())
   patientId   String
   doctorId    String
-  specialty   String
+  
+  // NOVO: Vínculo com CBO (ocupação/especialidade de destino)
+  targetOccupationId String?
+  targetOccupation   Occupation? @relation("ReferralTargetOccupation", fields: [targetOccupationId], references: [id])
+  
+  // Campo texto livre (fallback para especialidades não padronizadas)
+  specialty   String?
+  
   description String
   priority    String  @default("NORMAL")
   status      String  @default("PENDING")
@@ -625,6 +681,15 @@ model Consultation {
   examRequests         ExamRequest[]
   prescriptions        Prescription[]
   vitalSigns           VitalSigns[]
+  
+  // NOVO: Procedimentos SIGTAP executados (auditoria + custos)
+  procedures           ConsultationProcedure[]
+  
+  // NOVO: Totalizadores denormalizados (em centavos)
+  totalCustoSH         Int?   // Total Serviço Hospitalar
+  totalCustoSA         Int?   // Total Serviço Ambulatorial
+  totalCustoSP         Int?   // Total Serviço Profissional
+  totalCusto           Int?   // Total geral
 
   // Questionários associados a esta consulta
   questionnaires PatientQuestionnaire[]
@@ -744,7 +809,14 @@ enum PrescriptionType {
 
 model ExamRequest {
   id             String        @id @default(cuid())
-  examType       String
+  
+  // NOVO: Vínculo com SIGTAP (procedimento padronizado)
+  procedimentoId String?
+  procedimento   SIGTAPProcedimento? @relation("ExamProcedimento", fields: [procedimentoId], references: [id])
+  
+  // Campo texto livre (fallback para exames não padronizados)
+  examType       String?
+  
   description    String?
   urgency        Urgency       @default(ROUTINE)
   status         ExamStatus    @default(REQUESTED)
@@ -983,6 +1055,68 @@ model CodeSystem {
   @@map("code_systems")
 }
 
+// ========================================
+// CID-10 - Classificação Internacional de Doenças
+// Hierarquia completa: 4 níveis
+// ========================================
+
+/// Nível 1: Capítulo (22 capítulos: I-XXII)
+/// Ex: I - Algumas doenças infecciosas e parasitárias (A00-B99)
+model CID10Capitulo {
+  id            String          @id @default(cuid())
+  code          String          @unique  // Ex: "I", "II", "III"
+  codeRange     String                   // Ex: "A00-B99"
+  name          String                   // Ex: "Algumas doenças infecciosas e parasitárias"
+  description   String?
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  grupos        CID10Grupo[]
+  subcategorias MedicalCode[]
+
+  @@map("cid10_capitulos")
+}
+
+/// Nível 2: Grupo
+/// Ex: A00-A09 - Doenças infecciosas intestinais
+model CID10Grupo {
+  id            String          @id @default(cuid())
+  code          String          @unique  // Ex: "A00-A09"
+  name          String                   // Ex: "Doenças infecciosas intestinais"
+  description   String?
+  capituloId    String
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  capitulo      CID10Capitulo   @relation(fields: [capituloId], references: [id])
+  categorias    CID10Categoria[]
+  subcategorias MedicalCode[]
+
+  @@index([capituloId])
+  @@map("cid10_grupos")
+}
+
+/// Nível 3: Categoria (3 caracteres)
+/// Ex: A00 - Cólera
+model CID10Categoria {
+  id             String         @id @default(cuid())
+  code           String         @unique  // Ex: "A00"
+  name           String                  // Ex: "Cólera"
+  description    String?
+  grupoId        String
+  sexRestriction String?                 // M/F/null
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  grupo          CID10Grupo     @relation(fields: [grupoId], references: [id])
+  subcategorias  MedicalCode[]  @relation("CategoriaSubcategorias")
+
+  @@index([grupoId])
+  @@map("cid10_categorias")
+}
+
+/// Nível 4: Subcategoria (4+ caracteres) - MedicalCode
+/// Ex: A00.0 - Cólera devida a Vibrio cholerae 01, biótipo cholerae
 model MedicalCode {
   id                String                   @id @default(cuid())
   systemId          String
@@ -994,23 +1128,39 @@ model MedicalCode {
   searchableText    String?
   active            Boolean                  @default(true)
   // Campos adicionais do sistema legado SSF
-  chapter           String? // Capítulo CID-10 (I-XXII)
+  chapter           String? // Capítulo CID-10 (I-XXII) - DEPRECATED: use capituloId
   isCategory        Boolean                  @default(false) // Se é categoria principal
   sexRestriction    String? // M=masculino, F=feminino, null=ambos
   crossAsterisk     String? // ETIOLOGY (+) ou MANIFESTATION (*)
   shortDescription  String? // Descrição curta/abreviada
+  // Relacionamentos hierárquicos específicos
+  capituloId        String?
+  grupoId           String?
+  categoriaId       String?
+  // Campos denormalizados para busca rápida
+  capituloCode      String?
+  grupoCode         String?
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   primaryIn         Diagnosis[]              @relation("PrimaryCode")
   parent            MedicalCode?             @relation("MedicalCodeHierarchy", fields: [parentId], references: [id])
   children          MedicalCode[]            @relation("MedicalCodeHierarchy")
   system            CodeSystem               @relation(fields: [systemId], references: [id])
+  // Relações hierárquicas
+  capitulo          CID10Capitulo?           @relation(fields: [capituloId], references: [id])
+  grupo             CID10Grupo?              @relation(fields: [grupoId], references: [id])
+  categoria         CID10Categoria?          @relation("CategoriaSubcategorias", fields: [categoriaId], references: [id])
 
   @@unique([systemId, code])
   @@index([code])
   @@index([display])
   @@index([chapter])
   @@index([sexRestriction])
+  @@index([capituloId])
+  @@index([grupoId])
+  @@index([categoriaId])
+  @@index([capituloCode])
+  @@index([grupoCode])
   @@map("medical_codes")
 }
 
@@ -1137,6 +1287,13 @@ model ExternalSourceUpdate {
   @@map("external_source_updates")
 }
 
+// ========================================
+// CBO - Classificação Brasileira de Ocupações
+// Hierarquia completa: 5 níveis
+// ========================================
+
+/// DEPRECATED: Use modelos específicos abaixo
+/// Mantido para compatibilidade com código legado
 model CBOGroup {
   id          String       @id @default(cuid())
   code        String       @unique
@@ -1153,19 +1310,110 @@ model CBOGroup {
   @@map("cbo_groups")
 }
 
-model Occupation {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  title       String
+/// Nível 1: Grande Grupo (10 grupos)
+/// Ex: 0 - Membros das forças armadas, 2 - Profissionais das ciências e das artes
+model CBOGrandeGrupo {
+  id               String                 @id @default(cuid())
+  code             String                 @unique
+  name             String
+  description      String?
+  active           Boolean                @default(true)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  subgruposPrincipais CBOSubgrupoPrincipal[]
+
+  @@map("cbo_grande_grupos")
+}
+
+/// Nível 2: Subgrupo Principal
+/// Ex: 22 - Profissionais das ciências exatas, físicas e da engenharia
+model CBOSubgrupoPrincipal {
+  id            String          @id @default(cuid())
+  code          String          @unique
+  name          String
+  description   String?
+  grandeGrupoId String
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  grandeGrupo   CBOGrandeGrupo  @relation(fields: [grandeGrupoId], references: [id])
+  subgrupos     CBOSubgrupo[]
+
+  @@index([grandeGrupoId])
+  @@map("cbo_subgrupos_principais")
+}
+
+/// Nível 3: Subgrupo
+/// Ex: 223 - Profissionais da medicina, saúde e afins
+model CBOSubgrupo {
+  id                   String               @id @default(cuid())
+  code                 String               @unique
+  name                 String
+  description          String?
+  subgrupoPrincipalId  String
+  active               Boolean              @default(true)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  subgrupoPrincipal    CBOSubgrupoPrincipal @relation(fields: [subgrupoPrincipalId], references: [id])
+  familias             CBOFamilia[]
+
+  @@index([subgrupoPrincipalId])
+  @@map("cbo_subgrupos")
+}
+
+/// Nível 4: Família
+/// Ex: 2231 - Médicos
+model CBOFamilia {
+  id         String        @id @default(cuid())
+  code       String        @unique
+  name       String
   description String?
-  groupId     String?
-  synonyms    String?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  group       CBOGroup? @relation(fields: [groupId], references: [id])
+  subgrupoId String
+  active     Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  subgrupo   CBOSubgrupo   @relation(fields: [subgrupoId], references: [id])
+  ocupacoes  Occupation[]
+  
+  // NOVO: Vínculos com profissionais
+  userOccupations UserOccupation[]
+
+  @@index([subgrupoId])
+  @@map("cbo_familias")
+}
+
+/// Nível 5: Ocupação (~2.650 ocupações)
+/// Ex: 223105 - Médico clínico
+model Occupation {
+  id              String     @id @default(cuid())
+  code            String     @unique
+  title           String
+  description     String?
+  // Relacionamento hierárquico específico
+  familiaId       String?
+  // Campos denormalizados para busca rápida
+  grandeGrupoCode String?
+  familiaCode     String?
+  // Relacionamento legacy (deprecated)
+  groupId         String?
+  synonyms        String?
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  // Relações
+  familia         CBOFamilia? @relation(fields: [familiaId], references: [id])
+  group           CBOGroup?   @relation(fields: [groupId], references: [id])
+
+  // NOVO: Vínculos com profissionais
+  userOccupations UserOccupation[]
+  
+  // NOVO: Encaminhamentos para esta especialidade
+  referralsAsTarget Referral[] @relation("ReferralTargetOccupation")
 
   @@index([groupId])
+  @@index([familiaId])
+  @@index([grandeGrupoCode])
+  @@index([familiaCode])
   @@map("occupations")
 }
 
@@ -1610,6 +1858,7 @@ enum AIRequestType {
   SYMPTOM_ANALYSIS
   MEDICAL_SUMMARY
   RISK_ASSESSMENT
+  PROTOCOL_EXPANSION
 }
 
 enum CodeSystemKind {
@@ -1741,8 +1990,19 @@ model Medication {
   commercialPharmacy Boolean @default(false) // Farmácia Comercial
   compoundPharmacy   Boolean @default(false) // Farmácia de Manipulação
 
-  // Código SUS
-  susCode String?
+  // Código SUS / CATMAT (RENAME)
+  susCode      String?
+  codigoCATMAT String?  @unique // Código CATMAT - RENAME
+
+  // RENAME - Campos específicos da lista oficial
+  componente         String?  // Básico, Estratégico, Especializado
+  apresentacao       String?  // Ex: "Caixa com 30 comprimidos"
+  controlado         Boolean  @default(false) // Portaria 344/98
+  antimicrobiano     Boolean  @default(false)
+  altoValor          Boolean  @default(false)
+  usoHospitalar      Boolean  @default(false)
+  programaEspecifico String?  // DST/AIDS, Tuberculose, etc
+  atenEspecializada  Boolean  @default(false)
 
   // Informações de uso
   instructions String? // Orientação de uso padrão
@@ -1781,6 +2041,9 @@ model Medication {
 
   @@index([name])
   @@index([susCode])
+  @@index([codigoCATMAT])
+  @@index([controlado])
+  @@index([antimicrobiano])
   @@map("medications")
 }
 
@@ -1872,6 +2135,7 @@ model FormulaTemplate {
 // SISTEMA DE PROCEDIMENTOS SIGTAP (Importado do SSF)
 // =====================================================
 
+// DEPRECATED: Modelo antigo, será substituído pelos novos modelos hierárquicos
 model Procedure {
   id             String  @id @default(cuid())
   code           String  @unique // Código SIGTAP (10 dígitos)
@@ -1897,6 +2161,305 @@ model Procedure {
   @@index([code])
   @@index([name])
   @@map("procedures")
+}
+
+// =====================================================
+// SIGTAP HIERÁRQUICO COMPLETO (Competência 202602)
+// =====================================================
+
+/// Nível 1: Grupo de Procedimento
+/// Ex: 01 - Ações de promoção e prevenção em saúde
+model SIGTAPGrupo {
+  id          String   @id @default(cuid())
+  code        String   @unique // 2 dígitos
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relações
+  subgrupos     SIGTAPSubgrupo[]
+  procedimentos SIGTAPProcedimento[]
+  
+  @@index([code])
+  @@map("sigtap_grupos")
+}
+
+/// Nível 2: Subgrupo de Procedimento
+/// Ex: 0101 - Ações coletivas/individuais em saúde
+model SIGTAPSubgrupo {
+  id          String       @id @default(cuid())
+  code        String       @unique // 4 dígitos
+  name        String
+  description String?
+  grupoId     String
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relações
+  grupo                SIGTAPGrupo               @relation(fields: [grupoId], references: [id])
+  formasOrganizacao    SIGTAPFormaOrganizacao[]
+  procedimentos        SIGTAPProcedimento[]
+  
+  @@index([grupoId])
+  @@index([code])
+  @@map("sigtap_subgrupos")
+}
+
+/// Nível 3: Forma de Organização
+/// Ex: 010101 - Vacinação
+model SIGTAPFormaOrganizacao {
+  id          String       @id @default(cuid())
+  code        String       @unique // 6 dígitos
+  name        String
+  description String?
+  subgrupoId  String
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relações
+  subgrupo      SIGTAPSubgrupo        @relation(fields: [subgrupoId], references: [id])
+  procedimentos SIGTAPProcedimento[]
+  
+  @@index([subgrupoId])
+  @@index([code])
+  @@map("sigtap_formas_organizacao")
+}
+
+/// Nível 4: Procedimento (Código completo 10 dígitos)
+/// Ex: 0101010012 - Administração de medicamentos na atenção básica
+model SIGTAPProcedimento {
+  id              String  @id @default(cuid())
+  code            String  @unique // 10 dígitos
+  name            String
+  description     String? @db.Text
+  
+  // Hierarquia
+  grupoId              String?
+  subgrupoId           String?
+  formaOrganizacaoId   String?
+  
+  // Financiamento e Custos
+  financiamentoId      String?
+  rubricaId            String?
+  modalidadeId         String?
+  
+  // Valores de Remuneração (em centavos para precisão)
+  valorSH              Int?     // Serviço Hospitalar (centavos)
+  valorSA              Int?     // Serviço Ambulatorial (centavos)
+  valorSP              Int?     // Serviço Profissional (centavos)
+  
+  // Restrições
+  complexity           Int?
+  minAge               Int?     // Em meses
+  maxAge               Int?     // Em meses
+  sexRestriction       String?  // M/F/null
+  qtMaximaExecucao     Int?
+  qtDiasPermanencia    Int?
+  pontos               Decimal? @db.Decimal(10,2)
+  
+  // Metadados
+  active               Boolean   @default(true)
+  validFrom            DateTime? // Data de vigência
+  validUntil           DateTime? // Data de encerramento
+  competencia          String?   // AAAAMM (ex: 202602)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relações
+  grupo                  SIGTAPGrupo?               @relation(fields: [grupoId], references: [id])
+  subgrupo               SIGTAPSubgrupo?            @relation(fields: [subgrupoId], references: [id])
+  formaOrganizacao       SIGTAPFormaOrganizacao?    @relation(fields: [formaOrganizacaoId], references: [id])
+  financiamento          SIGTAPFinanciamento?       @relation(fields: [financiamentoId], references: [id])
+  rubrica                SIGTAPRubrica?             @relation(fields: [rubricaId], references: [id])
+  modalidade             SIGTAPModalidade?          @relation(fields: [modalidadeId], references: [id])
+  
+  // Compatibilidades
+  cboCompatibilities     ProcedureCBOCompatibility[]
+  cidCompatibilities     ProcedureCIDCompatibility[]
+  
+  // Uso em consultas
+  consultas              ConsultationProcedure[]
+  
+  // NOVO: Solicitações de exames vinculadas a este procedimento
+  examRequests           ExamRequest[]              @relation("ExamProcedimento")
+  
+  @@index([code])
+  @@index([grupoId])
+  @@index([subgrupoId])
+  @@index([formaOrganizacaoId])
+  @@index([financiamentoId])
+  @@index([competencia])
+  @@index([active])
+  @@map("sigtap_procedimentos")
+}
+
+/// Tabela auxiliar: Financiamento
+/// Ex: FAB (Financiamento da Atenção Básica)
+model SIGTAPFinanciamento {
+  id            String               @id @default(cuid())
+  code          String               @unique
+  name          String
+  description   String?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  
+  procedimentos SIGTAPProcedimento[]
+  
+  @@index([code])
+  @@map("sigtap_financiamentos")
+}
+
+/// Tabela auxiliar: Rubrica
+/// Ex: Atenção Básica, Atenção Especializada
+model SIGTAPRubrica {
+  id            String               @id @default(cuid())
+  code          String               @unique
+  name          String
+  description   String?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  
+  procedimentos SIGTAPProcedimento[]
+  
+  @@index([code])
+  @@map("sigtap_rubricas")
+}
+
+/// Tabela auxiliar: Modalidade
+/// Ex: 01 - Ambulatorial, 02 - Hospitalar
+model SIGTAPModalidade {
+  id            String               @id @default(cuid())
+  code          String               @unique
+  name          String
+  description   String?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  
+  procedimentos SIGTAPProcedimento[]
+  
+  @@index([code])
+  @@map("sigtap_modalidades")
+}
+
+// =====================================================
+// COMPATIBILIDADES SIGTAP (CBO × Procedimento, CID × Procedimento)
+// =====================================================
+
+/// Compatibilidade: Procedimento × CBO
+/// Define quais CBOs podem executar cada procedimento
+model ProcedureCBOCompatibility {
+  id              String             @id @default(cuid())
+  procedureId     String
+  occupationCode  String             // Código CBO (pode ser genérico: "2231*")
+  
+  // Tipo de compatibilidade
+  type            String             // "OBRIGATORIA" | "PERMITIDA" | "SUGERIDA"
+  
+  // Metadados
+  validFrom       DateTime?
+  validUntil      DateTime?
+  competencia     String?            // AAAAMM
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  // Relações
+  procedure       SIGTAPProcedimento @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  
+  @@unique([procedureId, occupationCode])
+  @@index([procedureId])
+  @@index([occupationCode])
+  @@index([type])
+  @@map("procedure_cbo_compatibility")
+}
+
+/// Compatibilidade: Procedimento × CID
+/// Define quais CIDs justificam cada procedimento
+model ProcedureCIDCompatibility {
+  id              String             @id @default(cuid())
+  procedureId     String
+  cidCode         String             // Código CID (ex: "A00" ou "A00.0")
+  
+  // Tipo de compatibilidade
+  type            String             // "OBRIGATORIA" | "PERMITIDA" | "SUGERIDA" | "RESTRITA"
+  
+  // Metadados
+  validFrom       DateTime?
+  validUntil      DateTime?
+  competencia     String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  // Relações
+  procedure       SIGTAPProcedimento @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  
+  @@unique([procedureId, cidCode])
+  @@index([procedureId])
+  @@index([cidCode])
+  @@index([type])
+  @@map("procedure_cid_compatibility")
+}
+
+// =====================================================
+// PROCEDIMENTOS EXECUTADOS EM CONSULTAS (Auditoria + Custos)
+// =====================================================
+
+/// Registro de procedimentos executados durante consultas
+/// Permite auditoria completa, cálculo de custos e faturamento
+model ConsultationProcedure {
+  id              String             @id @default(cuid())
+  consultationId  String
+  procedureId     String             // FK para SIGTAPProcedimento
+  
+  // Executor
+  executorId      String             // FK para User (profissional)
+  executorCBOId   String?            // FK para UserOccupation (qual CBO usou)
+  
+  // Validação automática
+  isCompatibleCBO Boolean            @default(false) // CBO do executor é compatível?
+  isCompatibleCID Boolean            @default(false) // CID da consulta é compatível?
+  validationErrors String?           @db.Text        // Erros de validação (JSON)
+  
+  // Custos (denormalizados em centavos para histórico)
+  valorSH         Int?               // Serviço Hospitalar (centavos)
+  valorSA         Int?               // Serviço Ambulatorial (centavos)
+  valorSP         Int?               // Serviço Profissional (centavos)
+  valorTotal      Int?               // Total (centavos)
+  
+  // Faturamento
+  competenciaFat  String?            // AAAAMM do faturamento
+  statusFat       String?            // "PENDENTE" | "ENVIADO" | "PAGO" | "GLOSADO"
+  motivoGlosa     String?            @db.Text
+  dataEnvioFat    DateTime?
+  dataPagamento   DateTime?
+  
+  // Auditoria
+  quantity        Int                @default(1)
+  notes           String?            @db.Text
+  createdAt       DateTime           @default(now())
+  createdBy       String             // Quem registrou
+  updatedAt       DateTime           @updatedAt
+  
+  // Relações
+  consultation    Consultation       @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  procedure       SIGTAPProcedimento @relation(fields: [procedureId], references: [id])
+  executor        User               @relation("ProcedureExecutor", fields: [executorId], references: [id])
+  executorCBO     UserOccupation?    @relation(fields: [executorCBOId], references: [id])
+  
+  @@index([consultationId])
+  @@index([procedureId])
+  @@index([executorId])
+  @@index([executorCBOId])
+  @@index([competenciaFat])
+  @@index([statusFat])
+  @@index([createdAt])
+  @@map("consultation_procedures")
 }
 
 // =====================================================

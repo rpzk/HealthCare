@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Calendar, Clock, User, Play, CheckCircle, XCircle, UserX, Eye, X } from 'lucide-react'
@@ -54,6 +55,7 @@ export function ConsultationsList() {
   const router = useRouter()
   const searchParamsString = searchParams?.toString() || ''
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 400)
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +79,7 @@ export function ConsultationsList() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(typeFilter !== 'all' && { type: typeFilter })
       })
@@ -120,7 +122,7 @@ export function ConsultationsList() {
     } finally {
       setLoading(false)
     }
-  }, [pagination.limit, pagination.page, searchParamsString, searchTerm, statusFilter, typeFilter])
+  }, [pagination.limit, pagination.page, searchParamsString, debouncedSearch, statusFilter, typeFilter])
 
   useEffect(() => {
     void fetchConsultations()

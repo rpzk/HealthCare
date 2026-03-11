@@ -292,7 +292,7 @@ export function PatientsList() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, CPF ou email..."
             value={searchTerm}
@@ -308,7 +308,7 @@ export function PatientsList() {
 
       {patients.length === 0 ? (
         <Card>
-          <CardContent className="p-8 text-center text-gray-500">
+          <CardContent className="p-8 text-center text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <p>Nenhum paciente encontrado</p>
           </CardContent>
@@ -320,28 +320,36 @@ export function PatientsList() {
             const stats = patient.stats || {}
             
             return (
-              <Card key={patient.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => openPatientDetails(patient)}>
+              <Card
+                key={patient.id}
+                className="hover:shadow-md transition-shadow cursor-pointer border-border/80"
+                onClick={() => openPatientDetails(patient)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-blue-100 text-blue-700 font-medium">
+                      <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200 font-medium">
                         {getInitials(patient.name)}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900 truncate">{patient.name}</h3>
+                        <h3 className="font-semibold text-foreground truncate">{patient.name}</h3>
                         {patient.age && <Badge variant="secondary" className="text-xs">{patient.age} anos</Badge>}
-                        {patient.bloodType && <Badge variant="outline" className="text-xs text-red-600 border-red-200">{patient.bloodType}</Badge>}
+                        {patient.bloodType && (
+                          <Badge variant="outline" className="text-xs text-red-600 border-red-200 dark:text-red-300 dark:border-red-900">
+                            {patient.bloodType}
+                          </Badge>
+                        )}
                       </div>
 
-                      <div className="flex flex-wrap gap-4 mt-1 text-sm text-gray-600">
+                      <div className="flex flex-wrap gap-4 mt-1 text-sm text-muted-foreground">
                         {patient.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{patient.phone}</span>}
                         {patient.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{patient.email}</span>}
                       </div>
 
-                      <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                         <span>{stats.totalConsultations || 0} consultas</span>
                         <span>{stats.totalPrescriptions || 0} prescrições</span>
                         <span>{stats.totalRecords || 0} registros</span>
@@ -358,13 +366,13 @@ export function PatientsList() {
                       <Button variant="ghost" size="sm" onClick={() => handleEditPatient(patient)} disabled={formLoading}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openPatientDetails(patient, 'care-team')} className="text-purple-600 hover:text-purple-700" title="Equipe">
+                      <Button variant="ghost" size="sm" onClick={() => openPatientDetails(patient, 'care-team')} className="text-purple-600 hover:text-purple-700 dark:text-purple-300 dark:hover:text-purple-200" title="Equipe">
                         <Users className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => router.push(`/consultations?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}`)} className="text-green-600 hover:text-green-700" title="Nova Consulta">
+                      <Button variant="ghost" size="sm" onClick={() => router.push(`/consultations?patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}`)} className="text-green-600 hover:text-green-700 dark:text-green-300 dark:hover:text-green-200" title="Nova Consulta">
                         <Stethoscope className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setPatientToDeactivate(patient)} className="text-red-600 hover:text-red-700" title="Desativar">
+                      <Button variant="ghost" size="sm" onClick={() => setPatientToDeactivate(patient)} className="text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200" title="Desativar">
                         <UserX className="h-4 w-4" />
                       </Button>
                     </div>
@@ -381,7 +389,7 @@ export function PatientsList() {
           <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
             <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
           </Button>
-          <span className="text-sm text-gray-600">Página {pagination.page} de {pagination.pages}</span>
+          <span className="text-sm text-muted-foreground">Página {pagination.page} de {pagination.pages}</span>
           <Button variant="outline" size="sm" disabled={currentPage >= pagination.pages} onClick={() => setCurrentPage(p => p + 1)}>
             Próxima <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
@@ -412,7 +420,7 @@ export function PatientsList() {
             <DialogTitle>{selectedPatient?.name}</DialogTitle>
           </DialogHeader>
           {selectedPatientLoading && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Carregando detalhes…
             </div>

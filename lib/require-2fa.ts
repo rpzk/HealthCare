@@ -16,8 +16,11 @@ export async function require2FAForRole() {
   const userId = session.user.id
   const userRole = session.user.role
 
-  // Roles que DEVEM ter 2FA obrigatório
-  const sensitiveRoles = ['ADMIN', 'DOCTOR']
+  // Roles que DEVEM ter 2FA obrigatório (todos os profissionais, exceto PATIENT)
+  const sensitiveRoles = [
+    'ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST',
+    'HEALTH_AGENT', 'TECHNICIAN', 'PHARMACIST', 'DENTIST', 'NUTRITIONIST', 'SOCIAL_WORKER', 'OTHER'
+  ]
 
   if (!sensitiveRoles.includes(userRole)) {
     return { required: false }
@@ -32,7 +35,7 @@ export async function require2FAForRole() {
   if (!user?.twoFactorEnabled) {
     return {
       required: true,
-      redirect: '/profile?force2fa=true',
+      redirect: '/settings?tab=security&force2fa=true',
       message: 'Você precisa habilitar autenticação em dois fatores para continuar'
     }
   }

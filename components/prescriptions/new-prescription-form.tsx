@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Loader2 } from 'lucide-react'
@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { MedicationAutocomplete } from '@/components/consultations/medication-autocomplete'
+import { MedicationAutocomplete, type ProtocolMedicationInput } from '@/components/consultations/medication-autocomplete'
 import { PatientAutocomplete } from '@/components/prescriptions/patient-autocomplete'
 import { FormulaAutocomplete } from '@/components/prescriptions/formula-autocomplete'
 import { Pill, FlaskConical, Plus, Trash2, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 // Tipo que vem do MedicationAutocomplete
 type MedicationSuggestion = {
@@ -44,6 +45,9 @@ type MedicationItem = {
   frequency: string
   duration: string
   instructions?: string
+   // Campos enriquecidos pela IA (não obrigatórios, usados para futura classificação/cadastro)
+  activeIngredient?: string
+  prescriptionType?: string
   type: 'medication' | 'formula' | 'custom'
   sourceId?: string // ID do medicamento ou fórmula original
   category?: string
@@ -51,7 +55,11 @@ type MedicationItem = {
   contraindications?: string
 }
 
-export default function NewPrescriptionForm() {
+interface NewPrescriptionFormProps {
+  initialPatientId?: string
+}
+
+export default function NewPrescriptionForm({ initialPatientId }: NewPrescriptionFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
@@ -66,58 +74,191 @@ export default function NewPrescriptionForm() {
   
   // Estado para o autocomplete de medicamentos
   const [medicationSearch, setMedicationSearch] = useState('')
+  // Paciente selecionado (idade para sugestões de IA)
+  const [selectedPatientAge, setSelectedPatientAge] = useState<number | undefined>()
+  const lastEnrichedIndexRef = useRef<number>(-1)
+
+  // Pré-selecionar paciente quando vier da página de detalhes (?patientId=...)
+  useEffect(() => {
+    if (!initialPatientId || patientId) return
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/patients/${initialPatientId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        setPatientId(data.id)
+        setPatientSearchText(`${data.name} (${data.email || 'sem e-mail'})`)
+        if (data.birthDate) {
+          const birth = new Date(data.birthDate)
+          const age = Math.floor((Date.now() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+          setSelectedPatientAge(age)
+        }
+      } catch {
+        // silêncio: se falhar, médico escolhe manualmente
+      }
+    })()
+  }, [initialPatientId, patientId])
+
+  // Busca sugestões de posologia pela IA (uso costumeiro)
+  const fetchAISuggestions = async (params: {
+    medicationName: string
+    patientAge?: number
+    form?: string
+    catalogDosage?: string
+    catalogFrequency?: string
+    catalogDuration?: string
+  }): Promise<{
+    dosage: string
+    frequency: string
+    duration: string
+    instructions: string
+    activeIngredient?: string
+    prescriptionType?: string
+  } | null> => {
+    try {
+      const res = await fetch('/api/ai/suggest-prescription-defaults', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          medicationName: params.medicationName,
+          patientAge: params.patientAge,
+          form: params.form,
+          catalogDosage: params.catalogDosage,
+          catalogFrequency: params.catalogFrequency,
+          catalogDuration: params.catalogDuration,
+        }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      return data && (data.dosage || data.frequency || data.duration) ? data : null
+    } catch {
+      return null
+    }
+  }
 
   // Quando paciente é selecionado
   const handlePatientSelect = (patient: PatientSuggestion) => {
     setPatientId(patient.id)
     setPatientSearchText(`${patient.name} (${patient.email})`)
+    setSelectedPatientAge(patient.age)
   }
 
-  // Adiciona medicamento não cadastrado (digitado pelo médico quando não encontra no catálogo)
+  // Adiciona múltiplos medicamentos de um protocolo expandido pela IA (TARV, RIPE, etc.)
+  const addFromProtocolExpansion = (medications: ProtocolMedicationInput[]) => {
+    const items: MedicationItem[] = medications.map(m => ({
+      name: m.name,
+      dosage: m.dosage || '',
+      frequency: m.frequency || '1x ao dia',
+      duration: m.duration || '30 dias',
+      instructions: m.instructions,
+      type: 'custom',
+    }))
+    setMedications(prev => [...prev, ...items])
+    setMedicationSearch('')
+    toast.success(`Protocolo adicionado: ${items.length} medicamento(s)`)
+  }
+
+  // Adiciona medicamento não cadastrado; enriquece com sugestões da IA
   const addCustomMedicationByName = (name: string) => {
     const trimmed = name.trim()
     if (!trimmed) return
-    setMedications(prev => [...prev, {
+
+    const newItem: MedicationItem = {
       name: trimmed,
       dosage: '',
       frequency: '1x ao dia',
       duration: '7 dias',
       instructions: '',
       type: 'custom',
-    }])
+    }
+
+    setMedications(prev => {
+      const next = [...prev, newItem]
+      const idx = next.length - 1
+      lastEnrichedIndexRef.current = idx
+
+      fetchAISuggestions({
+        medicationName: trimmed,
+        patientAge: selectedPatientAge,
+      }).then(suggestions => {
+        if (!suggestions) return
+        setMedications(curr => {
+          const i = lastEnrichedIndexRef.current
+          if (i < 0 || i >= curr.length) return curr
+          const updated = [...curr]
+          updated[i] = {
+            ...updated[i],
+            dosage: suggestions.dosage || updated[i].dosage,
+            frequency: suggestions.frequency || updated[i].frequency,
+            duration: suggestions.duration || updated[i].duration,
+            instructions: suggestions.instructions || updated[i].instructions,
+            activeIngredient: suggestions.activeIngredient || updated[i].activeIngredient,
+            prescriptionType: suggestions.prescriptionType || updated[i].prescriptionType,
+          }
+          toast.success('Sugestão de posologia aplicada pela IA')
+          return updated
+        })
+      })
+
+      return next
+    })
     setMedicationSearch('')
   }
 
-  // Adiciona medicamento do catálogo com valores DEFAULT
+  // Adiciona medicamento do catálogo com valores DEFAULT; enriquece com sugestões da IA
   const addFromMedication = (med: MedicationSuggestion) => {
-    // Preparar valores defaults melhorados
     let frequency = med.defaultFrequency || ''
     let duration = med.defaultDuration ? `${med.defaultDuration} dias` : ''
-    
-    // Se não houver frequência padrão, usar 1x ao dia
-    if (!frequency) {
-      frequency = '1x ao dia'
-    }
-    // Se a frequência for um número, converter para "Nx ao dia"
-    if (/^\d+$/.test(frequency)) {
-      frequency = `${frequency}x ao dia`
-    }
-    
-    // Se não houver duração padrão, usar 7 dias
-    if (!duration) {
-      duration = '7 dias'
-    }
+    if (!frequency) frequency = '1x ao dia'
+    if (/^\d+$/.test(String(frequency))) frequency = `${frequency}x ao dia`
+    if (!duration) duration = '7 dias'
 
-    setMedications(prev => [...prev, {
+    const newItem: MedicationItem = {
       name: med.displayName || med.name,
       dosage: med.defaultDosage || '',
-      frequency: frequency,
-      duration: duration,
+      frequency,
+      duration,
       instructions: '',
       type: 'medication',
       sourceId: med.id,
       form: med.form || undefined,
-    }])
+    }
+
+    setMedications(prev => {
+      const next = [...prev, newItem]
+      const idx = next.length - 1
+      lastEnrichedIndexRef.current = idx
+
+      // Busca sugestões da IA em background
+      fetchAISuggestions({
+        medicationName: med.displayName || med.name,
+        patientAge: selectedPatientAge,
+        form: med.form,
+        catalogDosage: med.defaultDosage || undefined,
+        catalogFrequency: frequency,
+        catalogDuration: duration,
+      }).then(suggestions => {
+        if (!suggestions) return
+        setMedications(curr => {
+          const i = lastEnrichedIndexRef.current
+          if (i < 0 || i >= curr.length) return curr
+          const updated = [...curr]
+          updated[i] = {
+            ...updated[i],
+            dosage: suggestions.dosage || updated[i].dosage,
+            frequency: suggestions.frequency || updated[i].frequency,
+            duration: suggestions.duration || updated[i].duration,
+            instructions: suggestions.instructions || updated[i].instructions,
+            activeIngredient: suggestions.activeIngredient || updated[i].activeIngredient,
+            prescriptionType: suggestions.prescriptionType || updated[i].prescriptionType,
+          }
+          toast.success('Sugestão de posologia aplicada pela IA')
+          return updated
+        })
+      })
+
+      return next
+    })
     setMedicationSearch('')
   }
 
@@ -175,13 +316,22 @@ export default function NewPrescriptionForm() {
     return !!json?.hasCertificate
   }
 
-  const signPrescription = async (prescriptionId: string, password: string) => {
+  // Verifica se sessão de certificado está ativa (senha já validada)
+  const hasActiveCertSession = async () => {
+    const res = await fetch('/api/certificate-session')
+    if (!res.ok) return false
+    const json = await res.json()
+    return !!(json?.session?.active && !json?.session?.locked)
+  }
+
+  const signPrescription = async (prescriptionId: string, password?: string) => {
     setSigning(true)
     try {
+      const body = password ? { password } : {}
       const res = await fetch(`/api/prescriptions/${prescriptionId}/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(body),
         credentials: 'include',
       })
       if (!res.ok) {
@@ -230,16 +380,21 @@ export default function NewPrescriptionForm() {
         throw new Error((err as { error?: string })?.error || (err as { message?: string })?.message || 'Falha ao criar prescrição')
       }
       const created = await res.json()
-      // Checa se usuário tem certificado digital
       const hasCert = await checkUserCertificate()
       if (hasCert && created?.id) {
-        setPendingPrescriptionId(created.id)
-        setShowPasswordDialog(true)
+        const sessionActive = await hasActiveCertSession()
+        if (sessionActive) {
+          // Sessão ativa: assinar direto sem pedir senha
+          await signPrescription(created.id)
+        } else {
+          setPendingPrescriptionId(created.id)
+          setShowPasswordDialog(true)
+        }
       } else {
         router.push('/prescriptions')
       }
     } catch (e) {
-      alert((e as Error).message)
+      toast.error((e as Error).message)
     } finally {
       setLoading(false)
     }
@@ -307,10 +462,12 @@ export default function NewPrescriptionForm() {
               onChange={setMedicationSearch}
               onSelect={addFromMedication}
               onAddCustom={addCustomMedicationByName}
+              onExpandProtocol={addFromProtocolExpansion}
+              patientAge={selectedPatientAge}
               placeholder="Buscar medicamento por nome..."
             />
             <p className="text-xs text-muted-foreground mt-2">
-              Busque no catálogo ou, se não encontrar, use a opção &quot;Adicionar (não cadastrado)&quot; para prescrever pelo nome digitado
+              Busque no catálogo ou use &quot;Adicionar (não cadastrado)&quot;. A IA pode sugerir dosagem e posologia de uso habitual.
             </p>
           </TabsContent>
 
@@ -454,7 +611,7 @@ export default function NewPrescriptionForm() {
           onChange={e => setCertPassword(e.target.value)}
           disabled={signing}
         />
-        <Button onClick={() => pendingPrescriptionId && signPrescription(pendingPrescriptionId, certPassword)} disabled={signing || !certPassword}>
+        <Button onClick={() => pendingPrescriptionId && signPrescription(pendingPrescriptionId, certPassword || undefined)} disabled={signing || !certPassword}>
           {signing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assinando...</>) : 'Assinar e Finalizar'}
         </Button>
       </DialogContent>

@@ -19,43 +19,49 @@ import { logger } from '@/lib/logger'
 
 // Redis client - usar ioredis (mesmo usado no rate-limiter)
 let redisClient: any = null
+let redisFailed = false // Uma vez que Redis falhe, usa memória sem retentar
 
 async function getRedis(): Promise<any> {
+  if (redisFailed) return null
   if (redisClient) return redisClient
+
+  // Usar Redis apenas se REDIS_ENABLED=true (evita tentativas e erros em dev sem Redis)
+  if (process.env.REDIS_ENABLED !== 'true') {
+    redisFailed = true
+    return null
+  }
+  const host = (process.env.REDIS_HOST ?? 'localhost').trim()
   
   try {
-    // Import dinâmico usando ioredis (já instalado no projeto)
     const Redis = (await import('ioredis')).default
-    
-    const host = (process.env.REDIS_HOST ?? '').trim() || 'localhost'
     const portRaw = (process.env.REDIS_PORT ?? '').trim()
     const port = portRaw && !isNaN(Number(portRaw)) ? Number(portRaw) : 6379
     
     const redisOptions: Record<string, unknown> = {
       host,
       port,
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times: number) => Math.min(times * 100, 3000),
+      maxRetriesPerRequest: 2,
+      retryStrategy: (times: number) => (times > 2 ? null : 1000), // Desiste após 2 retentativas
     }
-    
     const password = (process.env.REDIS_PASSWORD ?? '').trim()
-    if (password) {
-      redisOptions.password = password
-    }
+    if (password) redisOptions.password = password
     
-    redisClient = new Redis(redisOptions)
-    
-    redisClient.on('error', (err: Error) => {
-      logger.error('Redis certificate session error:', err)
+    const client = new Redis(redisOptions)
+    client.on('error', () => {
+      if (!redisFailed) {
+        redisFailed = true
+        redisClient = null
+        try { client.disconnect() } catch {}
+        logger.warn('Redis indisponível para sessão de certificado, usando memória local')
+      }
     })
     
-    // Testar conexão
-    await redisClient.ping()
+    await client.ping()
+    redisClient = client
     logger.info('Redis certificate session initialized')
-    
     return redisClient
-  } catch (error) {
-    logger.warn('Redis não disponível, usando memória local (menos seguro)')
+  } catch {
+    redisFailed = true
     return null
   }
 }

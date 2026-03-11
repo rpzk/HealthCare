@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, Clock, User, FileText, X, AlertCircle } from 'lucide-react'
+import { Calendar, Clock, User, FileText, X, AlertCircle, UserPlus } from 'lucide-react'
 import { logger } from '@/lib/logger'
 
 interface Patient {
@@ -240,19 +241,35 @@ export function ConsultationForm({
                   </div>
                 </div>
               ) : (
-                <select
-                  value={formData.patientId}
-                  onChange={(e) => setFormData(prev => ({ ...prev, patientId: e.target.value }))}
-                  className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                >
-                  <option value="">Selecione um paciente</option>
-                  {patients.map(patient => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.name} - {patient.age} anos
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <select
+                    value={formData.patientId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, patientId: e.target.value }))}
+                    className="w-full p-3 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  >
+                    <option value="">Selecione um paciente</option>
+                    {patients.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} - {p.age} anos
+                      </option>
+                    ))}
+                  </select>
+                  {patients.length === 0 && (
+                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-200">
+                      <p className="font-medium mb-1">Nenhum paciente cadastrado</p>
+                      <p className="text-amber-700 dark:text-amber-300 mb-2">
+                        Cadastre um paciente antes de iniciar uma consulta.
+                      </p>
+                      <Link href="/patients/new">
+                        <Button type="button" variant="outline" size="sm" className="gap-2">
+                          <UserPlus className="h-4 w-4" />
+                          Cadastrar paciente
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

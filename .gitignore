@@ -35,6 +35,7 @@ uploads/*
 
 # Sensitive certificates and keys
 *.pfx
+*.p12
 *.pem
 *.key
 *.crt

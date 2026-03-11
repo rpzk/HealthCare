@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
@@ -58,6 +59,7 @@ export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 400)
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -71,7 +73,7 @@ export default function PrescriptionsPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
-        search: searchTerm
+        search: debouncedSearch
       })
       
       // Só adiciona status se não for 'ALL'
@@ -91,7 +93,7 @@ export default function PrescriptionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, filterStatus, searchTerm])
+  }, [currentPage, filterStatus, debouncedSearch])
   
   useEffect(() => {
     if (isReady) {

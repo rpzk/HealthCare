@@ -147,7 +147,10 @@ export function PatientBookingConfig() {
 
         <div className="space-y-4">
           {schedules.map((schedule) => (
-            <div key={schedule.dayOfWeek} className="space-y-4 p-4 border rounded-lg">
+            <div
+              key={(schedule as { id?: string }).id || `${schedule.dayOfWeek}-${schedule.startTime}`}
+              className="space-y-4 p-4 border rounded-lg"
+            >
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold">{DAY_LABELS[schedule.dayOfWeek]}</h4>
                 <div className="text-sm text-muted-foreground">

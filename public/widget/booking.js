@@ -41,6 +41,7 @@
     formData: {
       patientName: '',
       patientCpf: '',
+      patientBirthDate: '',
       patientPhone: '',
       patientEmail: '',
       reason: '',
@@ -716,6 +717,12 @@
         </div>
         
         <div class="hcw-form-group">
+          <label class="hcw-label">Data de nascimento *</label>
+          <input type="date" class="hcw-input" data-field="patientBirthDate" 
+                 value="${state.formData.patientBirthDate}" max="${new Date().toISOString().split('T')[0]}">
+        </div>
+        
+        <div class="hcw-form-group">
           <label class="hcw-label">Telefone (WhatsApp) *</label>
           <input type="tel" class="hcw-input" data-field="patientPhone" 
                  value="${state.formData.patientPhone}" placeholder="(00) 00000-0000" maxlength="15">
@@ -749,7 +756,7 @@
         </div>
         
         <button class="hcw-btn hcw-btn-primary" data-action="submit" 
-                ${!state.formData.acceptedTerms ? 'disabled' : ''}>
+                ${!state.formData.acceptedTerms || !state.formData.patientBirthDate || !state.formData.patientName?.trim() || !state.formData.patientCpf?.replace(/\D/g,'') || !state.formData.patientPhone?.trim() ? 'disabled' : ''}>
           Confirmar Agendamento
         </button>
         <button class="hcw-btn hcw-btn-secondary" data-action="back">
@@ -914,7 +921,9 @@
     // Re-render apenas botões para atualizar disabled state
     const submitBtn = document.querySelector('[data-action="submit"]');
     if (submitBtn) {
-      submitBtn.disabled = !state.formData.acceptedTerms;
+      const canSubmit = state.formData.acceptedTerms && state.formData.patientBirthDate &&
+        state.formData.patientName?.trim() && state.formData.patientCpf?.replace(/\D/g,'') && state.formData.patientPhone?.trim();
+      submitBtn.disabled = !canSubmit;
     }
   }
   
@@ -998,6 +1007,7 @@
     state.formData = {
       patientName: '',
       patientCpf: '',
+      patientBirthDate: '',
       patientPhone: '',
       patientEmail: '',
       reason: '',

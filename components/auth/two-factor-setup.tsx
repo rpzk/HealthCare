@@ -8,14 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Shield, ShieldCheck, AlertTriangle, Copy, Check } from 'lucide-react'
-import Image from 'next/image'
 
 interface TwoFactorSetupProps {
   isEnabled: boolean
   onStatusChange: () => void
+  embedded?: boolean // Quando true, não renderiza Card (para uso dentro de outro Card)
 }
 
-export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProps) {
+export function TwoFactorSetup({ isEnabled, onStatusChange, embedded = false }: TwoFactorSetupProps) {
   const [setupDialog, setSetupDialog] = useState(false)
   const [disableDialog, setDisableDialog] = useState(false)
   const [regenerateDialog, setRegenerateDialog] = useState(false)
@@ -164,12 +164,11 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
-  return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <CardTitle className="flex items-center gap-2">
+  const innerContent = (
+    <div className={embedded ? 'space-y-4' : ''}>
+      <div className={embedded ? 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2' : ''}>
+        <div>
+          <div className="font-semibold flex items-center gap-2">
               {isEnabled ? (
                 <>
                   <ShieldCheck className="h-5 w-5 text-green-600" />
@@ -181,10 +180,10 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
                   Autenticação de Dois Fatores
                 </>
               )}
-            </CardTitle>
-            <CardDescription>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
               Adicione uma camada extra de segurança com código TOTP
-            </CardDescription>
+            </p>
           </div>
           {isEnabled ? (
             <Badge variant="default" className="bg-green-600">
@@ -194,8 +193,8 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
           ) : (
             <Badge variant="secondary">Desabilitado</Badge>
           )}
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+        <div className="space-y-4">
           {error && !setupDialog && !disableDialog && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
@@ -227,8 +226,78 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+  )
+
+  return (
+    <>
+      {embedded ? (
+        innerContent
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                {isEnabled ? (
+                  <>
+                    <ShieldCheck className="h-5 w-5 text-green-600" />
+                    Autenticação de Dois Fatores
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-5 w-5 text-gray-400" />
+                    Autenticação de Dois Fatores
+                  </>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Adicione uma camada extra de segurança com código TOTP
+              </CardDescription>
+            </div>
+            {isEnabled ? (
+              <Badge variant="default" className="bg-green-600">
+                <Check className="h-3 w-3 mr-1" />
+                Habilitado
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Desabilitado</Badge>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && !setupDialog && !disableDialog && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {!isEnabled ? (
+              <div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Use um aplicativo autenticador (Google Authenticator, Authy, 1Password, etc.) para gerar códigos de verificação.
+                </p>
+                <Button onClick={startSetup} disabled={loading}>
+                  {loading ? 'Configurando...' : 'Habilitar 2FA'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-green-700 dark:text-green-400">
+                  ✓ Sua conta está protegida com autenticação de dois fatores
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={regenerateCodes} variant="outline" size="sm" disabled={loading}>
+                    Gerar Novos Códigos de Backup
+                  </Button>
+                  <Button onClick={() => setDisableDialog(true)} variant="destructive" size="sm">
+                    Desabilitar 2FA
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Setup Dialog */}
       <Dialog open={setupDialog} onOpenChange={setSetupDialog}>
@@ -250,7 +319,8 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
             <div className="space-y-4">
               {qrCode && (
                 <div className="flex justify-center">
-                  <Image src={qrCode} alt="QR Code" width={200} height={200} />
+                  {/* img nativo: data URLs não funcionam bem com Next/Image no Firefox */}
+                  <img src={qrCode} alt="QR Code para app autenticador" width={200} height={200} className="rounded" />
                 </div>
               )}
               <div>

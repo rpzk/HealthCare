@@ -148,13 +148,14 @@ export async function GET(
     }
 
     // Gerar PDF on-demand (sem assinatura digital) via Gotenberg
+    // useStamp=true: carimbo do médico, sem QR code (QR só em prescrições assinadas digitalmente)
     const baseUrl = request.headers.get('x-forwarded-host')
       ? `https://${request.headers.get('x-forwarded-host')}`
       : request.headers.get('host')
         ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('host')}`
         : ''
 
-    const pdfBuffer = await generatePrescriptionPdfBuffer(prescription, baseUrl)
+    const pdfBuffer = await generatePrescriptionPdfBuffer(prescription, baseUrl, { useStamp: true })
 
     logger.info('PDF de prescrição gerado on-demand', { prescriptionId, signed: false })
 

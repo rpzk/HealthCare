@@ -112,17 +112,22 @@ export const createReferralSchema = z.object({
 // =============================================================================
 
 export const examRequestQuerySchema = paginationQuerySchema.merge(searchQuerySchema).extend({
-  status: z.enum(['PENDING', 'SCHEDULED', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.enum(['ALL', 'REQUESTED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional().transform(v => (v === 'ALL' ? undefined : v)),
   type: z.string().max(100).optional(),
+  urgency: z.enum(['ALL', 'ROUTINE', 'URGENT', 'EMERGENCY']).optional().transform(v => (v === 'ALL' ? undefined : v)),
 })
 
 export const createExamRequestSchema = z.object({
   patientId: z.string().min(1, 'ID do paciente é obrigatório'),
   examType: z.string().min(1, 'Tipo de exame é obrigatório').max(100),
   description: z.string().min(1, 'Descrição é obrigatória').max(2000),
-  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional().default('NORMAL'),
+  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT', 'EMERGENCY']).optional().default('NORMAL'),
   notes: z.string().max(2000).optional(),
-  scheduledDate: z.string().datetime({ message: 'Data de agendamento inválida' }).optional(),
+  scheduledDate: z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/).transform(s => (s.length === 16 ? `${s}:00.000Z` : s.includes('Z') ? s : `${s}Z`)),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).transform(s => `${s}T12:00:00.000Z`),
+  ]).optional(),
 })
 
 // =============================================================================

@@ -16,7 +16,8 @@ import {
   ArrowDownRight,
   RefreshCw,
   Download,
-  Inbox
+  Inbox,
+  Brain
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -366,6 +367,14 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant="outline" 
+                className="h-auto py-4 flex-col gap-2"
+                onClick={() => router.push('/admin/ai-settings')}
+              >
+                <Brain className="h-5 w-5" />
+                <span className="text-xs">Config IA</span>
+              </Button>
               <Button 
                 variant="outline" 
                 className="h-auto py-4 flex-col gap-2"

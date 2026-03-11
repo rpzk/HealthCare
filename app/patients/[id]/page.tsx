@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { PageHeader } from '@/components/navigation/page-header'
 import { HydrationGuard } from '@/components/hydration-guard'
 import { PatientDetailsContent } from '@/components/patients/patient-details-content'
+import { StartConsultationButton } from '@/components/consultations/start-consultation-button'
 import { decrypt, hashCPF } from '@/lib/crypto'
 import { applyPatientMasking } from '@/lib/masking'
 
@@ -29,18 +30,136 @@ export default async function PatientDetailsPage({ params }: PageProps) {
   const patient = await prisma.patient.findUnique({
     where: { id },
     include: {
+      // Consultas com dados completos
       consultations: {
-        take: 5,
+        take: 10,
         orderBy: { scheduledDate: 'desc' },
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              speciality: true,
+              crmNumber: true
+            }
+          },
+          // NOVO: Diagnósticos (CIDs)
+          diagnoses: {
+            include: {
+              primaryCode: true
+            }
+          },
+          // NOVO: Sinais vitais
+          vitalSigns: {
+            orderBy: { recordedAt: 'desc' },
+            take: 1
+          },
+          // NOVO: Procedimentos SIGTAP
+          procedures: {
+            include: {
+              procedure: true,
+              executorCBO: {
+                include: {
+                  occupation: true
+                }
+              }
+            }
+          }
+        }
       },
+      // Prescrições com itens detalhados
       prescriptions: {
-        take: 5,
+        take: 10,
         orderBy: { createdAt: 'desc' },
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              crmNumber: true
+            }
+          },
+          // Itens da prescrição (Medication unificada com RENAME)
+          items: {
+            include: {
+              medication: true
+            }
+          }
+        }
       },
+      // Exames com procedimentos SIGTAP
       ExamRequest: {
-        take: 5,
+        take: 10,
         orderBy: { createdAt: 'desc' },
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          // NOVO: Procedimento SIGTAP vinculado
+          procedimento: true
+        }
       },
+      // NOVO: Encaminhamentos
+      referrals: {
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          // Ocupação de destino (CBO)
+          targetOccupation: true,
+          // Unidade de destino
+          destinationUnit: true
+        }
+      },
+      // NOVO: Sinais vitais histórico
+      vitalSigns: {
+        orderBy: { recordedAt: 'desc' },
+        take: 20
+      },
+      // Atestados médicos
+      medicalCertificates: {
+        orderBy: { issuedAt: 'desc' },
+        take: 20,
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              crmNumber: true,
+              speciality: true
+            }
+          },
+          consultation: {
+            select: {
+              id: true,
+              scheduledDate: true
+            }
+          }
+        }
+      },
+      // Registros/Evoluções (MedicalRecord - SOAP, anotações)
+      medicalRecords: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              speciality: true
+            }
+          }
+        }
+      }
     },
   })
 
@@ -96,6 +215,14 @@ export default async function PatientDetailsPage({ params }: PageProps) {
             ]}
             showBackButton={true}
             showHomeButton={true}
+            actions={
+              <StartConsultationButton
+                patientId={patient.id}
+                patientName={String(patientView.name ?? '')}
+                variant="default"
+                size="sm"
+              />
+            }
           />
           <HydrationGuard fallback={<div className="text-sm text-gray-500">Carregando...</div>}>
             <PatientDetailsContent patient={patientView as import('@prisma/client').Patient} />

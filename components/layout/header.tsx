@@ -3,11 +3,11 @@
 import { Settings, User, LogOut, Shield, Stethoscope, Heart, UserCog } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { AIAssistantButton } from '@/components/ai/assistant-button'
 import { NotificationCenter } from '@/components/ui/notification-center'
 import { GlobalSearch } from '@/components/search/global-search'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { CertificateSessionIndicator } from '@/components/certificate-session-indicator'
 import { useActiveRole } from '@/hooks/use-active-role'
 import { signOut, useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
@@ -45,10 +45,6 @@ export function Header() {
 
   const handleSettings = () => {
     router.push('/settings')
-  }
-
-  const handleProfile = () => {
-    router.push('/profile')
   }
 
   const handleLogout = async () => {
@@ -89,8 +85,8 @@ export function Header() {
 
             <div className="flex items-center space-x-3">
               <RoleSwitcher />
-              
-              <AIAssistantButton />
+
+              <CertificateSessionIndicator />
               
               <NotificationCenter />
 
@@ -140,10 +136,6 @@ export function Header() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={handleProfile}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Perfil</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSettings}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Configurações</span>

@@ -1,0 +1,47 @@
+
+> healthcare-medical-records@1.0.0 type-check
+> tsc --noEmit
+
+app/api/exam-requests/[id]/sign/route.ts(70,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+app/api/medical-certificates/[id]/sign/route.ts(81,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+app/api/prescriptions/[id]/sign/route.ts(34,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+app/api/referrals/[id]/sign/route.ts(70,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+app/api/schedules/clinic/route.ts(26,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/clinic/route.ts(59,28): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/clinic/route.ts(84,33): error TS2322: Type 'null' is not assignable to type 'string'.
+app/api/schedules/exceptions/route.ts(18,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/exceptions/route.ts(23,34): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/exceptions/route.ts(55,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/exceptions/route.ts(94,30): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/exceptions/route.ts(133,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/exceptions/route.ts(146,27): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/my-schedules/route.ts(33,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/my-schedules/route.ts(37,28): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/my-schedules/route.ts(99,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/my-schedules/route.ts(103,28): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/requests/route.ts(20,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/requests/route.ts(37,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/requests/route.ts(60,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/summary/route.ts(37,19): error TS2339: Property 'user' does not exist on type '{}'.
+app/api/schedules/summary/route.ts(41,28): error TS2339: Property 'user' does not exist on type '{}'.
+app/appointments/dashboard/page.tsx(324,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/appointments/dashboard/page.tsx(325,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/appointments/dashboard/page.tsx(757,15): error TS2322: Type '{ id: string; title: string; start: Date; end: Date; resource: { type: "consultation" | "blocked"; status: string | undefined; patientName: string | undefined; reason: string | null | undefined; }; }[]' is not assignable to type 'CalendarEvent[]'.
+  Type '{ id: string; title: string; start: Date; end: Date; resource: { type: "consultation" | "blocked"; status: string | undefined; patientName: string | undefined; reason: string | null | undefined; }; }' is not assignable to type 'CalendarEvent'.
+    The types of 'resource.reason' are incompatible between these types.
+      Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+components/consultations/consultation-workspace.tsx(1878,45): error TS2322: Type 'Prescription[]' is not assignable to type 'PrescriptionItem[]'.
+  Type 'Prescription' is not assignable to type 'PrescriptionItem'.
+    Index signature for type 'string' is missing in type 'Prescription'.
+components/consultations/consultation-workspace.tsx(2247,35): error TS2322: Type '(passwordOverride?: string, targetOverride?: "PRESCRIPTIONS" | "EXAMS" | "REFERRALS" | "CERTIFICATES" | null, pdfUrlToOpen?: string) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'passwordOverride' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'string'.
+scripts/seed-test-team.ts(78,9): error TS2322: Type 'string | { name: string; id: string; email: string; role: Role; speciality: string | null; crmNumber: string | null; licenseNumber: string | null; licenseType: string | null; licenseState: string | null; ... 12 more ...; managerUserId: string | null; }' is not assignable to type 'CareTeamAccessLevel | undefined'.
+  Type 'string' is not assignable to type 'CareTeamAccessLevel | undefined'.

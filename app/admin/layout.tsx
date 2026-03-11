@@ -58,7 +58,7 @@ export default function AdminLayout({
 
   return (
     <TermsGuard>
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
+      <div className="min-h-screen bg-background">
         <AdminHeader />
         <AdminSidebar />
         <main className="ml-64 pt-16 min-h-screen">

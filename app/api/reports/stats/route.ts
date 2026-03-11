@@ -17,7 +17,7 @@ function getPeriodFromRange(range: Range, now: Date) {
   return { start: subYears(now, 1), end: now }
 }
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, { user }) => {
   try {
     const now = new Date()
     const monthStart = startOfMonth(now)
@@ -30,7 +30,10 @@ export const GET = withAuth(async (req: NextRequest) => {
       now
     )
 
-    // Query real data from database
+    const isFullView = user.role === 'ADMIN' || user.role === 'RECEPTIONIST'
+    const doctorFilter = isFullView ? {} : { doctorId: user.id }
+
+    // Para DOCTOR: filtramos por doctorId; para ADMIN/RECEPTIONIST: visão completa
     const [
       totalPatients,
       newPatientsThisMonth,
@@ -44,36 +47,127 @@ export const GET = withAuth(async (req: NextRequest) => {
       totalRecords,
       recordsThisMonth,
       recordsInPeriod,
-    ] = await Promise.all([
-      prisma.patient.count(),
-      prisma.patient.count({
-        where: { createdAt: { gte: monthStart, lte: monthEnd } }
-      }),
-      prisma.patient.count({
-        where: { createdAt: { gte: period.start, lte: period.end } },
-      }),
-      prisma.consultation.count(),
-      prisma.consultation.count({
-        where: { scheduledDate: { gte: monthStart, lte: monthEnd } }
-      }),
-      prisma.consultation.count({
-        where: { scheduledDate: { gte: period.start, lte: period.end } },
-      }),
-      prisma.examRequest.count(),
-      prisma.examRequest.count({
-        where: { createdAt: { gte: monthStart, lte: monthEnd } }
-      }),
-      prisma.examRequest.count({
-        where: { createdAt: { gte: period.start, lte: period.end } },
-      }),
-      prisma.medicalRecord.count(),
-      prisma.medicalRecord.count({
-        where: { createdAt: { gte: monthStart, lte: monthEnd } },
-      }),
-      prisma.medicalRecord.count({
-        where: { createdAt: { gte: period.start, lte: period.end } },
-      }),
-    ])
+    ] = isFullView
+      ? await Promise.all([
+          prisma.patient.count(),
+          prisma.patient.count({
+            where: { createdAt: { gte: monthStart, lte: monthEnd } }
+          }),
+          prisma.patient.count({
+            where: { createdAt: { gte: period.start, lte: period.end } },
+          }),
+          prisma.consultation.count(),
+          prisma.consultation.count({
+            where: { scheduledDate: { gte: monthStart, lte: monthEnd } }
+          }),
+          prisma.consultation.count({
+            where: { scheduledDate: { gte: period.start, lte: period.end } },
+          }),
+          prisma.examRequest.count(),
+          prisma.examRequest.count({
+            where: { createdAt: { gte: monthStart, lte: monthEnd } }
+          }),
+          prisma.examRequest.count({
+            where: { createdAt: { gte: period.start, lte: period.end } },
+          }),
+          prisma.medicalRecord.count(),
+          prisma.medicalRecord.count({
+            where: { createdAt: { gte: monthStart, lte: monthEnd } },
+          }),
+          prisma.medicalRecord.count({
+            where: { createdAt: { gte: period.start, lte: period.end } },
+          }),
+        ])
+      : await (async () => {
+          // DOCTOR: estatísticas apenas do que o médico criou/realizou
+          const [
+            consultationsAll,
+            consultationsMonth,
+            consultationsPeriod,
+            examsAll,
+            examsMonth,
+            examsPeriod,
+            recordsAll,
+            recordsMonth,
+            recordsPeriod,
+            consultationPatients,
+            examPatients,
+            recordPatients,
+            consultationPatientsMonth,
+            examPatientsMonth,
+            recordPatientsMonth,
+            consultationPatientsPeriod,
+            examPatientsPeriod,
+            recordPatientsPeriod,
+          ] = await Promise.all([
+            prisma.consultation.count({ where: doctorFilter }),
+            prisma.consultation.count({
+              where: { ...doctorFilter, scheduledDate: { gte: monthStart, lte: monthEnd } }
+            }),
+            prisma.consultation.count({
+              where: { ...doctorFilter, scheduledDate: { gte: period.start, lte: period.end } },
+            }),
+            prisma.examRequest.count({ where: doctorFilter }),
+            prisma.examRequest.count({
+              where: { ...doctorFilter, createdAt: { gte: monthStart, lte: monthEnd } }
+            }),
+            prisma.examRequest.count({
+              where: { ...doctorFilter, createdAt: { gte: period.start, lte: period.end } },
+            }),
+            prisma.medicalRecord.count({ where: doctorFilter }),
+            prisma.medicalRecord.count({
+              where: { ...doctorFilter, createdAt: { gte: monthStart, lte: monthEnd } },
+            }),
+            prisma.medicalRecord.count({
+              where: { ...doctorFilter, createdAt: { gte: period.start, lte: period.end } },
+            }),
+            prisma.consultation.findMany({ where: doctorFilter, select: { patientId: true } }),
+            prisma.examRequest.findMany({ where: doctorFilter, select: { patientId: true } }),
+            prisma.medicalRecord.findMany({ where: doctorFilter, select: { patientId: true } }),
+            prisma.consultation.findMany({
+              where: { ...doctorFilter, scheduledDate: { gte: monthStart, lte: monthEnd } },
+              select: { patientId: true },
+            }),
+            prisma.examRequest.findMany({
+              where: { ...doctorFilter, createdAt: { gte: monthStart, lte: monthEnd } },
+              select: { patientId: true },
+            }),
+            prisma.medicalRecord.findMany({
+              where: { ...doctorFilter, createdAt: { gte: monthStart, lte: monthEnd } },
+              select: { patientId: true },
+            }),
+            prisma.consultation.findMany({
+              where: { ...doctorFilter, scheduledDate: { gte: period.start, lte: period.end } },
+              select: { patientId: true },
+            }),
+            prisma.examRequest.findMany({
+              where: { ...doctorFilter, createdAt: { gte: period.start, lte: period.end } },
+              select: { patientId: true },
+            }),
+            prisma.medicalRecord.findMany({
+              where: { ...doctorFilter, createdAt: { gte: period.start, lte: period.end } },
+              select: { patientId: true },
+            }),
+          ])
+
+          const distinctPatients = (a: { patientId: string }[], b: { patientId: string }[], c: { patientId: string }[]) =>
+            new Set([...a.map((p) => p.patientId), ...b.map((p) => p.patientId), ...c.map((p) => p.patientId)]).size
+
+          return [
+            distinctPatients(consultationPatients, examPatients, recordPatients),
+            distinctPatients(consultationPatientsMonth, examPatientsMonth, recordPatientsMonth),
+            distinctPatients(consultationPatientsPeriod, examPatientsPeriod, recordPatientsPeriod),
+            consultationsAll,
+            consultationsMonth,
+            consultationsPeriod,
+            examsAll,
+            examsMonth,
+            examsPeriod,
+            recordsAll,
+            recordsMonth,
+            recordsPeriod,
+          ]
+        })()
 
     return NextResponse.json({
       totalPatients,
@@ -90,6 +184,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       recordsInPeriod,
       periodStart: period.start.toISOString(),
       periodEnd: period.end.toISOString(),
+      scope: isFullView ? 'full' : 'doctor', // full = visão completa (admin/recepção), doctor = apenas do médico
     })
   } catch (error) {
     logger.error('Error fetching stats:', error)
@@ -98,4 +193,4 @@ export const GET = withAuth(async (req: NextRequest) => {
       { status: 500 }
     )
   }
-}, { requireRole: ['ADMIN'] })
+}, { requireRole: ['ADMIN', 'DOCTOR', 'RECEPTIONIST'] })

@@ -2,10 +2,10 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, HeartPulse, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { AuthCard } from '@/components/auth/auth-card'
 
 function AuthErrorInner() {
   const searchParams = useSearchParams()
@@ -37,45 +37,26 @@ function AuthErrorInner() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 px-4">
-      <Card className="w-full max-w-md p-8 space-y-6 shadow-xl">
-        <div className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="p-3 bg-red-600 rounded-full">
-              <AlertCircle className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Erro de Autenticação</h1>
-            <p className="text-gray-600 mt-2">
-              {getErrorMessage(error)}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <Link href="/auth/signin">
-            <Button className="w-full">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Login
-            </Button>
-          </Link>
-
-          <div className="text-center">
-            <Link href="/" className="text-sm text-blue-600 hover:underline">
-              Ir para página inicial
-            </Link>
-          </div>
-        </div>
+    <AuthCard
+      title="Erro de Autenticação"
+      description={getErrorMessage(error)}
+      variant="error"
+    >
+      <div className="space-y-4">
+        <Link href="/auth/signin">
+          <Button className="w-full">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Login
+          </Button>
+        </Link>
 
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-            <HeartPulse className="w-4 h-4" />
-            <span>Sistema HealthCare</span>
-          </div>
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline">
+            Ir para página inicial
+          </Link>
         </div>
-      </Card>
-    </div>
+      </div>
+    </AuthCard>
   )
 }
 

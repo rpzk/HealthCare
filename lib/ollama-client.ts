@@ -61,7 +61,11 @@ class GenerativeModel {
       }
     } catch (error) {
       logger.error({ error }, 'Erro ao gerar conteúdo')
-      throw new Error('Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.')
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.'
+      throw new Error(message)
     }
   }
 
@@ -126,7 +130,11 @@ class Chat {
       }
     } catch (error) {
       logger.error({ error }, 'Erro ao chamar chat')
-      throw new Error('Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.')
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Serviço de IA temporariamente indisponível. Tente novamente em alguns minutos.'
+      throw new Error(message)
     }
   }
 

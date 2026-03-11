@@ -5,8 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-
-const GOTENBERG_URL = process.env.GOTENBERG_URL || 'http://localhost:3000'
+import { convertHtmlToPdfWithFallback } from '@/lib/pdf-converter'
 
 export async function GET(
     req: Request,
@@ -134,46 +133,22 @@ export async function GET(
       </html>
     `
 
-        if (!process.env.GOTENBERG_URL) {
-            logger.warn('[PDF Export] GOTENBERG_URL não definido. Gerando HTML como fallback de download.')
-            const safeFileName = patient.name.replace(/\s+/g, '-')
-            return new NextResponse(htmlContent, {
-                headers: {
-                    'Content-Type': 'text/html',
-                    'Content-Disposition': `attachment; filename="prontuario-${safeFileName}.html"`
-                }
-            })
-        }
-
         try {
-            const formData = new FormData()
-            formData.append('files', new Blob([htmlContent], { type: 'text/html' }), 'index.html')
-            formData.append('marginTop', '0')
-            formData.append('marginBottom', '0')
-            formData.append('marginLeft', '0')
-            formData.append('marginRight', '0')
-
-            const response = await fetch(`${GOTENBERG_URL}/forms/chromium/convert/html`, {
-                method: 'POST',
-                body: formData
+            const pdfBuffer = await convertHtmlToPdfWithFallback(htmlContent, {
+                marginPt: 0,
+                timeoutMs: 120000,
             })
-
-            if (!response.ok) {
-                throw new Error(`Gotenberg error: ${response.statusText}`)
-            }
-
-            const pdfBuffer = await response.arrayBuffer()
             const safeFileName = patient.name.replace(/\s+/g, '-')
 
-            return new NextResponse(pdfBuffer, {
+            return new NextResponse(new Uint8Array(pdfBuffer), {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/pdf',
                     'Content-Disposition': `inline; filename="prontuario-${safeFileName}.pdf"`
                 }
             })
-        } catch (gotenbergError) {
-            logger.error('Error generating PDF via Gotenberg:', gotenbergError)
+        } catch (pdfError) {
+            logger.error('Erro ao gerar PDF do prontuário:', pdfError)
             return new NextResponse('Erro ao conectar com gerador de PDF', { status: 500 })
         }
     } catch (error) {

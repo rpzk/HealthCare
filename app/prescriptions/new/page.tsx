@@ -6,13 +6,18 @@ import dynamic from 'next/dynamic'
 
 const NewPrescriptionForm = dynamic(() => import('@/components/prescriptions/new-prescription-form'), { ssr: false })
 
-export default function NewPrescriptionPage() {
+interface NewPrescriptionPageProps {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}
+
+export default function NewPrescriptionPage({ searchParams }: NewPrescriptionPageProps) {
+  const patientId = typeof searchParams?.patientId === 'string' ? searchParams?.patientId : undefined
   return (
-    <div className="min-h-screen bg-muted/40">
-      <Header />
-      <div className="flex pt-16">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-6 pt-24">
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden sidebar-content">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-6">
           <PageHeader
             title="Nova Prescrição"
             description="Tela de criação de prescrição em desenvolvimento"
@@ -25,7 +30,7 @@ export default function NewPrescriptionPage() {
           />
 
           <div className="mt-6 p-6 border rounded-lg bg-card">
-            <NewPrescriptionForm />
+            <NewPrescriptionForm initialPatientId={patientId} />
           </div>
         </main>
       </div>

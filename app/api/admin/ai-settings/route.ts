@@ -109,8 +109,12 @@ export async function POST(request: NextRequest) {
 
     // Só atualizar API key se não for mascarada
     if (groqApiKey && !groqApiKey.includes('*')) {
+      let cleanKey = groqApiKey.trim()
+      if (cleanKey.includes('=') && !cleanKey.startsWith('gsk_')) {
+        cleanKey = cleanKey.split('=').slice(1).join('=').trim()
+      }
       updates.push(
-        SystemSettingsService.set('GROQ_API_KEY', groqApiKey, {
+        SystemSettingsService.set('GROQ_API_KEY', cleanKey, {
           category: SettingCategory.SECURITY,
           description: 'API Key do Groq',
           encrypted: true

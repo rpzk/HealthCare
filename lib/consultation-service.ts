@@ -198,6 +198,11 @@ export class ConsultationService {
         diagnoses: {
           orderBy: {
             createdAt: 'desc'
+          },
+          include: {
+            primaryCode: {
+              select: { code: true, display: true, description: true, shortDescription: true }
+            }
           }
         },
         examRequests: {
@@ -402,12 +407,26 @@ export class ConsultationService {
       throw new Error('Consulta não encontrada')
     }
 
-    if (consultation.status !== 'IN_PROGRESS') {
-      throw new Error('Apenas consultas em andamento podem ser finalizadas')
+    if (consultation.status === 'COMPLETED') {
+      throw new Error('Consulta já foi finalizada')
+    }
+    if (consultation.status === 'CANCELLED' || consultation.status === 'NO_SHOW') {
+      throw new Error('Consultas canceladas ou sem comparecimento não podem ser finalizadas')
+    }
+
+    // Se SCHEDULED, iniciar automaticamente antes de finalizar (evita exigir clique em "Iniciar")
+    let current = consultation
+    if (consultation.status === 'SCHEDULED') {
+      await this.startConsultation(id)
+      const updated = await prisma.consultation.findUnique({ where: { id } })
+      if (updated?.status !== 'IN_PROGRESS') {
+        throw new Error('Não foi possível iniciar a consulta')
+      }
+      current = updated
     }
 
     const completedAt = new Date()
-    const startedAt = consultation.actualDate || completedAt
+    const startedAt = current.actualDate || completedAt
     const durationMinutes = Math.max(
       1,
       Math.round((completedAt.getTime() - startedAt.getTime()) / 60000)
@@ -417,7 +436,7 @@ export class ConsultationService {
     // (o endpoint /complete já salvou SOAP, vitals e diagnósticos)
     const data: Record<string, unknown> = {
       status: 'COMPLETED',
-      actualDate: consultation.actualDate || startedAt,
+      actualDate: current.actualDate || startedAt,
       completedAt,
       duration: durationMinutes,
     }

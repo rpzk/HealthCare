@@ -7,9 +7,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Shield, AlertTriangle } from 'lucide-react'
 
+const ROLES_REQUIRING_2FA = [
+  'ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHYSIOTHERAPIST', 'PSYCHOLOGIST',
+  'HEALTH_AGENT', 'TECHNICIAN', 'PHARMACIST', 'DENTIST', 'NUTRITIONIST', 'SOCIAL_WORKER', 'OTHER'
+]
+
 interface Require2FAWrapperProps {
   children: React.ReactNode
-  roles?: string[] // Roles que exigem 2FA (default: ADMIN, DOCTOR)
+  roles?: string[] // Roles que exigem 2FA (default: todos os profissionais)
 }
 
 /**
@@ -18,7 +23,7 @@ interface Require2FAWrapperProps {
  */
 export function Require2FAWrapper({ 
   children, 
-  roles = ['ADMIN', 'DOCTOR'] 
+  roles = ROLES_REQUIRING_2FA 
 }: Require2FAWrapperProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -70,9 +75,7 @@ export function Require2FAWrapper({
                 </h2>
                 <p className="text-muted-foreground max-w-md">
                   Para garantir a segurança do sistema e proteger os dados dos pacientes, 
-                  {session?.user.role === 'ADMIN' && ' administradores'}
-                  {session?.user.role === 'DOCTOR' && ' médicos'}
-                  {' '}devem habilitar a autenticação em dois fatores (2FA).
+                  todos os profissionais de saúde devem habilitar a autenticação em dois fatores (2FA).
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Esta é uma medida de segurança essencial que adiciona uma camada extra 
@@ -83,7 +86,7 @@ export function Require2FAWrapper({
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Button
                   size="lg"
-                  onClick={() => router.push('/profile?force2fa=true')}
+                  onClick={() => router.push('/settings?tab=security&force2fa=true')}
                   className="flex items-center gap-2"
                 >
                   <Shield className="h-5 w-5" />

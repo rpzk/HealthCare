@@ -18,10 +18,11 @@ const LISTA_A1_KEYWORDS = [
   'remifentanil', 'alfentanil', 'tapentadol'
 ]
 
-// Lista A2 - Entorpecentes de uso permitido em concentrações especiais
+// Lista A2 - Entorpecentes de uso permitido (inclui nomes comerciais)
 const LISTA_A2_KEYWORDS = [
   'anfetamina', 'dexanfetamina', 'femproporex', 'mazindol',
-  'metilfenidato', 'lisdexanfetamina'
+  'metilfenidato', 'lisdexanfetamina',
+  'ritalina', 'concerta', 'venvanse', 'vyvanse', 'adderall', 'ritalin'
 ]
 
 // Lista B1 - Psicotrópicos (ansiolíticos, sedativos)
@@ -36,12 +37,16 @@ const LISTA_B2_KEYWORDS = [
   'femproporex', 'anfepramona', 'sibutramina'
 ]
 
-// Lista C1 - Outras substâncias sujeitas a controle especial
+// Lista C1 - Outras substâncias sujeitas a controle especial (Portaria 344/98)
 const LISTA_C1_KEYWORDS = [
   'imipramina', 'clomipramina', 'amitriptilina', 'nortriptilina',
   'bupropiona', 'trazodona', 'venlafaxina', 'duloxetina',
   'fluoxetina', 'paroxetina', 'sertralina', 'escitalopram',
-  'citalopram', 'fluvoxamina', 'pregabalina', 'gabapentina'
+  'citalopram', 'fluvoxamina', 'pregabalina', 'gabapentina',
+  'lítio', 'carbonato de lítio', 'litio', 'carbamazepina', 'oxcarbazepina',
+  'valproato', 'ácido valproico', 'lamotrigina',
+  // Parkinson: controle especial (Receita Branca 2 vias)
+  'levodopa', 'etilevodopa', 'benserazida', 'carbidopa', 'madopar', 'prolopa', 'sinemet'
 ]
 
 // Lista C4 - Antiretrovirais

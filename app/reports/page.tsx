@@ -22,6 +22,7 @@ export default function ReportsPage() {
     examsThisMonth: 0,
     newPatientsThisMonth: 0
   })
+  const [scope, setScope] = useState<'full' | 'doctor'>('full')
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -38,6 +39,7 @@ export default function ReportsPage() {
             examsThisMonth: data.examsThisMonth || 0,
             newPatientsThisMonth: data.newPatientsThisMonth || 0
           })
+          setScope(data.scope === 'doctor' ? 'doctor' : 'full')
         }
       } catch (error) {
         console.error('Failed to fetch stats:', error)
@@ -165,7 +167,7 @@ export default function ReportsPage() {
         <main className="flex-1 ml-64 p-6">
           <PageHeader
             title="Relatórios e Analytics"
-            description="Geração e análise de relatórios do sistema"
+            description={scope === 'doctor' ? 'Suas estatísticas e relatórios (apenas o que você realizou)' : 'Geração e análise de relatórios do sistema'}
             breadcrumbs={[
               { label: 'Dashboard', href: '/' },
               { label: 'Relatórios', href: '/reports' }

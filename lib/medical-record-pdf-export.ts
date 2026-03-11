@@ -751,35 +751,15 @@ export async function exportMedicalRecordToPdf(
   options: MedicalRecordExportOptions
 ): Promise<Buffer> {
   const html = await generateMedicalRecordHtml(options)
-  
-  // Usar Gotenberg se disponível, senão retornar HTML
-  const gotenbergUrl = process.env.GOTENBERG_URL || 'http://gotenberg:3000'
-  
   try {
-    const formData = new FormData()
-    formData.append('files', new Blob([html], { type: 'text/html' }), 'index.html')
-    // Gotenberg espera número em cm (sem unidade)
-    formData.append('marginTop', '1')
-    formData.append('marginBottom', '1')
-    formData.append('marginLeft', '1')
-    formData.append('marginRight', '1')
-    formData.append('printBackground', 'true')
-
-    const response = await fetch(`${gotenbergUrl}/forms/chromium/convert/html`, {
-      method: 'POST',
-      body: formData
+    const { convertHtmlToPdfWithFallback } = await import('@/lib/pdf-converter')
+    return await convertHtmlToPdfWithFallback(html, {
+      marginPt: 28, // ~10mm
+      timeoutMs: 120000,
     })
-
-    if (!response.ok) {
-      throw new Error(`Gotenberg error: ${response.status}`)
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    return Buffer.from(arrayBuffer)
   } catch (error) {
-    logger.warn('Gotenberg não disponível, retornando HTML:', error)
-    // Fallback: retornar HTML como buffer
-    return Buffer.from(html, 'utf-8')
+    logger.error({ err: error, recordId: options.recordId }, 'Falha ao gerar PDF do prontuário (todos os backends)')
+    throw error instanceof Error ? error : new Error('Serviço de PDF indisponível')
   }
 }
 

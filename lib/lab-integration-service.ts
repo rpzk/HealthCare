@@ -409,8 +409,8 @@ class LabIntegrationServiceClass {
         doctorId: examRequest.doctor.id,
         doctorName: examRequest.doctor.name,
         exams: [{
-          code: examRequest.examType,
-          name: examRequest.description || examRequest.examType,
+          code: examRequest.examType ?? 'UNKNOWN',
+          name: examRequest.description ?? examRequest.examType ?? 'Exame',
           instructions: examRequest.notes || undefined
         }],
         priority: examRequest.urgency === 'EMERGENCY' ? 'stat' : examRequest.urgency === 'URGENT' ? 'urgent' : 'routine',

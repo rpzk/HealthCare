@@ -211,6 +211,7 @@ export function AISuggestions({
         }}
         disabled={!hasContent}
         className="gap-2"
+        title="Sugestões de apoio baseadas na anamnese. A decisão final é sempre do profissional."
       >
         <Sparkles className="h-4 w-4" />
         Sugestões IA
@@ -221,11 +222,13 @@ export function AISuggestions({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-primary" />
-              Sugestões da Inteligência Artificial
+              Sugestões de Apoio (IA)
             </DialogTitle>
             <DialogDescription>
-              Com base na anamnese, a IA sugere prescrições, exames e encaminhamentos.
-              Revise e selecione o que deseja aplicar.
+              <span className="block mb-2">Com base na anamnese, a IA sugere prescrições, exames e encaminhamentos. Revise e selecione o que deseja aplicar.</span>
+              <span className="block text-xs text-amber-600 dark:text-amber-400 font-medium">
+                CFM: A IA é ferramenta de apoio. A responsabilidade pelo diagnóstico e tratamento permanece exclusivamente com o profissional.
+              </span>
             </DialogDescription>
           </DialogHeader>
 

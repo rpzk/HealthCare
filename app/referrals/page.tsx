@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -79,6 +80,7 @@ export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<Referral[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebouncedValue(searchTerm, 400)
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [filterPriority, setFilterPriority] = useState('ALL')
   const [currentPage, setCurrentPage] = useState(1)
@@ -90,7 +92,7 @@ export default function ReferralsPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
-        search: searchTerm,
+        search: debouncedSearch,
         status: filterStatus,
         priority: filterPriority,
       })
@@ -107,7 +109,7 @@ export default function ReferralsPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, filterStatus, filterPriority, searchTerm])
+  }, [currentPage, filterStatus, filterPriority, debouncedSearch])
 
   useEffect(() => {
     fetchReferrals()

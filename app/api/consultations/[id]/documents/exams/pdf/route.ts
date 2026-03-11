@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { signPdfWithGotenberg, convertHtmlToPdf } from '@/lib/pdf-signing-service'
 import { withDoctorAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
+import { getCertificatePassword } from '@/lib/certificate-session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { decrypt } from '@/lib/crypto'
@@ -17,7 +18,7 @@ const formatCpf = (cpf?: string | null) => {
 }
 
 // Helper para montar HTML de exames
-async function buildExamsHtml(consultationId: string) {
+async function buildExamsHtml(consultationId: string, options?: { useStamp?: boolean }) {
   const consultation = await prisma.consultation.findUnique({
     where: { id: consultationId },
     include: {
@@ -87,16 +88,30 @@ async function buildExamsHtml(consultationId: string) {
   } else {
     html += `<p class="footer">Consulta: ${consultation.id}</p>`
   }
+
+  if (options?.useStamp) {
+    const doctorLine = [consultation.doctor?.name || '—', doctorRegistration].filter(Boolean).join(' • ')
+    html += `
+    <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #333;">
+      <p>______________________________</p>
+      <p><strong>Carimbo do Médico</strong></p>
+      <p>${doctorLine}</p>
+      <p>Emitido em: ${new Date().toLocaleDateString('pt-BR')}</p>
+    </div>`
+  } else {
+    html += `<p class="footer" style="margin-top: 20px; font-size: 10px;">Documento assinado digitalmente conforme assinaturas registradas no sistema.</p>`
+  }
   html += `</body></html>`
 
   return { html, consultation }
 }
 
-// GET: Gera PDF sem assinatura digital
+// GET: Gera PDF sem assinatura digital (aceita ?stamp=1 para carimbo do médico)
 export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>, user: any }) => {
   try {
     const consultationId = params.id
-    const result = await buildExamsHtml(consultationId)
+    const useStamp = req.nextUrl.searchParams.get('stamp') === '1'
+    const result = await buildExamsHtml(consultationId, { useStamp })
     
     if (!result) {
       return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
@@ -124,13 +139,20 @@ export const GET = withDoctorAuth(async (req: NextRequest, { params, user }: { p
   }
 }) as AuthenticatedApiHandler
 
-// POST: Recebe { password } no body para assinar com certificado A1
+// POST: Recebe { password } no body ou usa sessão de certificado ativa
 export const POST = withDoctorAuth(async (req: NextRequest, { params, user }: { params: Record<string, string>, user: any }) => {
   try {
     const consultationId = params.id
-    const { password } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    let password = body?.password
     if (!password) {
-      return NextResponse.json({ error: 'Senha do certificado obrigatória' }, { status: 400 })
+      password = await getCertificatePassword(user.id)
+    }
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Senha do certificado obrigatória ou ative a sessão de assinatura digital no menu superior' },
+        { status: 400 }
+      )
     }
 
     // Busca certificado ativo do médico

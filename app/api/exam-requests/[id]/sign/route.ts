@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { signWithA1Certificate } from '@/lib/certificate-a1-signer'
 import { resolveCertificatePath } from '@/lib/certificate-path'
+import { getCertificatePassword } from '@/lib/certificate-session'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
@@ -15,9 +16,12 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     const exam = await prisma.examRequest.findUnique({ where: { id: String(id) } })
     if (!exam) return NextResponse.json({ error: 'Solicitação de exame não encontrada' }, { status: 404 })
 
-    // 2) Authorization: only the author doctor or admins
-    if (exam.doctorId !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    // 2) Authorization: only the document author can sign (certificate is exclusive to its owner)
+    if (exam.doctorId !== user.id) {
+      return NextResponse.json(
+        { error: 'Apenas o médico autor da solicitação pode assinar com seu certificado digital. O certificado é de uso exclusivo do titular.' },
+        { status: 403 }
+      )
     }
 
     // 3) Check if already signed via audit trail
@@ -59,11 +63,17 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
       )
     }
 
-    // 6) Validate password
-    const body = (await request.json().catch(() => ({}))) as any
-    const password: string | undefined = body?.password
+    // 6) Senha: body ou sessão de certificado ativa
+    const body = (await request.json().catch(() => ({}))) as { password?: string }
+    let password: string | null | undefined = body?.password
     if (!password) {
-      return NextResponse.json({ error: 'Senha do certificado é obrigatória' }, { status: 400 })
+      password = await getCertificatePassword(user.id)
+    }
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Senha do certificado obrigatória ou ative a sessão de assinatura digital no menu superior' },
+        { status: 400 }
+      )
     }
 
     // 7) Sign content with proper error handling

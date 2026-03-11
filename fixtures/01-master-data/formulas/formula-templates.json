@@ -1,0 +1,148 @@
+{
+  "source": "Fórmulas magistrais genéricas para atenção primária",
+  "data": [
+    {
+      "name": "Vitamina C + Zinco",
+      "category": "Imunidade",
+      "ingredients": "Vitamina C 1g | Zinco quelato 15mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula ao dia ou 2x ao dia em quadros gripais",
+      "notes": "Suporte imunológico",
+      "indications": "Prevenção de infecções respiratórias, suporte em resfriados",
+      "contraindications": "Hiperoxalúria, cálculo renal de oxalato",
+      "duration": "30-90 dias"
+    },
+    {
+      "name": "Complexo B",
+      "category": "Metabolismo",
+      "ingredients": "Vitamina B1 100mg | B2 5mg | B6 10mg | B12 200mcg | Ácido fólico 400mcg | Niacina 20mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula ao dia",
+      "notes": "Suplementação de vitaminas do complexo B",
+      "indications": "Deficiência de vitaminas B, fadiga, suporte em estresse",
+      "contraindications": "Hipersensibilidade às vitaminas do complexo B",
+      "duration": "30-90 dias"
+    },
+    {
+      "name": "Ômega 3",
+      "category": "Cardiovascular",
+      "ingredients": "Óleo de peixe 1000mg (EPA 180mg + DHA 120mg)",
+      "form": "Cápsula",
+      "dosage": "1-2 cápsulas 2x ao dia",
+      "notes": "Anti-inflamatório, cardioprotetor",
+      "indications": "Hipertrigliceridemia, prevenção cardiovascular, inflamação",
+      "contraindications": "Alergia a peixes",
+      "duration": "Uso contínuo"
+    },
+    {
+      "name": "Vitamina D3",
+      "category": "Metabolismo",
+      "ingredients": "Colecalciferol (Vitamina D3) 2000 UI",
+      "form": "Cápsula",
+      "dosage": "1 cápsula ao dia ou 2x por semana (dose de manutenção)",
+      "notes": "Reposição conforme dosagem sérica",
+      "indications": "Deficiência de vitamina D, osteoporose, imunidade",
+      "contraindications": "Hipercalcemia, hipercalciúria",
+      "duration": "Conforme dosagem sérica"
+    },
+    {
+      "name": "Magnésio + B6",
+      "category": "Neurologia e Saúde Mental",
+      "ingredients": "Magnésio quelato 200mg | Vitamina B6 10mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula à noite",
+      "notes": "Magnésio melhora absorção de B6 e vice-versa",
+      "indications": "Cãibras, ansiedade leve, qualidade do sono",
+      "contraindications": "Insuficiência renal grave, bloqueio AV",
+      "duration": "60-90 dias"
+    },
+    {
+      "name": "Glutamina",
+      "category": "Gastrointestinal",
+      "ingredients": "L-Glutamina 500mg",
+      "form": "Cápsula",
+      "dosage": "2-4 cápsulas em jejum",
+      "notes": "Nutrição do enterócito",
+      "indications": "Síndrome do intestino permeável, disbiose, suporte intestinal",
+      "contraindications": "Insuficiência renal/hepática grave",
+      "duration": "30-60 dias"
+    },
+    {
+      "name": "Probiótico multicepa",
+      "category": "Gastrointestinal",
+      "ingredients": "Lactobacillus acidophilus | Bifidobacterium lactis | Lactobacillus rhamnosus - 10 bilhões UFC",
+      "form": "Cápsula",
+      "dosage": "1 cápsula em jejum",
+      "notes": "Manter refrigerado",
+      "indications": "Disbiose, diarreia associada a antibióticos, constipação",
+      "contraindications": "Imunossuprimidos (avaliar risco-benefício)",
+      "duration": "30-60 dias"
+    },
+    {
+      "name": "Curcumina + Piperina",
+      "category": "Anti-inflamatório",
+      "ingredients": "Curcumina 500mg | Piperina 5mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula 2x ao dia",
+      "notes": "Piperina aumenta biodisponibilidade da curcumina",
+      "indications": "Processos inflamatórios, artrites, suporte hepático",
+      "contraindications": "Obstrução biliar, úlcera péptica ativa",
+      "duration": "60-90 dias"
+    },
+    {
+      "name": "Melatonina",
+      "category": "Neurologia e Saúde Mental",
+      "ingredients": "Melatonina 3mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula 30min antes de dormir",
+      "notes": "Iniciar com dose baixa",
+      "indications": "Insônia de início, jet lag",
+      "contraindications": "Uso de IMAO, doenças autoimunes",
+      "duration": "Uso sob demanda ou curto prazo"
+    },
+    {
+      "name": "Ferro + Vitamina C",
+      "category": "Hematologia",
+      "ingredients": "Sulfato ferroso 100mg (elementar 20mg) | Vitamina C 100mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula em jejum",
+      "notes": "Vitamina C aumenta absorção do ferro. Evitar com leite/cafeína",
+      "indications": "Anemia ferropênica",
+      "contraindications": "Hemocromatose, talassemia maior",
+      "duration": "3-6 meses ou até normalização"
+    },
+    {
+      "name": "Coenzima Q10",
+      "category": "Cardiovascular",
+      "ingredients": "Ubiquinona 100mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula ao dia",
+      "notes": "Melhor absorção com alimentos gordurosos",
+      "indications": "Suporte em uso de estatinas, insuficiência cardíaca",
+      "contraindications": "Hipersensibilidade",
+      "duration": "Uso contínuo conforme indicação"
+    },
+    {
+      "name": "Ácido alfa-lipóico",
+      "category": "Metabolismo",
+      "ingredients": "Ácido alfa-lipóico 300mg",
+      "form": "Cápsula",
+      "dosage": "1 cápsula em jejum ou 30min antes das refeições",
+      "notes": "Antioxidante, neuroprotetor",
+      "indications": "Neuropatia diabética, suporte antioxidante",
+      "contraindications": "Deficiência de tiamina",
+      "duration": "60-90 dias"
+    },
+    {
+      "name": "Ashwagandha",
+      "category": "Neurologia e Saúde Mental",
+      "ingredients": "Extrato de Withania somnifera (KSM-66) 300mg",
+      "form": "Cápsula",
+      "dosage": "1-2 cápsulas ao dia",
+      "notes": "Adaptógeno",
+      "indications": "Ansiedade, estresse, suporte em hipotireoidismo subclínico",
+      "contraindications": "Hipotireoidismo em uso de levotiroxina (interação), gestação",
+      "duration": "60-90 dias"
+    }
+  ]
+}

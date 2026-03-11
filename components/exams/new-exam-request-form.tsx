@@ -26,8 +26,10 @@ import {
   CheckCircle,
   Package,
   Plus,
-  Trash2
+  Trash2,
+  Sparkles
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 
@@ -76,7 +78,11 @@ interface SelectedExam extends ExamSuggestion {
   fromCombo?: string
 }
 
-export default function NewExamRequestForm() {
+interface NewExamRequestFormProps {
+  initialPatientId?: string
+}
+
+export default function NewExamRequestForm({ initialPatientId }: NewExamRequestFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'individual' | 'combo'>('individual')
@@ -115,6 +121,9 @@ export default function NewExamRequestForm() {
     scheduledDate: ''
   })
 
+  // IA - sugestão de exames
+  const [aiSuggestLoading, setAiSuggestLoading] = useState(false)
+
   // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -131,6 +140,32 @@ export default function NewExamRequestForm() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Pré-selecionar paciente quando vier da página de detalhes (?patientId=...)
+  useEffect(() => {
+    if (!initialPatientId || selectedPatient) return
+    ;(async () => {
+      try {
+        setPatientLoading(true)
+        const res = await fetch(`/api/patients/${initialPatientId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const p: Patient = {
+          id: data.id,
+          name: data.name,
+          cpf: data.cpf ?? null,
+          birthDate: data.birthDate ?? null,
+          gender: data.gender ?? null,
+        }
+        setSelectedPatient(p)
+        setPatientSearch(p.name)
+      } catch (e) {
+        logger.error('Erro ao pré-carregar paciente para exame:', e)
+      } finally {
+        setPatientLoading(false)
+      }
+    })()
+  }, [initialPatientId, selectedPatient])
 
   // Patient search
   const searchPatients = useCallback(async (query: string) => {
@@ -292,6 +327,72 @@ export default function NewExamRequestForm() {
     setShowComboDropdown(false)
   }
 
+  const fetchAISuggestions = useCallback(async () => {
+    if (!selectedPatient) return
+    setAiSuggestLoading(true)
+    try {
+      const res = await fetch('/api/ai/suggest-exams-for-patient', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId: selectedPatient.id }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const msg = body?.error || (res.status === 403 ? 'Acesso negado a este paciente' : 'Falha ao obter sugestões')
+        throw new Error(msg)
+      }
+      const data = await res.json()
+      const suggestions = data?.exams || []
+      if (suggestions.length === 0) {
+        toast.info('A IA não sugeriu exames para este caso')
+        return
+      }
+      const addedIds = new Set<string>()
+      let added = 0
+      for (const sug of suggestions) {
+        const q = String(sug.name || '').trim()
+        if (!q) continue
+        try {
+          const params = new URLSearchParams({ q, limit: '3' })
+          if (selectedPatient.gender) params.set('patientSex', selectedPatient.gender)
+          if (selectedPatient.birthDate) {
+            const age = Math.floor((Date.now() - new Date(selectedPatient.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+            params.set('patientAge', String(age))
+          }
+          const ar = await fetch(`/api/exams/autocomplete?${params}`)
+          if (!ar.ok) continue
+          const catalog = await ar.json()
+          const match = catalog?.[0]
+          if (match && !addedIds.has(match.id)) {
+            addedIds.add(match.id)
+            setSelectedExams(prev => {
+              if (prev.find(e => e.id === match.id)) return prev
+              return [...prev, { ...match, notes: sug.description || sug.reasoning }]
+            })
+            added++
+          }
+        } catch {
+          // ignora falha ao resolver um exame
+        }
+      }
+      if (added > 0) {
+        const indication = (data?.indication || '').trim()
+        if (indication) {
+          setForm(prev => ({ ...prev, description: prev.description ? `${prev.description}\n\n${indication}` : indication }))
+        }
+        toast.success(`${added} exame(s) sugerido(s) pela IA adicionados`)
+      } else {
+        toast.warning('Sugestões da IA não encontraram correspondência no catálogo')
+      }
+    } catch (e) {
+      logger.error('Erro ao sugerir exames:', e)
+      const msg = e instanceof Error ? e.message : 'Erro ao obter sugestões da IA'
+      toast.error(msg)
+    } finally {
+      setAiSuggestLoading(false)
+    }
+  }, [selectedPatient])
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -436,7 +537,26 @@ export default function NewExamRequestForm() {
 
       {/* Seleção de Exames */}
       <div>
-        <label className="block text-sm font-medium mb-2">Exames *</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium">Exames *</label>
+          {selectedPatient && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fetchAISuggestions}
+              disabled={aiSuggestLoading}
+              className="gap-2"
+            >
+              {aiSuggestLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Sugerir exames com IA
+            </Button>
+          )}
+        </div>
         
           <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as 'individual' | 'combo')} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">

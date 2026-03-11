@@ -8,6 +8,7 @@ import path from 'path'
 import { signPdfWithPAdES } from '@/lib/documents/pades-signer'
 import { generatePrescriptionPdfBuffer } from '@/lib/prescription-pdf-helpers'
 import { resolveCertificatePath } from '@/lib/certificate-path'
+import { getCertificatePassword } from '@/lib/certificate-session'
 
 /**
  * POST /api/prescriptions/[id]/sign
@@ -28,9 +29,15 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
 
     const body = await request.json().catch(() => ({})) as { password?: string }
-    const password: string | undefined = body?.password
+    let password: string | null | undefined = body?.password
     if (!password) {
-      return NextResponse.json({ error: 'Senha do certificado é obrigatória' }, { status: 400 })
+      password = await getCertificatePassword(user.id)
+    }
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Senha do certificado obrigatória ou ative a sessão de assinatura digital no menu superior' },
+        { status: 400 }
+      )
     }
 
     // 1. Carregar prescrição com dados completos (mesmo include da rota de PDF)
@@ -46,8 +53,11 @@ export const POST = withAuth(async (request: NextRequest, { user, params }) => {
     if (!prescription) {
       return NextResponse.json({ error: 'Prescrição não encontrada' }, { status: 404 })
     }
-    if (prescription.doctorId !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    if (prescription.doctorId !== user.id) {
+      return NextResponse.json(
+        { error: 'Apenas o médico autor da prescrição pode assinar com seu certificado digital. O certificado é de uso exclusivo do titular.' },
+        { status: 403 }
+      )
     }
     if (prescription.digitalSignature) {
       return NextResponse.json({ error: 'Prescrição já assinada' }, { status: 400 })

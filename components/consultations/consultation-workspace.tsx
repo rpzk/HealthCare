@@ -33,6 +33,7 @@ import {
   XCircle, 
   Stethoscope,
   Plus,
+  Package,
   Trash2,
   Save,
   Activity,
@@ -107,12 +108,13 @@ import { ExamAutocomplete } from './exam-autocomplete'
 import { ProtocolSelector } from './protocol-selector'
 import { ProtocolCreator } from './protocol-creator'
 import { AISuggestions } from './ai-suggestions'
+import { DrugInteractionCheckButton } from './drug-interaction-check-button'
 import { defaultBIData } from './consultation-bi-checkboxes'
 import { PatientHistoryPanel } from './patient-history-panel'
 
-// Modais de edição
 import { PrescriptionEditorDialog } from './prescription-editor-dialog'
 import { ExamEditorDialog } from './exam-editor-dialog'
+import { ExamComboPicker } from './exam-combo-picker'
 import { ReferralEditorDialog } from './referral-editor-dialog'
 import { CertificateEditorDialog } from './certificate-editor-dialog'
 
@@ -184,6 +186,7 @@ interface Certificate {
 
 type A1Status = {
   hasActiveCertificate: boolean
+  certSessionActive?: boolean
 }
 
 type SignatureInfo = {
@@ -294,15 +297,23 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
   const [generatedDocs, setGeneratedDocs] = useState<Array<{ type: string; documentId: string; label: string }>>([])
 
   useEffect(() => {
-    // Indicador simples para dar feedback se o A1 está ativo (para assinatura digital)
-    fetch('/api/digital-signatures/certificates?active=true&limit=1')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Erro ao verificar certificado'))))
-      .then((data) => {
-        const hasActive = Array.isArray(data?.certificates) && data.certificates.length > 0
-        setA1Status({ hasActiveCertificate: hasActive })
+    // Verificar se tem certificado A1 e se a sessão de assinatura está ativa
+    Promise.all([
+      fetch('/api/digital-signatures/certificates?active=true&limit=1').then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error('Erro ao verificar certificado'))
+      ),
+      fetch('/api/certificate-session').then((r) => (r.ok ? r.json() : { session: {} })),
+    ])
+      .then(([certData, sessionData]) => {
+        const hasActive = Array.isArray(certData?.certificates) && certData.certificates.length > 0
+        const sessionActive = !!(sessionData?.session?.active && !sessionData?.session?.locked)
+        setA1Status({ hasActiveCertificate: hasActive, certSessionActive: sessionActive })
       })
-      .catch(() => setA1Status({ hasActiveCertificate: false }))
+      .catch(() => setA1Status({ hasActiveCertificate: false, certSessionActive: false }))
   }, [])
+
+  // Status do certificado: consulta inicial apenas. O header (certificate-session-indicator) faz polling
+  // e atualiza a UI global. Evita polling duplicado que sobrecarregava a página.
 
   const isLikelyLocalId = (id?: string) => {
     if (!id) return true
@@ -359,11 +370,15 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
 
     if (a1Status.hasActiveCertificate) {
       if (signed < total) {
-        // Documentos não assinados: abre dialog para pedir senha e assinar
         setPendingPdfUrl(url)
         setSignTarget(target)
         setA1Password('')
-        setSignDialogOpen(true)
+        if (a1Status.certSessionActive) {
+          // Sessão ativa: assinar automaticamente sem pedir senha
+          signDocuments('', target, url)
+        } else {
+          setSignDialogOpen(true)
+        }
         return
       }
       // Documentos já assinados: gera PDF sem assinatura via GET (mais rápido)
@@ -372,8 +387,8 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       return
     }
 
-    // PDF sem assinatura: GET
-    openPdf(url)
+    // PDF sem assinatura: GET com carimbo (fallback quando médico não tem certificado)
+    openPdf(withStampParam(url))
   }
 
   // Use centralized client to avoid flooding the server with parallel signature checks
@@ -444,12 +459,14 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     }
   }
 
-  const signDocuments = async () => {
-    if (!signTarget) return
-    if (!a1Password) {
-      toast({ title: 'Senha obrigatória', description: 'Informe a senha do certificado A1.', variant: 'destructive' })
-      return
-    }
+  const signDocuments = async (
+    passwordOverride?: string,
+    targetOverride?: typeof signTarget,
+    pdfUrlToOpen?: string
+  ) => {
+    const target = targetOverride ?? signTarget
+    if (!target) return
+    const pwd = passwordOverride !== undefined ? passwordOverride : a1Password
 
     const prescriptionIds = Array.from(
       new Set(prescriptions.map((p) => String(p.id)).filter((id) => id && !isLikelyLocalId(id)))
@@ -463,11 +480,11 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     )
 
     const ids =
-      signTarget === 'PRESCRIPTIONS'
+      target === 'PRESCRIPTIONS'
         ? prescriptionIds
-        : signTarget === 'EXAMS'
+        : target === 'EXAMS'
           ? examIds
-          : signTarget === 'REFERRALS'
+          : target === 'REFERRALS'
             ? referralIds
             : certificateIds
 
@@ -485,18 +502,19 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       for (const id of ids) {
 
         const url =
-          signTarget === 'PRESCRIPTIONS'
+          target === 'PRESCRIPTIONS'
             ? `/api/prescriptions/${id}/sign`
-            : signTarget === 'EXAMS'
+            : target === 'EXAMS'
               ? `/api/exam-requests/${id}/sign`
-              : signTarget === 'REFERRALS'
+              : target === 'REFERRALS'
                 ? `/api/referrals/${id}/sign`
                 : `/api/medical-certificates/${id}/sign`
 
+        const body = pwd ? { password: pwd } : {}
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: a1Password }),
+          body: JSON.stringify(body),
         })
 
         if (!res.ok) {
@@ -522,10 +540,10 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         })
 
         try {
-          if (signTarget === 'EXAMS') await fetchSignatureInfo('EXAM_REQUEST', id)
-          if (signTarget === 'REFERRALS') await fetchSignatureInfo('REFERRAL', id)
-          if (signTarget === 'CERTIFICATES') await fetchSignatureInfo('MEDICAL_CERTIFICATE', id)
-          if (signTarget === 'PRESCRIPTIONS') await fetchSignatureInfo('PRESCRIPTION', id)
+          if (target === 'EXAMS') await fetchSignatureInfo('EXAM_REQUEST', id)
+          if (target === 'REFERRALS') await fetchSignatureInfo('REFERRAL', id)
+          if (target === 'CERTIFICATES') await fetchSignatureInfo('MEDICAL_CERTIFICATE', id)
+          if (target === 'PRESCRIPTIONS') await fetchSignatureInfo('PRESCRIPTION', id)
         } catch {
           // ignore
         }
@@ -534,11 +552,10 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
       await loadConsultation()
       setSignDialogOpen(false)
 
-      if (pendingPdfUrl) {
-        const url = pendingPdfUrl
+      const urlToOpen = pdfUrlToOpen ?? pendingPdfUrl
+      if (urlToOpen) {
         setPendingPdfUrl(null)
-        // Após assinatura, baixar PDF via GET (documentos já assinados individualmente)
-        openPdf(url)
+        openPdf(urlToOpen)
       }
     } finally {
       setSigningDocs(false)
@@ -561,16 +578,16 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
     try {
       if (prescriptions.length > 0) {
         const meds = prescriptions.map((rx) => ({
-          genericName: rx.medication,
-          concentration: '',
+          genericName: (rx.medication || '').trim() || 'Medicamento',
+          concentration: (rx as { concentration?: string }).concentration?.trim() || '---',
           pharmaceuticalForm: (rx as { form?: string }).form || 'comprimido',
-          quantity: 1,
+          quantity: (rx as { quantity?: number }).quantity ?? 1,
           quantityUnit: 'unidade(s)',
-          dosage: rx.dosage,
+          dosage: (rx.dosage || '').trim() || 'Conforme orientação médica',
           route: (rx as { route?: string }).route || 'oral',
-          frequency: rx.frequency,
-          duration: rx.duration,
-          instructions: rx.instructions || undefined
+          frequency: (rx.frequency || '').trim() || '1x ao dia',
+          duration: (rx.duration || '').trim() || '30 dias',
+          instructions: (rx.instructions || '').trim() || undefined
         }))
         const res = await fetch('/api/documents', {
           method: 'POST',
@@ -588,7 +605,9 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         if (data.success && data.documentId) {
           created.push({ type: 'PRESCRIPTION', documentId: data.documentId, label: 'Receita médica' })
         } else if (!res.ok) {
-          toast({ title: 'Receita', description: data.error || data.details?.[0] || 'Erro ao gerar', variant: 'destructive' })
+          const detail = data.details?.[0]
+          const detailMsg = typeof detail === 'object' && detail?.message ? detail.message : Array.isArray(data.details) ? data.details.map((d: { message?: string }) => d?.message).filter(Boolean).join('; ') : data.details?.[0]
+          toast({ title: 'Receita', description: data.error || detailMsg || 'Erro ao gerar', variant: 'destructive' })
         }
       }
 
@@ -770,13 +789,13 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
         })
       }
       
-      // Carregar diagnósticos existentes (do relacionamento, se existir)
+      // Carregar diagnósticos existentes (do relacionamento Prisma ou notes)
       if (consultationData.diagnoses && consultationData.diagnoses.length > 0) {
-        setDiagnoses(consultationData.diagnoses.map((d: Diagnosis) => ({
+        setDiagnoses(consultationData.diagnoses.map((d: any, idx: number) => ({
           id: d.id,
-          code: d.code,
-          description: d.description,
-          type: d.type
+          code: d.code ?? d.primaryCode?.code ?? '',
+          description: d.description ?? d.primaryCode?.display ?? d.primaryCode?.description ?? d.primaryCode?.shortDescription ?? '',
+          type: (d.type ?? (idx === 0 ? 'PRINCIPAL' : 'SECONDARY')) as 'PRINCIPAL' | 'SECONDARY'
         })))
       }
       
@@ -1032,6 +1051,20 @@ interface Medication {
 }
 
   // ============ HANDLERS DE SELEÇÃO ============
+  const handleAddProtocolMedications = (medications: Array<{ name: string; dosage: string; frequency: string; duration: string; instructions?: string }>) => {
+    const list: Prescription[] = medications.map(m => ({
+      id: Date.now().toString() + Math.random(),
+      medication: m.name,
+      dosage: m.dosage || '',
+      frequency: m.frequency || '1x ao dia',
+      duration: m.duration || '',
+      instructions: m.instructions || ''
+    }))
+    setPrescriptions(prev => [...prev, ...list])
+    setMedSearch('')
+    toast({ title: 'Protocolo adicionado', description: `${list.length} medicamento(s) inseridos` })
+  }
+
   const handleMedicationSelect = (med: Medication) => {
     // Abrir modal para edição completa
     setEditingPrescription({
@@ -1127,17 +1160,36 @@ interface Medication {
 
 
   const handleExamSelect = (exam: Exam) => {
-    // Abrir modal para edição completa
-    setEditingExam({
+    // Adicionar direto, sem modal (pode editar depois clicando no item)
+    const newExam: ExamRequest = {
       id: Date.now().toString(),
       examCatalogId: exam.id,
       examType: exam.category || 'LABORATORY',
       description: exam.name,
       priority: 'NORMAL',
       category: exam.category || 'LABORATORY'
-    })
-    setExamDialogOpen(true)
+    }
+    setExams(prev => [...prev, newExam])
     setExamSearch('')
+    toast({ title: 'Exame adicionado', description: exam.name })
+  }
+
+  const handleComboSelect = (combo: { id: string; name: string; items: Array<{ exam: { id: string; name: string; examCategory: string } }> }) => {
+    const newExams: ExamRequest[] = combo.items.map((item, i) => ({
+      id: `${Date.now()}-${i}`,
+      examCatalogId: item.exam.id,
+      examType: item.exam.examCategory || 'LABORATORY',
+      description: item.exam.name,
+      priority: 'NORMAL' as const,
+      category: item.exam.examCategory || 'LABORATORY'
+    }))
+    const existingIds = new Set(exams.map(e => e.examCatalogId || e.description))
+    const unique = newExams.filter(e => !existingIds.has(e.examCatalogId || e.description))
+    if (unique.length > 0) {
+      setExams(prev => [...prev, ...unique])
+      toast({ title: 'Combo adicionado', description: `${combo.name}: ${unique.length} exame(s)` })
+    }
+    fetch(`/api/exam-combos/${combo.id}/use`, { method: 'POST' }).catch(() => {})
   }
 
 
@@ -1790,10 +1842,10 @@ interface Medication {
                 </Select>
               </div>
               <div className="flex flex-wrap gap-1 mb-2">
-                {diagnoses.map((d) => (
-                  <Badge key={d.id} variant="secondary" className="text-xs">
+                {diagnoses.map((d, idx) => (
+                  <Badge key={d.id ?? `${d.code}-${idx}`} variant="secondary" className="text-xs">
                     <span className="font-mono">{d.code}</span>
-                    <button onClick={() => { setDiagnoses(diagnoses.filter(x => x.id !== d.id)); setValidationErrors([]) }} className="ml-1 hover:text-destructive">×</button>
+                    <button onClick={() => { setDiagnoses(diagnoses.filter(x => (x.id ?? x.code) !== (d.id ?? d.code))); setValidationErrors([]) }} className="ml-1 hover:text-destructive">×</button>
                   </Badge>
                 ))}
               </div>
@@ -1823,6 +1875,7 @@ interface Medication {
                 )}
               </CardTitle>
               <div className="flex items-center gap-1">
+                <DrugInteractionCheckButton prescriptions={prescriptions.map(p => ({ medication: p.medication }))} />
                 <Button
                   type="button"
                   variant="outline"
@@ -1874,6 +1927,7 @@ interface Medication {
                   value={medSearch}
                   onChange={setMedSearch}
                   onSelect={handleMedicationSelect}
+                  onExpandProtocol={handleAddProtocolMedications}
                   patientAge={consultation?.patient?.age}
                   patientSex={consultation?.patient?.sex}
                 />
@@ -1910,15 +1964,21 @@ interface Medication {
                   <Printer className="h-3 w-3 mr-1" /> PDF
                 </Button>
                 {!isFinalized && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 w-6 p-0" 
-                    onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
-                    title="Novo exame"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-0.5">
+                    <ExamComboPicker
+                      onComboSelect={handleComboSelect}
+                      disabled={false}
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 w-6 p-0" 
+                      onClick={() => { setEditingExam(undefined); setExamDialogOpen(true) }}
+                      title="Novo exame manual"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardHeader>
@@ -2064,7 +2124,11 @@ interface Medication {
                               toast({ title: 'Salve o atestado antes', description: 'O PDF precisa do ID do documento.' })
                               return
                             }
-                            openPdf(`/api/certificates/${cert.id}/pdf`)
+                            openPdf(
+                              a1Status.hasActiveCertificate
+                                ? `/api/certificates/${cert.id}/pdf`
+                                : withStampParam(`/api/certificates/${cert.id}/pdf`)
+                            )
                           }}
                         >
                           Baixar PDF
@@ -2155,12 +2219,12 @@ interface Medication {
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label>Senha do certificado</Label>
+            <Label>Senha do certificado (opcional se sessão ativa)</Label>
             <Input
               type="password"
               value={a1Password}
               onChange={(e) => setA1Password(e.target.value)}
-              placeholder="Senha do A1"
+              placeholder="Deixe em branco se ativou a assinatura digital no menu"
             />
             <p className="text-xs text-muted-foreground">
               Alvo:{' '}
@@ -2180,7 +2244,7 @@ interface Medication {
             <Button type="button" variant="outline" onClick={() => setSignDialogOpen(false)} disabled={signingDocs}>
               Cancelar
             </Button>
-            <Button type="button" onClick={signDocuments} disabled={signingDocs}>
+            <Button type="button" onClick={() => signDocuments()} disabled={signingDocs}>
               {signingDocs ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PenLine className="h-4 w-4 mr-2" />}
               Assinar
             </Button>

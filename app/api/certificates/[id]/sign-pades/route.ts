@@ -42,14 +42,10 @@ export async function POST(
       )
     }
 
-    // Verificar permissão (usuário médico dono do cert, ou admin)
-    const userRole = session.user.role as string
-    if (
-      userRole !== 'admin' &&
-      session.user.id !== medicalCert.doctorId
-    ) {
+    // Verificar permissão: apenas o médico autor pode assinar (certificado de uso exclusivo)
+    if (session.user.id !== medicalCert.doctorId) {
       return NextResponse.json(
-        { error: 'Forbidden: Only the issuing doctor can sign this certificate' },
+        { error: 'Apenas o médico autor do atestado pode assinar com seu certificado digital. O certificado é de uso exclusivo do titular.' },
         { status: 403 }
       )
     }
