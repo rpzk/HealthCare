@@ -1,5 +1,5 @@
 import { Queue, Worker, QueueEvents, JobsOptions } from 'bullmq'
-import Redis from 'ioredis'
+import type RedisType from 'ioredis'
 import { medicalAI } from './advanced-medical-ai'
 import { incCounter, observeHistogram } from './metrics'
 import path from 'path'
@@ -18,34 +18,55 @@ const connection = {
   port: parseInt(process.env.REDIS_PORT || '6379')
 }
 
-function attachRedisErrorHandler(client: Redis, context: string) {
+function attachRedisErrorHandler(client: RedisType, context: string) {
   client.on('error', (err: NodeJS.ErrnoException) => {
-    // During build/dev, Redis might not be running; avoid noisy logs.
     if (err?.code === 'ECONNREFUSED') return
     logger.warn({ err, context }, 'Redis error')
   })
 }
 
-export const aiQueue = new Queue('ai-jobs', { connection })
-const events = new QueueEvents('ai-jobs', { connection })
-const redis = new Redis({
-  ...connection,
-  lazyConnect: true,
-  maxRetriesPerRequest: 2,
-})
+let _aiQueue: Queue | null = null
+let _events: QueueEvents | null = null
+let _redis: RedisType | null = null
 
-// Ensure BullMQ/ioredis clients always have error listeners.
-void aiQueue.client
-  .then((client) => attachRedisErrorHandler(client as unknown as Redis, 'bullmq:aiQueue'))
-  .catch(() => undefined)
-void events.client
-  .then((client) => attachRedisErrorHandler(client as unknown as Redis, 'bullmq:events'))
-  .catch(() => undefined)
-attachRedisErrorHandler(redis, 'ai-cancel-flag')
+export function getAiQueue(): Queue {
+  if (!_aiQueue) {
+    _aiQueue = new Queue('ai-jobs', { connection })
+    void _aiQueue.client
+      .then((client) => attachRedisErrorHandler(client as unknown as RedisType, 'bullmq:aiQueue'))
+      .catch(() => undefined)
+  }
+  return _aiQueue
+}
+
+function getEvents(): QueueEvents {
+  if (!_events) {
+    _events = new QueueEvents('ai-jobs', { connection })
+    void _events.client
+      .then((client) => attachRedisErrorHandler(client as unknown as RedisType, 'bullmq:events'))
+      .catch(() => undefined)
+  }
+  return _events
+}
+
+async function getRedis(): Promise<RedisType> {
+  if (!_redis) {
+    const Redis = (await import('ioredis')).default
+    _redis = new Redis({ ...connection, lazyConnect: true, maxRetriesPerRequest: 2 })
+    attachRedisErrorHandler(_redis, 'ai-cancel-flag')
+    await _redis.connect().catch(() => {})
+  }
+  return _redis
+}
+
+export const aiQueue = new Proxy({} as Queue, {
+  get(_, prop) { return (getAiQueue() as any)[prop] }
+})
 
 async function checkCancelled(jobId: string) {
   try {
-    const v = await redis.get(`ai-job:cancel:${jobId}`)
+    const r = await getRedis()
+    const v = await r.get(`ai-job:cancel:${jobId}`)
     return v === '1'
   } catch {
     return false
@@ -208,14 +229,9 @@ new Worker('ai-jobs', async job => {
   }
 },{ connection, concurrency: 2 })
 
-// Eventos
-events.on('completed', ({ jobId }) => {
-  // poderia logar
-})
-
-events.on('failed', ({ jobId, failedReason }) => {
-  // log error
-})
+const ev = getEvents()
+ev.on('completed', () => {})
+ev.on('failed', () => {})
 
 export async function enqueueAI(
   type: AIJobType,
@@ -229,7 +245,8 @@ export async function enqueueAI(
 export async function cancelAIJob(jobId: string): Promise<void> {
   const key = `ai-job:cancel:${jobId}`
   try {
-    await redis.set(key, '1', 'EX', 60 * 60 * 24)
+    const r = await getRedis()
+    await r.set(key, '1', 'EX', 60 * 60 * 24)
   } catch (e) {
     logger.warn({ err: e, jobId }, 'Failed to set cancel flag for AI job')
   }

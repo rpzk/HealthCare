@@ -244,7 +244,8 @@ export async function middleware(request: NextRequest) {
         '/auth',           // login, register, reset
         '/questionnaire',  // questionários públicos por token
         '/invite',         // convites públicos
-        '/verify',         // verificação de documentos
+        '/validar',        // validação pública de receitas (QR code farmácia)
+        '/verify',         // verificação de documentos por hash
         '/certificates/validate',
         '/api',            // qualquer API (já tratado acima)
         '/docs',           // docs públicas
