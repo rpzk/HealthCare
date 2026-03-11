@@ -2,7 +2,7 @@
  * Waiting Room Service - Sala de espera virtual com Redis
  */
 
-import Redis from 'ioredis'
+import type Redis from 'ioredis'
 import prisma from '@/lib/prisma'
 import { WhatsAppService } from './whatsapp-service'
 import { SystemSettingsService } from './system-settings-service'
@@ -14,8 +14,9 @@ async function getRedisClient(): Promise<Redis | null> {
   if (redis) return redis
 
   try {
+    const RedisConstructor = (await import('ioredis')).default
     const config = await SystemSettingsService.getRedisConfig()
-    redis = new Redis({
+    redis = new RedisConstructor({
       host: config.host,
       port: config.port,
       password: config.password || undefined,

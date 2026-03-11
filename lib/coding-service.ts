@@ -4,23 +4,22 @@ import { prisma } from '@/lib/prisma'
 // Usar import amplo para contornar cache de tipos em hot-reload
 import * as PrismaNS from '@prisma/client'
 const { CodeSystemKind, DiagnosisStatus, DiagnosisCertainty } = PrismaNS as any
-import Redis from 'ioredis'
+import type RedisType from 'ioredis'
 import { medicalAI } from '@/lib/advanced-medical-ai'
 import { logger } from '@/lib/logger'
 
-// ---- Simple cache (Redis + memory fallback) ----
-let _redis: Redis | null = null
+let _redis: RedisType | null = null
 let _redisTried = false
-function getRedis(): Redis | null {
+async function getRedisAsync(): Promise<RedisType | null> {
   if (process.env.DISABLE_REDIS === '1') return null
   if (_redis || _redisTried) return _redis
   try {
+    const Redis = (await import('ioredis')).default
     if (process.env.REDIS_URL) {
       _redis = new Redis(process.env.REDIS_URL)
     } else {
       _redis = new Redis({ host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT||'6379') })
     }
-
     _redis.on('error', (err: NodeJS.ErrnoException) => {
       if (err?.code === 'ECONNREFUSED') return
       logger.warn({ err }, 'Redis error (coding-service cache)')
@@ -133,7 +132,7 @@ export const CodingService = {
     const cacheKey = `codeSearch:${systemKind||'ANY'}:${opts.fts?'1':'0'}:${opts.chapter||''}:${opts.sexRestriction||''}:${opts.categoriesOnly?'1':'0'}:${limit}:${q.toLowerCase()}`
     const cached = cacheGet(cacheKey)
     if (cached) return cached
-    const redis = getRedis()
+    const redis = await getRedisAsync()
     if (redis) {
       try {
         const r = await redis.get(cacheKey)

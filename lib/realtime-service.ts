@@ -17,7 +17,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import Redis from 'ioredis'
+import type Redis from 'ioredis'
 
 // ============ TIPOS ============
 
@@ -76,7 +76,8 @@ class RealtimeServiceClass {
       const redisHost = process.env.REDIS_HOST || 'localhost'
       const redisPort = parseInt(process.env.REDIS_PORT || '6379')
 
-      this.redis = new Redis({
+      const RedisConstructor = (await import('ioredis')).default
+      this.redis = new RedisConstructor({
         host: redisHost,
         port: redisPort,
         maxRetriesPerRequest: 3,
@@ -86,7 +87,7 @@ class RealtimeServiceClass {
         }
       })
 
-      this.pubsub = new Redis({
+      this.pubsub = new RedisConstructor({
         host: redisHost,
         port: redisPort
       })

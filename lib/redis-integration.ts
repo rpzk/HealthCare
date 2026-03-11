@@ -1,5 +1,9 @@
-import Redis from 'ioredis';
+import type RedisType from 'ioredis'
 import { logger } from '@/lib/logger'
+
+async function loadRedis(): Promise<typeof import('ioredis').default> {
+  return (await import('ioredis')).default
+}
 
 // Util para throttling de logs repetidos de erro Redis
 class LogThrottler {
@@ -63,141 +67,124 @@ interface CacheItem<T> {
 }
 
 export class RedisRateLimiter {
-  private redis: Redis;
+  private redis: RedisType | null = null;
   private fallbackMemory: Map<string, RateLimitData> = new Map();
   private isRedisConnected = false;
+  private config: RedisConfig;
+  private initPromise: Promise<void> | null = null;
 
   constructor(config?: Partial<RedisConfig>) {
-    const defaultConfig: RedisConfig = {
+    this.config = {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
       db: parseInt(process.env.REDIS_DB || '0'),
       keyPrefix: 'healthcare:ratelimit:',
       retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3
+      maxRetriesPerRequest: 3,
+      ...config
     };
 
-    const finalConfig = { ...defaultConfig, ...config };
+    if (process.env.DISABLE_REDIS !== '1') {
+      this.initPromise = this.initializeConnection();
+    }
+  }
 
-    // Suporte a REDIS_URL (prioritário) caso definido
+  private async createRedisClient(): Promise<RedisType> {
+    const Redis = await loadRedis();
+    let client: RedisType;
+
     if (process.env.REDIS_URL) {
       try {
-        this.redis = new Redis(process.env.REDIS_URL, {
-          keyPrefix: finalConfig.keyPrefix,
+        client = new Redis(process.env.REDIS_URL, {
+          keyPrefix: this.config.keyPrefix,
           lazyConnect: true,
           maxRetriesPerRequest: 2
         });
       } catch (e) {
-        logger.error('❌ Erro ao parsear REDIS_URL, fallback para host/port:', e);
-        this.redis = new Redis({
-          host: finalConfig.host,
-          port: finalConfig.port,
-          password: finalConfig.password,
-          db: finalConfig.db,
-          keyPrefix: finalConfig.keyPrefix,
+        logger.error('Erro ao parsear REDIS_URL, fallback para host/port:', e);
+        client = new Redis({
+          host: this.config.host,
+          port: this.config.port,
+          password: this.config.password,
+          db: this.config.db,
+          keyPrefix: this.config.keyPrefix,
           maxRetriesPerRequest: 2,
           lazyConnect: true
         });
       }
     } else {
-      this.redis = new Redis({
-        host: finalConfig.host,
-        port: finalConfig.port,
-        password: finalConfig.password,
-        db: finalConfig.db,
-        keyPrefix: finalConfig.keyPrefix,
+      client = new Redis({
+        host: this.config.host,
+        port: this.config.port,
+        password: this.config.password,
+        db: this.config.db,
+        keyPrefix: this.config.keyPrefix,
         maxRetriesPerRequest: 2,
         lazyConnect: true
       });
     }
 
-    // Prevent unhandled error events from crashing the process
-    this.redis.on('error', (err: NodeJS.ErrnoException) => {
-      // Suppress connection refused errors during build/test if needed
-      if (err?.code === 'ECONNREFUSED') {
-        // logger.warn('Redis connection refused (expected during build/test)');
-        return;
-      }
+    client.on('error', (err: NodeJS.ErrnoException) => {
+      if (err?.code === 'ECONNREFUSED') return;
       logger.error('Redis Client Error:', err);
     });
 
-
-    if (process.env.DISABLE_REDIS === '1') {
-      logger.info('🔕 Redis desativado via DISABLE_REDIS=1 (usando apenas fallback em memória)')
-    } else {
-      this.setupRedisEventHandlers();
-      this.initializeConnection();
-    }
+    return client;
   }
 
-  /**
-   * 🔌 Configura handlers de eventos do Redis
-   */
   private setupRedisEventHandlers(): void {
+    if (!this.redis) return;
     this.redis.on('connect', () => {
-      logger.info('🔴 Redis conectado para rate limiting');
       this.isRedisConnected = true;
     });
-
-    this.redis.on('ready', () => {
-      logger.info('✅ Redis pronto para operações de rate limiting');
-    });
-
     this.redis.on('error', (error) => {
       if ((error as NodeJS.ErrnoException).code === 'ECONNREFUSED') {
         this.isRedisConnected = false;
         return;
       }
-      rateLimiterLogThrottler.logError('❌ Erro no Redis rate limiter:', error);
+      rateLimiterLogThrottler.logError('Erro no Redis rate limiter:', error);
       this.isRedisConnected = false;
     });
-
-    this.redis.on('close', () => {
-      logger.info('🔌 Conexão Redis fechada, usando fallback');
-      this.isRedisConnected = false;
-    });
-
-    this.redis.on('reconnecting', () => {
-      logger.info('🔄 Reconectando ao Redis...');
-    });
+    this.redis.on('close', () => { this.isRedisConnected = false; });
   }
 
-  /**
-   * 🚀 Inicializa conexão com Redis
-   */
   private async initializeConnection(): Promise<void> {
     try {
+      this.redis = await this.createRedisClient();
+      this.setupRedisEventHandlers();
       await this.redis.connect();
+      this.isRedisConnected = true;
     } catch (error) {
-      rateLimiterLogThrottler.logError('❌ Falha na conexão inicial do Redis:', error);
+      rateLimiterLogThrottler.logError('Falha na conexão inicial do Redis:', error);
       this.isRedisConnected = false;
-      // Fallback rápido: se host padrão "redis" e falhou DNS ou timeout, tenta localhost 1x
-      const hostTried = (this.redis as { options?: { host?: string } }).options?.host;
+      const hostTried = this.config.host;
       if (hostTried === 'redis' || hostTried === 'redis-cache') {
         try {
-          logger.info('🔁 Tentando fallback para localhost:6379 (rate limiter)');
-          this.redis.disconnect();
+          const Redis = await loadRedis();
+          this.redis?.disconnect();
           this.redis = new Redis({
-            host: 'localhost',
-            port: 6379,
-            db: parseInt(process.env.REDIS_DB || '0'),
-            keyPrefix: 'healthcare:ratelimit:',
-            maxRetriesPerRequest: 2,
-            lazyConnect: true
+            host: 'localhost', port: 6379,
+            db: this.config.db, keyPrefix: this.config.keyPrefix,
+            maxRetriesPerRequest: 2, lazyConnect: true
           });
           this.setupRedisEventHandlers();
           await this.redis.connect();
+          this.isRedisConnected = true;
         } catch (e2) {
-          rateLimiterLogThrottler.logError('❌ Fallback localhost falhou (rate limiter):', e2);
+          rateLimiterLogThrottler.logError('Fallback localhost falhou (rate limiter):', e2);
         }
       }
     }
   }
 
-  /**
-   * ⚡ Verifica e incrementa rate limit (operação atômica)
-   */
+  private async ensureInit(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
+      this.initPromise = null;
+    }
+  }
+
   async checkRateLimit(
     userId: string, 
     limit: number, 
@@ -211,10 +198,11 @@ export class RedisRateLimiter {
     isBlocked: boolean;
     retryAfter?: number;
   }> {
+    await this.ensureInit();
     const key = `user:${userId}`;
     const now = Date.now();
 
-    if (this.isRedisConnected) {
+    if (this.isRedisConnected && this.redis) {
       try {
         return await this.checkRateLimitRedis(key, limit, windowMs, blockDurationMs, now);
       } catch (error) {
@@ -295,7 +283,7 @@ export class RedisRateLimiter {
       end
     `;
 
-    const result = await this.redis.eval(
+    const result = await this.redis!.eval(
       luaScript,
       1,
       key,
@@ -393,9 +381,10 @@ export class RedisRateLimiter {
    * 🔄 Reset manual de rate limit para um usuário
    */
   async resetRateLimit(userId: string): Promise<void> {
+    await this.ensureInit();
     const key = `user:${userId}`;
 
-    if (this.isRedisConnected) {
+    if (this.isRedisConnected && this.redis) {
       try {
         await Promise.all([
           this.redis.del(`${key}:count`),
@@ -426,7 +415,7 @@ export class RedisRateLimiter {
     let activeUsers = 0;
     let blockedUsers = 0;
 
-    if (this.isRedisConnected) {
+    if (this.isRedisConnected && this.redis) {
       try {
         const keys = await this.redis.keys('*');
         totalKeys = keys.length;
@@ -468,9 +457,7 @@ export class RedisRateLimiter {
    * 🔌 Fecha conexão Redis
    */
   async close(): Promise<void> {
-    if (this.redis) {
-      await this.redis.disconnect();
-    }
+    this.redis?.disconnect();
   }
 }
 
@@ -478,97 +465,93 @@ export class RedisRateLimiter {
  * 🌐 Sistema de Cache Distribuído Redis
  */
 export class RedisCache {
-  private redis: Redis;
+  private redis: RedisType | null = null;
   private fallbackMemory: Map<string, CacheItem<unknown>> = new Map();
   private isRedisConnected = false;
+  private config: RedisConfig;
+  private initPromise: Promise<void> | null = null;
 
   constructor(config?: Partial<RedisConfig>) {
-    const defaultConfig: RedisConfig = {
+    this.config = {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
       db: parseInt(process.env.REDIS_CACHE_DB || '1'),
       keyPrefix: 'healthcare:cache:',
       retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3
+      maxRetriesPerRequest: 3,
+      ...config
     };
 
-    const finalConfig = { ...defaultConfig, ...config };
-
-    if (process.env.REDIS_URL) {
-      try {
-        this.redis = new Redis(process.env.REDIS_URL, {
-          keyPrefix: finalConfig.keyPrefix,
-          lazyConnect: true
-        });
-      } catch (e) {
-        logger.error('❌ Erro ao parsear REDIS_URL (cache), fallback host/port:', e);
-        this.redis = new Redis({
-          host: finalConfig.host,
-          port: finalConfig.port,
-          password: finalConfig.password,
-          db: finalConfig.db,
-          keyPrefix: finalConfig.keyPrefix,
-          lazyConnect: true
-        });
-      }
-    } else {
-      this.redis = new Redis({
-        host: finalConfig.host,
-        port: finalConfig.port,
-        password: finalConfig.password,
-        db: finalConfig.db,
-        keyPrefix: finalConfig.keyPrefix,
-        lazyConnect: true
-      });
+    if (process.env.DISABLE_REDIS !== '1') {
+      this.initPromise = this.initializeConnection();
     }
+  }
 
-    if (process.env.DISABLE_REDIS === '1') {
-      logger.info('🔕 Redis Cache desativado via DISABLE_REDIS=1 (fallback memória)')
-    } else {
-      this.setupEventHandlers();
-      this.initializeConnection();
+  private async ensureInit(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
+      this.initPromise = null;
     }
   }
 
   private setupEventHandlers(): void {
-    this.redis.on('connect', () => {
-      this.isRedisConnected = true;
-      logger.info('🔴 Redis Cache conectado');
-    });
-
+    if (!this.redis) return;
+    this.redis.on('connect', () => { this.isRedisConnected = true; });
     this.redis.on('error', (error) => {
       if ((error as NodeJS.ErrnoException).code === 'ECONNREFUSED') {
         this.isRedisConnected = false;
         return;
       }
-      cacheLogThrottler.logError('❌ Erro no Redis Cache:', error);
+      cacheLogThrottler.logError('Erro no Redis Cache:', error);
       this.isRedisConnected = false;
     });
   }
 
   private async initializeConnection(): Promise<void> {
     try {
-      await this.redis.connect();
-    } catch (error) {
-      cacheLogThrottler.logError('❌ Falha na conexão Redis Cache:', error);
-      this.isRedisConnected = false;
-      const hostTried = (this.redis as { options?: { host?: string } }).options?.host;
-      if (hostTried === 'redis' || hostTried === 'redis-cache') {
+      const Redis = await loadRedis();
+      if (process.env.REDIS_URL) {
         try {
-          logger.info('🔁 Tentando fallback para localhost:6379 (cache)');
-          this.redis.disconnect();
+          this.redis = new Redis(process.env.REDIS_URL, {
+            keyPrefix: this.config.keyPrefix, lazyConnect: true
+          });
+        } catch {
           this.redis = new Redis({
-            host: 'localhost',
-            port: 6379,
-            db: parseInt(process.env.REDIS_CACHE_DB || '1'),
-            keyPrefix: 'healthcare:cache:',
-            lazyConnect: true
+            host: this.config.host, port: this.config.port,
+            password: this.config.password, db: this.config.db,
+            keyPrefix: this.config.keyPrefix, lazyConnect: true
+          });
+        }
+      } else {
+        this.redis = new Redis({
+          host: this.config.host, port: this.config.port,
+          password: this.config.password, db: this.config.db,
+          keyPrefix: this.config.keyPrefix, lazyConnect: true
+        });
+      }
+      this.redis.on('error', (err: NodeJS.ErrnoException) => {
+        if (err?.code === 'ECONNREFUSED') return;
+      });
+      this.setupEventHandlers();
+      await this.redis.connect();
+      this.isRedisConnected = true;
+    } catch (error) {
+      cacheLogThrottler.logError('Falha na conexão Redis Cache:', error);
+      this.isRedisConnected = false;
+      if (this.config.host === 'redis' || this.config.host === 'redis-cache') {
+        try {
+          const Redis = await loadRedis();
+          this.redis?.disconnect();
+          this.redis = new Redis({
+            host: 'localhost', port: 6379,
+            db: this.config.db, keyPrefix: this.config.keyPrefix, lazyConnect: true
           });
           this.setupEventHandlers();
           await this.redis.connect();
+          this.isRedisConnected = true;
         } catch (e2) {
-          cacheLogThrottler.logError('❌ Fallback localhost falhou (cache):', e2);
+          cacheLogThrottler.logError('Fallback localhost falhou (cache):', e2);
         }
       }
     }
@@ -578,7 +561,8 @@ export class RedisCache {
    * 💾 Armazena item no cache
    */
   async set<T>(key: string, value: T, ttlSeconds: number = 300): Promise<void> {
-    if (this.isRedisConnected) {
+    await this.ensureInit();
+    if (this.isRedisConnected && this.redis) {
       try {
         await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
         return;
@@ -596,7 +580,8 @@ export class RedisCache {
    * 📖 Recupera item do cache
    */
   async get<T>(key: string): Promise<T | null> {
-    if (this.isRedisConnected) {
+    await this.ensureInit();
+    if (this.isRedisConnected && this.redis) {
       try {
         const value = await this.redis.get(key);
         return value ? JSON.parse(value) : null;
@@ -623,7 +608,8 @@ export class RedisCache {
    * 🗑️ Remove item do cache
    */
   async delete(key: string): Promise<void> {
-    if (this.isRedisConnected) {
+    await this.ensureInit();
+    if (this.isRedisConnected && this.redis) {
       try {
         await this.redis.del(key);
       } catch (error) {
