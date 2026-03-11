@@ -152,7 +152,7 @@ async function signPrescription(
       signatureHash,
       signedAt: new Date(),
       isValid: true,
-    },
+    } as any,
   })
 
   return NextResponse.json({
