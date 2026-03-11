@@ -75,6 +75,9 @@ jobs:
 
             echo "📥 Pulling latest code..."
             git fetch origin main
+
+            # Remove directories created by Docker that block git reset
+            sudo rm -rf backups/ 2>/dev/null || true
             git reset --hard origin/main
 
             echo "🐳 Building and starting containers..."

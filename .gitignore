@@ -33,6 +33,9 @@ coverage
 uploads/*
 !uploads/.gitkeep
 
+# Backups (created by Docker/production)
+backups/
+
 # Sensitive certificates and keys
 *.pfx
 *.p12
