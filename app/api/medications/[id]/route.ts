@@ -6,6 +6,7 @@
  * Retorna detalhes completos de um medicamento
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { MedicationService } from '@/lib/medication-service'
 import { logger } from '@/lib/logger'

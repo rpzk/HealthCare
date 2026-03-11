@@ -3,6 +3,7 @@
  * Call this endpoint once to initialize the backup schedule
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'

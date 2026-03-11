@@ -2,6 +2,7 @@
  * API Admin: Edita e remove medicamento
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'

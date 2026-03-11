@@ -2,6 +2,7 @@
  * API Cron para envio automático de pesquisas NPS
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { NpsService } from '@/lib/nps-service'
 import { logger } from '@/lib/logger'

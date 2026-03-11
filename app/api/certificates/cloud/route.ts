@@ -6,6 +6,7 @@
  * DELETE — Encerrar sessão cloud
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { logger } from '@/lib/logger'

@@ -5,6 +5,7 @@
  * GET /api/prescriptions/controlled - Verifica tipo de controle de medicamentos
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'

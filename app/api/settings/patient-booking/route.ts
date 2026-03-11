@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withPatientAuth, withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { SystemSettingsService, SettingCategory } from '@/lib/system-settings-service'

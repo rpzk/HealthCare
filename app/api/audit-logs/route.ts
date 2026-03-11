@@ -3,6 +3,7 @@
  * Acesso administrativo ao histórico de auditoria do sistema
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'

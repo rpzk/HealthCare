@@ -5,6 +5,7 @@
  * (como nas prescrições). Exames do mesmo paciente na mesma data vão no mesmo PDF.
  */
 
+export const dynamic = 'force-dynamic'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'

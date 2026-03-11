@@ -10,6 +10,7 @@
  * - Headers: Authorization: Bearer {seu-token}
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { LabIntegrationService, type FHIRDiagnosticReport } from '@/lib/lab-integration-service'
 import { logger } from '@/lib/logger'

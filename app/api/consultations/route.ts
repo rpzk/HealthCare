@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ConsultationService } from '@/lib/consultation-service'
 import { rateLimiters } from '@/lib/rate-limiter'

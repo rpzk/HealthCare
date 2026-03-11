@@ -2,6 +2,7 @@
  * API: Obter variáveis disponíveis para templates
  */
 
+export const dynamic = 'force-dynamic'
 import { auth } from '@/auth'
 import {
   TEMPLATE_VARIABLES,

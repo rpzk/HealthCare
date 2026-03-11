@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'

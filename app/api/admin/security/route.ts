@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuthUnlimited, createRateLimitStatsAPI, createRateLimitResetAPI } from '@/lib/advanced-auth'
 import { auditLogger, AuditAction } from '@/lib/audit-logger'

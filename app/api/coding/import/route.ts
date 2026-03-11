@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { validateCodeImport } from '@/lib/validation-schemas'

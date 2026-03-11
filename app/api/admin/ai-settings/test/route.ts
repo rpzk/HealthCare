@@ -4,6 +4,7 @@
  * POST - Testa com uma pergunta simples
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { aiClient } from '@/lib/ai-client'

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { ReferralsService } from '@/lib/referrals-service'

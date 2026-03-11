@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { OccupationCapabilityService } from '@/lib/occupation-capability-service'
 import { requireSession, canEvaluate } from '@/lib/rbac'

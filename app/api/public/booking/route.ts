@@ -5,6 +5,7 @@
  * CORS habilitado para embed em sites externos
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { publicBookingService } from '@/lib/public-booking-service'
 

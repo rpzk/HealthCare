@@ -5,6 +5,7 @@
  * Suporta FHIR R4 Bundle com DiagnosticReport e Observations
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { HL7FHIRLabService } from '@/lib/hl7-fhir-lab-service'
 import { logger } from '@/lib/logger'

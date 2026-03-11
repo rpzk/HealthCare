@@ -3,6 +3,7 @@
  * POST /api/document-templates/[id]/duplicate
  */
 
+export const dynamic = 'force-dynamic'
 import { auth } from '@/auth'
 import { DocumentTemplateService } from '@/lib/document-templates/service'
 import { NextRequest, NextResponse } from 'next/server'

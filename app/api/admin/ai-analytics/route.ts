@@ -2,6 +2,7 @@
  * 🧠 API para AI Analytics e Anomaly Detection Dashboard
  */
 
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { withAdminAuthUnlimited } from '@/lib/advanced-auth'
 import { aiAnomalyDetector } from '@/lib/ai-anomaly-detector'

@@ -4,6 +4,7 @@
  * POST: cria medicamento
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { withAdminAuth, AuthenticatedApiHandler } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'

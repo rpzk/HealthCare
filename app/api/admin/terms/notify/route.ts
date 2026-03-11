@@ -4,6 +4,7 @@
  * GET: Lista termos que precisam de notificação
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'

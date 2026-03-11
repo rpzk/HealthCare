@@ -13,6 +13,7 @@
  * Retorna validação com warnings e errors
  */
 
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { MedicationService } from '@/lib/medication-service'
 import { logger } from '@/lib/logger'
