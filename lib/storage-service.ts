@@ -1,16 +1,17 @@
 /**
  * Storage Service - Gerenciamento de uploads de arquivos
- * 
- * Suporta:
- * - AWS S3
- * - MinIO (S3-compatible)
- * - File System local (desenvolvimento)
- * 
+ *
+ * Provedores suportados (STORAGE_TYPE):
+ *   local       — disco local / Docker volume (padrão, Umbrel)
+ *   s3          — AWS S3
+ *   minio       — MinIO (S3-compatible, self-hosted)
+ *   azure-blob  — Azure Blob Storage (clientes Azure)
+ *
  * Features:
- * - Upload de vídeos de consultas
+ * - Upload de gravações de consultas
  * - Criptografia AES-256
- * - Geração de URLs assinadas
- * - Limpeza automática de arquivos antigos
+ * - Geração de URLs assinadas (SAS para Azure, presigned para S3)
+ * - Interface única — troca de provedor via variável de ambiente
  */
 
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -25,19 +26,21 @@ import { logger } from '@/lib/logger'
 // Configuração com fallback para .env
 const ENCRYPTION_KEY = process.env.RECORDING_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || randomBytes(32).toString('hex');
 
-// Cache de configuração e cliente S3
+// Cache de configuração e clientes
 let cachedConfig: any = null;
 let s3Client: S3Client | null = null;
+// BlobServiceClient lazy-loaded para não exigir o SDK em deploys sem Azure
+let blobServiceClient: any | null = null;
 
 /**
  * Obtém configuração de storage (DB com fallback para .env)
  */
 async function getStorageConfig() {
   if (cachedConfig) return cachedConfig;
-  
+
   cachedConfig = await SystemSettingsService.getStorageConfig();
-  
-  // Inicializar cliente S3 se necessário
+
+  // Inicializar cliente S3/MinIO se necessário
   if ((cachedConfig.type === 's3' || cachedConfig.type === 'minio') && !s3Client) {
     s3Client = new S3Client({
       region: cachedConfig.region,
@@ -49,7 +52,22 @@ async function getStorageConfig() {
       forcePathStyle: cachedConfig.type === 'minio',
     });
   }
-  
+
+  // Inicializar Azure Blob Storage se necessário
+  if (cachedConfig.type === 'azure-blob' && !blobServiceClient) {
+    try {
+      const { BlobServiceClient } = await import('@azure/storage-blob');
+      const connStr = cachedConfig.azureConnectionString || process.env.AZURE_STORAGE_CONNECTION_STRING;
+      if (!connStr) throw new Error('AZURE_STORAGE_CONNECTION_STRING não configurado');
+      blobServiceClient = BlobServiceClient.fromConnectionString(connStr);
+    } catch (e) {
+      throw new Error(
+        '@azure/storage-blob não instalado ou AZURE_STORAGE_CONNECTION_STRING não configurado. ' +
+        'Execute: npm install @azure/storage-blob',
+      );
+    }
+  }
+
   return cachedConfig;
 }
 
@@ -147,29 +165,44 @@ export async function uploadRecording(
     };
   }
   
+  // Azure Blob Storage
+  if (config.type === 'azure-blob' && blobServiceClient) {
+    const containerName = config.azureContainer || process.env.AZURE_STORAGE_CONTAINER || 'healthcare-uploads';
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    await containerClient.createIfNotExists({ access: 'private' });
+
+    const blobClient = containerClient.getBlockBlobClient(key);
+    const blobMetadata: Record<string, string> = { ...metadata, encrypted: encrypt.toString() };
+    if (iv) blobMetadata.iv = iv;
+
+    await blobClient.uploadData(finalData, {
+      blobHTTPHeaders: { blobContentType: contentType },
+      metadata: blobMetadata,
+    });
+
+    return {
+      url: blobClient.url,
+      key,
+      size: finalData.length,
+      encrypted: encrypt,
+    };
+  }
+
   // S3 / MinIO
   if (s3Client) {
-    const uploadMetadata: Record<string, string> = {
-      ...metadata,
-      encrypted: encrypt.toString(),
-    };
-    
-    if (iv) {
-      uploadMetadata.iv = iv.toString();
-    }
-    
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: config.bucket,
-        Key: key,
-        Body: finalData,
-        ContentType: contentType,
-        Metadata: uploadMetadata,
-      })
-    );
-    
+    const uploadMetadata: Record<string, string> = { ...metadata, encrypted: encrypt.toString() };
+    if (iv) uploadMetadata.iv = iv;
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Body: finalData,
+      ContentType: contentType,
+      Metadata: uploadMetadata,
+    }));
+
     return {
-      url: config.endpoint 
+      url: config.endpoint
         ? `${config.endpoint}/${config.bucket}/${key}`
         : `https://${config.bucket}.s3.${config.region}.amazonaws.com/${key}`,
       key,
@@ -177,7 +210,7 @@ export async function uploadRecording(
       encrypted: encrypt,
     };
   }
-  
+
   throw new Error('Storage não configurado');
 }
 
@@ -186,20 +219,29 @@ export async function uploadRecording(
  */
 export async function getSignedRecordingUrl(key: string): Promise<string> {
   const config = await getStorageConfig();
-  
+
   if (config.type === 'local') {
     return `/api/storage/download?key=${encodeURIComponent(key)}`;
   }
-  
-  if (s3Client) {
-    const command = new GetObjectCommand({
-      Bucket: config.bucket,
-      Key: key,
+
+  if (config.type === 'azure-blob' && blobServiceClient) {
+    const { generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } =
+      await import('@azure/storage-blob');
+    const containerName = config.azureContainer || process.env.AZURE_STORAGE_CONTAINER || 'healthcare-uploads';
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobClient = containerClient.getBlobClient(key);
+    // Gera SAS URL válida por 1 hora
+    const sasUrl = await blobClient.generateSasUrl({
+      permissions: BlobSASPermissions.parse('r'),
+      expiresOn: new Date(Date.now() + 3600 * 1000),
     });
-    
-    return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return sasUrl;
   }
-  
+
+  if (s3Client) {
+    return await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: config.bucket, Key: key }), { expiresIn: 3600 });
+  }
+
   throw new Error('Storage não configurado');
 }
 
@@ -224,29 +266,35 @@ export async function downloadRecording(key: string): Promise<Buffer> {
     return data;
   }
   
+  if (config.type === 'azure-blob' && blobServiceClient) {
+    const containerName = config.azureContainer || process.env.AZURE_STORAGE_CONTAINER || 'healthcare-uploads';
+    const blobClient = blobServiceClient.getContainerClient(containerName).getBlobClient(key);
+    const downloadResponse = await blobClient.download();
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of downloadResponse.readableStreamBody as any) {
+      chunks.push(chunk);
+    }
+    let data: Buffer = Buffer.concat(chunks) as Buffer;
+    const props = await blobClient.getProperties();
+    if (props.metadata?.encrypted === 'true' && props.metadata?.iv) {
+      data = decryptData(data, props.metadata.iv);
+    }
+    return data;
+  }
+
   if (s3Client) {
-    const response = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: config.bucket,
-        Key: key,
-      })
-    );
-    
+    const response = await s3Client.send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
     const chunks: Uint8Array[] = [];
     for await (const chunk of response.Body as any) {
       chunks.push(chunk);
     }
-    
     let data: Buffer = Buffer.concat(chunks) as Buffer;
-    
-    // Descriptografar se necessário
     if (response.Metadata?.encrypted === 'true' && response.Metadata?.iv) {
       data = decryptData(data, response.Metadata.iv);
     }
-    
     return data;
   }
-  
+
   throw new Error('Storage não configurado');
 }
 
@@ -263,16 +311,17 @@ export async function deleteRecording(key: string): Promise<void> {
     return;
   }
   
-  if (s3Client) {
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: config.bucket,
-        Key: key,
-      })
-    );
+  if (config.type === 'azure-blob' && blobServiceClient) {
+    const containerName = config.azureContainer || process.env.AZURE_STORAGE_CONTAINER || 'healthcare-uploads';
+    await blobServiceClient.getContainerClient(containerName).getBlobClient(key).deleteIfExists();
     return;
   }
-  
+
+  if (s3Client) {
+    await s3Client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
+    return;
+  }
+
   throw new Error('Storage não configurado');
 }
 

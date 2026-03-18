@@ -201,7 +201,7 @@ export function MedicalRecordDetail({
                   </Link>
                 )}
                 <a
-                  href={`/api/medical-records/${recordId}/export/pdf`}
+                  href={`/api/medical-records/${recordId}/export?format=pdf`}
                   target="_blank"
                   className="btn btn-secondary"
                   title="Exportar Prontuário para PDF"

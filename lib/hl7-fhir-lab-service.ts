@@ -7,6 +7,7 @@
 
 import prisma from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
 import crypto from 'crypto'
 
 // ============ TIPOS FHIR R4 ============
@@ -305,7 +306,11 @@ export class HL7FHIRLabService {
   /**
    * Processar Bundle FHIR recebido de laboratório
    */
-  static async processIncomingBundle(bundle: FHIRBundle): Promise<{
+  static async processIncomingBundle(
+    bundle: FHIRBundle,
+    laboratoryId?: string,
+    tenantId?: string
+  ): Promise<{
     processed: number
     errors: string[]
     results: LabResult[]
@@ -336,7 +341,9 @@ export class HL7FHIRLabService {
     // Processar cada DiagnosticReport
     for (const report of diagnosticReports) {
       try {
-        const result = await this.processDiagnosticReport(report, observations, organizations)
+        const result = await this.processDiagnosticReport(
+          report, observations, organizations, laboratoryId, tenantId
+        )
         if (result) {
           results.push(result)
           processed++
@@ -358,34 +365,49 @@ export class HL7FHIRLabService {
   private static async processDiagnosticReport(
     report: FHIRDiagnosticReport,
     allObservations: FHIRObservation[],
-    organizations: FHIROrganization[]
+    organizations: FHIROrganization[],
+    laboratoryId?: string,
+    tenantId?: string
   ): Promise<LabResult | null> {
     // Extrair identificador do paciente
     const patientRef = report.subject.reference
     const patientIdentifier = report.subject.identifier
 
-    // Buscar paciente no sistema
+    // Buscar paciente por CPF (buscando por todos os CPFs encriptados no banco)
+    // CPF no FHIR Bundle vem em texto puro (o laboratório conhece o CPF real)
     let patient = null
-    
+
     if (patientIdentifier?.value) {
-      // Buscar por CPF
-      patient = await prisma.patient.findFirst({
-        where: { cpf: patientIdentifier.value }
-      })
+      // O CPF recebido é texto puro; precisamos casar com o CPF encriptado do banco
+      // Estratégia: buscar todos os pacientes do tenant e comparar após decrypt
+      const candidatePatientCpf = patientIdentifier.value.replace(/\D/g, '')
+      if (candidatePatientCpf) {
+        const patients = await prisma.patient.findMany({
+          where: { cpf: { not: null } },
+          select: { id: true, cpf: true },
+          take: 10000, // razoável para clínicas
+        })
+        for (const p of patients) {
+          try {
+            const decrypted = p.cpf ? (decrypt(p.cpf) ?? '').replace(/\D/g, '') || undefined : undefined
+            if (decrypted === candidatePatientCpf) {
+              patient = await prisma.patient.findUnique({ where: { id: p.id } })
+              break
+            }
+          } catch { /* CPF não encriptado — comparar direto */
+            if ((p.cpf ?? '').replace(/\D/g, '') === candidatePatientCpf) {
+              patient = await prisma.patient.findUnique({ where: { id: p.id } })
+              break
+            }
+          }
+        }
+      }
     }
 
     if (!patient && patientRef) {
-      // Tentar extrair ID do reference
       const refId = patientRef.split('/').pop()
       if (refId) {
-        patient = await prisma.patient.findFirst({
-          where: {
-            OR: [
-              { id: refId },
-              { cpf: refId }
-            ]
-          }
-        })
+        patient = await prisma.patient.findUnique({ where: { id: refId } })
       }
     }
 
@@ -434,7 +456,7 @@ export class HL7FHIRLabService {
     }
 
     // Salvar no banco de dados
-    await this.saveLabResult(result)
+    await this.saveLabResult(result, laboratoryId, tenantId)
 
     return result
   }
@@ -523,17 +545,16 @@ export class HL7FHIRLabService {
   /**
    * Salvar resultado no banco de dados
    */
-  private static async saveLabResult(result: LabResult): Promise<void> {
-    // Buscar ou criar registro de exame
+  private static async saveLabResult(
+    result: LabResult,
+    laboratoryId?: string,
+    tenantId?: string
+  ): Promise<void> {
     const existingExam = await prisma.exam.findFirst({
-      where: {
-        patientId: result.patientId,
-        fhirResourceId: result.externalId
-      }
+      where: { patientId: result.patientId, fhirResourceId: result.externalId },
     })
 
     if (existingExam) {
-      // Atualizar exame existente
       await prisma.exam.update({
         where: { id: existingExam.id },
         data: {
@@ -542,12 +563,12 @@ export class HL7FHIRLabService {
           result: JSON.stringify(result.observations),
           interpretation: result.conclusion,
           notes: result.pdfUrl,
-          updatedAt: new Date()
-        }
+          ...(laboratoryId && { laboratoryId }),
+          updatedAt: new Date(),
+        },
       })
       logger.info(`[HL7FHIR] Exame atualizado: ${existingExam.id}`)
     } else {
-      // Criar novo exame
       await prisma.exam.create({
         data: {
           patientId: result.patientId,
@@ -561,8 +582,10 @@ export class HL7FHIRLabService {
           interpretation: result.conclusion,
           notes: result.pdfUrl,
           labName: result.labName,
-          labCode: result.labCode
-        }
+          labCode: result.labCode,
+          ...(laboratoryId && { laboratoryId }),
+          ...(tenantId && { tenantId }),
+        },
       })
       logger.info(`[HL7FHIR] Novo exame criado para paciente: ${result.patientId}`)
     }
@@ -615,16 +638,22 @@ export class HL7FHIRLabService {
       entry: []
     }
 
+    // Descriptografar CPF antes de incluir no Bundle (o laboratório precisa do CPF real)
+    let patientCpfPlain: string | undefined
+    if (patient.cpf) {
+      try { patientCpfPlain = decrypt(patient.cpf) ?? undefined } catch { patientCpfPlain = patient.cpf ?? undefined }
+    }
+
     // Adicionar Patient
     const patientResource: FHIRPatient = {
       resourceType: 'Patient',
       id: patient.id,
-      identifier: [
-        { system: CODING_SYSTEMS.CPF, value: patient.cpf ?? undefined }
-      ],
+      identifier: patientCpfPlain
+        ? [{ system: CODING_SYSTEMS.CPF, value: patientCpfPlain }]
+        : [],
       name: [{ text: patient.name }],
       gender: patient.gender?.toLowerCase() as any || 'unknown',
-      birthDate: patient.birthDate?.toISOString().split('T')[0]
+      birthDate: patient.birthDate?.toISOString().split('T')[0],
     }
 
     bundle.entry!.push({

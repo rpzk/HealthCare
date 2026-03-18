@@ -3916,6 +3916,8 @@ model Exam {
   id              String    @id @default(cuid())
   patientId       String
   doctorId        String?
+  laboratoryId    String?
+  tenantId        String?
   examType        String
   examCode        String?
   description     String?
@@ -3937,13 +3939,40 @@ model Exam {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctor  User?   @relation("DoctorExams", fields: [doctorId], references: [id], onDelete: SetNull)
+  patient    Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor     User?       @relation("DoctorExams", fields: [doctorId], references: [id], onDelete: SetNull)
+  laboratory Laboratory? @relation(fields: [laboratoryId], references: [id])
 
   @@index([patientId])
   @@index([doctorId])
+  @@index([laboratoryId])
+  @@index([tenantId])
   @@index([status])
   @@index([examType])
   @@index([fhirResourceId])
   @@map("exams")
+}
+
+// =====================================================
+// LABORATORY MODEL (HL7/FHIR integration partners)
+// =====================================================
+
+model Laboratory {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique // e.g. "DASA", "FLEURY", "EINSTEIN"
+  apiKeyHash  String   // bcrypt hash — plaintext returned once on creation
+  active      Boolean  @default(true)
+  tenantId    String?  // null = system-wide lab
+  allowedIps  String[] // empty = unrestricted
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exams       Exam[]
+
+  @@index([code])
+  @@index([active])
+  @@index([tenantId])
+  @@map("laboratories")
 }

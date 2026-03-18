@@ -5,6 +5,8 @@ import { getClinicDataForDocuments } from '@/lib/branding-service';
 import { getCurrentUser } from '@/lib/with-auth';
 import { logger } from '@/lib/logger'
 import { decrypt } from '@/lib/crypto'
+import fs from 'fs'
+import path from 'path'
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +17,7 @@ export async function GET(
   try {
     const user = await getCurrentUser(req)
     const shouldStamp = req.nextUrl.searchParams.get('stamp') === '1'
-    
+
     const id = params.id;
     const cert = await prisma.medicalCertificate.findUnique({
       where: { id },
@@ -29,6 +31,32 @@ export async function GET(
       return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
     }
 
+    // Servir PDF assinado salvo em disco se disponível (evita re-geração e mantém a assinatura PAdES intacta)
+    if (!shouldStamp && cert.pdfPath) {
+      const signedPdfAbsPath = path.join(process.cwd(), 'public', cert.pdfPath)
+      if (fs.existsSync(signedPdfAbsPath)) {
+        const signedBuffer = fs.readFileSync(signedPdfAbsPath)
+        await prisma.auditLog.create({
+          data: {
+            action: 'CERTIFICATE_PDF_DOWNLOADED',
+            resourceType: 'MedicalCertificate',
+            resourceId: cert.id,
+            userId: user?.id || 'system',
+            userEmail: user?.email || 'system',
+            userRole: user?.role || 'SYSTEM',
+            metadata: { sequenceNumber: cert.sequenceNumber, year: cert.year, signed: true },
+          },
+        }).catch(() => {}) // non-blocking
+        return new Response(signedBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `inline; filename="atestado_${cert.sequenceNumber}_${cert.year}.pdf"`,
+            'Cache-Control': 'no-store',
+          },
+        })
+      }
+    }
 
   // Garante que qrCodeData está preenchido e consistente
   let qrCodeData = cert.qrCodeData;

@@ -11,8 +11,11 @@ export async function POST(request: NextRequest) {
   try {
     // Validar token de autorização (para cron jobs externos)
     const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET || 'your-secret-token'
-
+    const cronSecret = process.env.CRON_SECRET
+    if (!cronSecret) {
+      logger.error('[Cron] CRON_SECRET não configurada — endpoint desabilitado por segurança')
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
     if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

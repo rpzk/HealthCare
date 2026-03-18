@@ -3,14 +3,17 @@
  * Seed completo para produção - carrega todos os fixtures na ordem correta.
  * Idempotente: pula etapas já populadas quando aplicável.
  *
+ * NÃO cria usuários de teste nem pacientes fictícios.
+ * Para criar o usuário admin inicial, use: npm run createsuperuser
+ *
  * Uso:
- *   PRODUCTION_SEED=1 no deploy, ou
- *   npm run db:seed:production
+ *   npm run db:seed:production         (fixtures completos)
+ *   npm run db:seed:production -- --skip-heavy  (pula CID/CBO/SIGTAP)
  *
  * Ordem:
- *   1. db:seed (admin + usuários base)
- *   2. db:seed:fixtures (termos, settings)
- *   3. db:seed:all-fixtures (document-templates, ciap2, exams, formulas)
+ *   1. db:seed:fixtures (termos, settings)
+ *   2. db:seed:branding (identidade visual padrão — editar depois em Configurações)
+ *   3. db:seed:all-fixtures (document-templates, ciap2, exams, fórmulas)
  *   4. fixtures:import:rename (RENAME medicamentos → Medication unificada)
  *   5. fixtures:import (CID, CBO, SIGTAP) - apenas se banco vazio
  */
@@ -66,15 +69,14 @@ async function main() {
   console.log('\n' + '='.repeat(60))
   console.log('🌱 PRODUCTION SEED - Fixtures e dados mestres')
   console.log('='.repeat(60))
+  console.log('\n⚠️  Usuários NÃO são criados aqui. Após o seed, execute:')
+  console.log('   npm run createsuperuser\n')
 
-  // 1. Admin e usuários base
-  run('npx tsx prisma/seed.ts', '1. Admin e usuários base')
+  // 1. Fixtures leves
+  run('npm run db:seed:fixtures', '1. Termos e configurações')
 
-  // 2. Fixtures leves
-  run('npm run db:seed:fixtures', '2. Termos e configurações')
-
-  // 2b. Branding (dados da clínica - imprescindível para documentos)
-  run('npm run db:seed:branding', '2b. Branding (identidade da clínica)')
+  // 2. Branding (dados da clínica - imprescindível para documentos)
+  run('npm run db:seed:branding', '2. Branding (identidade da clínica — editar em Configurações)')
 
   // 3. Fixtures adicionais
   run('npm run db:seed:all-fixtures', '3. Documentos, CIAP2, exames, fórmulas')
@@ -82,22 +84,36 @@ async function main() {
   // 4. RENAME (sempre executa - importa direto em Medication)
   run('npm run fixtures:import:rename', '4. RENAME medicamentos (Medication)')
 
-  // 5. CID, CBO, SIGTAP - apenas se banco vazio (evita FK violations)
+  // 5. CID, CBO - apenas se banco vazio
   if (!SKIP_HEAVY) {
     const empty = await isEmptyMasterData()
     if (empty || FORCE_HEAVY) {
       run('npm run fixtures:import:cid-sql', '5a. CID-10')
-      run('npm run fixtures:import:all', '5b. CBO e SIGTAP')
+      run('npm run fixtures:import:all', '5b. CBO')
     } else {
-      console.log('\n⏭️  CID/CBO/SIGTAP: banco já populado (use --force-heavy para forçar)')
+      console.log('\n⏭️  CID/CBO: banco já populado (use --force-heavy para forçar)')
     }
   } else {
-    console.log('\n⏭️  CID/CBO/SIGTAP: pulado (--skip-heavy)')
+    console.log('\n⏭️  CID/CBO: pulado (--skip-heavy)')
+  }
+
+  // 6. SIGTAP — baixa do DATASUS e importa (pipeline independente)
+  if (!SKIP_HEAVY) {
+    const sigtapSetting = await prisma.systemSetting
+      .findUnique({ where: { key: 'sigtap_competencia' } })
+      .catch(() => null)
+
+    if (!sigtapSetting || FORCE_HEAVY) {
+      run('npm run sigtap:update', '6. SIGTAP (download + conversão + importação do DATASUS)')
+    } else {
+      console.log(`\n⏭️  SIGTAP: competência ${sigtapSetting.value} já carregada (use --force-heavy para atualizar)`)
+    }
   }
 
   console.log('\n' + '='.repeat(60))
   console.log('✅ PRODUCTION SEED CONCLUÍDO')
-  console.log('='.repeat(60) + '\n')
+  console.log('='.repeat(60))
+  console.log('\nPróximo passo: npm run createsuperuser\n')
 }
 
 main()

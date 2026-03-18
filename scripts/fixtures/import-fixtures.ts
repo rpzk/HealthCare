@@ -541,42 +541,17 @@ async function main() {
     // Limpar dados antigos
     console.log('\n🧹 Limpando dados antigos...')
     
-    // Limpar compatibilidades primeiro (FK)
-    await prisma.procedureCIDCompatibility.deleteMany({})
-    await prisma.procedureCBOCompatibility.deleteMany({})
-    console.log('   ✓ Compatibilidades limpas')
-    
-    // Limpar procedimentos antigos
-    await prisma.procedure.deleteMany({})
-    await prisma.sIGTAPProcedimento.deleteMany({})
-    console.log('   ✓ Procedimentos limpos')
-    
-    // Limpar hierarquias SIGTAP
-    await prisma.sIGTAPFormaOrganizacao.deleteMany({})
-    await prisma.sIGTAPSubgrupo.deleteMany({})
-    await prisma.sIGTAPGrupo.deleteMany({})
-    console.log('   ✓ Hierarquia SIGTAP limpa')
-    
-    // Limpar auxiliares SIGTAP
-    await prisma.sIGTAPModalidade.deleteMany({})
-    await prisma.sIGTAPRubrica.deleteMany({})
-    await prisma.sIGTAPFinanciamento.deleteMany({})
-    console.log('   ✓ Auxiliares SIGTAP limpos')
-    
     // Limpar CID
     await prisma.medicalCode.deleteMany({})
     await prisma.cID10Categoria.deleteMany({})
     await prisma.cID10Grupo.deleteMany({})
     await prisma.cID10Capitulo.deleteMany({})
     console.log('   ✓ CID-10 limpo')
-    
-    // Limpar CBO (exceto os já importados, vamos manter)
-    console.log('   ℹ️  CBO mantido (já está correto)')
-    
+
     // Importar na ordem correta (hierarquias antes de dependentes)
+    // SIGTAP é gerenciado pelo script dedicado: npm run sigtap:update
     await importCBO()
     await importCID()
-    await importSIGTAP()
     
     const endTime = Date.now()
     const duration = ((endTime - startTime) / 1000 / 60).toFixed(2)

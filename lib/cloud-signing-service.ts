@@ -510,7 +510,8 @@ export async function getCertificateInfo(
 const cloudSessions = new Map<string, string>()
 
 function encryptSession(session: CloudAuthSession, userId: string): string {
-  const secret = process.env.NEXTAUTH_SECRET || 'fallback'
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret) throw new Error('NEXTAUTH_SECRET não configurado')
   const key = crypto.pbkdf2Sync(secret, `cloud-${userId}`, 100000, 32, 'sha256')
   const iv = crypto.randomBytes(16)
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
@@ -522,7 +523,8 @@ function encryptSession(session: CloudAuthSession, userId: string): string {
 
 function decryptSession(data: string, userId: string): CloudAuthSession | null {
   try {
-    const secret = process.env.NEXTAUTH_SECRET || 'fallback'
+    const secret = process.env.NEXTAUTH_SECRET
+    if (!secret) return null
     const key = crypto.pbkdf2Sync(secret, `cloud-${userId}`, 100000, 32, 'sha256')
     const [ivHex, tagHex, enc] = data.split(':')
     const decipher = crypto.createDecipheriv(
