@@ -12,52 +12,52 @@ interface KeyConfig {
   status: 'ACTIVE' | 'DECRYPT_ONLY' | 'EXPIRED'
 }
 
-// ENCRYPTION_KEY é obrigatória em qualquer ambiente que persiste dados de pacientes.
+// Lazy-initialized key — validated on first encrypt/decrypt call, not on import.
+// This prevents build-time failures when ENCRYPTION_KEY is not set in CI/Docker build args.
 // Em desenvolvimento, gere com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-const rawKey = process.env.ENCRYPTION_KEY || ''
-if (rawKey.length < 32) {
-  if (process.env.NODE_ENV === 'production') {
-    // Em produção, bloqueia inicialização imediatamente
-    throw new Error(
-      '[encryption] ENCRYPTION_KEY ausente ou inválida (mínimo 32 caracteres). ' +
-      'Gere com: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
-    )
-  } else {
-    // Em dev/test, falha rápido em vez de usar chave hardcoded silenciosa
-    throw new Error(
-      '[encryption] ENCRYPTION_KEY não configurada. ' +
-      'Adicione ao .env.local: ENCRYPTION_KEY=' +
-      nodeCrypto.randomBytes(32).toString('hex')
-    )
+let _key: string | null = null
+
+function getKey(): string {
+  if (_key !== null) return _key
+  const rawKey = process.env.ENCRYPTION_KEY || ''
+  if (rawKey.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[encryption] ENCRYPTION_KEY ausente ou inválida (mínimo 32 caracteres). ' +
+        'Gere com: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+      )
+    } else {
+      throw new Error(
+        '[encryption] ENCRYPTION_KEY não configurada. ' +
+        'Adicione ao .env.local: ENCRYPTION_KEY=' +
+        nodeCrypto.randomBytes(32).toString('hex')
+      )
+    }
   }
-}
-const KEY = rawKey.padEnd(32, '0').slice(0, 32)
-
-function assertEncryptionKey(): void {
-  // Chave já validada no módulo load — esta função mantém compatibilidade com chamadores existentes
+  _key = rawKey.padEnd(32, '0').slice(0, 32)
+  return _key
 }
 
-// Chaves versionadas para rotação (carregadas do ambiente)
-const VERSIONED_KEYS: Map<string, KeyConfig> = new Map()
+// Chaves versionadas para rotação — também lazy
+let _versionedKeys: Map<string, KeyConfig> | null = null
 
-// Inicializar chave v1 (atual)
-VERSIONED_KEYS.set('v1', {
-  key: KEY,
-  version: 'v1',
-  status: 'ACTIVE'
-})
-
-// Carregar chaves adicionais do ambiente (para rotação)
-// Formato: ENCRYPTION_KEY_V2, ENCRYPTION_KEY_V3, etc.
-for (let i = 2; i <= 10; i++) {
-  const envKey = process.env[`ENCRYPTION_KEY_V${i}`]
-  if (envKey && envKey.length >= 32) {
-    VERSIONED_KEYS.set(`v${i}`, {
-      key: envKey.padEnd(32, '0').slice(0, 32),
-      version: `v${i}`,
-      status: process.env[`ENCRYPTION_KEY_V${i}_STATUS`] === 'DECRYPT_ONLY' ? 'DECRYPT_ONLY' : 'ACTIVE'
-    })
+function getVersionedKeys(): Map<string, KeyConfig> {
+  if (_versionedKeys !== null) return _versionedKeys
+  const key = getKey()
+  const map = new Map<string, KeyConfig>()
+  map.set('v1', { key, version: 'v1', status: 'ACTIVE' })
+  for (let i = 2; i <= 10; i++) {
+    const envKey = process.env[`ENCRYPTION_KEY_V${i}`]
+    if (envKey && envKey.length >= 32) {
+      map.set(`v${i}`, {
+        key: envKey.padEnd(32, '0').slice(0, 32),
+        version: `v${i}`,
+        status: process.env[`ENCRYPTION_KEY_V${i}_STATUS`] === 'DECRYPT_ONLY' ? 'DECRYPT_ONLY' : 'ACTIVE'
+      })
+    }
   }
+  _versionedKeys = map
+  return map
 }
 
 // Validação de salt
@@ -75,10 +75,10 @@ const EFFECTIVE_SALT = SALT || 'dev_salt_do_not_use_in_production'
 
 export function encrypt(value?: string | null): string | null {
   if (!value) return null
-  assertEncryptionKey()
   try {
+    const key = getKey()
     const iv = nodeCrypto.randomBytes(12)
-    const cipher = nodeCrypto.createCipheriv(ENC_ALG, Buffer.from(KEY), iv)
+    const cipher = nodeCrypto.createCipheriv(ENC_ALG, Buffer.from(key), iv)
     const enc = Buffer.concat([cipher.update(value,'utf8'), cipher.final()])
     const tag = cipher.getAuthTag()
     return 'enc::' + Buffer.concat([iv, tag, enc]).toString('base64')
@@ -90,13 +90,13 @@ export function encrypt(value?: string | null): string | null {
 export function decrypt(payload?: string | null): string | null {
   if (!payload) return null
   if (!payload.startsWith('enc::')) return payload
-  assertEncryptionKey()
   try {
+    const key = getKey()
     const raw = Buffer.from(payload.slice(5), 'base64')
     const iv = raw.subarray(0,12)
     const tag = raw.subarray(12,28)
     const data = raw.subarray(28)
-    const decipher = nodeCrypto.createDecipheriv(ENC_ALG, Buffer.from(KEY), iv)
+    const decipher = nodeCrypto.createDecipheriv(ENC_ALG, Buffer.from(key), iv)
     decipher.setAuthTag(tag)
     const dec = Buffer.concat([decipher.update(data), decipher.final()])
     return dec.toString('utf8')
@@ -122,15 +122,15 @@ export function hashCPF(cpf?: string | null): string | null {
  */
 export function encryptField(value?: string | null, forceVersion?: string): string | null {
   if (!value) return null
-  assertEncryptionKey()
+  const versionedKeys = getVersionedKeys()
   // Encontrar chave ativa
   let keyConfig: KeyConfig | undefined
-  
+
   if (forceVersion) {
-    keyConfig = VERSIONED_KEYS.get(forceVersion)
+    keyConfig = versionedKeys.get(forceVersion)
   } else {
     // Usar a chave ativa com maior versão
-    for (const [, config] of VERSIONED_KEYS) {
+    for (const [, config] of versionedKeys) {
       if (config.status === 'ACTIVE') {
         if (!keyConfig || config.version > keyConfig.version) {
           keyConfig = config
@@ -183,7 +183,7 @@ export function decryptField(payload?: string | null): string | null {
     const version = parts[1]
     const encData = parts[2]
     
-    const keyConfig = VERSIONED_KEYS.get(version)
+    const keyConfig = getVersionedKeys().get(version)
     if (!keyConfig) {
       console.error(`Chave versão ${version} não encontrada`)
       return null
@@ -240,7 +240,7 @@ export function needsKeyRotation(payload?: string | null, targetVersion?: string
   }
   
   // Verificar se a chave atual ainda está ativa
-  const keyConfig = VERSIONED_KEYS.get(currentVersion)
+  const keyConfig = getVersionedKeys().get(currentVersion)
   if (!keyConfig) return true // Chave desconhecida
   
   return keyConfig.status !== 'ACTIVE'
@@ -273,7 +273,7 @@ export function generateKeyHash(key: string): string {
 export function listKeyVersions(): Array<{ version: string; status: string; hashPrefix: string }> {
   const result: Array<{ version: string; status: string; hashPrefix: string }> = []
   
-  for (const [version, config] of VERSIONED_KEYS) {
+  for (const [version, config] of getVersionedKeys()) {
     result.push({
       version,
       status: config.status,

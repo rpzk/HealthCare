@@ -44,7 +44,6 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/healthcare_test
           NEXTAUTH_SECRET: test-secret-for-build
           NEXTAUTH_URL: http://localhost:3000
-          ENCRYPTION_KEY: 00000000000000000000000000000000000000000000000000000000000000ff
 
   deploy:
     name: Deploy to Umbrel
