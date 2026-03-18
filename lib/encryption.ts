@@ -27,7 +27,7 @@ if (rawKey.length < 32) {
     throw new Error(
       '[encryption] ENCRYPTION_KEY não configurada. ' +
       'Adicione ao .env.local: ENCRYPTION_KEY=' +
-      require('crypto').randomBytes(32).toString('hex')
+      nodeCrypto.randomBytes(32).toString('hex')
     )
   }
 }
