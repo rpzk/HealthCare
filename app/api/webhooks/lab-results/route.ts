@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
+import { timingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { LabIntegrationService, type FHIRDiagnosticReport } from '@/lib/lab-integration-service'
 import { HL7FHIRLabService } from '@/lib/hl7-fhir-lab-service'
@@ -37,7 +38,7 @@ function authenticate(request: NextRequest): { ok: boolean; error?: string } {
   const provided = Buffer.from(token)
   if (
     expected.length !== provided.length ||
-    !require('crypto').timingSafeEqual(expected, provided)
+    !timingSafeEqual(expected, provided)
   ) {
     return { ok: false, error: 'Invalid token' }
   }
