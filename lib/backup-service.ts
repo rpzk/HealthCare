@@ -16,7 +16,7 @@
  * 7. Alertas em falhas
  */
 
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -30,6 +30,32 @@ import { logger } from '@/lib/logger'
 // import archiver from 'archiver';
 
 const execAsync = promisify(exec);
+
+/**
+ * Executa um comando externo passando args como array (sem interpolação de shell).
+ * PGPASSWORD é passado via env, nunca interpolado na string de comando.
+ */
+function spawnPg(
+  cmd: string,
+  args: string[],
+  pgPassword: string
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      env: { ...process.env, PGPASSWORD: pgPassword },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (d: Buffer) => { stdout += d.toString() })
+    child.stderr.on('data', (d: Buffer) => { stderr += d.toString() })
+    child.on('close', (code) => {
+      if (code === 0) resolve({ stdout, stderr })
+      else reject(new Error(`${cmd} exited with code ${code}: ${stderr}`))
+    })
+    child.on('error', reject)
+  })
+}
 
 interface BackupConfig {
   postgresHost: string;
@@ -159,10 +185,15 @@ export class BackupService {
       const filename = `db_backup_${timestamp}.sql.gz`;
       const backupPath = join(this.config.backupDir, filename);
 
-      // pg_dump com compressão
-      const command = `PGPASSWORD="${this.config.postgresPassword}" pg_dump -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} -d ${this.config.postgresDatabase} -F c -f ${backupPath}`;
-
-      await execAsync(command);
+      // pg_dump com compressão — args como array, PGPASSWORD via env (sem interpolação de shell)
+      await spawnPg('pg_dump', [
+        '-h', this.config.postgresHost,
+        '-p', String(this.config.postgresPort),
+        '-U', this.config.postgresUser,
+        '-d', this.config.postgresDatabase,
+        '-F', 'c',
+        '-f', backupPath,
+      ], this.config.postgresPassword);
 
       const stats = statSync(backupPath);
       const sizeMB = stats.size / (1024 * 1024);
@@ -207,8 +238,14 @@ export class BackupService {
       // archive.directory(this.config.uploadsDir, false);
       // archive.finalize();
       
-      // Fallback: usar tar via shell
-      await execAsync(`tar -czf ${backupPath} -C ${this.config.uploadsDir} .`);
+      // tar via spawn com args separados (sem interpolação de shell)
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn('tar', ['-czf', backupPath, '-C', this.config.uploadsDir, '.'], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+        })
+        child.on('close', (code) => code === 0 ? resolve() : reject(new Error(`tar exited ${code}`)))
+        child.on('error', reject)
+      });
 
       const stats = statSync(backupPath);
       const sizeMB = stats.size / (1024 * 1024);
@@ -357,18 +394,20 @@ export class BackupService {
       // Criar database temporário
       const testDbName = `healthcare_restore_test_${Date.now()}`;
 
-      await execAsync(`PGPASSWORD="${this.config.postgresPassword}" createdb -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} ${testDbName}`);
+      const pgArgs = ['-h', this.config.postgresHost, '-p', String(this.config.postgresPort), '-U', this.config.postgresUser]
+
+      await spawnPg('createdb', [...pgArgs, testDbName], this.config.postgresPassword)
 
       // Restore
-      await execAsync(`PGPASSWORD="${this.config.postgresPassword}" pg_restore -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} -d ${testDbName} ${backupFile}`);
+      await spawnPg('pg_restore', [...pgArgs, '-d', testDbName, backupFile], this.config.postgresPassword)
 
       // Validar (query simples)
-      const { stdout } = await execAsync(`PGPASSWORD="${this.config.postgresPassword}" psql -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} -d ${testDbName} -c "SELECT COUNT(*) FROM users;"`);
+      const { stdout } = await spawnPg('psql', [...pgArgs, '-d', testDbName, '-c', 'SELECT COUNT(*) FROM users;'], this.config.postgresPassword)
 
       logger.info('[Backup] Teste de restore SUCESSO:', stdout);
 
       // Limpar database de teste
-      await execAsync(`PGPASSWORD="${this.config.postgresPassword}" dropdb -h ${this.config.postgresHost} -p ${this.config.postgresPort} -U ${this.config.postgresUser} ${testDbName}`);
+      await spawnPg('dropdb', [...pgArgs, testDbName], this.config.postgresPassword);
 
       return true;
     } catch (error) {

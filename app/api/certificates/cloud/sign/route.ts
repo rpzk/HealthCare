@@ -18,12 +18,73 @@ import { logger } from '@/lib/logger'
 import crypto from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
+import { plainAddPlaceholder } from '@signpdf/placeholder-plain'
+import { extractSignature } from '@signpdf/utils'
 import {
   getCloudSession,
   signPdfWithCloud,
   signHashWithCloud,
 } from '@/lib/cloud-signing-service'
 import { generatePrescriptionPdfBuffer } from '@/lib/prescription-pdf-helpers'
+
+/**
+ * Embeds a CMS signature from BirdID into a PDF signature placeholder.
+ *
+ * BirdID only signs a hash, so we must:
+ *  1. Add a PAdES placeholder to the PDF
+ *  2. Hash the signed byte ranges (excluding the placeholder)
+ *  3. Send the hash to BirdID and get a CMS back
+ *  4. Write the CMS hex into the placeholder slot
+ */
+async function embedBirdIdSignature(
+  pdfBuffer: Buffer,
+  session: { cpf: string; provider: string },
+  documentId: string,
+  documentAlias: string,
+  signHashFn: (hashHex: string, docId: string, alias: string) => Promise<string>,
+): Promise<Buffer> {
+  const SIGNATURE_LENGTH = 16384 // 8 KB hex placeholder; adjust if BirdID returns larger CMS
+
+  // 1. Add signature placeholder
+  const pdfWithPlaceholder = plainAddPlaceholder({
+    pdfBuffer,
+    reason: 'Assinatura digital ICP-Brasil',
+    contactInfo: session.cpf,
+    name: documentAlias,
+    location: 'Brasil',
+    signatureLength: SIGNATURE_LENGTH,
+  })
+
+  // 2. Extract ByteRange — [offset1, length1, offset2, length2]
+  const { ByteRange } = extractSignature(pdfWithPlaceholder)
+
+  // 3. Concatenate the signed byte ranges and hash them
+  const signedData = Buffer.concat([
+    pdfWithPlaceholder.slice(ByteRange[0], ByteRange[0] + ByteRange[1]),
+    pdfWithPlaceholder.slice(ByteRange[2], ByteRange[2] + ByteRange[3]),
+  ])
+  const hashHex = crypto.createHash('sha256').update(signedData).digest('hex')
+
+  // 4. Sign hash with BirdID; rawSignature is base64-encoded DER CMS
+  const cmsBase64 = await signHashFn(hashHex, documentId, documentAlias)
+  const cmsHex = Buffer.from(cmsBase64, 'base64').toString('hex')
+
+  // 5. Write CMS hex into the /Contents placeholder slot
+  //    The slot starts right after ByteRange[1] bytes + '<' and ends right before '>'
+  const contentsStart = ByteRange[0] + ByteRange[1] + 1 // +1 skips the '<'
+  const contentsLength = ByteRange[2] - contentsStart - 1 // -1 skips the '>'
+
+  if (cmsHex.length > contentsLength) {
+    throw new Error(
+      `CMS do BirdID (${cmsHex.length} chars hex) excede o placeholder (${contentsLength} chars). ` +
+      `Aumente SIGNATURE_LENGTH no código.`,
+    )
+  }
+
+  const result = Buffer.from(pdfWithPlaceholder)
+  result.write(cmsHex.padEnd(contentsLength, '0'), contentsStart, 'ascii')
+  return result
+}
 
 export const POST = withAuth(async (request: NextRequest, { user }) => {
   try {
@@ -112,20 +173,15 @@ async function signPrescription(
       `Prescrição ${prescriptionId}`,
     )
   } else {
-    // BirdID: assina o hash, precisamos montar o PAdES
-    const hashHex = crypto.createHash('sha256').update(pdfBuffer).digest('hex')
-    const cmsSignature = await signHashWithCloud(
+    // BirdID: hash-based signing — prepare PAdES placeholder, sign, embed CMS
+    signedPdf = await embedBirdIdSignature(
+      pdfBuffer,
       session,
-      hashHex,
       prescriptionId,
       `Prescrição ${prescriptionId}`,
+      (hashHex, docId, alias) => signHashWithCloud(session, hashHex, docId, alias),
     )
-
-    // Para BirdID, a assinatura CMS pode ser embutida no PDF
-    // Por enquanto, salvamos o PDF original + registro da assinatura
-    // TODO: Embutir CMS no placeholder PAdES do PDF
-    signedPdf = pdfBuffer
-    logger.info({ prescriptionId }, 'BirdID: assinatura CMS obtida, PDF salvo sem embed PAdES (a implementar)')
+    logger.info({ prescriptionId }, 'BirdID: CMS embutido no placeholder PAdES com sucesso')
   }
 
   const signatureHash = crypto.createHash('sha256').update(signedPdf).digest('hex')

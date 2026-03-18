@@ -21,6 +21,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:dev": "npm run db:seed && npm run db:seed:team && npm run db:seed:historical",
     "db:seed:historical": "tsx scripts/seed-historical-patients.ts",
     "db:seed:team": "tsx scripts/seed-test-team.ts",
     "db:seed:terms": "tsx scripts/seed-terms.ts",
@@ -42,6 +43,8 @@
     "fixtures:convert:cid": "tsx scripts/fixtures/convert-cid.ts",
     "fixtures:convert:cbo": "tsx scripts/fixtures/convert-cbo.ts",
     "fixtures:convert:sigtap": "tsx scripts/fixtures/convert-sigtap.ts",
+    "sigtap:update": "tsx scripts/update-sigtap.ts",
+    "sigtap:update:force": "tsx scripts/update-sigtap.ts --force",
     "fixtures:convert:rename": "tsx scripts/fixtures/convert-rename-from-pdf.ts",
     "fixtures:convert:dcb": "tsx scripts/fixtures/convert-dcb-medicamentos.ts",
     "fixtures:convert:all": "npm run fixtures:convert:cid && npm run fixtures:convert:cbo && npm run fixtures:convert:sigtap",
@@ -162,7 +165,6 @@
     "tailwind-merge": "^2.5.2",
     "tailwindcss": "^3.4.10",
     "tailwindcss-animate": "^1.0.7",
-    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "overrides": {
@@ -197,5 +199,8 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "optionalDependencies": {
+    "@azure/storage-blob": "^12.31.0"
   }
 }

@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
         role: true,
         crmNumber: true,
         licenseNumber: true,
+        licenseState: true,
         speciality: true,
         phone: true
       }
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
       prescriber: {
         name: prescriber.name,
         crm: prescriber.crmNumber || prescriber.licenseNumber || '',
-        crmState: 'SP', // TODO: Extrair do CRM ou configuração
+        crmState: prescriber.licenseState || 'SP',
         specialty: prescriber.speciality || undefined,
         address: establishment?.address || '',
         phone: prescriber.phone || undefined

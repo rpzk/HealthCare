@@ -1,13 +1,27 @@
 /**
  * Serviço de exportação de prontuários médicos para PDF
- * Gera PDFs completos com histórico, anexos e assinaturas
+ * Gera PDFs completos com histórico, anexos e assinaturas.
+ *
+ * Header/footer compartilham o mesmo layout visual das prescrições,
+ * encaminhamentos e solicitações de exame.
  */
 
 import prisma from '@/lib/prisma'
 import { getClinicDataForDocuments } from '@/lib/branding-service'
+import { decrypt } from '@/lib/crypto'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { logger } from '@/lib/logger'
+import {
+  escapeHtml,
+  formatCpf,
+  formatDoctorLine,
+  formatDateBr,
+  generateQRDataUrl,
+  resolveLogoToDataUrl,
+  buildHeaderHtml,
+  buildFooterHtml,
+} from '@/lib/documents/medical-doc-html'
 
 // ============ TYPES ============
 
@@ -48,6 +62,7 @@ export interface MedicalRecordExportData {
     id: string
     name: string
     crm: string | null
+    crmFormatted: string
     specialty: string | null
   } | null
   clinic: {
@@ -87,12 +102,16 @@ export async function fetchMedicalRecordForExport(
   const record = await prisma.medicalRecord.findUnique({
     where: { id: recordId },
     include: {
-      patient: true,
-      doctor: true,
-      ...(options.includeAttachments && {
-        attachments: true
-      })
-    }
+      patient: { select: { id: true, name: true, cpf: true, birthDate: true, gender: true, phone: true, email: true } },
+      doctor: {
+        select: {
+          id: true, name: true,
+          crmNumber: true, licenseNumber: true, licenseType: true, licenseState: true,
+          speciality: true,
+        },
+      },
+      ...(options.includeAttachments && { attachments: true }),
+    },
   })
 
   if (!record) {
@@ -140,18 +159,24 @@ export async function fetchMedicalRecordForExport(
     patient: record.patient ? {
       id: record.patient.id,
       name: record.patient.name,
-      cpf: record.patient.cpf,
+      cpf: (() => {
+        try { return record.patient.cpf ? decrypt(record.patient.cpf) : null } catch { return record.patient.cpf }
+      })(),
       birthDate: record.patient.birthDate,
       gender: record.patient.gender,
       phone: record.patient.phone,
-      email: record.patient.email
+      email: record.patient.email,
     } : null,
-    doctor: record.doctor ? {
-      id: record.doctor.id,
-      name: record.doctor.name,
-      crm: record.doctor.crmNumber || record.doctor.licenseNumber || null,
-      specialty: record.doctor.speciality || null
-    } : null,
+    doctor: record.doctor ? (() => {
+      const { crm: crmFormatted, specialty } = formatDoctorLine(record.doctor)
+      return {
+        id: record.doctor.id,
+        name: record.doctor.name,
+        crm: record.doctor.crmNumber || record.doctor.licenseNumber || null,
+        crmFormatted,
+        specialty: specialty || null,
+      }
+    })() : null,
     clinic,
     versionHistory: [],
     attachments: (record.attachments || []).map((att) => ({
@@ -167,582 +192,218 @@ export async function fetchMedicalRecordForExport(
 
 // ============ HTML GENERATION ============
 
+const TYPE_LABELS: Record<string, string> = {
+  CONSULTATION: 'Consulta',
+  EXAM: 'Exame',
+  PROCEDURE: 'Procedimento',
+  PRESCRIPTION: 'Prescrição',
+  LAB_RESULT: 'Resultado Laboratorial',
+  IMAGING: 'Exame de Imagem',
+  VACCINATION: 'Vacinação',
+  SURGERY: 'Cirurgia',
+  NOTE: 'Anotação',
+  OTHER: 'Outro',
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  LOW: 'Baixa', NORMAL: 'Normal', HIGH: 'Alta', CRITICAL: 'Crítica',
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  LOW: '#10b981', NORMAL: '#3b82f6', HIGH: '#f97316', CRITICAL: '#dc2626',
+}
+
+function calcAge(birthDate: Date | null): string {
+  if (!birthDate) return ''
+  const today = new Date()
+  const birth = new Date(birthDate)
+  let age = today.getFullYear() - birth.getFullYear()
+  if (today.getMonth() - birth.getMonth() < 0 ||
+      (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--
+  return ` (${age} anos)`
+}
+
+function fmtBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fmtDateHour(date: Date | null): string {
+  if (!date) return '-'
+  return format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+}
+
+const CSS_PRONTUARIO = `
+  @page { margin: 40pt 50pt; size: A4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10pt; color: #1a1a1a; }
+  .page { padding: 0; min-height: calc(100vh - 80pt); position: relative; page-break-after: always; display: flex; flex-direction: column; }
+  .page:last-child { page-break-after: auto; }
+
+  /* Shared header/footer (from medical-doc-html) */
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14pt; }
+  .doc-header-left { flex-shrink: 0; }
+  .doc-logo { max-height: 52pt; max-width: 160pt; object-fit: contain; }
+  .doc-clinic-name { font-size: 10pt; color: #4B5563; font-weight: 600; }
+  .doc-header-right { text-align: right; }
+  .doc-doctor-name { font-family: Georgia, 'Times New Roman', serif; font-size: 16pt; font-weight: normal; font-style: italic; color: #1a7a8a; margin: 0 0 2pt 0; }
+  .doc-doctor-crm { font-size: 9pt; color: #4B5563; margin: 0 0 1pt 0; }
+  .doc-doctor-specialty { font-size: 8.5pt; color: #6B7280; margin: 0 0 1pt 0; }
+  .doc-doctor-addr { font-size: 8pt; color: #9CA3AF; margin: 0 0 1pt 0; }
+  .doc-doctor-phone { font-size: 8pt; color: #9CA3AF; margin: 0; }
+  .doc-divider { border: none; border-top: 0.75pt solid #D1D5DB; margin: 0 0 16pt 0; }
+  .doc-title { text-align: center; font-size: 14pt; font-weight: bold; letter-spacing: 0.5pt; margin: 0 0 14pt 0; color: #111; }
+  .doc-label { font-weight: bold; color: #374151; }
+  .doc-footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 0.75pt solid #D1D5DB; padding-top: 14pt; margin-top: auto; }
+  .doc-footer-left { display: flex; align-items: flex-end; gap: 8pt; }
+  .doc-qr { width: 70px; height: 70px; }
+  .doc-verify-text { font-size: 7pt; color: #9CA3AF; line-height: 1.3; }
+  .doc-verify-text p { margin: 0 0 1pt 0; }
+  .doc-verify-url { word-break: break-all; font-size: 6.5pt; }
+  .doc-footer-right { text-align: right; }
+  .doc-footer-date { font-size: 9pt; color: #374151; margin: 0 0 3pt 0; }
+  .doc-footer-signed { font-size: 8pt; color: #6B7280; margin: 0 0 2pt 0; }
+  .doc-footer-location { font-size: 8pt; color: #9CA3AF; margin: 0; }
+
+  /* Prontuário body styles */
+  .pr-body { flex: 1; }
+  .pr-patient { margin-bottom: 14pt; }
+  .pr-patient p { margin: 2pt 0; font-size: 10.5pt; }
+  .pr-meta { display: flex; gap: 16pt; margin-bottom: 14pt; font-size: 9.5pt; color: #374151; background: #F9FAFB; padding: 8pt 10pt; border-left: 3pt solid #1a7a8a; }
+  .pr-meta span { margin-right: 16pt; }
+  .pr-section-title { font-size: 10pt; font-weight: bold; color: #374151; text-transform: uppercase; letter-spacing: 0.5pt; margin: 14pt 0 6pt 0; border-bottom: 0.75pt solid #E5E7EB; padding-bottom: 4pt; }
+  .pr-content { padding: 10pt 12pt; background: #f8f9fa; border-left: 3pt solid #6B7280; font-size: 10pt; line-height: 1.6; white-space: pre-wrap; margin-bottom: 10pt; }
+  .pr-priority { display: inline-block; font-size: 8.5pt; font-weight: 700; padding: 2pt 8pt; border-radius: 3pt; }
+  .pr-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 10pt; }
+  .pr-table th { background: #F3F4F6; font-weight: 600; color: #374151; padding: 6pt 8pt; text-align: left; border-bottom: 0.75pt solid #D1D5DB; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.3pt; }
+  .pr-table td { padding: 6pt 8pt; border-bottom: 0.5pt solid #E5E7EB; }
+`
+
 export async function generateMedicalRecordHtml(
   options: MedicalRecordExportOptions
 ): Promise<string> {
   const data = await fetchMedicalRecordForExport(options.recordId, options)
-  
-  const formatDateBR = (date: Date | null) => {
-    if (!date) return '-'
-    return format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-  }
 
-  const getTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      CONSULTATION: 'Consulta',
-      EXAM: 'Exame',
-      PROCEDURE: 'Procedimento',
-      PRESCRIPTION: 'Prescrição',
-      LAB_RESULT: 'Resultado Laboratorial',
-      IMAGING: 'Exame de Imagem',
-      VACCINATION: 'Vacinação',
-      SURGERY: 'Cirurgia',
-      NOTE: 'Anotação',
-      OTHER: 'Outro'
-    }
-    return labels[type] || type
-  }
+  // QR de verificação
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_BASE_URL || ''
+  const signedDoc = await prisma.signedDocument.findFirst({
+    where: { documentType: 'MEDICAL_RECORD', documentId: options.recordId },
+    orderBy: { signedAt: 'desc' },
+  }).catch(() => null)
+  const verificationUrl = signedDoc?.signatureHash
+    ? `${baseUrl}/verify/${signedDoc.signatureHash}`
+    : undefined
+  const qrDataUrl = verificationUrl ? await generateQRDataUrl(verificationUrl).catch(() => undefined) : undefined
 
-  const getPriorityLabel = (priority: string): string => {
-    const labels: Record<string, string> = {
-      LOW: 'Baixa',
-      NORMAL: 'Normal',
-      HIGH: 'Alta',
-      CRITICAL: 'Crítica'
-    }
-    return labels[priority] || priority
-  }
+  // Logo
+  const logoDataUrl = resolveLogoToDataUrl(data.clinic?.logoUrl)
 
-  const getPriorityColor = (priority: string): string => {
-    const colors: Record<string, string> = {
-      LOW: '#10b981',
-      NORMAL: '#3b82f6',
-      HIGH: '#f97316',
-      CRITICAL: '#dc2626'
-    }
-    return colors[priority] || '#6b7280'
-  }
+  // Header
+  const doctorName = data.doctor?.name || '—'
+  const doctorCrm = data.doctor?.crmFormatted || ''
+  const doctorSpecialty = data.doctor?.specialty || undefined
+  const clinicAddress = data.clinic?.address || undefined
+  const clinicPhone = data.clinic?.phone || undefined
+  const clinicName = data.clinic?.name || undefined
 
-  const calculateAge = (birthDate: Date | null): string => {
-    if (!birthDate) return '-'
-    const today = new Date()
-    const birth = new Date(birthDate)
-    let age = today.getFullYear() - birth.getFullYear()
-    const monthDiff = today.getMonth() - birth.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--
-    }
-    return `${age} anos`
-  }
+  const headerHtml = buildHeaderHtml({
+    doctorName,
+    doctorCrm,
+    doctorSpecialty,
+    clinicAddress,
+    clinicPhone,
+    clinicName,
+    logoDataUrl,
+  })
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
+  // Patient section
+  const patientSection = data.patient ? `
+    <section class="pr-patient">
+      <p><span class="doc-label">Paciente:</span> ${escapeHtml(data.patient.name)}</p>
+      ${data.patient.cpf ? `<p><span class="doc-label">CPF:</span> ${formatCpf(data.patient.cpf)}</p>` : ''}
+      ${data.patient.birthDate ? `<p><span class="doc-label">Data de nascimento:</span> ${formatDateBr(data.patient.birthDate)}${calcAge(data.patient.birthDate)}</p>` : ''}
+      ${data.patient.gender ? `<p><span class="doc-label">Sexo:</span> ${data.patient.gender === 'MALE' ? 'Masculino' : data.patient.gender === 'FEMALE' ? 'Feminino' : 'Outro'}</p>` : ''}
+    </section>` : ''
 
-  const html = `
-<!DOCTYPE html>
+  // Record meta
+  const priorityColor = PRIORITY_COLORS[data.record.priority] || '#6b7280'
+  const priorityLabel = PRIORITY_LABELS[data.record.priority] || data.record.priority
+  const typeLabel = TYPE_LABELS[data.record.recordType] || data.record.recordType
+
+  const metaSection = `
+    <div class="pr-meta">
+      <span><span class="doc-label">Tipo:</span> ${escapeHtml(typeLabel)}</span>
+      <span><span class="doc-label">Prioridade:</span> <span class="pr-priority" style="background:${priorityColor}20;color:${priorityColor}">${escapeHtml(priorityLabel)}</span></span>
+      <span><span class="doc-label">Versão:</span> v${data.record.version}</span>
+      <span><span class="doc-label">Data:</span> ${fmtDateHour(data.record.createdAt)}</span>
+    </div>`
+
+  // Clinical content
+  const descriptionBlock = data.record.description
+    ? `<p class="pr-section-title">Descrição Clínica</p>
+       <div class="pr-content">${escapeHtml(data.record.description)}</div>`
+    : ''
+
+  const contentBlock = data.record.content && data.record.content !== data.record.description
+    ? `<p class="pr-section-title">Conteúdo Detalhado</p>
+       <div class="pr-content">${escapeHtml(data.record.content)}</div>`
+    : ''
+
+  // Attachments
+  const attachmentsBlock = options.includeAttachments && data.attachments.length > 0 ? `
+    <p class="pr-section-title">Anexos (${data.attachments.length})</p>
+    <table class="pr-table">
+      <thead><tr><th>Arquivo</th><th>Tipo</th><th>Tamanho</th><th>Data</th></tr></thead>
+      <tbody>${data.attachments.map(a => `
+        <tr>
+          <td>${escapeHtml(a.fileName)}</td>
+          <td>${escapeHtml(a.fileType)}</td>
+          <td>${fmtBytes(a.fileSize)}</td>
+          <td>${fmtDateHour(a.createdAt)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : ''
+
+  const bodyHtml = `
+    <div class="pr-body">
+      ${metaSection}
+      ${descriptionBlock}
+      ${contentBlock}
+      ${attachmentsBlock}
+    </div>`
+
+  // Footer
+  const footerHtml = buildFooterHtml({
+    doctorName,
+    doctorCrm,
+    issuedAt: data.record.createdAt,
+    clinicCity: undefined,
+    qrDataUrl,
+    verificationUrl,
+    useStamp: !signedDoc,
+  })
+
+  const page = `
+    <div class="page">
+      ${headerHtml}
+      <p class="doc-title">PRONTUÁRIO MÉDICO</p>
+      ${patientSection}
+      ${bodyHtml}
+      ${footerHtml}
+    </div>`
+
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prontuário Médico - ${data.record.title}</title>
-  <style>
-    @page {
-      size: A4;
-      margin: 20mm;
-    }
-    
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-    }
-    
-    body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      color: #1f2937; 
-      line-height: 1.6;
-      font-size: 11pt;
-      background: white;
-    }
-    
-    .container {
-      max-width: 210mm;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    
-    /* Header */
-    .header {
-      text-align: center;
-      border-bottom: 3px solid #0066cc;
-      padding-bottom: 20px;
-      margin-bottom: 25px;
-    }
-    
-    .header .logo {
-      max-height: 60px;
-      margin-bottom: 10px;
-    }
-    
-    .header h1 {
-      color: #0066cc;
-      font-size: 22pt;
-      margin-bottom: 5px;
-    }
-    
-    .header .subtitle {
-      color: #6b7280;
-      font-size: 10pt;
-    }
-    
-    .header .clinic-info {
-      margin-top: 10px;
-      font-size: 9pt;
-      color: #6b7280;
-    }
-    
-    /* Document Info */
-    .doc-info {
-      display: flex;
-      justify-content: space-between;
-      background: #f3f4f6;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 10pt;
-    }
-    
-    .doc-info .item {
-      display: flex;
-      gap: 8px;
-    }
-    
-    .doc-info .label {
-      color: #6b7280;
-    }
-    
-    .doc-info .value {
-      font-weight: 600;
-    }
-    
-    /* Sections */
-    .section {
-      margin-bottom: 25px;
-      page-break-inside: avoid;
-    }
-    
-    .section h2 {
-      color: #0066cc;
-      font-size: 14pt;
-      border-bottom: 2px solid #0066cc;
-      padding-bottom: 8px;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .section h2::before {
-      content: '';
-      width: 4px;
-      height: 20px;
-      background: #0066cc;
-      border-radius: 2px;
-    }
-    
-    /* Info Grid */
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-    
-    .info-item {
-      background: #f9fafb;
-      padding: 10px 14px;
-      border-radius: 6px;
-      border-left: 3px solid #0066cc;
-    }
-    
-    .info-item.full {
-      grid-column: span 2;
-    }
-    
-    .info-item .label {
-      font-size: 9pt;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-    
-    .info-item .value {
-      font-weight: 500;
-      color: #1f2937;
-    }
-    
-    /* Priority Badge */
-    .priority-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 9pt;
-      font-weight: 600;
-    }
-    
-    /* Content */
-    .content-box {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 16px;
-      white-space: pre-wrap;
-      font-family: inherit;
-      line-height: 1.7;
-    }
-    
-    /* Tables */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 10pt;
-    }
-    
-    th, td {
-      padding: 10px 12px;
-      text-align: left;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    
-    th {
-      background: #f3f4f6;
-      font-weight: 600;
-      color: #374151;
-      font-size: 9pt;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    tr:hover {
-      background: #f9fafb;
-    }
-    
-    /* Signatures */
-    .signatures-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-      margin-top: 40px;
-    }
-    
-    .signature-box {
-      text-align: center;
-      padding: 20px;
-      border-top: 2px solid #1f2937;
-    }
-    
-    .signature-box .name {
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    
-    .signature-box .info {
-      font-size: 9pt;
-      color: #6b7280;
-    }
-    
-    /* Footer */
-    .footer {
-      margin-top: 40px;
-      padding-top: 15px;
-      border-top: 1px solid #e5e7eb;
-      font-size: 8pt;
-      color: #9ca3af;
-      text-align: center;
-    }
-    
-    .footer .hash {
-      font-family: monospace;
-      font-size: 7pt;
-      margin-top: 5px;
-      word-break: break-all;
-    }
-    
-    /* Print styles */
-    @media print {
-      body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      
-      .no-print {
-        display: none;
-      }
-      
-      .page-break {
-        page-break-before: always;
-      }
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <title>${escapeHtml(`Prontuário — ${data.patient?.name || data.record.title}`)}</title>
+  <style>${CSS_PRONTUARIO}</style>
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <header class="header">
-      ${data.clinic?.logoUrl ? `<img src="${data.clinic.logoUrl}" alt="Logo" class="logo">` : ''}
-      <h1>${data.clinic?.name || 'Healthcare'}</h1>
-      <p class="subtitle">Prontuário Eletrônico do Paciente</p>
-      ${data.clinic?.address || data.clinic?.phone ? `
-        <p class="clinic-info">
-          ${[data.clinic.address, data.clinic.phone].filter(Boolean).join(' • ')}
-        </p>
-      ` : ''}
-    </header>
-
-    <!-- Document Info -->
-    <div class="doc-info">
-      <div class="item">
-        <span class="label">Documento:</span>
-        <span class="value">#${data.record.id.slice(-8).toUpperCase()}</span>
-      </div>
-      <div class="item">
-        <span class="label">Versão:</span>
-        <span class="value">v${data.record.version}</span>
-      </div>
-      <div class="item">
-        <span class="label">Gerado em:</span>
-        <span class="value">${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-      </div>
-    </div>
-
-    <!-- Dados do Prontuário -->
-    <section class="section">
-      <h2>Informações do Prontuário</h2>
-      <div class="info-grid">
-        <div class="info-item full">
-          <div class="label">Título</div>
-          <div class="value">${data.record.title}</div>
-        </div>
-        <div class="info-item">
-          <div class="label">Tipo</div>
-          <div class="value">${getTypeLabel(data.record.recordType)}</div>
-        </div>
-        <div class="info-item">
-          <div class="label">Prioridade</div>
-          <div class="value">
-            <span class="priority-badge" style="background: ${getPriorityColor(data.record.priority)}20; color: ${getPriorityColor(data.record.priority)}">
-              ${getPriorityLabel(data.record.priority)}
-            </span>
-          </div>
-        </div>
-        <div class="info-item">
-          <div class="label">Data de Criação</div>
-          <div class="value">${formatDateBR(data.record.createdAt)}</div>
-        </div>
-        <div class="info-item">
-          <div class="label">Última Atualização</div>
-          <div class="value">${formatDateBR(data.record.updatedAt)}</div>
-        </div>
-        ${data.record.severity ? `
-          <div class="info-item">
-            <div class="label">Gravidade</div>
-            <div class="value">${data.record.severity}</div>
-          </div>
-        ` : ''}
-      </div>
-    </section>
-
-    <!-- Dados do Paciente -->
-    ${data.patient ? `
-    <section class="section">
-      <h2>Dados do Paciente</h2>
-      <div class="info-grid">
-        <div class="info-item">
-          <div class="label">Nome Completo</div>
-          <div class="value">${data.patient.name}</div>
-        </div>
-        ${data.patient.cpf ? `
-          <div class="info-item">
-            <div class="label">CPF</div>
-            <div class="value">${data.patient.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</div>
-          </div>
-        ` : ''}
-        ${data.patient.birthDate ? `
-          <div class="info-item">
-            <div class="label">Data de Nascimento</div>
-            <div class="value">${format(new Date(data.patient.birthDate), 'dd/MM/yyyy', { locale: ptBR })} (${calculateAge(data.patient.birthDate)})</div>
-          </div>
-        ` : ''}
-        ${data.patient.gender ? `
-          <div class="info-item">
-            <div class="label">Sexo</div>
-            <div class="value">${data.patient.gender === 'MALE' ? 'Masculino' : data.patient.gender === 'FEMALE' ? 'Feminino' : 'Outro'}</div>
-          </div>
-        ` : ''}
-        ${data.patient.phone ? `
-          <div class="info-item">
-            <div class="label">Telefone</div>
-            <div class="value">${data.patient.phone}</div>
-          </div>
-        ` : ''}
-        ${data.patient.email ? `
-          <div class="info-item">
-            <div class="label">E-mail</div>
-            <div class="value">${data.patient.email}</div>
-          </div>
-        ` : ''}
-      </div>
-    </section>
-    ` : ''}
-
-    <!-- Profissional Responsável -->
-    ${data.doctor ? `
-    <section class="section">
-      <h2>Profissional Responsável</h2>
-      <div class="info-grid">
-        <div class="info-item">
-          <div class="label">Nome</div>
-          <div class="value">${data.doctor.name}</div>
-        </div>
-        ${data.doctor.crm ? `
-          <div class="info-item">
-            <div class="label">CRM</div>
-            <div class="value">${data.doctor.crm}</div>
-          </div>
-        ` : ''}
-        ${data.doctor.specialty ? `
-          <div class="info-item">
-            <div class="label">Especialidade</div>
-            <div class="value">${data.doctor.specialty}</div>
-          </div>
-        ` : ''}
-      </div>
-    </section>
-    ` : ''}
-
-    <!-- Descrição/Conteúdo -->
-    <section class="section">
-      <h2>Descrição Clínica</h2>
-      ${data.record.description ? `
-        <div class="content-box">
-          ${data.record.description}
-        </div>
-      ` : '<p style="color: #9ca3af; font-style: italic;">Sem descrição registrada.</p>'}
-    </section>
-
-    ${data.record.content ? `
-    <section class="section">
-      <h2>Conteúdo Detalhado</h2>
-      <div class="content-box">
-        ${data.record.content}
-      </div>
-    </section>
-    ` : ''}
-
-    <!-- Histórico de Versões -->
-    ${options.includeVersionHistory && data.versionHistory.length > 0 ? `
-    <section class="section page-break">
-      <h2>Histórico de Versões</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Versão</th>
-            <th>Data</th>
-            <th>Alterado por</th>
-            <th>Alterações</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.versionHistory.map(v => `
-            <tr>
-              <td>v${v.version}</td>
-              <td>${formatDateBR(v.changedAt)}</td>
-              <td>${v.changedBy}</td>
-              <td>${v.changes || '-'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </section>
-    ` : ''}
-
-    <!-- Anexos -->
-    ${options.includeAttachments && data.attachments.length > 0 ? `
-    <section class="section">
-      <h2>Anexos (${data.attachments.length})</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Arquivo</th>
-            <th>Tipo</th>
-            <th>Tamanho</th>
-            <th>Data</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.attachments.map(a => `
-            <tr>
-              <td>${a.fileName}</td>
-              <td>${a.fileType}</td>
-              <td>${formatFileSize(a.fileSize)}</td>
-              <td>${formatDateBR(a.createdAt)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </section>
-    ` : ''}
-
-    <!-- Assinaturas -->
-    ${options.includeSignatures && data.signatures.length > 0 ? `
-    <section class="section">
-      <h2>Assinaturas Digitais</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Assinante</th>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.signatures.map(s => `
-            <tr>
-              <td>${s.signerName}</td>
-              <td>${formatDateBR(s.signedAt)}</td>
-              <td>${s.signatureType === 'digital' ? 'Digital' : s.signatureType}</td>
-              <td style="color: ${s.isValid ? '#10b981' : '#dc2626'}">
-                ${s.isValid ? '✓ Válida' : '✗ Inválida'}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </section>
-    ` : `
-    <div class="signatures-grid">
-      ${data.doctor ? `
-        <div class="signature-box">
-          <div class="name">${data.doctor.name}</div>
-          <div class="info">${data.doctor.crm ? `CRM: ${data.doctor.crm}` : 'Médico Responsável'}</div>
-        </div>
-      ` : ''}
-      ${data.patient ? `
-        <div class="signature-box">
-          <div class="name">${data.patient.name}</div>
-          <div class="info">Paciente</div>
-        </div>
-      ` : ''}
-    </div>
-    `}
-
-    <!-- Footer -->
-    <footer class="footer">
-      <p>Documento gerado eletronicamente pelo Sistema Healthcare em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</p>
-      <p>Este documento possui validade legal conforme Lei nº 14.063/2020 e Resolução CFM nº 2.299/2021</p>
-      <p class="hash">ID do Documento: ${data.record.id}</p>
-    </footer>
-  </div>
+  ${page}
 </body>
-</html>
-`
-
-  return html
+</html>`
 }
 
 // ============ EXPORT FUNCTIONS ============

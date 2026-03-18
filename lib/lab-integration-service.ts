@@ -16,6 +16,7 @@
 import { prisma } from '@/lib/prisma'
 import { NotificationSender } from '@/lib/notification-sender'
 import { logger } from '@/lib/logger'
+import { decrypt } from '@/lib/crypto'
 
 // ============ TYPES ============
 
@@ -238,44 +239,36 @@ class LabIntegrationServiceClass {
   
   /**
    * Parse resultado ORU (Observation Result)
+   *
+   * Percorre os segmentos na ordem em que aparecem na mensagem.
+   * Cada OBX é associado ao OBR mais recente encontrado antes dele —
+   * que é o comportamento correto definido pela especificação HL7 v2.
    */
   parseORU(message: HL7Message): LabResult[] {
     const results: LabResult[] = []
-    
-    // Find ORC segments to get order ID
-    const orcSegments = message.segments.filter(s => s.name === 'ORC')
-    const obrSegments = message.segments.filter(s => s.name === 'OBR')
-    const obxSegments = message.segments.filter(s => s.name === 'OBX')
-    
-    for (let i = 0; i < obrSegments.length; i++) {
-      const obr = obrSegments[i]
-      const orc = orcSegments[i]
-      
-      // Extract order ID from ORC-2 or OBR-2
-      const orderIdRaw = orc?.fields[1] || obr?.fields[1] || ''
-      const orderId = orderIdRaw.split('-')[0] // Remove sequence suffix
-      
-      // Extract exam code/name from OBR-4
-      const examCodeField = obr.fields[3]?.split(this.componentSeparator) || []
+
+    let currentORC: HL7Segment | null = null
+    let currentOBR: HL7Segment | null = null
+    let obxBuffer: HL7Segment[] = []
+
+    const flushOBX = () => {
+      if (!currentOBR) return
+
+      const orderIdRaw = currentORC?.fields[1] || currentOBR.fields[1] || ''
+      const orderId = orderIdRaw.split('-')[0]
+      const examCodeField = currentOBR.fields[3]?.split(this.componentSeparator) || []
       const examCode = examCodeField[0] || ''
       const examName = examCodeField[1] || ''
-      
-      // Find corresponding OBX segments
-      const relatedObx = obxSegments.filter((obx, idx) => {
-        // Simple association by position - in real scenarios, use set ID
-        return true // Include all for now
-      })
-      
-      for (const obx of relatedObx) {
-        const valueType = obx.fields[1] || 'ST' // Value type
+
+      for (const obx of obxBuffer) {
         const observationId = obx.fields[2]?.split(this.componentSeparator) || []
         const resultValue = obx.fields[4] || ''
         const unit = obx.fields[5]?.split(this.componentSeparator)[0] || ''
         const referenceRange = obx.fields[6] || ''
-        const abnormalFlag = obx.fields[7] as LabResult['abnormalFlag'] || 'N'
+        const abnormalFlag = (obx.fields[7] as LabResult['abnormalFlag']) || 'N'
         const resultStatus = obx.fields[10] || 'F'
         const observationDateTime = obx.fields[13] || ''
-        
+
         results.push({
           orderId,
           examCode: observationId[0] || examCode,
@@ -286,11 +279,26 @@ class LabIntegrationServiceClass {
           referenceRange,
           abnormalFlag: abnormalFlag || undefined,
           performedAt: this.parseHL7DateTime(observationDateTime),
-          reportedAt: new Date()
+          reportedAt: new Date(),
         })
       }
+
+      obxBuffer = []
     }
-    
+
+    for (const segment of message.segments) {
+      if (segment.name === 'ORC') {
+        currentORC = segment
+      } else if (segment.name === 'OBR') {
+        flushOBX()
+        currentOBR = segment
+        obxBuffer = []
+      } else if (segment.name === 'OBX') {
+        obxBuffer.push(segment)
+      }
+    }
+    flushOBX() // processar último grupo
+
     return results
   }
   
@@ -399,12 +407,18 @@ class LabIntegrationServiceClass {
         throw new Error('Pedido de exame não encontrado')
       }
       
+      // Descriptografar CPF para incluir no ORM (laboratório precisa do CPF real)
+      let patientCpf: string | undefined
+      if (examRequest.patient.cpf) {
+        try { patientCpf = decrypt(examRequest.patient.cpf) ?? undefined } catch { patientCpf = examRequest.patient.cpf ?? undefined }
+      }
+
       // Montar estrutura LabOrder
       const order: LabOrder = {
         id: examRequest.id,
         patientId: examRequest.patient.id,
         patientName: examRequest.patient.name,
-        patientCpf: examRequest.patient.cpf || undefined,
+        patientCpf,
         patientBirthDate: examRequest.patient.birthDate || undefined,
         doctorId: examRequest.doctor.id,
         doctorName: examRequest.doctor.name,

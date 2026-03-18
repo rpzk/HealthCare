@@ -1,13 +1,10 @@
 /** @type {import('next').NextConfig} */
-const isCI = process.env.CI === 'true' || process.env.CI === '1'
 const nextConfig = {
   eslint: {
-    // Em CI, não ignore; local/dev pode ignorar para velocidade
-    ignoreDuringBuilds: !isCI,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    // Em CI, falhar em erros de tipos; local/dev pode ignorar temporariamente
-    ignoreBuildErrors: !isCI,
+    ignoreBuildErrors: false,
   },
   images: {
     domains: ['localhost'],
@@ -19,8 +16,7 @@ const nextConfig = {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 5,
   },
-  // Skip collecting static props during build in Docker
-  staticPageGenerationTimeout: 0,
+  staticPageGenerationTimeout: 60,
 }
 
 module.exports = nextConfig

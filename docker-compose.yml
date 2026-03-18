@@ -5,7 +5,7 @@ services:
     container_name: healthcare-db
     environment:
       POSTGRES_USER: healthcare
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: healthcare_db
     ports:
       - "5432:5432"
@@ -40,13 +40,13 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:-change_me}@postgres:5432/healthcare_db
+        DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/healthcare_db
     container_name: healthcare-app
     environment:
-      DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:-change_me}@postgres:5432/healthcare_db
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-umbrel_secret_key_123}
+      DATABASE_URL: postgresql://healthcare:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/healthcare_db
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-https://healthcare.rafaelpiazenski.com}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-091f102918edce0e682e220705848ff064ec12d5f5c7b832038d64851d6d8b04}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-phi3}
       REDIS_HOST: redis

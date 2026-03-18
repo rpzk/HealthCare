@@ -215,7 +215,7 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
                       variant="outline"
                       onClick={async () => {
                         try {
-                          const res = await fetch(`/api/medical-certificates/${cert.id}/signature`)
+                          const res = await fetch(`/api/certificates/${cert.id}/signature`)
                           const data = await res.json()
                           const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
                           if (pageUrl) window.open(pageUrl, '_blank')
@@ -233,7 +233,7 @@ export function CertificatesList({ patientId, doctorId, onCertificateClick }: Ce
                       variant="outline"
                       onClick={async () => {
                         try {
-                          const res = await fetch(`/api/medical-certificates/${cert.id}/signature`)
+                          const res = await fetch(`/api/certificates/${cert.id}/signature`)
                           const data = await res.json()
                           const pageUrl = data?.verificationPageUrl ?? (data?.signatureHash ? `/verify/${data.signatureHash}` : null)
                           if (!pageUrl) {

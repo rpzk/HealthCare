@@ -1,0 +1,52 @@
+# docker-compose.azure.yml — Override para Azure VM
+#
+# Uso:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.azure.yml up -d
+#
+# O que este arquivo faz diferente do docker-compose.prod.yml:
+#   1. uploads_data → Azure Files (NFS/SMB mount persistente entre redeploys)
+#   2. postgres_data → Azure Files (backup automático via Azure)
+#   3. ollama_data   → Azure Files (modelos grandes não precisam ser rebaixados a cada deploy)
+#   4. Backups       → Azure Files compartilhado
+#   5. STORAGE_TYPE=azure-blob (usa Azure Blob Storage para gravações de consultas)
+#
+# Pré-requisito: montar o Azure Files no host antes de subir os containers
+#   Veja docs/DEPLOY_AZURE.md para instruções de montagem NFS.
+#
+# Variáveis de ambiente adicionais necessárias no .env:
+#   AZURE_STORAGE_CONNECTION_STRING  — connection string da Storage Account
+#   AZURE_STORAGE_CONTAINER          — nome do container (default: healthcare-uploads)
+#   AZURE_FILES_MOUNT_PATH           — caminho NFS montado no host (ex: /mnt/healthcare)
+
+services:
+  app:
+    environment:
+      STORAGE_TYPE: azure-blob
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:?AZURE_STORAGE_CONNECTION_STRING is required}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-healthcare-uploads}
+    volumes:
+      # Substituir volume Docker por Azure Files NFS mount
+      - ${AZURE_FILES_MOUNT_PATH:-/mnt/healthcare}/uploads:/app/uploads
+      - ${AZURE_FILES_MOUNT_PATH:-/mnt/healthcare}/backups:/app/backups
+      - ./docs:/app/docs:ro
+
+volumes:
+  # Redirecionar volumes para Azure Files
+  uploads_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${AZURE_FILES_MOUNT_PATH:-/mnt/healthcare}/uploads
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${AZURE_FILES_MOUNT_PATH:-/mnt/healthcare}/postgres
+  ollama_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${AZURE_FILES_MOUNT_PATH:-/mnt/healthcare}/ollama

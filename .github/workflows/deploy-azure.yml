@@ -79,12 +79,14 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            COMPOSE="docker compose -f docker-compose.prod.yml -f docker-compose.azure.yml"
+
             echo "🐳 Building and starting containers..."
-            docker compose -f docker-compose.prod.yml build app --no-cache
-            docker compose -f docker-compose.prod.yml up -d app
+            $COMPOSE build app --no-cache
+            $COMPOSE up -d
 
             echo "📦 Running database migrations..."
-            docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy || true
+            $COMPOSE exec -T app npx prisma migrate deploy || true
 
             echo "✅ Deploy concluído!"
-            docker compose -f docker-compose.prod.yml ps
+            $COMPOSE ps

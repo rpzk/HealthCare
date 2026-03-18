@@ -73,7 +73,7 @@ export async function getSignatureInfo(documentType: string, id: string): Promis
     await acquire()
     try {
       const url = `/api/${
-        documentType === 'PRESCRIPTION' ? 'prescriptions' : documentType === 'REFERRAL' ? 'referrals' : documentType === 'EXAM_REQUEST' ? 'exam-requests' : 'medical-certificates'
+        documentType === 'PRESCRIPTION' ? 'prescriptions' : documentType === 'REFERRAL' ? 'referrals' : documentType === 'EXAM_REQUEST' ? 'exam-requests' : 'certificates'
       }/${encodeURIComponent(id)}/signature`
 
       // simple retry with small backoff

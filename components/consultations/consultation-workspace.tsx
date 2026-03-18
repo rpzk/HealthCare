@@ -412,7 +412,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
               ? `/api/exam-requests/${id}/signature`
               : kind === 'REFERRAL'
                 ? `/api/referrals/${id}/signature`
-                : `/api/medical-certificates/${id}/signature`
+                : `/api/certificates/${id}/signature`
         const res = await fetch(url)
         if (!res.ok) throw new Error('Erro ao obter assinatura')
         const data = await res.json()
@@ -508,7 +508,7 @@ export function ConsultationWorkspace({ consultationId }: { consultationId: stri
               ? `/api/exam-requests/${id}/sign`
               : target === 'REFERRALS'
                 ? `/api/referrals/${id}/sign`
-                : `/api/medical-certificates/${id}/sign`
+                : `/api/certificates/${id}/sign`
 
         const body = pwd ? { password: pwd } : {}
         const res = await fetch(url, {

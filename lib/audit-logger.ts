@@ -81,7 +81,8 @@ export enum AuditAction {
 class AuditLogger {
   private static instance: AuditLogger
   private logs: AuditLog[] = []
-  private persistEnabled = true
+  private persistFailures = 0
+  private persistBackoffUntil = 0
 
   private constructor() {}
 
@@ -125,22 +126,16 @@ class AuditLogger {
       errorMessage: options.errorMessage
     }
 
-    // Persistir no banco quando possível
-    if (this.persistEnabled) {
+    // Persistir no banco — backoff exponencial em caso de falhas consecutivas
+    if (Date.now() >= this.persistBackoffUntil) {
       import('@/lib/prisma').then(async (prismaModule) => {
         try {
-          // Usar a instância exportada diretamente
           const prisma = prismaModule.prisma || prismaModule.default
-          
-          // Tentar conectar se necessário (opcional, o prisma gerencia isso)
-          // await prismaModule.ensurePrismaConnected()
-          
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const client = prisma as { auditLog?: { create: (data: unknown) => Promise<unknown> } }
-          
-          // Verificação de segurança para garantir que o modelo existe
+
           if (!client.auditLog) {
-            logger.warn('⚠️ Modelo AuditLog não encontrado no Prisma Client. Verifique se "npx prisma generate" foi executado.')
+            logger.warn('Modelo AuditLog não encontrado no Prisma Client. Execute "npx prisma generate".')
             return
           }
 
@@ -156,14 +151,23 @@ class AuditLogger {
               ipAddress: auditLog.ipAddress || null,
               userAgent: auditLog.userAgent || null,
               success: auditLog.success,
-              errorMessage: auditLog.errorMessage || null
-            }
+              errorMessage: auditLog.errorMessage || null,
+            },
           })
+
+          // Sucesso — reset failure counter
+          this.persistFailures = 0
+          this.persistBackoffUntil = 0
         } catch (e) {
-          // Desabilitar persistência se der erro (ex.: migrações não aplicadas)
-          this.persistEnabled = false
+          this.persistFailures++
+          // Exponential backoff: 30s, 60s, 120s, … capped at 10 minutes
+          const backoffMs = Math.min(30_000 * Math.pow(2, this.persistFailures - 1), 600_000)
+          this.persistBackoffUntil = Date.now() + backoffMs
+
           if (process.env.NODE_ENV !== 'test') {
-            logger.error('Falha ao persistir AuditLog, usando memória:', (e as Error).message)
+            logger.error(
+              `AuditLog DB persist falhou (tentativa ${this.persistFailures}, próxima em ${backoffMs / 1000}s): ${(e as Error).message}`,
+            )
           }
         }
       })

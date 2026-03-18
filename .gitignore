@@ -1,6 +1,7 @@
 node_modules
 
-# Environment variables
+# Environment variables — never commit real secrets
+.env
 .env.local
 .env.development.local
 .env.production.local
@@ -35,6 +36,9 @@ uploads/*
 
 # Backups (created by Docker/production)
 backups/
+
+# SIGTAP — gerado localmente via npm run sigtap:update (34MB+, não vai no git)
+fixtures/01-master-data/sigtap/*.json
 
 # Sensitive certificates and keys
 *.pfx
@@ -82,3 +86,4 @@ __pycache__/
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
 .env-umbrel*
+.aider*

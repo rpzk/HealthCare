@@ -12,19 +12,29 @@ interface KeyConfig {
   status: 'ACTIVE' | 'DECRYPT_ONLY' | 'EXPIRED'
 }
 
-// Validação de chave de criptografia principal (não throw no load para permitir build; falha no primeiro uso em produção)
+// ENCRYPTION_KEY é obrigatória em qualquer ambiente que persiste dados de pacientes.
+// Em desenvolvimento, gere com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 const rawKey = process.env.ENCRYPTION_KEY || ''
-const keyValid = rawKey.length >= 32
-if (!keyValid && process.env.NODE_ENV !== 'production') {
-  console.warn('⚠️  ENCRYPTION_KEY não configurada ou muito curta. Usando chave de desenvolvimento.')
+if (rawKey.length < 32) {
+  if (process.env.NODE_ENV === 'production') {
+    // Em produção, bloqueia inicialização imediatamente
+    throw new Error(
+      '[encryption] ENCRYPTION_KEY ausente ou inválida (mínimo 32 caracteres). ' +
+      'Gere com: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+    )
+  } else {
+    // Em dev/test, falha rápido em vez de usar chave hardcoded silenciosa
+    throw new Error(
+      '[encryption] ENCRYPTION_KEY não configurada. ' +
+      'Adicione ao .env.local: ENCRYPTION_KEY=' +
+      require('crypto').randomBytes(32).toString('hex')
+    )
+  }
 }
-const DEV_KEY_PLACEHOLDER = 'dev_key_32_bytes_minimum!!'
-const KEY = keyValid ? rawKey.padEnd(32, '0').slice(0, 32) : DEV_KEY_PLACEHOLDER
+const KEY = rawKey.padEnd(32, '0').slice(0, 32)
 
 function assertEncryptionKey(): void {
-  if (process.env.NODE_ENV === 'production' && KEY === DEV_KEY_PLACEHOLDER) {
-    throw new Error('ENCRYPTION_KEY deve ter pelo menos 32 caracteres em produção')
-  }
+  // Chave já validada no módulo load — esta função mantém compatibilidade com chamadores existentes
 }
 
 // Chaves versionadas para rotação (carregadas do ambiente)

@@ -35,13 +35,10 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
     try {
       setLoading(true)
 
-      const response = await fetch('/api/certificates/sign-a1', {
+      const response = await fetch(`/api/certificates/${certificateId}/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          certificateId,
-          password,
-        }),
+        body: JSON.stringify({ password }),
       })
 
       const data = await response.json().catch(() => ({}))
