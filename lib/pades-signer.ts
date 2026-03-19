@@ -60,7 +60,7 @@ export async function signPdfWithA1PAdES(
         pdfBuffer,
         reason: options?.reason || 'Documento assinado digitalmente',
         location: options?.location || 'Brasil',
-        signatureLength: 4096, // Reduzido de 8192
+        signatureLength: 16384, // ICP-Brasil certs have large chains
         name: 'Signature1',
         contactInfo: options?.contactInfo || '',
       })

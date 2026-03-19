@@ -85,7 +85,7 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     doc.moveDown(1);
 
     // Dates and type
-    doc.fontSize(12).text(`Tipo: ${input.certificate.type}`);
+    doc.fontSize(12).text(`Tipo: ${translateCertType(input.certificate.type)}`);
     doc.fontSize(12).text(`Início: ${input.certificate.startDate}`);
     if (input.certificate.endDate) doc.fontSize(12).text(`Fim: ${input.certificate.endDate}`);
     doc.moveDown(1);
@@ -96,8 +96,10 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
     doc.fontSize(12).text(input.certificate.content, { align: 'justify' });
     doc.moveDown(1);
 
-    // Hash and validation with QR code
-    doc.fontSize(10).text(`Hash: ${input.certificate.hash}`);
+    // Hash (só exibir quando preenchido — antes da assinatura é vazio)
+    if (input.certificate.hash) {
+      doc.fontSize(10).text(`Hash: ${input.certificate.hash}`)
+    }
     if (input.certificate.signature) {
       doc.fontSize(10).text(`Assinatura registrada: ${input.certificate.signature.substring(0, 32)}...`);
       if (input.certificate.signatureMethod) {
@@ -153,6 +155,19 @@ export async function generateCertificatePdf(input: CertificatePdfInput): Promis
 
     doc.end();
   });
+}
+
+function translateCertType(type: string): string {
+  const map: Record<string, string> = {
+    TIME_OFF: 'Afastamento',
+    MEDICAL_LEAVE: 'Licença Médica',
+    CONSULTATION: 'Comparecimento à Consulta',
+    HEALTH_DECLARATION: 'Declaração de Saúde',
+    FITNESS: 'Aptidão Física',
+    SICK_NOTE: 'Atestado de Doença',
+    OTHER: 'Outros',
+  }
+  return map[type] ?? type
 }
 
 function pathFromPublic(urlPath: string): string {
