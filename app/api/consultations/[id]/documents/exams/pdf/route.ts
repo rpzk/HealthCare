@@ -18,6 +18,16 @@ const formatCpf = (cpf?: string | null) => {
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
+const URGENCY_PT: Record<string, string> = {
+  ROUTINE: 'Rotina', URGENT: 'Urgente', EMERGENCY: 'Emergência',
+}
+const EXAM_STATUS_PT: Record<string, string> = {
+  REQUESTED: 'Solicitado', SCHEDULED: 'Agendado', COMPLETED: 'Concluído',
+  CANCELLED: 'Cancelado', RESULTS_AVAILABLE: 'Resultado disponível',
+}
+function translateUrgency(v: string) { return URGENCY_PT[v] ?? v }
+function translateExamStatus(v: string) { return EXAM_STATUS_PT[v] ?? v }
+
 // Helper para montar HTML de exames
 async function buildExamsHtml(consultationId: string, options?: { useStamp?: boolean }) {
   const consultation = await prisma.consultation.findUnique({
@@ -77,8 +87,8 @@ async function buildExamsHtml(consultationId: string, options?: { useStamp?: boo
       const title = e.description || e.examType || 'Exame'
       html += `<li><b>${title}</b>`
       if (e.examType) html += ` | Tipo: ${e.examType}`
-      if (e.urgency) html += ` | Urgência: ${e.urgency}`
-      if (e.status) html += ` | Status: ${e.status}`
+      if (e.urgency) html += ` | Urgência: ${translateUrgency(e.urgency)}`
+      if (e.status) html += ` | Status: ${translateExamStatus(e.status)}`
       html += `</li>`
     }
   }

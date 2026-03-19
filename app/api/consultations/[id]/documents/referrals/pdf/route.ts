@@ -18,6 +18,16 @@ const formatCpf = (cpf?: string | null) => {
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
+const PRIORITY_PT: Record<string, string> = {
+  LOW: 'Baixa', MEDIUM: 'Média', HIGH: 'Alta', URGENT: 'Urgente',
+}
+const REFERRAL_STATUS_PT: Record<string, string> = {
+  PENDING: 'Pendente', SCHEDULED: 'Agendado', COMPLETED: 'Concluído',
+  CANCELLED: 'Cancelado', REJECTED: 'Recusado',
+}
+function translatePriority(v: string) { return PRIORITY_PT[v] ?? v }
+function translateReferralStatus(v: string) { return REFERRAL_STATUS_PT[v] ?? v }
+
 // Helper para montar HTML de encaminhamentos
 async function buildReferralsHtml(
   consultationId: string,
@@ -87,8 +97,8 @@ async function buildReferralsHtml(
   } else {
     for (const r of list) {
       html += `<li><b>${r.specialty || 'Encaminhamento'}</b>`
-      if (r.priority) html += ` | Prioridade: ${r.priority}`
-      if (r.status) html += ` | Status: ${r.status}`
+      if (r.priority) html += ` | Prioridade: ${translatePriority(r.priority)}`
+      if (r.status) html += ` | Status: ${translateReferralStatus(r.status)}`
       if (r.description) html += ` | Descrição: ${r.description}`
       html += `</li>`
     }
