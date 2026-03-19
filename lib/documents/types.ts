@@ -30,6 +30,7 @@ export type ControlledPrescriptionType =
   | 'C4'  // Antirretrovirais (branca 2 vias)
   | 'C5'  // Anabolizantes (branca 2 vias)
   | 'ANTIMICROBIAL' // Antimicrobianos (branca 2 vias, 10 dias)
+  | 'TALIDOMIDA' // Talidomida (receituário especial ANVISA RDC 11/2011)
 
 // ============================================
 // IDENTIFICAÇÃO DO MÉDICO (CFM 2.299/2021 Art. 2º)

@@ -57,6 +57,9 @@ const LISTA_B2 = [
   'fentermina', 'mazindol', 'mefenorex', 'sibutramina',
 ]
 
+// Lista Talidomida (RDC 11/2011 ANVISA - receituário especial)
+const LISTA_TALIDOMIDA = ['talidomida']
+
 // Lista C1 - Outras substâncias
 const LISTA_C1 = [
   'acepromazina', 'ácido valpróico', 'amantadina', 'amitriptilina',
@@ -100,6 +103,9 @@ export function classifyMedication(name: string): {
   const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   
   // Verificar listas de controlados
+  if (LISTA_TALIDOMIDA.some(m => normalized.includes(m))) {
+    return { isControlled: true, controlledType: 'TALIDOMIDA', isAntimicrobial: false, notificationType: 'SPECIAL' }
+  }
   if (LISTA_A1.some(m => normalized.includes(m))) {
     return { isControlled: true, controlledType: 'A1', isAntimicrobial: false, notificationType: 'A' }
   }
@@ -296,11 +302,11 @@ export function validateMedication(med: MedicationItem, index: number): {
   ]
   
   if (ambiguousTerms.some(term => fullPosology.includes(term))) {
-    errors.push({
+    warnings.push({
       code: 'MED_POSOLOGY_AMBIGUOUS',
       field: `${prefix}`,
-      message: `Medicamento ${index + 1}: Posologia ambígua não permitida. Use formato técnico: "X comprimido(s) por via Y a cada Z horas, não excedendo W doses ao dia"`,
-      regulation: 'Manual CFM de Prescrição Médica',
+      message: `Medicamento ${index + 1}: Posologia pode ser ambígua. Prefira o formato técnico: "X comprimido(s) por via Y a cada Z horas, não excedendo W doses ao dia"`,
+      suggestion: 'CFM recomenda posologia explícita com doses e intervalos definidos',
     })
   }
   

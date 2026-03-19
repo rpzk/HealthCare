@@ -174,6 +174,9 @@ const CONTROLLED_SUBSTANCES: Record<string, ControlledList> = {
   'roacutan': 'C2',
   'acitretina': 'C2',
   'tretinoína': 'C2',
+
+  // Talidomida - receituário especial (RDC 11/2011 ANVISA)
+  'talidomida': 'C2',
   
   // Lista C4 - Anti-retrovirais
   'efavirenz': 'C4',
