@@ -22,36 +22,28 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
   const [password, setPassword] = useState('')
   const { toast } = useToast()
 
-  const handleSign = async () => {
-    if (!password) {
-      toast({
-        title: 'Senha necessária',
-        description: 'Digite a senha do seu certificado A1',
-        variant: 'destructive',
-      })
-      return
-    }
-
+  const signDocument = async (withPassword?: string) => {
     try {
       setLoading(true)
 
+      const body = withPassword ? { password: withPassword } : {}
       const response = await fetch(`/api/certificates/${certificateId}/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         toastApiError(data, 'Erro ao assinar')
-        return
+        return false
       }
 
       setSigned(true)
       setShowPasswordDialog(false)
       setPassword('')
-      
+
       toast({
         title: 'Assinado com sucesso! ✅',
         description: 'Atestado assinado com certificado ICP-Brasil',
@@ -61,6 +53,7 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
         onSuccess()
       }
 
+      return true
     } catch (error) {
       logger.error('Erro ao assinar:', error)
       toast({
@@ -68,9 +61,44 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       })
+      return false
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleClick = async () => {
+    setLoading(true)
+    try {
+      // Check if certificate session is active — if so, sign without password
+      const sessionRes = await fetch('/api/certificate-session')
+      if (sessionRes.ok) {
+        const sessionData = await sessionRes.json()
+        if (sessionData?.session?.active && !sessionData?.session?.locked) {
+          await signDocument()
+          return
+        }
+      }
+    } catch {
+      // Session check failed — fall through to password dialog
+    } finally {
+      setLoading(false)
+    }
+
+    // No active session: ask for password
+    setShowPasswordDialog(true)
+  }
+
+  const handleSignWithPassword = async () => {
+    if (!password) {
+      toast({
+        title: 'Senha necessária',
+        description: 'Digite a senha do seu certificado A1',
+        variant: 'destructive',
+      })
+      return
+    }
+    await signDocument(password)
   }
 
   if (signed) {
@@ -85,11 +113,21 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
   return (
     <>
       <Button
-        onClick={() => setShowPasswordDialog(true)}
+        onClick={handleClick}
+        disabled={loading}
         className="w-full bg-blue-600 hover:bg-blue-700"
       >
-        <FileSignature className="mr-2 h-4 w-4" />
-        Assinar com Certificado A1
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Verificando sessão...
+          </>
+        ) : (
+          <>
+            <FileSignature className="mr-2 h-4 w-4" />
+            Assinar com Certificado A1
+          </>
+        )}
       </Button>
 
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
@@ -113,7 +151,7 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
                 disabled={loading}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && password) {
-                    handleSign()
+                    handleSignWithPassword()
                   }
                 }}
               />
@@ -132,7 +170,7 @@ export function A1SignButton({ certificateId, onSuccess }: A1SignButtonProps) {
                 Cancelar
               </Button>
               <Button
-                onClick={handleSign}
+                onClick={handleSignWithPassword}
                 disabled={loading || !password}
                 className="flex-1"
               >
