@@ -7,7 +7,7 @@ import { logger } from '@/lib/logger'
 
 export interface MediaQualityPreset {
   name: string
-  video: MediaTrackConstraints
+  video: MediaTrackConstraints | boolean
   audio: MediaTrackConstraints | boolean
 }
 
@@ -73,7 +73,7 @@ export const QUALITY_PRESETS: Record<string, MediaQualityPreset> = {
   // Audio only - Emergência (conexão muito ruim)
   audioOnly: {
     name: 'Apenas Áudio',
-    video: false as any,
+    video: false,
     audio: {
       echoCancellation: true,
       noiseSuppression: true,
@@ -131,7 +131,14 @@ export async function detectConnectionQuality(): Promise<keyof typeof QUALITY_PR
     return 'medium' // Fallback se API não disponível
   }
 
-  const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection
+  type NavigatorWithConnection = Navigator & {
+    connection?: { effectiveType?: string; downlink?: number }
+    mozConnection?: { effectiveType?: string; downlink?: number }
+    webkitConnection?: { effectiveType?: string; downlink?: number }
+  }
+  const conn = (navigator as NavigatorWithConnection).connection
+    || (navigator as NavigatorWithConnection).mozConnection
+    || (navigator as NavigatorWithConnection).webkitConnection
 
   if (!conn) return 'medium'
 
@@ -139,12 +146,12 @@ export async function detectConnectionQuality(): Promise<keyof typeof QUALITY_PR
   const downlink = conn.downlink // Mbps estimado
 
   // 4G ou WiFi rápido
-  if (effectiveType === '4g' && downlink > 5) {
+  if (effectiveType === '4g' && (downlink ?? 0) > 5) {
     return 'high'
   }
 
   // 3G ou 4G lento
-  if (effectiveType === '3g' || (effectiveType === '4g' && downlink < 2)) {
+  if (effectiveType === '3g' || (effectiveType === '4g' && (downlink ?? 0) < 2)) {
     return 'low'
   }
 

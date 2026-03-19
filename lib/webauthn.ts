@@ -94,6 +94,7 @@ async function consumeAuthenticationChallenge(email: string, req?: Request | Nex
 
 export async function createRegistrationOptions(userId: string, email: string, req?: NextRequest) {
   // prisma client may not have typings for the webAuthn model in some generated clients
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const existing = await (prisma as any).webAuthnCredential.findMany({
     where: { userId },
     select: { credentialId: true }
@@ -139,6 +140,7 @@ export async function verifyRegistrationResponseForUser(userId: string, response
 }
 
 export async function createAuthenticationOptions(email: string, req?: NextRequest) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const credentials = await (prisma as any).webAuthnCredential.findMany({
     where: { user: { email: { equals: email, mode: 'insensitive' } } },
     select: { credentialId: true, transports: true }
@@ -166,6 +168,7 @@ export async function verifyAuthenticationResponseForUser(email: string, respons
     throw new Error('Desafio de autenticação ausente ou expirado')
   }
   const credentialId = Buffer.from(response.rawId, 'base64url').toString('base64url')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const credential = await (prisma as any).webAuthnCredential.findFirst({ where: { credentialId } })
   if (!credential) {
     throw new Error('Credencial não encontrada')
@@ -187,6 +190,7 @@ export async function verifyAuthenticationResponseForUser(email: string, respons
   })
 
   if (verification.verified) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (prisma as any).webAuthnCredential.update({
       where: { id: credential.id },
       data: {

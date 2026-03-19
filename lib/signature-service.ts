@@ -112,9 +112,9 @@ export function verifyWithPKILocal(
  * Implement based on your certificate provider's requirements
  */
 export function signWithICPBrasil(
-  data: string,
-  certificatePath?: string,
-  password?: string
+  _data: string,
+  _certificatePath?: string,
+  _password?: string
 ): SignatureResult {
   throw new Error(
     'ICP-Brasil signing not implemented. ' +
@@ -126,9 +126,9 @@ export function signWithICPBrasil(
  * Placeholder for ICP-Brasil verification
  */
 export function verifyWithICPBrasil(
-  data: string,
-  signature: string,
-  certificatePath?: string
+  _data: string,
+  _signature: string,
+  _certificatePath?: string
 ): VerificationResult {
   return {
     valid: false,
@@ -208,8 +208,8 @@ export function getCertificateInfo(
       return null
     }
 
-    const cert = fs.readFileSync(fullPath, 'utf-8')
-    
+    const _cert = fs.readFileSync(fullPath, 'utf-8')
+
     // Parse X.509 certificate (simplified - just return exists)
     // For detailed parsing, use 'x509' or 'cert-info' library
     return {

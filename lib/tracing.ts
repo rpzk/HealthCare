@@ -1,7 +1,7 @@
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
-import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api'
+import { trace, context, SpanStatusCode, Span, Attributes, AttributeValue } from '@opentelemetry/api'
 import { Resource } from '@opentelemetry/resources'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { logger } from '@/lib/logger'
@@ -31,7 +31,7 @@ export function initTracing(){
 
 const tracer = trace.getTracer('healthcare-app')
 
-export function createSpan(name: string, attributes?: Record<string, any>) {
+export function createSpan(name: string, attributes?: Attributes) {
   return tracer.startSpan(name, {
     attributes: attributes || {},
   })
@@ -40,7 +40,7 @@ export function createSpan(name: string, attributes?: Record<string, any>) {
 export async function traceAsync<T>(
   name: string,
   fn: (span: Span) => Promise<T>,
-  attributes?: Record<string, any>
+  attributes?: Attributes
 ): Promise<T> {
   const span = createSpan(name, attributes)
   
@@ -63,7 +63,7 @@ export async function traceAsync<T>(
 export function traceSync<T>(
   name: string,
   fn: (span: Span) => T,
-  attributes?: Record<string, any>
+  attributes?: Attributes
 ): T {
   const span = createSpan(name, attributes)
   
@@ -87,14 +87,14 @@ export function startSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
   return traceAsync(name, () => fn())
 }
 
-export function addEvent(name: string, attributes?: Record<string, any>) {
+export function addEvent(name: string, attributes?: Attributes) {
   const span = trace.getActiveSpan()
   if (span) {
     span.addEvent(name, attributes)
   }
 }
 
-export function setAttribute(key: string, value: any) {
+export function setAttribute(key: string, value: AttributeValue) {
   const span = trace.getActiveSpan()
   if (span) {
     span.setAttribute(key, value)

@@ -129,8 +129,8 @@ export class RecordingProcessorService {
 
         try {
           const data = JSON.parse(output)
-          const videoStream = data.streams?.find((s: any) => s.codec_type === 'video')
-          const audioStream = data.streams?.find((s: any) => s.codec_type === 'audio')
+          const videoStream = data.streams?.find((s: { codec_type: string }) => s.codec_type === 'video')
+          const audioStream = data.streams?.find((s: { codec_type: string }) => s.codec_type === 'audio')
           const format = data.format
 
           resolve({
@@ -400,10 +400,10 @@ export class RecordingProcessorService {
         success: true,
         outputPath
       }
-    } catch (error: any) {
+    } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: (error as Error).message
       }
     }
   }
@@ -433,10 +433,10 @@ export class RecordingProcessorService {
         success: true,
         outputPath
       }
-    } catch (error: any) {
+    } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: (error as Error).message
       }
     }
   }

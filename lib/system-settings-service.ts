@@ -262,7 +262,7 @@ export class SystemSettingsService {
   } = {}): Promise<SystemSettingData[]> {
     const { category, includeEncrypted = false, publicOnly = false } = options
 
-    const where: any = {}
+    const where: { category?: SettingCategory; isPublic?: boolean } = {}
     if (category) where.category = category
     if (publicOnly) where.isPublic = true
 

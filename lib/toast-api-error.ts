@@ -41,7 +41,7 @@ export function toastApiError(
   data: unknown,
   fallbackMessage = 'Erro ao processar a solicitação'
 ) {
-  const obj = (data && typeof data === 'object') ? (data as Record<string, any>) : null
+  const obj = (data && typeof data === 'object') ? (data as Record<string, unknown>) : null
 
   const message =
     (obj && typeof obj.error === 'string' && obj.error.trim())
@@ -55,7 +55,7 @@ export function toastApiError(
   if (code === 'TERMS_NOT_ACCEPTED') {
     const missing = Array.isArray(obj?.missing) ? obj.missing : []
     const termIds = missing
-      .map((t: any) => (t && typeof t.id === 'string' ? t.id : null))
+      .map((t: unknown) => (t && typeof t === 'object' && 'id' in t && typeof (t as { id: unknown }).id === 'string' ? (t as { id: string }).id : null))
       .filter(Boolean) as string[]
 
     resolution = {
@@ -67,10 +67,13 @@ export function toastApiError(
       label: 'Resolver',
       href: '/admin/terms',
     }
-  } else if (obj?.resolution && typeof obj.resolution === 'object' && typeof obj.resolution.href === 'string') {
-    resolution = {
-      label: typeof obj.resolution.label === 'string' ? obj.resolution.label : 'Resolver',
-      href: safeSameOriginPath(obj.resolution.href),
+  } else if (obj?.resolution && typeof obj.resolution === 'object') {
+    const res = obj.resolution as Record<string, unknown>
+    if (typeof res.href === 'string') {
+      resolution = {
+        label: typeof res.label === 'string' ? res.label : 'Resolver',
+        href: safeSameOriginPath(res.href),
+      }
     }
   }
 
@@ -91,5 +94,6 @@ export function toastApiError(
       onClick: go,
     },
     onClick: go,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
 }

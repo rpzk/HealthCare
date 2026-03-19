@@ -5,7 +5,7 @@
 
 import prisma from '@/lib/prisma'
 import { StorageService } from './storage-service'
-import { auditLogger, AuditAction } from './audit-logger'
+import { auditLogger } from './audit-logger'
 
 export interface RecordingMetadata {
   consultationId: string
@@ -78,6 +78,7 @@ export class RecordingService {
       userId,
       consultation.doctor.email,
       consultation.doctor.role,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       'CONSULTATION_CREATE' as any,
       'TelemedicineRecording',
       {
