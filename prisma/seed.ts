@@ -31,9 +31,19 @@ const prisma = new PrismaClient({
 })
 
 async function main() {
-  console.log('Iniciando seed do banco de dados...')
+  const isProduction = process.env.NODE_ENV === 'production'
+  console.log(`Iniciando seed do banco de dados (${isProduction ? 'produção' : 'desenvolvimento'})...`)
 
-  // Criar usuário administrador
+  if (isProduction) {
+    // Em produção: nenhum usuário de teste é criado.
+    // Use: docker exec -it healthcare-app node scripts/createsuperuser.js
+    console.log('✅ Seed de produção: nenhum usuário de demonstração criado.')
+    console.log('   Para criar o admin: docker exec -it healthcare-app node scripts/createsuperuser.js')
+    return
+  }
+
+  // ── Usuários de desenvolvimento/teste (apenas fora de produção) ──────────
+
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@healthcare.com' },
     update: {},
@@ -48,7 +58,6 @@ async function main() {
     },
   })
 
-  // Médico para testes E2E (jornada do profissional)
   const doctorUser = await prisma.user.upsert({
     where: { email: 'doctor@healthcare.com' },
     update: {},
@@ -64,7 +73,6 @@ async function main() {
     },
   })
 
-  // Equipe mínima para testes multi-profissional
   const nurseUser = await prisma.user.upsert({
     where: { email: 'nurse@healthcare.com' },
     update: {},
@@ -109,7 +117,6 @@ async function main() {
     },
   })
 
-  // Paciente + User paciente para testes E2E (jornada do paciente)
   const birthDate = new Date('1985-06-15')
   const patientRecord = await prisma.patient.upsert({
     where: { email: 'patient@healthcare.com' },
@@ -138,9 +145,9 @@ async function main() {
   })
 
   console.log('Seed concluído com sucesso!')
-  console.log(`Usuário admin: ${adminUser.email}`)
-  console.log(`Usuário médico (E2E): ${doctorUser.email}`)
-  console.log(`Usuário paciente (E2E): ${patientUser.email}`)
+  console.log(`Admin: ${adminUser.email} / admin123`)
+  console.log(`Médico: ${doctorUser.email} / doctor123`)
+  console.log(`Paciente: ${patientUser.email} / patient123`)
   console.log(`Equipe: ${nurseUser.email} | ${technicianUser.email} | ${receptionistUser.email}`)
 }
 
