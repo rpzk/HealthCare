@@ -26,16 +26,30 @@ import { logger } from '@/lib/logger'
 // Configuração com fallback para .env
 const ENCRYPTION_KEY = process.env.RECORDING_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || randomBytes(32).toString('hex');
 
+interface StorageConfig {
+  type: 'local' | 's3' | 'minio' | 'azure-blob'
+  localPath?: string
+  bucket?: string
+  region?: string
+  endpoint?: string
+  accessKey?: string
+  secretKey?: string
+  useSSL?: boolean
+  azureConnectionString?: string
+  azureContainer?: string
+}
+
 // Cache de configuração e clientes
-let cachedConfig: any = null;
+let cachedConfig: StorageConfig | null = null;
 let s3Client: S3Client | null = null;
-// BlobServiceClient lazy-loaded para não exigir o SDK em deploys sem Azure
+// BlobServiceClient lazy-loaded — tipo desconhecido até o import dinâmico
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let blobServiceClient: any | null = null;
 
 /**
  * Obtém configuração de storage (DB com fallback para .env)
  */
-async function getStorageConfig() {
+async function getStorageConfig(): Promise<StorageConfig> {
   if (cachedConfig) return cachedConfig;
 
   cachedConfig = await SystemSettingsService.getStorageConfig();
@@ -143,7 +157,7 @@ export async function uploadRecording(
   
   // Storage local (desenvolvimento)
   if (config.type === 'local') {
-    const filePath = path.join(config.localPath, key);
+    const filePath = path.join(config.localPath ?? './uploads', key);
     const dir = path.dirname(filePath);
     
     if (!existsSync(dir)) {
@@ -225,8 +239,7 @@ export async function getSignedRecordingUrl(key: string): Promise<string> {
   }
 
   if (config.type === 'azure-blob' && blobServiceClient) {
-    const { generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } =
-      await import('@azure/storage-blob');
+    const { BlobSASPermissions } = await import('@azure/storage-blob');
     const containerName = config.azureContainer || process.env.AZURE_STORAGE_CONTAINER || 'healthcare-uploads';
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobClient = containerClient.getBlobClient(key);
@@ -252,7 +265,7 @@ export async function downloadRecording(key: string): Promise<Buffer> {
   const config = await getStorageConfig();
   
   if (config.type === 'local') {
-    const filePath = path.join(config.localPath, key);
+    const filePath = path.join(config.localPath ?? './uploads', key);
     const fs = await import('fs/promises');
     let data: Buffer = await fs.readFile(filePath);
     
@@ -271,7 +284,7 @@ export async function downloadRecording(key: string): Promise<Buffer> {
     const blobClient = blobServiceClient.getContainerClient(containerName).getBlobClient(key);
     const downloadResponse = await blobClient.download();
     const chunks: Uint8Array[] = [];
-    for await (const chunk of downloadResponse.readableStreamBody as any) {
+    for await (const chunk of downloadResponse.readableStreamBody as AsyncIterable<Uint8Array>) {
       chunks.push(chunk);
     }
     let data: Buffer = Buffer.concat(chunks) as Buffer;
@@ -285,7 +298,7 @@ export async function downloadRecording(key: string): Promise<Buffer> {
   if (s3Client) {
     const response = await s3Client.send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
     const chunks: Uint8Array[] = [];
-    for await (const chunk of response.Body as any) {
+    for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
       chunks.push(chunk);
     }
     let data: Buffer = Buffer.concat(chunks) as Buffer;
@@ -305,7 +318,7 @@ export async function deleteRecording(key: string): Promise<void> {
   const config = await getStorageConfig();
   
   if (config.type === 'local') {
-    const filePath = path.join(config.localPath, key);
+    const filePath = path.join(config.localPath ?? './uploads', key);
     await unlink(filePath).catch(() => {});
     await unlink(`${filePath}.iv`).catch(() => {});
     return;

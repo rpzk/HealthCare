@@ -5,7 +5,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { WhatsAppService } from '@/lib/whatsapp-service'
-import { addDays, isBefore } from 'date-fns'
+import { addDays } from 'date-fns'
 import { logger } from '@/lib/logger'
 
 export class WaitingListService {

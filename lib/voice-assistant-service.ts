@@ -25,7 +25,7 @@ export interface CommandResult {
   success: boolean
   action: string
   message: string
-  data?: any
+  data?: unknown
 }
 
 // Available commands registry
@@ -243,7 +243,8 @@ export function checkVoiceSupport(): { recognition: boolean; synthesis: boolean 
     return { recognition: false, synthesis: false }
   }
   
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  type WindowWithSpeech = Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }
+  const SpeechRecognition = (window as WindowWithSpeech).SpeechRecognition || (window as WindowWithSpeech).webkitSpeechRecognition
   
   return {
     recognition: !!SpeechRecognition,

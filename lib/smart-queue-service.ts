@@ -61,7 +61,7 @@ const PRIORITY_LABELS: Record<number, string> = {
   4: 'Emergência'
 }
 
-const PRIORITY_WEIGHTS: Record<number, number> = {
+const _PRIORITY_WEIGHTS: Record<number, number> = {
   1: 1,     // Normal: peso 1
   2: 1.5,   // Preferencial: peso 1.5 (avança mais rápido)
   3: 3,     // Urgência: peso 3
