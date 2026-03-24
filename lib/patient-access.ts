@@ -27,6 +27,7 @@ export interface PatientAccessResult {
   reason: string
   isPrimary?: boolean
   isAdmin?: boolean
+  isFacilitator?: boolean
   isEmergency?: boolean
 }
 
@@ -36,13 +37,15 @@ export interface UserSession {
 }
 
 // Roles que têm acesso administrativo (podem ver todos os pacientes)
-const ADMIN_ROLES = ['ADMIN', 'MANAGER']
+const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'OWNER']
 
-// Roles que são profissionais de saúde (precisam estar na equipe para acessar)
+// Roles que podem facilitar o acesso (secretárias) sem ver dados clínicos
+const FACILITATOR_ROLES = ['RECEPTIONIST', 'MANAGER', 'ADMIN']
+
+// Roles que são profissionais de saúde (precisam estar na equipe para acessar dados clínicos)
 const HEALTHCARE_ROLES = [
   'DOCTOR',
   'NURSE',
-  'RECEPTIONIST',
   'TECHNICIAN',
   'PHARMACIST',
   'NUTRITIONIST',
@@ -67,9 +70,13 @@ export async function checkPatientAccess(
       hasAccess: true,
       accessLevel: 'FULL',
       reason: 'Acesso administrativo',
-      isAdmin: true
+      isAdmin: true,
+      isFacilitator: true
     }
   }
+
+  // Verificar se é facilitador (Secretária)
+  const isFacilitator = userRole && FACILITATOR_ROLES.includes(userRole.toUpperCase())
 
   // Verificar existência do paciente
   const patientExists = await prisma.patient.findUnique({ where: { id: patientId }, select: { id: true } })
@@ -126,6 +133,16 @@ export async function checkPatientAccess(
         : `Membro da equipe de atendimento (${translateAccessLevel(careTeamMember.accessLevel)})`,
       isPrimary: careTeamMember.isPrimary,
       isEmergency: isEmergencyAccess
+    }
+  }
+
+  // Se for facilitador, tem acesso básico (VIEW_ONLY por padrão se não estiver na equipe)
+  if (isFacilitator) {
+    return {
+      hasAccess: true,
+      accessLevel: 'VIEW_ONLY',
+      reason: 'Acesso de facilitador (Secretária)',
+      isFacilitator: true
     }
   }
 
@@ -397,9 +414,23 @@ export function translateAccessLevel(level: string): string {
  * Filtro Prisma para retornar apenas pacientes acessíveis
  * Use em queries de listagem
  */
-export function getPatientAccessFilter(userId: string, userRole?: string) {
-  // Admin/Manager vê todos
-  if (userRole && ADMIN_ROLES.includes(userRole.toUpperCase())) {
+export function getPatientAccessFilter(userId: string, userRole?: string, isSearch: boolean = false) {
+  const role = userRole?.toUpperCase() || ''
+  
+  // Admin/Owner vê tudo sempre
+  if (['ADMIN', 'OWNER'].includes(role)) {
+    return {}
+  }
+
+  // Se for uma BUSCA (isSearch), permitimos que profissionais e secretárias encontrem qualquer paciente
+  // Isso permite o fluxo de "atendimento de última hora" e "vínculo administrativo"
+  if (isSearch && (HEALTHCARE_ROLES.includes(role) || FACILITATOR_ROLES.includes(role))) {
+    return {}
+  }
+
+  // Na listagem normal, RECEPTIONIST e MANAGER também podem ver todos (apenas dados básicos devido ao masking)
+  // Isso resolve o problema da lista de pacientes vazia para novos funcionários
+  if (FACILITATOR_ROLES.includes(role)) {
     return {}
   }
 

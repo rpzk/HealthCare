@@ -123,10 +123,10 @@ export async function POST(
     // Verificar se quem está adicionando tem acesso FULL
     const access = await checkPatientAccess(session.user.id, patientId, session.user.role)
     
-    // Apenas quem tem acesso FULL ou é admin pode adicionar membros
-    if (!access.hasAccess || (access.accessLevel !== 'FULL' && !access.isAdmin)) {
+    // Apenas quem tem acesso FULL, admin ou facilitador (Secretária) pode adicionar membros
+    if (!access.hasAccess || (access.accessLevel !== 'FULL' && !access.isAdmin && !access.isFacilitator)) {
       return NextResponse.json(
-        { error: 'Apenas o médico responsável ou administradores podem gerenciar a equipe' },
+        { error: 'Apenas o médico responsável, secretárias ou administradores podem gerenciar a equipe' },
         { status: 403 }
       )
     }
@@ -212,9 +212,9 @@ export async function DELETE(
     // Verificar se quem está removendo tem permissão
     const access = await checkPatientAccess(session.user.id, patientId, session.user.role)
     
-    if (!access.hasAccess || (access.accessLevel !== 'FULL' && !access.isAdmin)) {
+    if (!access.hasAccess || (access.accessLevel !== 'FULL' && !access.isAdmin && !access.isFacilitator)) {
       return NextResponse.json(
-        { error: 'Apenas o médico responsável ou administradores podem remover membros da equipe' },
+        { error: 'Apenas o médico responsável, secretárias ou administradores podem remover membros da equipe' },
         { status: 403 }
       )
     }

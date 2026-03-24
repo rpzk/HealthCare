@@ -85,5 +85,15 @@ __pycache__/
 
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
+
+# IDE / agentes locais (não versionar)
+.cursor/
+.agents/
+.claude/
+.codex/
+.opencode/
+.gemini/
+.kiro/
+.pi/
 .env-umbrel*
 .aider*
