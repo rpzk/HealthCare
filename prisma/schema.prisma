@@ -1585,6 +1585,23 @@ enum InviteStatus {
   EXPIRED
 }
 
+model RegistrationInvite {
+  id        String       @id @default(cuid())
+  email     String
+  role      Role
+  token     String       @unique
+  expiresAt DateTime
+  status    InviteStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("registration_invites")
+}
+
 enum TermAudience {
   ALL
   PATIENT

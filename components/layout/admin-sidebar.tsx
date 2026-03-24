@@ -75,6 +75,7 @@ const adminMenuItems: MenuItem[] = [
     badge: 'RH',
     submenu: [
       { title: 'Equipe', href: '/admin/staff' },
+      { title: 'Equipes de Cuidado', href: '/admin/care-teams' },
       { title: 'Escalas de Trabalho', href: '/hr/schedules' },
       { title: 'Avaliação de Capacidade', href: '/hr/stratum' },
       { title: 'Férias e Ausências', href: '/hr/leave' },

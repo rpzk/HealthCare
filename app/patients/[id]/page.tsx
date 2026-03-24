@@ -11,6 +11,8 @@ import { PatientDetailsContent } from '@/components/patients/patient-details-con
 import { StartConsultationButton } from '@/components/consultations/start-consultation-button'
 import { decrypt, hashCPF } from '@/lib/crypto'
 import { applyPatientMasking } from '@/lib/masking'
+import { checkPatientAccess } from '@/lib/patient-access'
+import { RestrictedPatientView } from '@/components/patients/restricted-patient-view'
 
 export const metadata: Metadata = {
   title: 'Detalhes do Paciente - Sistema de Prontuário Eletrônico',
@@ -192,9 +194,33 @@ export default async function PatientDetailsPage({ params }: PageProps) {
     allergies: mergedAllergies || null,
   }
 
-  // LGPD: Admin/Manager vê dados pseudonimizados
+  // Identificação do usuário atual
   const session = await getServerSession(authOptions)
   const role = (session?.user as { role?: string })?.role
+  const userId = (session?.user as { id?: string })?.id
+
+  // Checagem LGPD: Médicos fora da equipe veem apenas a tela de restrição/emergência
+  const access = await checkPatientAccess(userId || '', id, role)
+  if (!access.hasAccess && !access.isAdmin && !access.isFacilitator) {
+    const maskedCpf = patientView.cpf ? `***.${String(patientView.cpf).slice(3, 6)}.***-**` : 'Sem CPF'
+    return (
+      <div className="min-h-screen bg-background transition-colors duration-300">
+        <Header />
+        <div className="flex pt-32">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-6">
+            <RestrictedPatientView 
+              patientId={patient.id} 
+              patientName={String(patientView.name ?? '')} 
+              patientCpf={maskedCpf} 
+            />
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  // LGPD: Admin/Manager vê dados pseudonimizados
   const isAdmin = role === 'ADMIN' || role === 'OWNER' || role === 'MANAGER'
   if (isAdmin) {
     patientView = applyPatientMasking(patientView as never, { isAdmin: true }) as Record<string, unknown>

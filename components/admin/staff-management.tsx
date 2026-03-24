@@ -50,11 +50,14 @@ import {
   Clipboard,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { toastApiError } from '@/lib/toast-api-error'
 import { logger } from '@/lib/logger'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import Link from 'next/link'
 
 interface StaffMember {
   id: string
@@ -109,6 +112,8 @@ export function StaffManagement() {
   const [inviteRole, setInviteRole] = useState('DOCTOR')
   const [inviting, setInviting] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
+  const [inviteWarning, setInviteWarning] = useState<string | null>(null)
+  const [emailEnabled, setEmailEnabled] = useState(true)
   const [copied, setCopied] = useState(false)
   
   const [resetPasswordDialog, setResetPasswordDialog] = useState<StaffMember | null>(null)
@@ -169,7 +174,14 @@ export function StaffManagement() {
       
       if (data.link) {
         setInviteLink(data.link)
-        toast({ title: 'Convite criado!', description: `Link enviado para ${inviteEmail}` })
+        setInviteWarning(data.warning || null)
+        setEmailEnabled(data.emailEnabled !== false)
+        
+        if (data.warning) {
+          toast('warning', 'Convite criado com ressalvas', data.warning)
+        } else {
+          toast({ title: 'Convite enviado!', description: `E-mail enviado para ${inviteEmail}` })
+        }
       } else {
         toastApiError(data, 'Erro ao criar convite')
       }
@@ -445,6 +457,21 @@ export function StaffManagement() {
             </DialogDescription>
           </DialogHeader>
           
+          {inviteDialogOpen && !inviteLink && !emailEnabled && (
+            <Alert variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>E-mail Desativado</AlertTitle>
+              <AlertDescription className="text-xs">
+                O sistema de e-mail está desativado. Você poderá criar o convite, mas terá que enviar o link manualmente.
+                <div className="mt-2">
+                  <Link href="/settings?tab=email" className="font-bold underline">
+                    Configurar E-mail
+                  </Link>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {!inviteLink ? (
             <div className="space-y-4">
               <div>
@@ -472,12 +499,12 @@ export function StaffManagement() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p className="text-sm text-green-800 dark:text-green-400 mb-2">
-                  ✅ Convite criado com sucesso!
+              <div className={`p-4 rounded-lg ${inviteWarning ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                <p className={`text-sm mb-2 ${inviteWarning ? 'text-yellow-800 dark:text-yellow-400' : 'text-green-800 dark:text-green-400'}`}>
+                  {inviteWarning ? `⚠️ ${inviteWarning}` : '✅ Convite enviado com sucesso!'}
                 </p>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Compartilhe este link com o profissional:
+                  {inviteWarning ? 'Copie o link abaixo para enviar manualmente:' : 'Caso o e-mail não chegue, você também pode copiar o link:'}
                 </p>
                 <div className="flex items-center gap-2">
                   <Input value={inviteLink} readOnly className="text-xs" />
@@ -485,6 +512,13 @@ export function StaffManagement() {
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
+                {inviteWarning && !emailEnabled && (
+                   <div className="mt-4 text-xs">
+                    <Link href="/settings?tab=email" className="text-primary hover:underline font-medium">
+                      Ir para configurações de e-mail →
+                    </Link>
+                   </div>
+                )}
               </div>
             </div>
           )}

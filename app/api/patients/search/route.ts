@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { getPatientAccessFilter } from '@/lib/patient-access'
 import { logger } from '@/lib/logger'
 
@@ -15,12 +16,12 @@ export const GET = withAuth(async (request, { user }) => {
     }
 
     // Buscar pacientes por nome ou email com filtro de acesso
-    const filter = getPatientAccessFilter(user.id, user.role)
+    const filter = getPatientAccessFilter(user.id, user.role, true)
 
     const patients = await prisma.patient.findMany({
       where: {
         AND: [
-          filter as any, // Filter retorna um tipo complexo
+          filter as Prisma.PatientWhereInput, // Filter retorna um tipo complexo
           {
             OR: [
               { name: { contains: q, mode: 'insensitive' } },
