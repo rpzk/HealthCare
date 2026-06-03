@@ -8,6 +8,7 @@ import { emailService } from '@/lib/email-service'
 import { logger } from '@/lib/logger'
 import { encrypt, hashCPF } from '@/lib/crypto'
 import { normalizeBloodType } from '@/lib/patient-schemas'
+import { loadTermsForPatientInvite, prismaErrorHint } from '@/lib/patient-invite-utils'
 
 export const runtime = 'nodejs'
 
@@ -197,21 +198,7 @@ export async function GET(
       info: BIOMETRIC_DATA_INFO[consent.dataType] || BIOMETRIC_DATA_INFO['OTHER']
     }))
 
-    const terms = await prisma.term.findMany({
-      where: {
-        isActive: true,
-        OR: [{ audience: 'ALL' }, { audience: 'PATIENT' }],
-      },
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        content: true,
-        version: true,
-        updatedAt: true,
-      },
-      orderBy: [{ slug: 'asc' }, { createdAt: 'desc' }],
-    })
+    const terms = await loadTermsForPatientInvite()
 
     return NextResponse.json({
       invite: {
@@ -244,7 +231,10 @@ export async function GET(
   } catch (error) {
     logger.error('Error validating invite:', error)
     return NextResponse.json(
-      { error: 'Erro ao validar convite' },
+      {
+        error: 'Erro ao validar convite',
+        hint: prismaErrorHint(error),
+      },
       { status: 500 }
     )
   }
@@ -396,41 +386,50 @@ export async function POST(
         }
       })
 
-      // 5. Atualizar consentimentos
+      // 5. Consentimentos: remove placeholders do convite e grava no paciente (evita P2002 em patientId+dataType)
+      await tx.patientBiometricConsent.deleteMany({
+        where: { inviteId: invite.id },
+      })
+
       for (const consent of invite.biometricConsents) {
         const isAccepted = acceptedConsents?.includes(consent.dataType) ?? false
-        
-        await tx.patientBiometricConsent.update({
-          where: { id: consent.id },
-          data: {
+        if (!isAccepted) continue
+
+        await tx.patientBiometricConsent.upsert({
+          where: {
+            patientId_dataType: {
+              patientId: patient.id,
+              dataType: consent.dataType,
+            },
+          },
+          create: {
             patientId: patient.id,
-            isGranted: isAccepted,
-            grantedAt: isAccepted ? now : null,
+            dataType: consent.dataType,
+            isGranted: true,
+            grantedAt: now,
+            purpose: consent.purpose,
             ipAddress,
-            userAgent
-          }
+            userAgent,
+          },
+          update: {
+            isGranted: true,
+            grantedAt: now,
+            ipAddress,
+            userAgent,
+          },
         })
 
         logger.info('[patient-invites] Consentimento biométrico', {
           patientId: patient.id,
           dataType: consent.dataType,
-          action: isAccepted ? 'GRANTED' : 'REVOKED',
+          action: 'GRANTED',
           ipAddress,
           userAgent,
-          reason: existingUser
-            ? 'Aceite de convite - usuário existente vinculado como paciente'
-            : 'Aceite inicial no convite - novo cadastro',
         })
       }
 
       // 7. Aceitar termos (somente os que o usuário marcou)
-      const activeTerms = await tx.term.findMany({
-        where: {
-          isActive: true,
-          OR: [{ audience: 'ALL' }, { audience: 'PATIENT' }],
-        },
-        select: { id: true, slug: true, title: true, version: true, content: true },
-      })
+      const activeTerms = await loadTermsForPatientInvite()
 
       const requiredTermIds = new Set(activeTerms.map((t) => t.id))
       const providedTermIds = Array.isArray(acceptedTermIds) ? acceptedTermIds : []
@@ -527,7 +526,10 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { error: 'Erro ao processar aceite' },
+      {
+        error: error instanceof Error ? error.message : 'Erro ao processar aceite',
+        hint: prismaErrorHint(error),
+      },
       { status: 500 }
     )
   }
