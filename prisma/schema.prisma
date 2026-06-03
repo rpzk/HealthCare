@@ -48,9 +48,8 @@ model User {
 
   // HR Management relations
 
-  // Convites de pacientes enviados
-
-  // Convites onde este usuário foi escolhido como médico responsável
+  patientInvites         PatientInvite[] @relation("PatientInviteInvitedBy")
+  assignedPatientInvites PatientInvite[] @relation("PatientInviteAssignedDoctor")
 
   // Fila de espera (médicos)
   waitingLists WaitingList[]
@@ -425,6 +424,8 @@ model Patient {
   pdfExports            PatientPdfExport[]     @relation("PatientPdfExports")
 
   // Dispositivos de saúde conectados
+
+  patientInvite PatientInvite?
 
   // Consentimentos de biometria (LGPD)
   biometricConsents    PatientBiometricConsent[]
@@ -2677,6 +2678,48 @@ enum BiometricDataType {
   OTHER // Outros
 }
 
+// Convite para paciente com opções de consentimento biométrico (LGPD)
+model PatientInvite {
+  id String @id @default(cuid())
+
+  email       String
+  phone       String?
+  patientName String
+  token       String       @unique
+  expiresAt   DateTime
+  status      InviteStatus @default(PENDING)
+
+  invitedById String
+  invitedBy   User @relation("PatientInviteInvitedBy", fields: [invitedById], references: [id])
+
+  assignedDoctorId String?
+  assignedDoctor   User? @relation("PatientInviteAssignedDoctor", fields: [assignedDoctorId], references: [id])
+
+  birthDate        DateTime?
+  cpf              String?
+  allergies        String?
+  gender           Gender?
+  emergencyContact String?
+  customMessage    String?
+
+  consentAcceptedAt DateTime?
+  consentIpAddress  String?
+  consentUserAgent  String?
+
+  biometricConsents PatientBiometricConsent[]
+
+  patientId String?  @unique
+  patient   Patient? @relation(fields: [patientId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([assignedDoctorId])
+  @@index([token])
+  @@map("patient_invites")
+}
+
 // Consentimento individual para cada tipo de dado biométrico
 model PatientBiometricConsent {
   id String @id @default(cuid())
@@ -2685,6 +2728,7 @@ model PatientBiometricConsent {
   patientId String?
   patient   Patient?       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   inviteId  String?
+  invite    PatientInvite? @relation(fields: [inviteId], references: [id], onDelete: Cascade)
 
   // Tipo de dado
   dataType BiometricDataType
