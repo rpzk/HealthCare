@@ -1,5 +1,5 @@
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "twoFactorSecret" TEXT,
-ADD COLUMN     "twoFactorBackupCodes" TEXT,
-ADD COLUMN     "twoFactorEnabledAt" TIMESTAMP(3);
+-- AlterTable (tabela mapeada como "users" no Prisma)
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "twoFactorSecret" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "twoFactorBackupCodes" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "twoFactorEnabledAt" TIMESTAMP(3);
