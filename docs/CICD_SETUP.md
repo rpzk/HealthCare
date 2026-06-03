@@ -174,6 +174,30 @@ Se o Umbrel ou Azure VM tiver apenas Docker Compose V1, edite o workflow e troqu
 - Verifique se a chave pública está em `~/.ssh/authorized_keys` no Umbrel
 - Teste manualmente: `ssh -i ~/.ssh/healthcare_deploy umbrel@SEU_IP`
 
+### Não resolve `umbrel.local` no notebook
+
+- O hostname `.local` depende do Avahi/mDNS (`avahi-daemon` ativo na sua máquina)
+- Use o IP da rede local (ex.: `192.168.0.16`): `ssh umbrel@192.168.0.16`
+- Script rápido: `./scripts/umbrel-status.sh [IP]`
+- Primeira conexão: use a **senha do login Umbrel**; depois `ssh-copy-id umbrel@IP` no **notebook**
+- `ssh-copy-id` não deve rodar dentro do SSH do Umbrel
+
+### `permission denied` em `/var/run/docker.sock` (SSH no Umbrel)
+
+```bash
+cd /home/umbrel/HealthCare
+chmod +x scripts/umbrel-start.sh
+./scripts/umbrel-start.sh
+```
+
+Ou só Docker:
+
+```bash
+sudo docker compose -f docker-compose.prod.yml up -d
+```
+
+No notebook, o script de status fica em `~/Code/HealthCare/scripts/umbrel-status.sh`.
+
 ### Deploy falha no "prisma migrate deploy"
 
 - O container pode estar iniciando. O workflow usa `|| true` para não falhar
