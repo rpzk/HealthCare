@@ -97,3 +97,18 @@ tsconfig.tsbuildinfo
 .pi/
 .env-umbrel*
 .aider*
+
+# Explicit sensitive filenames (defense in depth)
+meucertificado.p12
+
+# Env files — keep example template tracked
+.env*
+!.env.example
+
+# Local SQLite databases
+*.sqlite
+*.sqlite3
+
+# Dev-only diagnostics (PII — never publish)
+scripts/lookup-email.ts
+scripts/dev-only/
