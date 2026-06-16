@@ -359,7 +359,7 @@ Deve mostrar:
 # Via API direta
 curl -X POST http://localhost:3000/api/consultations \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
   -d '{
     "patientId": "test-patient-id",
     "doctorId": "test-doctor-id",

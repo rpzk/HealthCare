@@ -388,7 +388,7 @@ Adicione ao `.env`:
 
 ```bash
 # Gerada automaticamente (NÃO ALTERE após criptografar valores)
-ENCRYPTION_KEY=a9075a61f26c300a518caa47c6c1a33490aed14792ed117620dd4db2a4e6dea5
+ENCRYPTION_KEY=<YOUR_64_CHAR_HEX_ENCRYPTION_KEY>
 
 # Manter no .env (não migrar para banco)
 NEXTAUTH_SECRET=your-nextauth-secret

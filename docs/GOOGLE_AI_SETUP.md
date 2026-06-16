@@ -22,7 +22,7 @@ Vá para: [https://makersuite.google.com/app/apikey](https://makersuite.google.c
 - A chave será gerada automaticamente
 
 ### 4. Copie sua API Key
-- Copie a chave gerada (exemplo: `AIzaSyAbc123def456ghi789jkl012mno345pqr678`)
+- Copie a chave gerada (exemplo: `YOUR_GOOGLE_AI_API_KEY`)
 - **⚠️ CRÍTICO**: Guarde essa chave em local seguro - ela não será mostrada novamente
 - **🔐 NUNCA** commit a chave real no Git/GitHub
 - **🚨 IMPORTANTE**: Se a chave for exposta, revogue-a imediatamente no Google Console
@@ -35,14 +35,14 @@ Vá para: [https://makersuite.google.com/app/apikey](https://makersuite.google.c
 cp .env.example .env.local
 
 # Adicione sua chave
-GOOGLE_AI_API_KEY="AIzaSyAbc123def456ghi789jkl012mno345pqr678"
+GOOGLE_AI_API_KEY="YOUR_GOOGLE_AI_API_KEY"
 ```
 
 #### Opção 2: Docker Compose
 Edite o arquivo `docker-compose.yml`:
 ```yaml
 environment:
-  GOOGLE_AI_API_KEY: "AIzaSyAbc123def456ghi789jkl012mno345pqr678"
+  GOOGLE_AI_API_KEY: "YOUR_GOOGLE_AI_API_KEY"
 ```
 
 ### 6. Teste a Integração

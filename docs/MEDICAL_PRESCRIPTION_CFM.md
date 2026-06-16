@@ -271,7 +271,7 @@ não excedendo 3 doses ao dia, com as refeições"
 ```bash
 curl -X POST http://localhost:3000/api/prescriptions/generate-cfm \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -H "Authorization: Bearer <YOUR_SESSION_TOKEN>" \
   -d '{
     "doctor": {
       "name": "Dr. João Silva",

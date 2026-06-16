@@ -32,7 +32,7 @@ Create `.env.development` in the repo root:
 DATABASE_URL=postgresql://healthcare:change_me@localhost:5432/healthcare_db
 NEXTAUTH_SECRET=dev_secret_replace_me
 NEXTAUTH_URL=http://localhost:3000
-ENCRYPTION_KEY=091f102918edce0e682e220705848ff064ec12d5f5c7b832038d64851d6d8b04
+ENCRYPTION_KEY=<YOUR_64_CHAR_HEX_ENCRYPTION_KEY>
 REDIS_HOST=localhost
 OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=llama3
